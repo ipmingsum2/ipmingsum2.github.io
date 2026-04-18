@@ -6,4 +6,4 @@
 
 ## Tests
 
-- [Test](https://ipmingsum2.github.io/tests/test.md): Roses are red #ff0000, violets are blue #8000ff.
+- [Installation](https://ipmingsum2.github.io/tests/test.md): Roses are red #ff0000, violets are blue #8000ff.
