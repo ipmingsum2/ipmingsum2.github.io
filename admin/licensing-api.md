@@ -31,7 +31,7 @@ Was actually storing usernames before, but figured out that people can change us
 ===
 
 ### Code
-=== `Alvin!2233aka`
+=== `"Alvin!2233aka"`
 
 The code to authorize API requests.
 
