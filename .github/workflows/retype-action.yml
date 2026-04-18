@@ -1,29 +1,25 @@
-correct one (dont remove anything just add the features back)
+name: Publish Retype
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
 
-retype.yml
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
-input: .
-output: .retype
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-url: ipmingsum2.github.io
+      - uses: retypeapp/action-build@latest
+        env:
+          RETYPE_KEY: ${{ secrets.RETYPE_KEY }}
 
-start:
-  # Try the Retype Pro features
-  pro: true
-
-branding:
-  title: Alvin Solutions Documentation
-  label: Docs
-
-links:
-  # - text: Getting Started
-    # link: https://retype.com/guides/getting-started/
-  - text: Discord Server
-    link: https://discord.gg/yFu6enjjvQ
-    icon: comment-discussion
-    target: blank
-
-footer:
-  copyright: "&copy; Copyright {{ year }}. All rights reserved."
-
-password: ${RETYPE_PASSWORD}
+      - uses: retypeapp/action-github-pages@latest
+        with:
+          update-branch: true
