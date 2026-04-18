@@ -10,8 +10,29 @@ You should use a GET request to access the page.
 ## Parameters
 
 ### Type
-=== `"add" | "remove" | "check" ` 
+=== `"add" | "remove" | "check"` 
 
 The action to do.
+
+===
+
+### Product
+=== `string`
+
+The product's name.
+
+===
+
+### Username
+=== `number`
+
+Was actually storing usernames before, but figured out that people can change usernames, so changed to UserIds.
+
+===
+
+### Code
+=== `Alvin!2233aka`
+
+The code to authorize API requests.
 
 ===
