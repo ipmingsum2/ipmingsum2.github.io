@@ -1,0 +1,5 @@
+﻿# README
+
+> Roses are red #ff0000, violets are blue #8000ff.
+
+- [README](https://docs.example.com/readme.md): README
