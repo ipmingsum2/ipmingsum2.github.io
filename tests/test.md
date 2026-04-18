@@ -1,6 +1,6 @@
 ---
-icon: download
-label: Installation
+icon: dash
+label: Test Page
 authors:
   - name: Alvin
     link: https://github.com/ipmingsum2
