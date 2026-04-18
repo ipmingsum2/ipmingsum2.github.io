@@ -32,3 +32,11 @@ Because it's useless.
 !!!Done
 This is why this page is useless!
 !!!
+
+||| Demo
+[!button Button](https://www.youtube.com/watch?v=dQw4w9WgXcQ&autoplay=1)
+||| Source
+```md
+[!button Button](https://www.youtube.com/watch?v=dQw4w9WgXcQ&autoplay=1)
+```
+|||
