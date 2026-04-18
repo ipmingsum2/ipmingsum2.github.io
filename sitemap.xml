@@ -3,4 +3,8 @@
   <url>
     <loc>https://docs.example.com/</loc>
   </url>
+  <url>
+    <loc>https://docs.example.com/tests/test/</loc>
+    <lastmod>2026-04-18T12:42:11Z</lastmod>
+  </url>
 </urlset>
