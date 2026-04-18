@@ -19,9 +19,6 @@ links:
     icon: comment-discussion
     target: blank
 
-scheme:
-  mode: dark
-
 search:
   hotkeys:
     - "/"
