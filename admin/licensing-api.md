@@ -37,4 +37,55 @@ The code to authorize API requests.
 
 ===
 
-$ \text{Points } A \text{ and } B \text{ lie on a circle with radius } 1,\text{ and arc } \widehat{AB} \text{ has length } \frac{\pi}{3}. \text{ What fraction of the circumference of the circle is the length of arc } \widehat{AB}\text{?}
+---
+## Sample Script
+```lua
+--// Services
+local HttpService = game:GetService("HttpService")
+--// Variables
+local link = "https://script.google.com/macros/s/AKfycbxO07FIU-79SYhk2F6bam6DPNI4xNmu1a9b02YMz9NSdCpS9xSkmkPhPq525mWm4KHUyQ/exec"
+local code = "Alvin!2233aka"
+--// Functions
+local function requestLicense(action, userId, prod)
+	local url =
+		link
+		.. "?type=" .. HttpService:UrlEncode(action)
+		.. "&product=" .. HttpService:UrlEncode(prod)
+		.. "&code=" .. HttpService:UrlEncode(code)
+		.. "&username=" .. HttpService:UrlEncode(tostring(userId))
+
+	local result = HttpService:GetAsync(url)
+	return HttpService:JSONDecode(result)
+end
+local function add(userId, prod)
+	local decoded = requestLicense("add", userId, prod)
+	if decoded.ok == true then
+		print("Successfully added " .. prod .. " to " .. userId .. "!")
+	else
+		warn("Failed to add " .. prod .. " to " .. userId .. ".")
+	end
+end
+local function remove(userId, prod)
+	local decoded = requestLicense("remove", userId, prod)
+	if decoded.ok == true then
+		print("Successfully removed " .. prod .. " from " .. userId .. "!")
+	else
+		warn("Failed to remove " .. prod .. " from " .. userId .. ".")
+	end
+end
+local function check(userId, prod)
+	local decoded = requestLicense("check", userId, prod)
+	if decoded.ok == true then
+		return decoded.licensed == true
+	else
+		warn("Check failed for " .. prod .. " / " .. userId)
+		return false
+	end
+end
+--// Samples
+local productName = "Product Name"
+add(Player.UserId, productName) -- Adds a product to a user.
+remove(Player.UserId, productName) -- Remove a product from a user.
+local hasLicense = check(Player.UserId, productName) -- Check if a user has the product.
+print(string.format("%s %s the license %s.", Player.Name, if hasLicense then "has" else "doesn't have", productName))
+```
