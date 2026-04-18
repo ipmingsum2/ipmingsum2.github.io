@@ -1,4 +1,4 @@
-name: Publish Retype
+name: Publish Retype 
 on:
   workflow_dispatch:
   push:
