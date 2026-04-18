@@ -21,3 +21,5 @@ links:
 
 footer:
   copyright: "&copy; Copyright {{ year }}. All rights reserved."
+
+password: ${RETYPE_PASSWORD}
