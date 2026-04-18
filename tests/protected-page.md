@@ -13,4 +13,4 @@ categories:
 
 This page will be visible in the main navigation, but will require a password to view the page.
 
-The password is `Alvin!2233aka`.
+This is so hard to make.
