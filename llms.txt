@@ -2,8 +2,8 @@
 
 > ✅ Your website is working.
 
-- [Welcome](https://docs.example.com/): Welcome
+- [Welcome](https://ipmingsum2.github.io/): Welcome
 
 ## Tests
 
-- [Test](https://docs.example.com/tests/test.md): Roses are red #ff0000, violets are blue #8000ff.
+- [Test](https://ipmingsum2.github.io/tests/test.md): Roses are red #ff0000, violets are blue #8000ff.
