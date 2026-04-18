@@ -1,0 +1,9 @@
+﻿# Welcome
+
+> ✅ Your website is working.
+
+- [Welcome](https://docs.example.com/): Welcome
+
+## Tests
+
+- [Test](https://docs.example.com/tests/test.md): Roses are red #ff0000, violets are blue #8000ff.
