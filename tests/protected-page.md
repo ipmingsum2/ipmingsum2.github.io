@@ -1,6 +1,13 @@
 ---
 icon: file
 visibility: protected
+label: Protected Page
+authors:
+  - name: Alvin
+    link: https://github.com/ipmingsum2
+    avatar: https://avatars.githubusercontent.com/u/107190717
+categories:
+  - Tests
 ---
 # Protected page
 
