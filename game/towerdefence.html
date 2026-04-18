@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Biome Tower Defense - 200 Levels</title>
+  <style>
+    :root {
+      --bg: #eaf5ff;
+      --panel: #fffdf8;
+      --panel-border: #d7caa8;
+      --text: #2f2a1f;
+      --muted: #6b6659;
+      --ok: #166534;
+      --warn: #b91c1c;
+      --blue: #0284c7;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: linear-gradient(180deg, #dff4ff, #b8e1ff);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 10px;
+    }
+
+    .app {
+      max-width: 1220px;
+      margin: 0 auto;
+      display: grid;
+      gap: 10px;
+    }
+
+    .title {
+      background: rgba(255,255,255,0.85);
+      border: 1px solid #cfe5f1;
+      border-radius: 12px;
+      padding: 10px;
+      text-align: center;
+      font-weight: 800;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 10px;
+      min-height: 0;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 12px;
+      padding: 10px;
+      min-height: 0;
+    }
+
+    .section-title {
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .left-col {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 10px;
+      min-height: 0;
+    }
+
+    .unlock-box {
+      display: grid;
+      gap: 6px;
+      font-weight: 700;
+      color: #3f3a2f;
+      font-size: 0.95rem;
+    }
+
+    .menu-scroll {
+      border: 1px solid #dbcda7;
+      border-radius: 10px;
+      background: #fff8e8;
+      padding: 8px;
+      overflow: auto;
+      max-height: 70vh;
+    }
+
+    .biome-block {
+      margin-bottom: 10px;
+      border: 1px solid #d6c498;
+      border-radius: 10px;
+      background: #fffef7;
+      overflow: hidden;
+    }
+
+    .biome-head {
+      padding: 8px;
+      font-weight: 800;
+      border-bottom: 1px solid #e3d4ad;
+      font-size: 0.95rem;
+    }
+
+    .biome-levels {
+      padding: 8px;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0,1fr));
+      gap: 6px;
+    }
+
+    .lvl-btn {
+      border: 1px solid #ccb98a;
+      background: #fff8e7;
+      border-radius: 8px;
+      min-height: 38px;
+      font-weight: 800;
+      font-size: 0.85rem;
+      cursor: pointer;
+      color: #2f2a1f;
+    }
+
+    .lvl-btn.selected {
+      outline: 2px solid #7dd3fc;
+      border-color: #38bdf8;
+      background: #f0f9ff;
+    }
+
+    .lvl-btn.completed {
+      border-color: #86efac;
+      background: #f0fdf4;
+      color: #166534;
+    }
+
+    .lvl-btn.locked {
+      cursor: not-allowed;
+      opacity: 0.55;
+      background: #f3f4f6;
+      border-color: #d1d5db;
+      color: #6b7280;
+    }
+
+    .right-col {
+      display: grid;
+      gap: 10px;
+      min-height: 0;
+    }
+
+    .hud {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .stat {
+      border: 1px solid #d9cfb5;
+      border-radius: 10px;
+      background: #fff8e7;
+      padding: 8px;
+      text-align: center;
+      font-weight: 700;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .shop-controls {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .shop {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0,1fr));
+      gap: 8px;
+    }
+
+    .shop button {
+      text-align: left;
+      border: 1px solid #ccb98a;
+      background: #fff8e7;
+      border-radius: 10px;
+      padding: 8px;
+      min-height: 72px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .shop button.selected {
+      outline: 2px solid #7dd3fc;
+      border-color: #38bdf8;
+      background: #f0f9ff;
+    }
+
+    .shop small {
+      display: block;
+      color: #6b6659;
+      margin-top: 4px;
+      font-weight: 600;
+    }
+
+    .controls {
+      display: grid;
+      gap: 8px;
+      min-width: 160px;
+    }
+
+    .controls button {
+      border: 1px solid #cdbd95;
+      background: #fff8e7;
+      border-radius: 10px;
+      padding: 10px;
+      font-weight: 800;
+      cursor: pointer;
+      min-height: 42px;
+    }
+
+    .controls button.primary {
+      background: #dcfce7;
+      border-color: #86efac;
+      color: #166534;
+    }
+
+    .controls button.active {
+      background: #dbeafe;
+      border-color: #93c5fd;
+      color: #1e3a8a;
+    }
+
+    .message {
+      border: 1px solid #ddcfaa;
+      border-radius: 10px;
+      background: #fff8e7;
+      padding: 8px;
+      min-height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #4b463a;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .game-wrap {
+      border: 1px solid #a5c9a5;
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+      background: #d9f2c4;
+      box-shadow: 0 10px 24px rgba(0,0,0,0.12);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      touch-action: none;
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(10, 28, 20, 0.58);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+    }
+    .overlay.show { display: flex; }
+
+    .card {
+      width: 100%;
+      max-width: 400px;
+      background: #fffef8;
+      border: 1px solid #d5c8a4;
+      border-radius: 12px;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .card h2 { margin: 4px 0 8px; }
+    .card p { margin: 4px 0 12px; color: #4b463a; }
+    .card .row {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .card button {
+      border: 1px solid #cdbd95;
+      background: #fff8e7;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-weight: 800;
+      cursor: pointer;
+      min-height: 42px;
+    }
+    .card button.primary {
+      background: #dcfce7;
+      border-color: #86efac;
+      color: #166534;
+    }
+
+    @media (max-width: 980px) {
+      .layout { grid-template-columns: 1fr; }
+      .menu-scroll { max-height: 44vh; }
+      .hud { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .shop-controls { grid-template-columns: 1fr; }
+      .shop { grid-template-columns: 1fr; }
+      .controls { grid-template-columns: repeat(2,minmax(0,1fr)); min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="title">Biome Tower Defense — 200 Level Campaign</div>
+
+    <div class="layout">
+      <div class="left-col">
+        <div class="panel">
+          <div class="section-title">Level Menu</div>
+          <div class="unlock-box">
+            <div>Unlocked up to: <strong id="unlockedInfo">1</strong> / 200</div>
+            <div>Selected: <strong id="selectedInfo">Level 1</strong></div>
+            <div>Rule: Beat current highest unlocked level to unlock the next.</div>
+          </div>
+        </div>
+
+        <div class="panel menu-scroll" id="levelMenu"></div>
+      </div>
+
+      <div class="right-col">
+        <div class="panel hud">
+          <div class="stat">Level: <strong id="levelStat">1</strong></div>
+          <div class="stat">Biome: <strong id="biomeStat">Grove</strong></div>
+          <div class="stat">Wave: <strong id="waveStat">0/0</strong></div>
+          <div class="stat">Gold: <strong id="goldStat">0</strong></div>
+          <div class="stat">Lives: <strong id="livesStat">0</strong></div>
+          <div class="stat">Enemies: <strong id="enemyStat">0</strong></div>
+          <div class="stat">Tower HP: <strong id="towerHpStat">0</strong></div>
+        </div>
+
+        <div class="panel shop-controls">
+          <div>
+            <div class="section-title">Tower Shop</div>
+            <div class="shop">
+              <button id="shopArcher" data-type="archer">
+                Archer — 60g
+                <small>Fast / balanced</small>
+              </button>
+              <button id="shopCannon" data-type="cannon">
+                Cannon — 95g
+                <small>Splash / slower</small>
+              </button>
+              <button id="shopFrost" data-type="frost">
+                Frost — 85g
+                <small>Slows enemies</small>
+              </button>
+            </div>
+          </div>
+          <div class="controls">
+            <button id="startWaveBtn" class="primary">Start Next Wave</button>
+            <button id="speed1" class="active">Speed x1</button>
+            <button id="speed2">Speed x2</button>
+            <button id="restartBtn">Restart Level</button>
+          </div>
+        </div>
+
+        <div class="message" id="message">Select a level from the menu, place towers, and clear all target waves.</div>
+
+        <div class="game-wrap">
+          <canvas id="game" width="768" height="512"></canvas>
+          <div class="overlay" id="overlay">
+            <div class="card">
+              <h2 id="overlayTitle">Result</h2>
+              <p id="overlayText"></p>
+              <div class="row">
+                <button id="overlayRetry">Retry</button>
+                <button id="overlayNext" class="primary">Next Unlocked</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      const MAX_LEVEL = 200;
+      const COLS = 12;
+      const ROWS = 8;
+      const CELL = 64;
+
+      const BIOMES = [
+        {
+          id: "grove",
+          name: "Verdant Grove",
+          range: [1, 50],
+          difficultyLabel: "Easy",
+          towerHpBase: 220,
+          startGoldBase: 190,
+          livesBase: 24,
+          enemyTowerDamageBase: 6,
+          enemySpeedBonus: 0,
+          colors: { top: "#d9f99d", bottom: "#86efac", path: "#9b6b3d" }
+        },
+        {
+          id: "canyon",
+          name: "Sunscorch Canyon",
+          range: [51, 100],
+          difficultyLabel: "Normal",
+          towerHpBase: 170,
+          startGoldBase: 180,
+          livesBase: 21,
+          enemyTowerDamageBase: 10,
+          enemySpeedBonus: 7,
+          colors: { top: "#fde68a", bottom: "#fdba74", path: "#8b5a2b" }
+        },
+        {
+          id: "tundra",
+          name: "Frost Tundra",
+          range: [101, 150],
+          difficultyLabel: "Hard",
+          towerHpBase: 130,
+          startGoldBase: 170,
+          livesBase: 18,
+          enemyTowerDamageBase: 14,
+          enemySpeedBonus: 12,
+          colors: { top: "#e0f2fe", bottom: "#bae6fd", path: "#7c665c" }
+        },
+        {
+          id: "ember",
+          name: "Ember Wasteland",
+          range: [151, 200],
+          difficultyLabel: "Brutal",
+          towerHpBase: 95,
+          startGoldBase: 165,
+          livesBase: 16,
+          enemyTowerDamageBase: 18,
+          enemySpeedBonus: 18,
+          colors: { top: "#fecaca", bottom: "#fb7185", path: "#6b3a1f" }
+        }
+      ];
+
+      const PATH_TEMPLATES = [
+        [{c:0,r:3},{c:2,r:3},{c:2,r:1},{c:5,r:1},{c:5,r:5},{c:9,r:5},{c:9,r:2},{c:11,r:2}],
+        [{c:0,r:6},{c:3,r:6},{c:3,r:2},{c:7,r:2},{c:7,r:6},{c:10,r:6},{c:10,r:1},{c:11,r:1}],
+        [{c:0,r:1},{c:2,r:1},{c:2,r:5},{c:4,r:5},{c:4,r:2},{c:8,r:2},{c:8,r:6},{c:11,r:6}],
+        [{c:0,r:4},{c:1,r:4},{c:1,r:1},{c:6,r:1},{c:6,r:6},{c:10,r:6},{c:10,r:3},{c:11,r:3}]
+      ];
+
+      const towerDefs = {
+        archer: {
+          name: "Archer",
+          cost: 60, range: 125, fireRate: 1.35, damage: 14, projectileSpeed: 360,
+          splash: 0, slowMult: 1, slowTime: 0, body: "#8b5a2b", barrel: "#166534"
+        },
+        cannon: {
+          name: "Cannon",
+          cost: 95, range: 112, fireRate: 0.58, damage: 34, projectileSpeed: 265,
+          splash: 38, slowMult: 1, slowTime: 0, body: "#6b7280", barrel: "#111827"
+        },
+        frost: {
+          name: "Frost",
+          cost: 85, range: 120, fireRate: 0.92, damage: 10, projectileSpeed: 300,
+          splash: 0, slowMult: 0.6, slowTime: 1.2, body: "#67e8f9", barrel: "#0e7490"
+        }
+      };
+
+      const canvas = document.getElementById("game");
+      const ctx = canvas.getContext("2d");
+
+      const levelMenu = document.getElementById("levelMenu");
+      const unlockedInfo = document.getElementById("unlockedInfo");
+      const selectedInfo = document.getElementById("selectedInfo");
+
+      const levelStat = document.getElementById("levelStat");
+      const biomeStat = document.getElementById("biomeStat");
+      const waveStat = document.getElementById("waveStat");
+      const goldStat = document.getElementById("goldStat");
+      const livesStat = document.getElementById("livesStat");
+      const enemyStat = document.getElementById("enemyStat");
+      const towerHpStat = document.getElementById("towerHpStat");
+      const messageEl = document.getElementById("message");
+
+      const shopButtons = {
+        archer: document.getElementById("shopArcher"),
+        cannon: document.getElementById("shopCannon"),
+        frost: document.getElementById("shopFrost")
+      };
+
+      const startWaveBtn = document.getElementById("startWaveBtn");
+      const speed1Btn = document.getElementById("speed1");
+      const speed2Btn = document.getElementById("speed2");
+      const restartBtn = document.getElementById("restartBtn");
+
+      const overlay = document.getElementById("overlay");
+      const overlayTitle = document.getElementById("overlayTitle");
+      const overlayText = document.getElementById("overlayText");
+      const overlayRetry = document.getElementById("overlayRetry");
+      const overlayNext = document.getElementById("overlayNext");
+
+      let selectedTowerType = "archer";
+      let selectedLevel = 1;
+      let unlockedLevel = 1;
+      const completed = new Set();
+
+      let currentConfig = null;
+      let currentBiome = null;
+
+      let towers = [];
+      let enemies = [];
+      let projectiles = [];
+      let pathPoints = [];
+      let pathCells = new Set();
+
+      let wave = 0;
+      let waveActive = false;
+      let spawnLeft = 0;
+      let spawnTimer = 0;
+      let spawnGap = 0.8;
+      let gold = 0;
+      let lives = 0;
+      let gameOver = false;
+      let selectedCell = null;
+      let gameSpeed = 1;
+      let lastTs = 0;
+
+      function setMsg(t) { messageEl.textContent = t; }
+      function toCell(c, r) { return `${c},${r}`; }
+
+      function biomeForLevel(level) {
+        return BIOMES.find(b => level >= b.range[0] && level <= b.range[1]) || BIOMES[0];
+      }
+
+      function makeLevelConfig(level) {
+        const biome = biomeForLevel(level);
+        const within = ((level - 1) % 50) + 1;
+        const globalScale = 1 + (level - 1) * 0.011;
+
+        const targetWave = 7 + Math.floor((level - 1) / 5); // 7..46
+        const towerHp = Math.max(45, Math.round(biome.towerHpBase - within * 1.2));
+        const startGold = Math.max(110, Math.round(biome.startGoldBase - within * 0.35 + (level % 4) * 2));
+        const startLives = Math.max(7, Math.round(biome.livesBase - within * 0.12));
+        const enemyTowerDamage = Math.round(biome.enemyTowerDamageBase + within * 0.18);
+
+        const template = PATH_TEMPLATES[(level - 1) % PATH_TEMPLATES.length];
+
+        return {
+          level,
+          biome,
+          withinBiome: within,
+          difficultyLabel: biome.difficultyLabel,
+          globalScale,
+          targetWave,
+          towerHp,
+          startGold,
+          startLives,
+          enemyTowerDamage,
+          pathNodes: template
+        };
+      }
+
+      function buildPath(nodes) {
+        pathCells.clear();
+        pathPoints = nodes.map(n => ({
+          x: n.c * CELL + CELL / 2,
+          y: n.r * CELL + CELL / 2
+        }));
+
+        for (let i = 0; i < nodes.length - 1; i++) {
+          const a = nodes[i], b = nodes[i + 1];
+          if (a.c === b.c) {
+            const step = a.r < b.r ? 1 : -1;
+            for (let r = a.r; r !== b.r + step; r += step) pathCells.add(toCell(a.c, r));
+          } else {
+            const step = a.c < b.c ? 1 : -1;
+            for (let c = a.c; c !== b.c + step; c += step) pathCells.add(toCell(c, a.r));
+          }
+        }
+      }
+
+      function updateHUD() {
+        unlockedInfo.textContent = unlockedLevel;
+        selectedInfo.textContent = `Level ${selectedLevel}`;
+        levelStat.textContent = `${currentConfig.level}`;
+        biomeStat.textContent = currentBiome.name.replace("Verdant ", "").replace("Sunscorch ", "").replace("Frost ", "").replace("Ember ", "");
+        waveStat.textContent = `${wave}/${currentConfig.targetWave}`;
+        goldStat.textContent = Math.floor(gold);
+        livesStat.textContent = lives;
+        enemyStat.textContent = enemies.length + spawnLeft;
+        towerHpStat.textContent = currentConfig.towerHp;
+      }
+
+      function refreshShopSelection() {
+        Object.entries(shopButtons).forEach(([k, btn]) => {
+          btn.classList.toggle("selected", k === selectedTowerType);
+        });
+      }
+
+      function selectTowerType(type) {
+        selectedTowerType = type;
+        refreshShopSelection();
+        setMsg(`Selected ${towerDefs[type].name} Tower.`);
+      }
+
+      function createTower(type, c, r) {
+        const d = towerDefs[type];
+        return {
+          type, c, r,
+          x: c * CELL + CELL / 2,
+          y: r * CELL + CELL / 2,
+          level: 1,
+          cost: d.cost,
+          range: d.range,
+          fireRate: d.fireRate,
+          damage: d.damage,
+          projectileSpeed: d.projectileSpeed,
+          splash: d.splash,
+          slowMult: d.slowMult,
+          slowTime: d.slowTime,
+          body: d.body,
+          barrel: d.barrel,
+          cooldown: 0,
+          angle: 0,
+          maxHp: currentConfig.towerHp,
+          hp: currentConfig.towerHp
+        };
+      }
+
+      function towerAt(c, r) {
+        return towers.find(t => t.c === c && t.r === r);
+      }
+
+      function canBuild(c, r) {
+        if (c < 0 || c >= COLS || r < 0 || r >= ROWS) return false;
+        if (pathCells.has(toCell(c, r))) return false;
+        if (towerAt(c, r)) return false;
+        return true;
+      }
+
+      function buildTower(c, r) {
+        if (!canBuild(c, r)) return;
+        const d = towerDefs[selectedTowerType];
+        if (gold < d.cost) {
+          setMsg(`Not enough gold (${d.cost} needed).`);
+          return;
+        }
+        gold -= d.cost;
+        towers.push(createTower(selectedTowerType, c, r));
+        setMsg(`${d.name} built with ${currentConfig.towerHp} HP (level-based).`);
+      }
+
+      function upgradeTower(t) {
+        if (t.level >= 5) { setMsg("Tower max level."); return; }
+        const cost = Math.round(t.cost * (0.75 + t.level * 0.45));
+        if (gold < cost) { setMsg(`Need ${cost} gold to upgrade.`); return; }
+        gold -= cost;
+        t.level += 1;
+        t.damage = Math.round(t.damage * 1.28);
+        t.range += 7;
+        t.fireRate *= 1.1;
+        if (t.type === "cannon") t.splash += 4;
+        if (t.type === "frost") t.slowTime += 0.1;
+        setMsg(`${towerDefs[t.type].name} upgraded to Lv ${t.level}.`);
+      }
+
+      function loadLevel(level) {
+        selectedLevel = level;
+        currentConfig = makeLevelConfig(level);
+        currentBiome = currentConfig.biome;
+        buildPath(currentConfig.pathNodes);
+
+        towers = [];
+        enemies = [];
+        projectiles = [];
+        wave = 0;
+        waveActive = false;
+        spawnLeft = 0;
+        spawnTimer = 0;
+        spawnGap = 0.8;
+        gold = currentConfig.startGold;
+        lives = currentConfig.startLives;
+        gameOver = false;
+        selectedCell = null;
+
+        overlay.classList.remove("show");
+        refreshLevelMenu();
+        updateHUD();
+        setMsg(
+          `Level ${level} (${currentBiome.name}, ${currentConfig.difficultyLabel}) — ` +
+          `Beat wave ${currentConfig.targetWave}. Tower HP: ${currentConfig.towerHp}.`
+        );
+      }
+
+      function startWave() {
+        if (gameOver || waveActive) return;
+        if (wave >= currentConfig.targetWave) return;
+
+        wave++;
+        waveActive = true;
+        spawnLeft = 7 + wave * 2 + Math.floor(currentConfig.level / 10);
+        spawnGap = Math.max(0.24, 0.85 - wave * 0.02);
+        spawnTimer = 0;
+        setMsg(`Wave ${wave} started.`);
+      }
+
+      function spawnEnemy() {
+        const hp = Math.round((42 + wave * 10) * currentConfig.globalScale);
+        const speed = 44 + wave * 1.5 + currentBiome.enemySpeedBonus;
+        enemies.push({
+          x: pathPoints[0].x,
+          y: pathPoints[0].y,
+          wp: 1,
+          hp,
+          maxHp: hp,
+          speed,
+          reward: 10 + Math.floor(wave * 0.9 + currentConfig.level * 0.1),
+          damage: 1,
+          slowTimer: 0,
+          slowMult: 1,
+          attackCd: 0
+        });
+      }
+
+      function nearestTowerInRange(x, y, range) {
+        let best = null;
+        let bestD2 = range * range;
+        for (const t of towers) {
+          const dx = t.x - x, dy = t.y - y;
+          const d2 = dx * dx + dy * dy;
+          if (d2 <= bestD2) { bestD2 = d2; best = t; }
+        }
+        return best;
+      }
+
+      function applyHit(enemy, proj) {
+        enemy.hp -= proj.damage;
+        if (proj.slowTime > 0) {
+          if (proj.slowMult < enemy.slowMult) enemy.slowMult = proj.slowMult;
+          enemy.slowTimer = Math.max(enemy.slowTimer, proj.slowTime);
+        }
+        if (proj.splash > 0) {
+          for (const e of enemies) {
+            if (e === enemy) continue;
+            const dx = e.x - enemy.x, dy = e.y - enemy.y;
+            if (dx*dx + dy*dy <= proj.splash * proj.splash) {
+              e.hp -= Math.round(proj.damage * 0.55);
+            }
+          }
+        }
+      }
+
+      function maybeWaveEnd() {
+        if (waveActive && spawnLeft <= 0 && enemies.length === 0) {
+          waveActive = false;
+          const bonus = 20 + wave * 4;
+          gold += bonus;
+
+          if (wave >= currentConfig.targetWave) {
+            winLevel();
+          } else {
+            setMsg(`Wave cleared (+${bonus}g).`);
+          }
+        }
+      }
+
+      function winLevel() {
+        gameOver = true;
+        completed.add(selectedLevel);
+
+        if (selectedLevel === unlockedLevel && unlockedLevel < MAX_LEVEL) {
+          unlockedLevel++;
+        }
+
+        refreshLevelMenu();
+
+        overlayTitle.textContent = "Level Complete!";
+        const unlockedText = unlockedLevel > selectedLevel
+          ? `Unlocked Level ${unlockedLevel}.`
+          : `All available progression for now is complete.`;
+        overlayText.textContent = `You beat Level ${selectedLevel}. ${unlockedText}`;
+        overlay.classList.add("show");
+
+        if (selectedLevel < unlockedLevel) {
+          overlayNext.style.display = "inline-block";
+        } else {
+          overlayNext.style.display = "none";
+        }
+      }
+
+      function loseRun() {
+        gameOver = true;
+        waveActive = false;
+        overlayTitle.textContent = "Game Over";
+        overlayText.textContent = `You reached wave ${wave}/${currentConfig.targetWave} on Level ${selectedLevel}.`;
+        overlay.classList.add("show");
+        overlayNext.style.display = "none";
+      }
+
+      function update(dt) {
+        if (gameOver) return;
+
+        if (waveActive && spawnLeft > 0) {
+          spawnTimer -= dt;
+          if (spawnTimer <= 0) {
+            spawnEnemy();
+            spawnLeft--;
+            spawnTimer = spawnGap;
+          }
+        }
+
+        for (const e of enemies) {
+          if (e.slowTimer > 0) {
+            e.slowTimer -= dt;
+            if (e.slowTimer <= 0) { e.slowTimer = 0; e.slowMult = 1; }
+          }
+
+          e.attackCd -= dt;
+          const victim = nearestTowerInRange(e.x, e.y, 30);
+
+          if (victim) {
+            if (e.attackCd <= 0) {
+              victim.hp -= currentConfig.enemyTowerDamage;
+              e.attackCd = 0.95;
+            }
+            continue;
+          }
+
+          if (e.wp >= pathPoints.length) continue;
+          const t = pathPoints[e.wp];
+          const dx = t.x - e.x, dy = t.y - e.y;
+          const dist = Math.hypot(dx, dy);
+
+          if (dist < 1.5) {
+            e.wp++;
+            if (e.wp >= pathPoints.length) {
+              lives -= e.damage;
+              e.hp = -999;
+              if (lives <= 0) loseRun();
+            }
+          } else {
+            const move = e.speed * e.slowMult * dt;
+            e.x += (dx / dist) * Math.min(move, dist);
+            e.y += (dy / dist) * Math.min(move, dist);
+          }
+        }
+
+        towers = towers.filter(t => t.hp > 0);
+
+        for (const t of towers) {
+          t.cooldown -= dt;
+
+          let best = null;
+          let bestScore = -Infinity;
+          for (const e of enemies) {
+            const dx = e.x - t.x, dy = e.y - t.y;
+            const d2 = dx*dx + dy*dy;
+            if (d2 <= t.range * t.range) {
+              const score = e.wp * 10000 - d2;
+              if (score > bestScore) { bestScore = score; best = e; }
+            }
+          }
+
+          if (best) {
+            t.angle = Math.atan2(best.y - t.y, best.x - t.x);
+            if (t.cooldown <= 0) {
+              const dx = best.x - t.x, dy = best.y - t.y;
+              const d = Math.hypot(dx, dy) || 1;
+              projectiles.push({
+                x: t.x, y: t.y,
+                vx: (dx/d) * t.projectileSpeed,
+                vy: (dy/d) * t.projectileSpeed,
+                damage: t.damage, splash: t.splash,
+                slowMult: t.slowMult, slowTime: t.slowTime,
+                life: 1.2, type: t.type
+              });
+              t.cooldown = 1 / t.fireRate;
+            }
+          }
+        }
+
+        for (const p of projectiles) {
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          p.life -= dt;
+
+          for (const e of enemies) {
+            const hitR = p.type === "cannon" ? 14 : 11;
+            const dx = e.x - p.x, dy = e.y - p.y;
+            if (dx*dx + dy*dy <= hitR * hitR) {
+              applyHit(e, p);
+              p.life = -1;
+              break;
+            }
+          }
+        }
+
+        for (const e of enemies) if (e.hp <= 0) gold += e.reward;
+        enemies = enemies.filter(e => e.hp > 0);
+        projectiles = projectiles.filter(p =>
+          p.life > 0 &&
+          p.x >= -10 && p.x <= canvas.width + 10 &&
+          p.y >= -10 && p.y <= canvas.height + 10
+        );
+
+        maybeWaveEnd();
+        updateHUD();
+      }
+
+      function drawBackground() {
+        const g = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        g.addColorStop(0, currentBiome.colors.top);
+        g.addColorStop(1, currentBiome.colors.bottom);
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        for (let r = 0; r < ROWS; r++) {
+          for (let c = 0; c < COLS; c++) {
+            ctx.fillStyle = (c + r) % 2 === 0 ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.04)";
+            ctx.fillRect(c * CELL, r * CELL, CELL, CELL);
+          }
+        }
+
+        if (currentBiome.id === "tundra") {
+          ctx.fillStyle = "rgba(255,255,255,0.24)";
+          for (let i = 0; i < 90; i++) {
+            const x = (i * 137 + currentConfig.level * 17) % canvas.width;
+            const y = (i * 91 + currentConfig.level * 43) % canvas.height;
+            ctx.fillRect(x, y, 2, 2);
+          }
+        }
+
+        if (currentBiome.id === "ember") {
+          ctx.fillStyle = "rgba(120,20,10,0.15)";
+          for (let i = 0; i < 40; i++) {
+            const x = (i * 173 + currentConfig.level * 21) % canvas.width;
+            const y = (i * 57 + currentConfig.level * 31) % canvas.height;
+            ctx.beginPath();
+            ctx.arc(x, y, 10 + (i % 7), 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+
+      function drawPath() {
+        for (const key of pathCells) {
+          const [c, r] = key.split(",").map(Number);
+          const x = c * CELL, y = r * CELL;
+          ctx.fillStyle = currentBiome.colors.path;
+          ctx.fillRect(x, y, CELL, CELL);
+          ctx.fillStyle = "rgba(255,255,255,0.08)";
+          ctx.fillRect(x + 5, y + 5, CELL - 10, CELL - 10);
+        }
+
+        ctx.strokeStyle = "rgba(60,35,20,0.7)";
+        ctx.lineWidth = 8;
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(pathPoints[0].x, pathPoints[0].y);
+        for (let i = 1; i < pathPoints.length; i++) ctx.lineTo(pathPoints[i].x, pathPoints[i].y);
+        ctx.stroke();
+
+        const s = pathPoints[0], e = pathPoints[pathPoints.length - 1];
+        ctx.fillStyle = "#065f46";
+        ctx.fillRect(s.x - 12, s.y - 12, 24, 24);
+        ctx.fillStyle = "#7f1d1d";
+        ctx.fillRect(e.x - 12, e.y - 12, 24, 24);
+      }
+
+      function drawGrid() {
+        ctx.strokeStyle = "rgba(21,128,61,0.13)";
+        ctx.lineWidth = 1;
+        for (let c = 0; c <= COLS; c++) {
+          const x = c * CELL + 0.5;
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+        }
+        for (let r = 0; r <= ROWS; r++) {
+          const y = r * CELL + 0.5;
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+        }
+      }
+
+      function drawTowers() {
+        for (const t of towers) {
+          ctx.fillStyle = t.body;
+          ctx.beginPath();
+          ctx.arc(t.x, t.y, 16, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.strokeStyle = t.barrel;
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(t.x, t.y);
+          ctx.lineTo(t.x + Math.cos(t.angle) * 22, t.y + Math.sin(t.angle) * 22);
+          ctx.stroke();
+
+          const ratio = Math.max(0, t.hp / t.maxHp);
+          ctx.fillStyle = "rgba(2,6,23,0.45)";
+          ctx.fillRect(t.x - 16, t.y - 26, 32, 4);
+          ctx.fillStyle = ratio > 0.5 ? "#22c55e" : ratio > 0.25 ? "#f59e0b" : "#ef4444";
+          ctx.fillRect(t.x - 16, t.y - 26, 32 * ratio, 4);
+
+          ctx.fillStyle = "#fff";
+          ctx.font = "11px system-ui";
+          ctx.textAlign = "center";
+          ctx.fillText(`Lv${t.level}`, t.x, t.y + 4);
+        }
+
+        if (selectedCell) {
+          const { c, r } = selectedCell;
+          const x = c * CELL, y = r * CELL;
+          const valid = canBuild(c, r);
+          const d = towerDefs[selectedTowerType];
+          ctx.strokeStyle = valid ? "rgba(22,163,74,0.9)" : "rgba(220,38,38,0.9)";
+          ctx.lineWidth = 2;
+          ctx.strokeRect(x + 2, y + 2, CELL - 4, CELL - 4);
+          if (valid) {
+            ctx.strokeStyle = "rgba(14,165,233,0.3)";
+            ctx.beginPath();
+            ctx.arc(x + CELL / 2, y + CELL / 2, d.range, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
+      }
+
+      function drawEnemies() {
+        for (const e of enemies) {
+          ctx.fillStyle = e.slowMult < 1 ? "#60a5fa" : "#ef4444";
+          ctx.beginPath();
+          ctx.arc(e.x, e.y, 12, 0, Math.PI * 2);
+          ctx.fill();
+
+          const w = 28, h = 5;
+          const ratio = Math.max(0, e.hp / e.maxHp);
+          ctx.fillStyle = "rgba(2,6,23,0.45)";
+          ctx.fillRect(e.x - w/2, e.y - 20, w, h);
+          ctx.fillStyle = ratio > 0.5 ? "#22c55e" : ratio > 0.25 ? "#f59e0b" : "#ef4444";
+          ctx.fillRect(e.x - w/2, e.y - 20, w * ratio, h);
+        }
+      }
+
+      function drawProjectiles() {
+        for (const p of projectiles) {
+          if (p.type === "cannon") ctx.fillStyle = "#f97316";
+          else if (p.type === "frost") ctx.fillStyle = "#67e8f9";
+          else ctx.fillStyle = "#facc15";
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.type === "cannon" ? 5 : 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      function draw() {
+        drawBackground();
+        drawPath();
+        drawGrid();
+        drawTowers();
+        drawEnemies();
+        drawProjectiles();
+      }
+
+      function loop(ts) {
+        if (!lastTs) lastTs = ts;
+        const dtRaw = Math.min(0.033, (ts - lastTs) / 1000);
+        lastTs = ts;
+        update(dtRaw * gameSpeed);
+        draw();
+        requestAnimationFrame(loop);
+      }
+
+      function pointerToCell(clientX, clientY) {
+        const rect = canvas.getBoundingClientRect();
+        const x = (clientX - rect.left) * (canvas.width / rect.width);
+        const y = (clientY - rect.top) * (canvas.height / rect.height);
+        return { c: Math.floor(x / CELL), r: Math.floor(y / CELL) };
+      }
+
+      function refreshLevelMenu() {
+        levelMenu.innerHTML = "";
+        BIOMES.forEach((biome, bIndex) => {
+          const block = document.createElement("div");
+          block.className = "biome-block";
+
+          const head = document.createElement("div");
+          head.className = "biome-head";
+          head.textContent = `${biome.name} (Levels ${biome.range[0]}-${biome.range[1]})`;
+          head.style.background = bIndex % 2 === 0 ? "#fff6df" : "#fff3d4";
+          block.appendChild(head);
+
+          const grid = document.createElement("div");
+          grid.className = "biome-levels";
+
+          for (let lvl = biome.range[0]; lvl <= biome.range[1]; lvl++) {
+            const btn = document.createElement("button");
+            btn.className = "lvl-btn";
+            const locked = lvl > unlockedLevel;
+            const isSelected = lvl === selectedLevel;
+            const isCompleted = completed.has(lvl);
+
+            if (locked) btn.classList.add("locked");
+            if (isSelected) btn.classList.add("selected");
+            if (isCompleted) btn.classList.add("completed");
+
+            btn.textContent = locked ? `🔒 ${lvl}` : `${lvl}`;
+            btn.title = locked ? "Locked" : `Level ${lvl}`;
+            btn.addEventListener("click", () => {
+              if (locked) {
+                setMsg(`Level ${lvl} is locked. Beat Level ${unlockedLevel} first.`);
+                return;
+              }
+              loadLevel(lvl);
+            });
+
+            grid.appendChild(btn);
+          }
+
+          block.appendChild(grid);
+          levelMenu.appendChild(block);
+        });
+
+        updateHUD();
+      }
+
+      canvas.addEventListener("pointermove", (e) => {
+        const p = pointerToCell(e.clientX, e.clientY);
+        if (p.c < 0 || p.c >= COLS || p.r < 0 || p.r >= ROWS) selectedCell = null;
+        else selectedCell = p;
+      });
+
+      canvas.addEventListener("pointerdown", (e) => {
+        if (gameOver) return;
+        const p = pointerToCell(e.clientX, e.clientY);
+        if (p.c < 0 || p.c >= COLS || p.r < 0 || p.r >= ROWS) return;
+        const t = towerAt(p.c, p.r);
+        if (t) upgradeTower(t);
+        else buildTower(p.c, p.r);
+        updateHUD();
+      });
+
+      Object.entries(shopButtons).forEach(([type, btn]) => {
+        btn.addEventListener("click", () => selectTowerType(type));
+      });
+
+      startWaveBtn.addEventListener("click", startWave);
+
+      speed1Btn.addEventListener("click", () => {
+        gameSpeed = 1;
+        speed1Btn.classList.add("active");
+        speed2Btn.classList.remove("active");
+      });
+
+      speed2Btn.addEventListener("click", () => {
+        gameSpeed = 2;
+        speed2Btn.classList.add("active");
+        speed1Btn.classList.remove("active");
+      });
+
+      restartBtn.addEventListener("click", () => loadLevel(selectedLevel));
+      overlayRetry.addEventListener("click", () => loadLevel(selectedLevel));
+      overlayNext.addEventListener("click", () => {
+        const next = Math.min(unlockedLevel, MAX_LEVEL);
+        loadLevel(next);
+      });
+
+      // Init
+      selectTowerType("archer");
+      loadLevel(1);
+      setMsg("200-level campaign ready. Clear levels to unlock more.");
+      requestAnimationFrame(loop);
+    })();
+  </script>
+</body>
+</html>
