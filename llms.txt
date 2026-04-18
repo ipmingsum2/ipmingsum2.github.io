@@ -1,5 +1,5 @@
-﻿# README
+﻿# Welcome
 
-> Roses are red #ff0000, violets are blue #8000ff.
+> ✅ Your website is working.
 
-- [README](https://docs.example.com/readme.md): README
+- [Welcome](https://docs.example.com/): Welcome
