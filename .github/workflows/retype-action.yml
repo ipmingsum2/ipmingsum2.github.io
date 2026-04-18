@@ -2,8 +2,7 @@ name: Publish Retype
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [main]
 
 jobs:
   publish:
@@ -16,10 +15,16 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Generate retype.yml
+        env:
+          RETYPE_PASSWORD: ${{ secrets.RETYPE_PASSWORD }}
+        run: |
+          test -n "$RETYPE_PASSWORD" || (echo "Missing RETYPE_PASSWORD" && exit 1)
+          sed 's#${RETYPE_PASSWORD}#'"$RETYPE_PASSWORD"'#g' retype.yml.template > retype.yml
+
       - uses: retypeapp/action-build@latest
         env:
           RETYPE_KEY: ${{ secrets.RETYPE_KEY }}
-          RETYPE_PASSWORD: ${{ secrets.RETYPE_PASSWORD }}
 
       - uses: retypeapp/action-github-pages@latest
         with:
