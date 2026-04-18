@@ -37,4 +37,4 @@ The code to authorize API requests.
 
 ===
 
-$ \textbf{Problem. } \text{For } P(x)=x^6-9x^5+31x^4-51x^3+40x^2-12x+1, \text{ let } r_1,r_2,r_3,r_4,r_5,r_6 \text{ be its complex roots. Define } S_n=\sum_{i=1}^6 r_i^n \text{ for } n\ge 0. \text{ Evaluate } \sum_{n=1}^{12}\frac{S_n^2-S_{2n}}{n}+\prod_{i=1}^6(1+r_i^2)+\det\begin{pmatrix} S_1&1&0&0\\ S_2&S_1&2&0\\ S_3&S_2&S_1&3\\ S_4&S_3&S_2&S_1 \end{pmatrix}.
+$ \textbf{Problem. }\ \text{For } P(x)=x^6-9x^5+31x^4-51x^3+40x^2-12x+1,\ \text{let } r_1,r_2,r_3,r_4,r_5,r_6 \text{ be its complex roots. Define } S_n=\sum_{i=1}^6 r_i^n \text{ for } n\ge 0.\ \text{Evaluate } \sum_{n=1}^{12}\frac{S_n^2-S_{2n}}{n}+\prod_{i=1}^6(1+r_i^2)+\det\!\begin{pmatrix} S_1&1&0&0\\ S_2&S_1&2&0\\ S_3&S_2&S_1&3\\ S_4&S_3&S_2&S_1 \end{pmatrix}.
