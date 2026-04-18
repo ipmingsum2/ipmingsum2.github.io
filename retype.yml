@@ -22,5 +22,9 @@ links:
 scheme:
   mode: dark
 
+search:
+  hotkeys:
+    - "/"
+
 footer:
   copyright: "&copy; Copyright {{ year }} Alvin. All rights reserved."
