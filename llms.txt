@@ -1,8 +1,8 @@
 ﻿# Welcome
 
-> ✅ Your website is working.
+> Welcome to the documentation! This documentation is not complete, but is using a complete library called Retype that I made.
 
-- [Welcome](https://ipmingsum2.github.io/): Welcome
+- [Welcome](https://ipmingsum2.github.io/index.md): Welcome
 
 ## Tests
 
