@@ -7,7 +7,7 @@ authors:
     avatar: https://avatars.githubusercontent.com/u/107190717
 order: 5
 ---
-Welcome to the documentation! This documentation is not complete, but is using a complete library called Retype that I made.
+Welcome to the documentation! This documentation is not complete.
 !!!
 Feel free to scroll through all the pages!
 !!!
