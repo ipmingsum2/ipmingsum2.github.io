@@ -53,3 +53,7 @@ Pursuant to Roblox's User and Creator Terms of Use, all purchases made with Robu
 Alvin Solutions, as the developer, is not authorized to process refunds for Robux purchases under any circumstances.
 
 ===
+
+!!!question Something unclear? 
+Contact our support team via our [Discord server](/socials/discord) and we'll be more than happy to resolve your issue. 
+!!!
