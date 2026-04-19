@@ -42,7 +42,7 @@ Was actually storing usernames before, but figured out that people can change us
 ===
 
 ### Code
-=== `"Alvin!2233aka"`
+=== `string`
 
 The code to authorize API requests.
 
@@ -55,7 +55,7 @@ The code to authorize API requests.
 local HttpService = game:GetService("HttpService")
 --// Variables
 local link = "https://script.google.com/macros/s/AKfycbxO07FIU-79SYhk2F6bam6DPNI4xNmu1a9b02YMz9NSdCpS9xSkmkPhPq525mWm4KHUyQ/exec"
-local code = "Alvin!2233aka"
+local code = "The password will not be here due to security reasons."
 --// Functions
 local function requestLicense(action, userId, prod)
 	local url =
