@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Redirecting…</title>
+
+  <!-- Immediate fallback redirect -->
+  <meta http-equiv="refresh" content="0;url=https://discord.gg/yFu6enjjvQ" />
+
+  <script>
+    (function () {
+      const target = "https://discord.gg/yFu6enjjvQ";
+      let done = false;
+
+      function tryRedirect() {
+        if (done) return;
+        try {
+          // Prefer replace so back button doesn't return here
+          window.location.replace(target);
+          // If still here (blocked or failed), we'll retry in 3s via interval below
+        } catch (e) {
+          // Ignore and retry
+        }
+      }
+
+      // Mark as done if page is actually leaving
+      window.addEventListener("pagehide", () => { done = true; });
+      window.addEventListener("beforeunload", () => { done = true; });
+
+      // Try immediately, then every 3 seconds until navigation succeeds
+      tryRedirect();
+      setInterval(tryRedirect, 3000);
+    })();
+  </script>
+</head>
+<body></body>
+</html>
