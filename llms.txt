@@ -3,6 +3,7 @@
 > Welcome to the documentation! This documentation is not complete, but is using a complete library called Retype that I made.
 
 - [Welcome](https://ipmingsum2.github.io/index.md): Welcome
+- [Terms of Use](https://ipmingsum2.github.io/terms.md): What you can and cannot do.
 - [Games](https://ipmingsum2.github.io/my-games.md): Play games that I made!
 
 ## Tests
