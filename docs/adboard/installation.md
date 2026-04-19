@@ -3,7 +3,7 @@
 Before getting started, insert the latest version of this product from our [Discord](/socials/discord) into your game.
 
 >>> Insert your file
-Insert AdBoard.md into Roblox Studio.
+Insert AdBoard.rbxm into Roblox Studio.
 >>> Placement & Positioning
 You are free to move, rotate and scale the ad boards to your liking. You need to keep all models within the `AdBoard` model for the system to work.
 !!!info
