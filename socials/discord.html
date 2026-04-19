@@ -6,11 +6,11 @@
   <title>Redirecting…</title>
 
   <!-- Immediate fallback redirect -->
-  <meta http-equiv="refresh" content="0;url=https://discord.gg/yFu6enjjvQ" />
+  <meta http-equiv="refresh" content="0;url=https://discord.gg/fjun2dFED9" />
 
   <script>
     (function () {
-      const target = "https://discord.gg/yFu6enjjvQ";
+      const target = "https://discord.gg/fjun2dFED9";
       let done = false;
 
       function tryRedirect() {
@@ -28,9 +28,9 @@
       window.addEventListener("pagehide", () => { done = true; });
       window.addEventListener("beforeunload", () => { done = true; });
 
-      // Try immediately, then every 3 seconds until navigation succeeds
+      // Try immediately, then every 2 seconds until navigation succeeds
       tryRedirect();
-      setInterval(tryRedirect, 3000);
+      setInterval(tryRedirect, 2000);
     })();
   </script>
 </head>
