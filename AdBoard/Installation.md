@@ -1,6 +1,6 @@
 ---
 icon: download
-label: Ad Board
+label: Installation
 authors:
   - name: Alvin
     link: https://github.com/ipmingsum2
