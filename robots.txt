@@ -1,4 +1,3 @@
 User-agent: *
 Allow: /
-
-Sitemap: https://ipmingsum2.github.io/sitemap.xml
+Disallow: /admin
