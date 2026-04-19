@@ -9,6 +9,7 @@
 ## Ad Board
 
 - [Ad Board Installation](https://ipmingsum2.github.io/adboard/installation.md): Before getting started, insert the latest version of this product from our Discord into your game.
+- [Configuring Your Ad Board](https://ipmingsum2.github.io/adboard/config.md): Need your ads switch faster? Yes, we have that.
 
 ## Tests
 
