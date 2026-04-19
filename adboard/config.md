@@ -89,5 +89,5 @@ The check used to detect if the user is allowed to press the power button.
 ---
 
 !!!success Configuration Complete!
-Not working? Make sure you followed the syntax, or visit our [FAQ Page](/faq) for help, or contact Whitehill Support via our [Discord server](/socials/discord) for further assistance.
+Not working? Make sure you followed the syntax, or visit our [FAQ Page](/faq) for help, or contact Alvin Solutions Support via our [Discord server](/socials/discord) for further assistance.
 !!!
