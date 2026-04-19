@@ -6,7 +6,7 @@
 - [Terms of Use](https://ipmingsum2.github.io/terms.md): What you can and cannot do.
 - [Games](https://ipmingsum2.github.io/my-games.md): Play games that I made!
 
-## AdBoard
+## Ad Board
 
 - [Ad Board Installation](https://ipmingsum2.github.io/adboard/installation.md): Before getting started, insert the latest version of this product from our Discord into your game.
 
