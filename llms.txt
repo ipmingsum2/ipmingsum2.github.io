@@ -1,6 +1,6 @@
 ﻿# Welcome
 
-> Welcome to the documentation! This documentation is not complete, but is using a complete library called Retype that I made.
+> Welcome to the documentation! This documentation is not complete.
 
 - [Welcome](https://ipmingsum2.github.io/index.md): Welcome
 - [Terms of Use](https://ipmingsum2.github.io/terms.md): What you can and cannot do.
