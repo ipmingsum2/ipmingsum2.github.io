@@ -10,5 +10,5 @@ You are free to move, rotate and scale the ad boards to your liking. You need to
 Any misplaced models **will not** work, keeping them in their respective folders is required.
 !!!
 >>> Done
-Head on over to the [configuration](/docs/AdBoard/Config.md) to set its behavior!
+Head on over to the [configuration](/AdBoard/Config) to set its behavior!
 >>>
