@@ -1,0 +1,72 @@
+name: Update Banlist
+
+on:
+  workflow_dispatch:
+    inputs:
+      userid:
+        description: "UserId of banned user"
+        required: true
+        type: string
+      bannedby:
+        description: "Banned by which user id?"
+        required: true
+        type: string
+      reason:
+        description: "What is the reason?"
+        required: true
+        type: string
+      username:
+        description: "Username of the user"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  update-banlist:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Ensure bans folder and file exist
+        run: |
+          mkdir -p bans
+          if [ ! -f bans/banlist.json ]; then
+            echo "{}" > bans/banlist.json
+          fi
+
+      - name: Update bans/banlist.json
+        env:
+          USERID: ${{ github.event.inputs.userid }}
+          BANNEDBY: ${{ github.event.inputs.bannedby }}
+          REASON: ${{ github.event.inputs.reason }}
+          USERNAME: ${{ github.event.inputs.username }}
+        run: |
+          node -e "
+          const fs = require('fs');
+          const path = 'bans/banlist.json';
+          let data = {};
+          try {
+            data = JSON.parse(fs.readFileSync(path, 'utf8'));
+          } catch (_) {
+            data = {};
+          }
+
+          data[process.env.USERID] = {
+            bannedby: process.env.BANNEDBY,
+            reason: process.env.REASON,
+            username: process.env.USERNAME
+          };
+
+          fs.writeFileSync(path, JSON.stringify(data, null, 2) + '\n');
+          "
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add bans/banlist.json
+          git diff --staged --quiet || git commit -m "Update banlist for user ${{ github.event.inputs.userid }}"
+          git push
