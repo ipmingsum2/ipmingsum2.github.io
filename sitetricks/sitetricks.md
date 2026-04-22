@@ -6,3 +6,8 @@ The dev tools method is working on iOS and tested. Here's how to do it:
 ![](/assets/images/DT2.png)
 >>> Hold the bookmark you want to set
 ![](/assets/images/DT3.png)
+>>> Click the bookmark you just made and click on the wheek
+>>>
+!!!info Done!
+If you have any issues, open a ticket in our [Discord Server](/socials/discord).
+!!!
