@@ -2,11 +2,11 @@
 
 > Welcome to the documentation! This documentation is not complete.
 
-- [JavaScript Site Tricks](https://ipmingsum2.github.io/sitetricks/sitetricks.md): Welcome to the main menu of JavaScript site tricks. In this documentation, you will to have dev tools. If you're on mobile, don't worry, there's another way.
 - [Welcome](https://ipmingsum2.github.io/index.md): Welcome
 - [Terms of Use](https://ipmingsum2.github.io/terms.md): What you can and cannot do.
 - [FAQ](https://ipmingsum2.github.io/faq.md): Check out our frequently asked questions, the answer you're looking for might already be here.
 - [Games](https://ipmingsum2.github.io/my-games.md): Play games that I made!
+- [JavaScript Site Tricks](https://ipmingsum2.github.io/sitetricks/sitetricks.md): Welcome to the main menu of JavaScript site tricks. In this documentation, you will to have dev tools. If you're on mobile, don't worry, there's another way.
 
 ## Ad Board
 
