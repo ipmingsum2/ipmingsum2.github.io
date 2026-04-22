@@ -4,5 +4,11 @@
     "reason": "Test",
     "username": "NoOne",
     "bannedat": "2026-04-21T12:34:56.789Z"
+  },
+  "1": {
+    "bannedby": "1",
+    "reason": "Testing.",
+    "username": "1",
+    "bannedat": "2026-04-22T09:45:00.345Z"
   }
 }
