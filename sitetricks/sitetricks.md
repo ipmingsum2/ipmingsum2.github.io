@@ -4,3 +4,5 @@ The dev tools method is working on iOS and tested. Here's how to do it:
 ![](/assets/images/DT1.png)
 >>> Go to favorites
 ![](/assets/images/DT2.png)
+>>> Hold the bookmark you want to set
+![](/assets/images/DT3.png)
