@@ -2,3 +2,4 @@ exclude:
   - /game
   - /assets/images
   - /socials
+  - /.well-known
