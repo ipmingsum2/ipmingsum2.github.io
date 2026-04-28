@@ -1,0 +1,2938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UNO vs AI — Compass Table Layout</title>
+  <style>
+    :root{
+      --bg:#0b1220;
+      --panel:#0f172a;
+      --line:#263449;
+      --txt:#f8fafc;
+      --muted:#94a3b8;
+      --card-w:70px;
+      --card-h:104px;
+      --radius:12px;
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,sans-serif;
+      background: radial-gradient(circle at top, #1e293b 0%, var(--bg) 62%);
+      color:var(--txt);
+      padding-top:max(12px, env(safe-area-inset-top));
+      padding-right:max(12px, env(safe-area-inset-right));
+      padding-bottom:max(56px, env(safe-area-inset-bottom));
+      padding-left:max(12px, env(safe-area-inset-left));
+      display:flex;
+      justify-content:center;
+    }
+
+    .app{width:100%;max-width:1180px;display:grid;gap:12px}
+    .panel{
+      background:linear-gradient(180deg,#0b1324,#0a1020);
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:12px;
+      box-shadow:0 12px 26px rgba(0,0,0,.35);
+    }
+
+    .title-row{
+      display:flex;justify-content:space-between;align-items:center;
+      flex-wrap:wrap;gap:8px;margin-bottom:10px;
+    }
+    .title{font-weight:800}
+    .status{font-size:.92rem;color:#dbeafe}
+
+    .setup{
+      display:grid;gap:10px;
+      grid-template-columns: 1.2fr 2fr auto;
+      align-items:end;
+    }
+    .lbl{font-size:.78rem;color:var(--muted);margin-bottom:4px}
+    .seg{display:inline-flex;gap:6px;flex-wrap:wrap;background:#0a1325;border:1px solid #24334d;border-radius:12px;padding:6px}
+    .seg button,.btn,.rule-check,.admin-toggle{
+      border:1px solid #334155;background:#1f2937;color:#f8fafc;
+      border-radius:10px;padding:8px 10px;font-size:.88rem;font-weight:700;
+      cursor:pointer;transition:.15s ease;
+    }
+    .seg button.active{background:#14532d;border-color:#16a34a}
+    .seg button:hover,.btn:hover,.rule-check:hover,.admin-toggle:hover{transform:translateY(-1px);background:#273449}
+    .btn-danger{background:#7f1d1d;border-color:#ef4444}
+    .btn-accent{background:#7c2d12;border-color:#b45309}
+    .btn-ok{background:#14532d;border-color:#16a34a}
+    .btn-admin{background:#312e81;border-color:#6366f1}
+    .btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+
+    .rules-grid{
+      display:grid;
+      grid-template-columns: repeat(2, minmax(0,1fr));
+      gap:6px;
+    }
+    .rule-check{
+      display:flex;align-items:center;gap:8px;justify-content:flex-start;
+      background:#0a1325;
+      text-align:left;
+      font-weight:600;
+    }
+    .rule-box{
+      width:18px;height:18px;border-radius:5px;border:2px solid #64748b;
+      display:grid;place-items:center;flex:0 0 auto;background:#111827;
+      color:transparent;font-size:.8rem;font-weight:900;line-height:1;
+    }
+    .rule-check.checked{
+      border-color:#16a34a;
+      background:#0f2a1a;
+    }
+    .rule-check.checked .rule-box{
+      border-color:#16a34a;
+      color:#22c55e;
+      background:#052e16;
+    }
+
+    .table-wrap{
+      position:relative;
+      min-height:640px;
+      border:1px solid #24334d;
+      border-radius:16px;
+      background: radial-gradient(circle at center, #0f1c32 0%, #0a1326 58%, #091021 100%);
+      overflow:hidden;
+      padding:14px;
+    }
+
+    .seat{
+      position:absolute;
+      border:1px solid #233552;
+      border-radius:12px;
+      background:rgba(2,6,23,.45);
+      padding:8px;
+      min-height:120px;
+    }
+    .seat.hidden{display:none}
+    .hidden{display:none !important;}
+    .seat.active-turn{box-shadow:0 0 0 2px #fbbf24 inset}
+    .seat.next-turn{box-shadow:0 0 0 2px #60a5fa inset}
+
+    .seat-title{
+      display:flex;justify-content:space-between;align-items:center;gap:8px;
+      font-size:.85rem;color:#cbd5e1;margin-bottom:6px;flex-wrap:wrap;
+    }
+    .seat-name{font-weight:700}
+    .turn-pill{
+      display:inline-flex;align-items:center;gap:4px;
+      border-radius:999px;padding:2px 8px;font-weight:800;
+      background:#fbbf24;color:#111827;font-size:.72rem;
+    }
+    .next-pill{
+      display:inline-flex;align-items:center;gap:4px;
+      border-radius:999px;padding:2px 8px;font-weight:800;
+      background:#3b82f6;color:white;font-size:.7rem;
+    }
+
+    .north{top:14px;left:50%;transform:translateX(-50%);width:min(92%,560px)}
+    .south{bottom:14px;left:50%;transform:translateX(-50%);width:min(96%,920px)}
+    .west{left:14px;top:50%;transform:translateY(-50%);width:122px;height:340px}
+    .east{right:14px;top:50%;transform:translateY(-50%);width:122px;height:340px}
+
+    .cards-row{
+      display:flex;gap:8px;overflow-x:auto;min-height:calc(var(--card-h) + 6px);padding-bottom:4px;
+      align-items:flex-start;
+    }
+    .cards-row.vertical{
+      flex-direction:column;
+      overflow-x:visible;
+      overflow-y:auto;
+      min-height:0;height:278px;
+      align-items:center;
+    }
+
+    .cards-row::-webkit-scrollbar{height:8px;width:8px}
+    .cards-row::-webkit-scrollbar-thumb{background:#334155;border-radius:999px}
+
+    .center{
+      position:absolute;
+      left:50%;top:50%;transform:translate(-50%,-50%);
+      display:grid;justify-items:center;gap:10px;
+      width:min(96%,560px);
+      z-index:2;
+    }
+    .piles{
+      display:flex;gap:14px;flex-wrap:wrap;justify-content:center;align-items:center;
+    }
+    .pile{display:grid;justify-items:center;gap:6px}
+    .pile-label{color:var(--muted);font-size:.84rem}
+    .pill{
+      display:inline-flex;gap:6px;align-items:center;border-radius:999px;
+      border:1px solid #334155;background:#0b1426;padding:6px 10px;font-size:.84rem;color:#dbeafe;
+    }
+    .dot{width:12px;height:12px;border-radius:999px;border:1px solid rgba(255,255,255,.45);display:inline-block}
+
+    .controls{
+      display:flex;gap:8px;flex-wrap:wrap;justify-content:center;
+    }
+
+    .trail{
+      display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;
+      font-size:.82rem;color:#cbd5e1;
+      margin-top:4px;
+    }
+    .chip{
+      border:1px solid #334155;border-radius:999px;padding:3px 8px;background:#091224;
+    }
+    .arrow{
+      font-weight:900;
+      color:#93c5fd;
+      animation: pulseArrow .9s infinite;
+    }
+    @keyframes pulseArrow{
+      0%,100%{transform:translateX(0)}
+      50%{transform:translateX(3px)}
+    }
+
+    .orbit{
+      position:relative;width:120px;height:120px;border-radius:999px;
+      border:1px dashed #334155;
+      display:grid;place-items:center;
+      background:rgba(15,23,42,.45);
+    }
+    .orbit-center{font-size:.74rem;color:#cbd5e1;font-weight:700}
+    .orbit-arrow{
+      position:absolute;
+      left:50%;
+      top:50%;
+      transform: translate(-50%,-50%) rotate(180deg) translateY(-44px) rotate(90deg);
+      font-size:1.2rem;
+      color:#fbbf24;
+      line-height:1;
+      transition: transform 260ms ease;
+      will-change: transform;
+      pointer-events:none;
+    }
+
+    .card{
+      width:var(--card-w);height:var(--card-h);
+      border-radius:var(--radius);
+      border:2px solid rgba(255,255,255,0.2);
+      box-shadow:inset 0 0 0 2px rgba(255,255,255,0.08),0 7px 16px rgba(0,0,0,0.34);
+      display:grid;place-items:center;position:relative;color:#fff;
+      user-select:none;font-weight:900;flex:0 0 auto;padding:6px;text-align:center;line-height:1.05;
+      transform-style:preserve-3d;
+    }
+    .card .small{position:absolute;left:6px;top:6px;font-size:.66rem;opacity:.9;font-weight:700}
+    .card .big{font-size:1.05rem}
+    .card.selected-admin{
+      box-shadow:0 0 0 3px #22c55e inset, 0 10px 20px rgba(0,0,0,.4);
+      transform:translateY(-4px);
+    }
+
+    .red{background:linear-gradient(135deg,#ef4444,#b91c1c)}
+    .yellow{background:linear-gradient(135deg,#facc15,#ca8a04);color:#111827}
+    .green{background:linear-gradient(135deg,#22c55e,#15803d)}
+    .blue{background:linear-gradient(135deg,#3b82f6,#1d4ed8)}
+    .wild{
+      background:linear-gradient(135deg,#ef4444 0 25%,#facc15 25% 50%,#22c55e 50% 75%,#3b82f6 75% 100%);
+      color:#111827;border-color:rgba(17,24,39,.45);
+    }
+    .rickroll{
+      background:linear-gradient(135deg,#8b5cf6,#ec4899);
+      color:#fff;
+      border-color:rgba(255,255,255,.45);
+    }
+    .special{
+      background:linear-gradient(135deg,#0ea5e9,#0369a1);
+      color:#fff;
+      border-color:rgba(255,255,255,.45);
+    }
+    .back{background:linear-gradient(135deg,#334155,#1e293b);border-color:#64748b}
+
+    .clickable{cursor:pointer;transition:.14s ease}
+    .clickable:hover{transform:translateY(-4px)}
+    .unplayable{filter:grayscale(.55) brightness(.8);opacity:.6;cursor:not-allowed}
+
+    .log{max-height:150px;overflow:auto;border:1px solid #24334d;border-radius:10px;padding:8px;background:#0b1324;font-size:.84rem}
+    .log-item{padding:3px 0;border-bottom:1px dashed rgba(148,163,184,.22)}
+    .log-item:last-child{border-bottom:0}
+
+    .overlay{
+      position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+      background:rgba(2,6,23,.75);z-index:70;padding:16px;
+    }
+    .modal{
+      width:100%;max-width:430px;background:#0a1427;border:1px solid #334155;
+      border-radius:14px;padding:14px;box-shadow:0 16px 34px rgba(0,0,0,.45);
+      display:grid;gap:10px;
+    }
+    .modal h3{margin:0;font-size:1rem}
+    .grid2{display:grid;gap:8px;grid-template-columns:repeat(2,minmax(0,1fr))}
+    .choice{
+      border:1px solid rgba(255,255,255,.22);border-radius:10px;padding:11px;
+      font-weight:800;cursor:pointer;color:#fff;background:#1f2937;
+    }
+    .c-red{background:#b91c1c}
+    .c-yellow{background:#ca8a04;color:#111827}
+    .c-green{background:#166534}
+    .c-blue{background:#1d4ed8}
+
+    .admin-box{
+      display:grid;
+      gap:10px;
+      border:1px solid #334155;
+      border-radius:12px;
+      padding:10px;
+      background:#091224;
+    }
+    .admin-grid{
+      display:grid;
+      gap:8px;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+    }
+    .admin-row{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .admin-input, .admin-select{
+      background:#111827;
+      border:1px solid #334155;
+      color:#f8fafc;
+      border-radius:10px;
+      padding:8px 10px;
+      font-weight:600;
+      min-width:0;
+    }
+    .admin-note{
+      font-size:.8rem;
+      color:#93c5fd;
+    }
+    .admin-toggle.active{
+      background:#14532d;
+      border-color:#16a34a;
+    }
+    .mini-log{
+      border:1px solid #334155;
+      border-radius:10px;
+      padding:8px;
+      background:#0a1325;
+      font-size:.78rem;
+      color:#cbd5e1;
+      min-height:42px;
+      max-height:120px;
+      overflow:auto;
+      line-height:1.35;
+    }
+
+    .admin-visual-modal{
+      width:100%;
+      max-width:860px;
+      background:#0a1427;
+      border:1px solid #334155;
+      border-radius:14px;
+      padding:12px;
+      box-shadow:0 16px 34px rgba(0,0,0,.45);
+      display:grid;
+      gap:10px;
+      max-height:90dvh;
+      overflow:auto;
+    }
+    .admin-card-grid{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:flex-start;
+      border:1px solid #334155;
+      border-radius:10px;
+      padding:8px;
+      min-height:130px;
+      background:#0b1324;
+    }
+
+    .anim-card{
+      position:fixed;pointer-events:none;z-index:99;will-change:transform,left,top;
+    }
+    .flip{animation:flip .34s ease-in-out;transform-style:preserve-3d}
+    @keyframes flip{
+      0%{transform:rotateY(0deg)}
+      50%{transform:rotateY(90deg)}
+      100%{transform:rotateY(180deg)}
+    }
+
+    #loseVideoOverlay{
+      z-index:150;
+      background:#000;
+      padding:0;
+      align-items:stretch;
+      justify-content:stretch;
+    }
+    .lose-video-wrap{
+      position:relative;
+      width:100vw;
+      height:100dvh;
+      background:#000;
+      overflow:hidden;
+    }
+    #loseVideo{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      background:#000;
+    }
+    .lose-hud{
+      position:absolute;
+      inset:0 auto auto 0;
+      width:100%;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:8px;
+      padding:10px 12px;
+      background:linear-gradient(180deg, rgba(0,0,0,.65), rgba(0,0,0,.08));
+      color:#fff;
+      font-weight:700;
+      font-size:.9rem;
+    }
+    .lose-msg{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+      min-width:0;
+    }
+    .lose-sub{
+      font-weight:600;
+      font-size:.8rem;
+      color:#cbd5e1;
+    }
+    #closeLoseBtn{
+      border:1px solid #94a3b8;
+      background:#111827;
+      color:#fff;
+      border-radius:10px;
+      padding:8px 12px;
+      font-weight:800;
+      cursor:pointer;
+      display:none;
+    }
+    #closeLoseBtn:disabled{
+      opacity:.45;
+      cursor:not-allowed;
+    }
+
+    .footer-fixed{
+      position:fixed;
+      left:50%;
+      bottom:max(8px, env(safe-area-inset-bottom));
+      transform:translateX(-50%);
+      color:#cbd5e1;
+      font-size:.84rem;
+      font-weight:700;
+      letter-spacing:.03em;
+      padding:4px 10px;
+      border:1px solid #334155;
+      border-radius:999px;
+      background:rgba(11,19,36,.8);
+      backdrop-filter: blur(2px);
+      z-index:40;
+      pointer-events:none;
+    }
+
+    @media (max-width: 980px){
+      .setup{grid-template-columns:1fr}
+      .table-wrap{min-height:820px}
+      .west,.east{
+        top:auto;bottom:220px;transform:none;height:170px;width:46%;
+      }
+      .west{left:14px}
+      .east{right:14px}
+      .cards-row.vertical{
+        flex-direction:row;height:auto;min-height:calc(var(--card-h) + 6px);overflow-x:auto;overflow-y:visible
+      }
+      .center{
+        top:46%;
+      }
+      .admin-grid{
+        grid-template-columns:1fr;
+      }
+    }
+
+    @media (max-width: 640px){
+      :root{--card-w:56px;--card-h:84px}
+
+      .table-wrap{
+        min-height: clamp(720px, 86dvh, 860px);
+        padding:8px;
+      }
+
+      .seat{
+        min-height:96px;
+        padding:6px;
+      }
+
+      .north{
+        top:8px;
+        left:8px;
+        transform:none;
+        width:calc(100% - 16px);
+      }
+
+      .west,.east{
+        top:138px;
+        bottom:auto;
+        transform:none;
+        width:calc(50% - 12px);
+        height:132px;
+      }
+      .west{left:8px}
+      .east{right:8px}
+
+      .center{
+        top:318px;
+        left:50%;
+        transform:translateX(-50%);
+        width:calc(100% - 16px);
+        gap:8px;
+      }
+
+      .piles{gap:8px}
+
+      .orbit{
+        width:92px;
+        height:92px;
+      }
+      .orbit-arrow{
+        transform: translate(-50%,-50%) rotate(180deg) translateY(-32px) rotate(90deg);
+      }
+
+      .south{
+        bottom:max(6px, env(safe-area-inset-bottom));
+        left:8px;
+        transform:none;
+        width:calc(100% - 16px);
+      }
+
+      .seat-title{
+        font-size:.8rem;
+        gap:6px;
+      }
+
+      .controls{
+        gap:6px;
+      }
+
+      .controls .btn{
+        padding:7px 9px;
+        font-size:.82rem;
+      }
+
+      .trail{
+        width:100%;
+        flex-wrap:nowrap;
+        overflow-x:auto;
+        justify-content:flex-start;
+        padding-bottom:2px;
+      }
+      .trail .chip,.trail .arrow{
+        flex:0 0 auto;
+      }
+
+      .card .small{font-size:.6rem}
+      .card .big{font-size:.95rem}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="panel">
+      <div class="title-row">
+        <div class="title">UNO vs AI — Compass Table + Direction Arrows</div>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <div class="status" id="statusText">Loading...</div>
+          <button id="adminBtn" class="btn btn-admin">Admin Mode</button>
+        </div>
+      </div>
+
+      <div class="setup">
+        <div>
+          <div class="lbl">Players</div>
+          <div class="seg" id="playersSeg">
+            <button data-players="2" class="active">2 Players</button>
+            <button data-players="3">3 Players</button>
+            <button data-players="4">4 Players</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="lbl">House Rules (Custom Checkboxes)</div>
+          <div class="rules-grid" id="rulesWrap">
+            <button class="rule-check" data-rule="sevenZero"><span class="rule-box">✓</span><span>7-0 Swap/Rotate</span></button>
+            <button class="rule-check" data-rule="stackPlus"><span class="rule-box">✓</span><span>Stack +2/+4</span></button>
+            <button class="rule-check" data-rule="jumpIn"><span class="rule-box">✓</span><span>Jump-In</span></button>
+            <button class="rule-check checked" data-rule="wild4Challenge"><span class="rule-box">✓</span><span>Wild +4 Challenge</span></button>
+            <button class="rule-check" data-rule="wild4Anytime"><span class="rule-box">✓</span><span>Wild +4 Anytime</span></button>
+            <button class="rule-check checked" data-rule="npcLuck"><span class="rule-box">✓</span><span>NPC Luck (Harder AI)</span></button>
+            <button class="rule-check checked" data-rule="playerLuck"><span class="rule-box">✓</span><span>Player Luck (Easier You)</span></button>
+            <button class="rule-check" data-rule="noMercy"><span class="rule-box">✓</span><span>No Mercy Mode (+8/+10/Rick/SkipAll)</span></button>
+          </div>
+        </div>
+
+        <div>
+          <div class="lbl">&nbsp;</div>
+          <button id="newGameBtn" class="btn btn-danger" style="width:100%;">Start New Game</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="title-row">
+        <div class="title">Scoreboard</div>
+        <div id="adminState" class="status">Admin: Off</div>
+      </div>
+      <div id="winsBoard" class="trail"></div>
+
+      <div id="adminPanel" class="admin-box hidden" style="margin-top:8px;">
+        <div class="admin-note">Admin tools are local-only cheats for this sandbox game.</div>
+
+        <div class="admin-row">
+          <button id="adminRevealBtn" class="admin-toggle">Reveal Other Players' Cards</button>
+          <button id="adminNoRulesBtn" class="admin-toggle">Play Without Restrictions</button>
+          <button id="adminFreezeBtn" class="admin-toggle">Freeze AI Turns</button>
+          <button id="adminGodDrawBtn" class="admin-toggle">God Draw (You)</button>
+          <button id="adminLockBtn" class="btn btn-danger">Lock Admin</button>
+        </div>
+
+        <div class="admin-grid">
+          <div class="admin-box">
+            <div style="font-weight:800;">Give Card (Any Player)</div>
+            <div class="admin-row">
+              <select id="adminGiveTarget" class="admin-select"></select>
+              <select id="adminCardType" class="admin-select">
+                <option value="number">Number</option>
+                <option value="skip">Skip</option>
+                <option value="reverse">Reverse</option>
+                <option value="draw2">Draw 2</option>
+                <option value="draw8">Draw 8</option>
+                <option value="draw10">Wild Draw 10</option>
+                <option value="wild">Wild</option>
+                <option value="wild4">Wild Draw 4</option>
+                <option value="skipall">Skip All</option>
+                <option value="rickroll">Rickroll</option>
+              </select>
+              <select id="adminCardColor" class="admin-select">
+                <option value="red">Red</option>
+                <option value="yellow">Yellow</option>
+                <option value="green">Green</option>
+                <option value="blue">Blue</option>
+              </select>
+              <select id="adminCardValue" class="admin-select">
+                <option value="0">0</option><option value="1">1</option><option value="2">2</option>
+                <option value="3">3</option><option value="4">4</option><option value="5">5</option>
+                <option value="6">6</option><option value="7">7</option><option value="8">8</option>
+                <option value="9">9</option>
+              </select>
+              <button id="adminGiveCardBtn" class="btn btn-ok">Add Card</button>
+            </div>
+          </div>
+
+          <div class="admin-box">
+            <div style="font-weight:800;">Wins / Turn Control</div>
+            <div class="admin-row">
+              <select id="adminWinTarget" class="admin-select"></select>
+              <input id="adminWinAmount" class="admin-input" type="number" min="1" max="99" value="1" style="width:90px;" />
+              <button id="adminAddWinBtn" class="btn btn-ok">Add Wins</button>
+              <button id="adminResetWinsBtn" class="btn">Reset Wins</button>
+              <button id="adminInstantWinBtn" class="btn btn-accent">Instant Win (You)</button>
+            </div>
+            <div class="admin-row">
+              <select id="adminTurnTarget" class="admin-select"></select>
+              <button id="adminSetTurnBtn" class="btn">Set Turn</button>
+              <button id="adminForceTurnBtn" class="btn">Force Your Turn</button>
+            </div>
+          </div>
+
+          <div class="admin-box">
+            <div style="font-weight:800;">Player Actions</div>
+            <div class="admin-row">
+              <select id="adminDrawTarget" class="admin-select"></select>
+              <input id="adminDrawCount" class="admin-input" type="number" min="1" max="20" value="2" style="width:90px;" />
+              <button id="adminMakeDrawBtn" class="btn">Make Draw</button>
+              <button id="adminClearPendingBtn" class="btn">Clear Pending Draw</button>
+            </div>
+            <div class="admin-row">
+              <select id="adminRemoveTarget" class="admin-select"></select>
+              <button id="adminRemoveRandomBtn" class="btn">Remove Random Card</button>
+              <select id="adminStealFrom" class="admin-select"></select>
+              <button id="adminStealBtn" class="btn">Steal Random Card</button>
+            </div>
+          </div>
+
+          <div class="admin-box">
+            <div style="font-weight:800;">Specific Card Control (New)</div>
+            <div class="admin-row">
+              <select id="adminPickSource" class="admin-select"></select>
+              <select id="adminPickCard" class="admin-select"></select>
+              <select id="adminPickTarget" class="admin-select"></select>
+            </div>
+            <div class="admin-row">
+              <button id="adminRemoveSelectedBtn" class="btn">Remove Selected</button>
+              <button id="adminStealSelectedBtn" class="btn btn-ok">Steal Selected → You</button>
+              <button id="adminMoveSelectedBtn" class="btn">Move Selected → Target</button>
+              <button id="adminOpenVisualPickerBtn" class="btn btn-admin">Open Visual Picker</button>
+            </div>
+          </div>
+
+          <div class="admin-box">
+            <div style="font-weight:800;">Table / Deck Control</div>
+            <div class="admin-row">
+              <select id="adminSetColor" class="admin-select">
+                <option value="red">Red</option>
+                <option value="yellow">Yellow</option>
+                <option value="green">Green</option>
+                <option value="blue">Blue</option>
+              </select>
+              <button id="adminApplyColorBtn" class="btn">Set Active Color</button>
+              <button id="adminReverseNowBtn" class="btn">Reverse Direction Now</button>
+              <button id="adminShuffleDeckBtn" class="btn">Shuffle Deck</button>
+            </div>
+            <div class="admin-row">
+              <select id="adminRigType" class="admin-select">
+                <option value="number">Number</option>
+                <option value="skip">Skip</option>
+                <option value="reverse">Reverse</option>
+                <option value="draw2">Draw 2</option>
+                <option value="draw8">Draw 8</option>
+                <option value="draw10">Wild Draw 10</option>
+                <option value="wild">Wild</option>
+                <option value="wild4">Wild Draw 4</option>
+                <option value="skipall">Skip All</option>
+                <option value="rickroll">Rickroll</option>
+              </select>
+              <select id="adminRigColor" class="admin-select">
+                <option value="red">Red</option>
+                <option value="yellow">Yellow</option>
+                <option value="green">Green</option>
+                <option value="blue">Blue</option>
+              </select>
+              <select id="adminRigValue" class="admin-select">
+                <option value="0">0</option><option value="1">1</option><option value="2">2</option>
+                <option value="3">3</option><option value="4">4</option><option value="5">5</option>
+                <option value="6">6</option><option value="7">7</option><option value="8">8</option>
+                <option value="9">9</option>
+              </select>
+              <button id="adminRigTopBtn" class="btn btn-ok">Rig Top Deck Card</button>
+              <button id="adminPeekDeckBtn" class="btn">Peek Deck</button>
+            </div>
+            <div id="adminDeckPeek" class="mini-log">Deck peek hidden.</div>
+          </div>
+
+          <div class="admin-box">
+            <div style="font-weight:800;">Global Admin (New)</div>
+            <div class="admin-row">
+              <select id="adminSwapA" class="admin-select"></select>
+              <select id="adminSwapB" class="admin-select"></select>
+              <button id="adminSwapHandsBtn" class="btn">Swap Hands A/B</button>
+            </div>
+            <div class="admin-row">
+              <input id="adminSetPending" class="admin-input" type="number" min="0" max="200" value="0" style="width:100px;" />
+              <button id="adminSetPendingBtn" class="btn">Set Pending Draw</button>
+              <button id="adminSkipTurnBtn" class="btn">Skip Current Turn</button>
+            </div>
+            <div class="admin-row">
+              <input id="adminAllDrawCount" class="admin-input" type="number" min="1" max="20" value="1" style="width:90px;" />
+              <button id="adminAllDrawBtn" class="btn">Everyone Draw</button>
+              <input id="adminAllDiscardCount" class="admin-input" type="number" min="1" max="20" value="1" style="width:90px;" />
+              <button id="adminAllDiscardBtn" class="btn">Everyone Discard Random</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="table-wrap">
+        <section class="seat north" id="seat-north">
+          <div class="seat-title"><span class="seat-name" id="name-north">North</span><span id="cnt-north">0 cards</span></div>
+          <div class="cards-row" id="slot-north" data-orient="h"></div>
+        </section>
+
+        <section class="seat west hidden" id="seat-west">
+          <div class="seat-title"><span class="seat-name" id="name-west">West</span><span id="cnt-west">0 cards</span></div>
+          <div class="cards-row vertical" id="slot-west" data-orient="v"></div>
+        </section>
+
+        <section class="seat east hidden" id="seat-east">
+          <div class="seat-title"><span class="seat-name" id="name-east">East</span><span id="cnt-east">0 cards</span></div>
+          <div class="cards-row vertical" id="slot-east" data-orient="v"></div>
+        </section>
+
+        <section class="center">
+          <div class="piles">
+            <div class="pile">
+              <div class="pile-label">Deck</div>
+              <div id="deckCard" class="card back clickable"><div class="big">UNO</div></div>
+              <div id="deckCount" class="pile-label">0 cards</div>
+            </div>
+
+            <div class="orbit">
+              <div class="orbit-center">Direction</div>
+              <div id="orbitArrow" class="orbit-arrow">➤</div>
+            </div>
+
+            <div class="pile">
+              <div class="pile-label">Discard</div>
+              <div id="discardCard"></div>
+              <div class="pill">Color: <span id="colorDot" class="dot"></span> <span id="colorName">-</span></div>
+            </div>
+          </div>
+
+          <div class="controls">
+            <button id="drawBtn" class="btn btn-accent">Draw</button>
+            <button id="unoBtn" class="btn btn-ok">Call UNO</button>
+            <button id="catchBtn" class="btn btn-danger" style="display:none;">Catch UNO</button>
+          </div>
+
+          <div class="trail" id="turnTrail"></div>
+        </section>
+
+        <section class="seat south" id="seat-south">
+          <div class="seat-title">
+            <span class="seat-name" id="name-south">You</span>
+            <span id="playerCount">0 cards</span>
+          </div>
+          <div class="cards-row" id="playerHand" data-orient="h"></div>
+        </section>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div style="font-weight:800; margin-bottom:6px;">Game Log</div>
+      <div id="logBox" class="log"></div>
+    </div>
+  </div>
+
+  <div class="overlay" id="colorOverlay">
+    <div class="modal">
+      <h3>Choose a color</h3>
+      <div class="grid2">
+        <button class="choice c-red" data-color="red">Red</button>
+        <button class="choice c-yellow" data-color="yellow">Yellow</button>
+        <button class="choice c-green" data-color="green">Green</button>
+        <button class="choice c-blue" data-color="blue">Blue</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="targetOverlay">
+    <div class="modal">
+      <h3>Pick a player to swap with</h3>
+      <div class="grid2" id="targetGrid"></div>
+    </div>
+  </div>
+
+  <div class="overlay" id="challengeOverlay">
+    <div class="modal">
+      <h3>Wild Draw 4 was played on you</h3>
+      <div style="font-size:.9rem; color:#cbd5e1;">Do you want to challenge it?</div>
+      <div class="grid2">
+        <button class="choice" data-challenge="yes" style="background:#14532d;">Challenge</button>
+        <button class="choice" data-challenge="no" style="background:#7c2d12;">Accept +4</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="adminOverlay">
+    <div class="modal">
+      <h3>Admin Mode</h3>
+      <div style="font-size:.9rem; color:#cbd5e1;">
+        Enter admin password to unlock cheat tools.
+      </div>
+      <input id="adminPassInput" class="admin-input" type="password" placeholder="Password" />
+      <div id="adminPassMsg" style="font-size:.84rem; color:#fca5a5; min-height:1.2em;"></div>
+      <div class="grid2">
+        <button id="adminUnlockSubmit" class="choice" style="background:#14532d;">Unlock</button>
+        <button id="adminCancel" class="choice" style="background:#334155;">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="adminCardOverlay">
+    <div class="admin-visual-modal">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+        <h3 style="margin:0;">Admin Visual Card Picker</h3>
+        <button id="adminCardCloseBtn" class="btn">Close</button>
+      </div>
+      <div class="admin-row">
+        <label class="lbl" style="margin:0;">Source</label>
+        <select id="adminVisualSource" class="admin-select"></select>
+        <label class="lbl" style="margin:0;">Target</label>
+        <select id="adminVisualTarget" class="admin-select"></select>
+      </div>
+      <div class="admin-row">
+        <button id="adminVisualRemoveBtn" class="btn">Remove Selected</button>
+        <button id="adminVisualStealBtn" class="btn btn-ok">Steal Selected → You</button>
+        <button id="adminVisualMoveBtn" class="btn">Move Selected → Target</button>
+      </div>
+      <div id="adminVisualMeta" class="admin-note">Pick a source and click a card below.</div>
+      <div id="adminVisualCards" class="admin-card-grid"></div>
+    </div>
+  </div>
+
+  <div class="overlay" id="loseVideoOverlay">
+    <div class="lose-video-wrap">
+      <video id="loseVideo" playsinline webkit-playsinline preload="auto"></video>
+      <div class="lose-hud">
+        <div class="lose-msg">
+          <div id="loseCountdown">Watch 15 seconds to unlock close</div>
+          <div class="lose-sub" id="loseHint">If autoplay is blocked, tap video to play.</div>
+        </div>
+        <button id="closeLoseBtn" disabled>Close</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer-fixed">Made with ❤️ by Alvin.</footer>
+
+  <script>
+    (() => {
+      const COLORS = ["red", "yellow", "green", "blue"];
+      const ACTIONS = ["skip", "reverse", "draw2"];
+      const RICK_URL = "https://github.com/ipmingsum2/dobble/raw/refs/heads/main/Rick%20Astley%20-%20Never%20Gonna%20Give%20You%20Up%20(Official%20Video)%20(4K%20Remaster).mp4";
+      const ADMIN_PASS = "Alvin!2233aka";
+
+      const statusText = document.getElementById("statusText");
+      const playerHandEl = document.getElementById("playerHand");
+      const playerCountEl = document.getElementById("playerCount");
+      const deckCardEl = document.getElementById("deckCard");
+      const discardCardEl = document.getElementById("discardCard");
+      const deckCountEl = document.getElementById("deckCount");
+      const drawBtn = document.getElementById("drawBtn");
+      const unoBtn = document.getElementById("unoBtn");
+      const catchBtn = document.getElementById("catchBtn");
+      const logBox = document.getElementById("logBox");
+      const colorDot = document.getElementById("colorDot");
+      const colorName = document.getElementById("colorName");
+      const turnTrail = document.getElementById("turnTrail");
+      const orbitArrow = document.getElementById("orbitArrow");
+
+      const playersSeg = document.getElementById("playersSeg");
+      const rulesWrap = document.getElementById("rulesWrap");
+      const newGameBtn = document.getElementById("newGameBtn");
+
+      const colorOverlay = document.getElementById("colorOverlay");
+      const targetOverlay = document.getElementById("targetOverlay");
+      const challengeOverlay = document.getElementById("challengeOverlay");
+      const targetGrid = document.getElementById("targetGrid");
+
+      const adminBtn = document.getElementById("adminBtn");
+      const adminState = document.getElementById("adminState");
+      const winsBoard = document.getElementById("winsBoard");
+      const adminPanel = document.getElementById("adminPanel");
+
+      const adminRevealBtn = document.getElementById("adminRevealBtn");
+      const adminNoRulesBtn = document.getElementById("adminNoRulesBtn");
+      const adminFreezeBtn = document.getElementById("adminFreezeBtn");
+      const adminGodDrawBtn = document.getElementById("adminGodDrawBtn");
+      const adminLockBtn = document.getElementById("adminLockBtn");
+
+      const adminGiveTarget = document.getElementById("adminGiveTarget");
+      const adminCardType = document.getElementById("adminCardType");
+      const adminCardColor = document.getElementById("adminCardColor");
+      const adminCardValue = document.getElementById("adminCardValue");
+      const adminGiveCardBtn = document.getElementById("adminGiveCardBtn");
+
+      const adminWinTarget = document.getElementById("adminWinTarget");
+      const adminWinAmount = document.getElementById("adminWinAmount");
+      const adminAddWinBtn = document.getElementById("adminAddWinBtn");
+      const adminResetWinsBtn = document.getElementById("adminResetWinsBtn");
+      const adminInstantWinBtn = document.getElementById("adminInstantWinBtn");
+
+      const adminTurnTarget = document.getElementById("adminTurnTarget");
+      const adminSetTurnBtn = document.getElementById("adminSetTurnBtn");
+      const adminForceTurnBtn = document.getElementById("adminForceTurnBtn");
+
+      const adminDrawTarget = document.getElementById("adminDrawTarget");
+      const adminDrawCount = document.getElementById("adminDrawCount");
+      const adminMakeDrawBtn = document.getElementById("adminMakeDrawBtn");
+      const adminClearPendingBtn = document.getElementById("adminClearPendingBtn");
+
+      const adminRemoveTarget = document.getElementById("adminRemoveTarget");
+      const adminRemoveRandomBtn = document.getElementById("adminRemoveRandomBtn");
+
+      const adminStealFrom = document.getElementById("adminStealFrom");
+      const adminStealBtn = document.getElementById("adminStealBtn");
+
+      const adminPickSource = document.getElementById("adminPickSource");
+      const adminPickCard = document.getElementById("adminPickCard");
+      const adminPickTarget = document.getElementById("adminPickTarget");
+      const adminRemoveSelectedBtn = document.getElementById("adminRemoveSelectedBtn");
+      const adminStealSelectedBtn = document.getElementById("adminStealSelectedBtn");
+      const adminMoveSelectedBtn = document.getElementById("adminMoveSelectedBtn");
+      const adminOpenVisualPickerBtn = document.getElementById("adminOpenVisualPickerBtn");
+
+      const adminSetColor = document.getElementById("adminSetColor");
+      const adminApplyColorBtn = document.getElementById("adminApplyColorBtn");
+      const adminReverseNowBtn = document.getElementById("adminReverseNowBtn");
+      const adminShuffleDeckBtn = document.getElementById("adminShuffleDeckBtn");
+
+      const adminRigType = document.getElementById("adminRigType");
+      const adminRigColor = document.getElementById("adminRigColor");
+      const adminRigValue = document.getElementById("adminRigValue");
+      const adminRigTopBtn = document.getElementById("adminRigTopBtn");
+      const adminPeekDeckBtn = document.getElementById("adminPeekDeckBtn");
+      const adminDeckPeek = document.getElementById("adminDeckPeek");
+
+      const adminSwapA = document.getElementById("adminSwapA");
+      const adminSwapB = document.getElementById("adminSwapB");
+      const adminSwapHandsBtn = document.getElementById("adminSwapHandsBtn");
+      const adminSetPending = document.getElementById("adminSetPending");
+      const adminSetPendingBtn = document.getElementById("adminSetPendingBtn");
+      const adminSkipTurnBtn = document.getElementById("adminSkipTurnBtn");
+      const adminAllDrawCount = document.getElementById("adminAllDrawCount");
+      const adminAllDrawBtn = document.getElementById("adminAllDrawBtn");
+      const adminAllDiscardCount = document.getElementById("adminAllDiscardCount");
+      const adminAllDiscardBtn = document.getElementById("adminAllDiscardBtn");
+
+      const adminOverlay = document.getElementById("adminOverlay");
+      const adminPassInput = document.getElementById("adminPassInput");
+      const adminPassMsg = document.getElementById("adminPassMsg");
+      const adminUnlockSubmit = document.getElementById("adminUnlockSubmit");
+      const adminCancel = document.getElementById("adminCancel");
+
+      const adminCardOverlay = document.getElementById("adminCardOverlay");
+      const adminCardCloseBtn = document.getElementById("adminCardCloseBtn");
+      const adminVisualSource = document.getElementById("adminVisualSource");
+      const adminVisualTarget = document.getElementById("adminVisualTarget");
+      const adminVisualCards = document.getElementById("adminVisualCards");
+      const adminVisualMeta = document.getElementById("adminVisualMeta");
+      const adminVisualRemoveBtn = document.getElementById("adminVisualRemoveBtn");
+      const adminVisualStealBtn = document.getElementById("adminVisualStealBtn");
+      const adminVisualMoveBtn = document.getElementById("adminVisualMoveBtn");
+
+      const loseVideoOverlay = document.getElementById("loseVideoOverlay");
+      const loseVideo = document.getElementById("loseVideo");
+      const closeLoseBtn = document.getElementById("closeLoseBtn");
+      const loseCountdown = document.getElementById("loseCountdown");
+      const loseHint = document.getElementById("loseHint");
+
+      const seatEls = {
+        north: document.getElementById("seat-north"),
+        east: document.getElementById("seat-east"),
+        west: document.getElementById("seat-west"),
+        south: document.getElementById("seat-south")
+      };
+      const seatNameEls = {
+        north: document.getElementById("name-north"),
+        east: document.getElementById("name-east"),
+        west: document.getElementById("name-west"),
+        south: document.getElementById("name-south")
+      };
+      const seatCountEls = {
+        north: document.getElementById("cnt-north"),
+        east: document.getElementById("cnt-east"),
+        west: document.getElementById("cnt-west"),
+        south: document.getElementById("playerCount")
+      };
+      const seatSlotEls = {
+        north: document.getElementById("slot-north"),
+        east: document.getElementById("slot-east"),
+        west: document.getElementById("slot-west"),
+        south: document.getElementById("playerHand")
+      };
+
+      let settings = {
+        players: 2,
+        sevenZero: false,
+        stackPlus: false,
+        jumpIn: false,
+        wild4Challenge: true,
+        wild4Anytime: false,
+        npcLuck: true,
+        playerLuck: true,
+        noMercy: false
+      };
+
+      let deck = [];
+      let discardPile = [];
+      let hands = [];
+      let currentPlayer = 0;
+      let direction = 1;
+      let currentColor = "red";
+      let gameOver = false;
+      let busy = false;
+      let pendingDraw = 0;
+      let flowToken = 0;
+
+      let playerUnoCalled = false;
+      let jumpWindow = null;
+
+      let resolveColor = null;
+      let resolveTarget = null;
+      let resolveChallenge = null;
+
+      let wins = [0,0,0,0];
+
+      let adminUnlocked = false;
+      let adminReveal = false;
+      let adminNoRules = false;
+      let adminFreezeAI = false;
+      let adminGodDraw = false;
+
+      let adminVisualSelectedIndex = -1;
+
+      let unoCatchWindow = {
+        active: false,
+        player: null,
+        endsAt: 0,
+        timeoutId: null,
+        intervalId: null,
+        resolver: null
+      };
+
+      let loseGateUnlocked = false;
+      let loseGateInterval = null;
+      let loseGateOpenedAt = 0;
+      let loseVideoLoadFailed = false;
+
+      const logs = [];
+
+      let seatByPlayer = { 0: "south", 1: "north" };
+      let orbitBaseAngle = null;
+
+      const mod = (n,m) => ((n % m) + m) % m;
+      const delay = ms => new Promise(r => setTimeout(r, ms));
+
+      function bumpFlowToken(){
+        flowToken++;
+        return flowToken;
+      }
+
+      function plusAmount(card){
+        if(!card) return 0;
+        if(card.type==="draw2") return 2;
+        if(card.type==="wild4") return 4;
+        if(card.type==="draw8") return 8;
+        if(card.type==="draw10") return 10;
+        return 0;
+      }
+
+      function isPlusCard(c){
+        return plusAmount(c) > 0;
+      }
+
+      function isColorChooser(type){
+        return type==="wild" || type==="wild4" || type==="draw10";
+      }
+
+      function isAlwaysPlayable(type){
+        return type==="wild" || type==="wild4" || type==="draw10" || type==="rickroll" || type==="skipall";
+      }
+
+      function escapeHtml(str){
+        return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+      }
+      const cap = s => s ? s[0].toUpperCase() + s.slice(1) : "";
+
+      function log(msg){
+        logs.unshift(msg); if(logs.length>28) logs.pop();
+        logBox.innerHTML = logs.map(x=>`<div class="log-item">${escapeHtml(x)}</div>`).join("");
+      }
+
+      function shuffle(arr){
+        const a=[...arr];
+        for(let i=a.length-1;i>0;i--){
+          const j=Math.floor(Math.random()*(i+1));
+          [a[i],a[j]]=[a[j],a[i]];
+        }
+        return a;
+      }
+
+      function createDeck(){
+        const cards=[];
+        for(const color of COLORS){
+          cards.push({color,type:"number",value:0});
+          for(let n=1;n<=9;n++){
+            cards.push({color,type:"number",value:n});
+            cards.push({color,type:"number",value:n});
+          }
+          for(const a of ACTIONS){
+            cards.push({color,type:a});
+            cards.push({color,type:a});
+          }
+        }
+        for(let i=0;i<4;i++){
+          cards.push({color:null,type:"wild"});
+          cards.push({color:null,type:"wild4"});
+        }
+
+        if(settings.noMercy){
+          for(const color of COLORS){
+            cards.push({color,type:"draw8"});
+            cards.push({color,type:"draw8"});
+          }
+          for(let i=0;i<4;i++){
+            cards.push({color:null,type:"draw10"});
+            cards.push({color:null,type:"rickroll"});
+            cards.push({color:null,type:"skipall"});
+          }
+        }
+
+        return cards;
+      }
+
+      function nextPlayerIndex(from=currentPlayer, step=1){
+        return mod(from + direction*step, settings.players);
+      }
+
+      function topDiscard(){ return discardPile[discardPile.length-1] || null; }
+
+      function refillDeckIfNeeded(){
+        if(deck.length>0) return;
+        if(discardPile.length<=1) return;
+        const top=discardPile.pop();
+        deck=shuffle(discardPile);
+        discardPile=[top];
+        log("Deck reshuffled from discard.");
+      }
+
+      function drawOneRaw(){
+        refillDeckIfNeeded();
+        return deck.pop() || null;
+      }
+
+      function cardName(card){
+        if(!card) return "-";
+        if(card.type==="number") return `${cap(card.color)} ${card.value}`;
+        if(card.type==="wild") return "Wild";
+        if(card.type==="wild4") return "Wild Draw 4";
+        if(card.type==="draw2") return `${cap(card.color)} Draw 2`;
+        if(card.type==="draw8") return `${cap(card.color)} Draw 8`;
+        if(card.type==="draw10") return "Wild Draw 10";
+        if(card.type==="rickroll") return "Rickroll";
+        if(card.type==="skipall") return "Skip All";
+        return `${cap(card.color)} ${cap(card.type)}`;
+      }
+
+      function hasColorCard(hand,color){
+        return hand.some(c => c.color===color && !isAlwaysPlayable(c.type));
+      }
+
+      function canPlay(card, hand){
+        const top = topDiscard();
+        if(!top) return true;
+        if(settings.stackPlus && pendingDraw>0) return isPlusCard(card);
+
+        if(card.type==="wild4"){
+          if(settings.wild4Anytime) return true;
+          return !hasColorCard(hand, currentColor);
+        }
+
+        if(isAlwaysPlayable(card.type)) return true;
+
+        if(card.color===currentColor) return true;
+        if(card.type==="number" && top.type==="number" && card.value===top.value) return true;
+        if(card.type!=="number" && card.type===top.type) return true;
+        return false;
+      }
+
+      function exactMatchForJump(a,b){
+        if(!a || !b) return false;
+        if(a.type!==b.type) return false;
+        if(a.type==="number") return a.color===b.color && a.value===b.value;
+        if(isAlwaysPlayable(a.type)) return true;
+        return a.color===b.color;
+      }
+
+      function bestColorForHand(hand){
+        const c={red:0,yellow:0,green:0,blue:0};
+        hand.forEach(x=>{ if(x.color) c[x.color]++; });
+        let best="red";
+        for(const k of COLORS) if(c[k]>c[best]) best=k;
+        return best;
+      }
+
+      function cardInner(card){
+        const label = card.type==="number" ? String(card.value)
+          : card.type==="draw2" ? "+2"
+          : card.type==="draw8" ? "+8"
+          : card.type==="draw10" ? "+10"
+          : card.type==="wild4" ? "+4"
+          : card.type==="rickroll" ? "RICK"
+          : card.type==="skipall" ? "SKIP ALL"
+          : card.type.toUpperCase();
+
+        const small = card.type==="number" ? cap(card.color)
+          : isColorChooser(card.type) ? "Wild"
+          : (card.type==="rickroll" || card.type==="skipall") ? "Special"
+          : cap(card.color);
+
+        return `<div class="small">${small}</div><div class="big">${label}</div>`;
+      }
+
+      function cardClass(card){
+        if(card.type==="wild" || card.type==="wild4" || card.type==="draw10") return "wild";
+        if(card.type==="rickroll") return "rickroll";
+        if(card.type==="skipall") return "special";
+        return card.color;
+      }
+
+      function cardHTML(card,opt={}){
+        const {hidden=false,clickable=false,unplayable=false,idx=-1,title="",selected=false}=opt;
+        if(hidden){
+          return `<div class="card back ${clickable?"clickable":""}" data-idx="${idx}" title="${escapeHtml(title||"Hidden")}"><div class="big">UNO</div></div>`;
+        }
+        const cls = cardClass(card);
+        const arr=["card",cls];
+        if(clickable) arr.push("clickable");
+        if(unplayable) arr.push("unplayable");
+        if(selected) arr.push("selected-admin");
+        return `<div class="${arr.join(" ")}" data-idx="${idx}" title="${escapeHtml(title||cardName(card))}">${cardInner(card)}</div>`;
+      }
+
+      function getRowEl(player){
+        const seat = seatByPlayer[player];
+        return seatSlotEls[seat] || null;
+      }
+
+      function visibleAiCardCount(n){
+        const max = window.innerWidth <= 640 ? 6 : 12;
+        return n<=max ? n : max;
+      }
+
+      function ensureWinsSize(){
+        while(wins.length < settings.players) wins.push(0);
+      }
+
+      function renderWinsBoard(){
+        ensureWinsSize();
+        const parts = [];
+        for(let p=0;p<settings.players;p++){
+          const name = p===0 ? "You" : `AI ${p}`;
+          parts.push(`<span class="chip">${name}: <strong>${wins[p]||0}</strong>W</span>`);
+        }
+        winsBoard.innerHTML = parts.join("");
+      }
+
+      function updateAdminStateUI(){
+        const tags = [];
+        if(adminReveal) tags.push("Reveal");
+        if(adminNoRules) tags.push("NoRules");
+        if(adminFreezeAI) tags.push("FreezeAI");
+        if(adminGodDraw) tags.push("GodDraw");
+        adminState.textContent = adminUnlocked ? `Admin: ON${tags.length ? " • " + tags.join(" • ") : ""}` : "Admin: Off";
+
+        adminPanel.classList.toggle("hidden", !adminUnlocked);
+        adminBtn.textContent = adminUnlocked ? "Admin Tools" : "Admin Mode";
+
+        adminRevealBtn.classList.toggle("active", adminReveal);
+        adminNoRulesBtn.classList.toggle("active", adminNoRules);
+        adminFreezeBtn.classList.toggle("active", adminFreezeAI);
+        adminGodDrawBtn.classList.toggle("active", adminGodDraw);
+      }
+
+      function populateSelectWithPlayers(selectEl, includeMe=true){
+        const prev = selectEl.value;
+        const opts = [];
+        for(let p=0;p<settings.players;p++){
+          if(!includeMe && p===0) continue;
+          opts.push(`<option value="${p}">${p===0?"You":"AI "+p}</option>`);
+        }
+        selectEl.innerHTML = opts.join("");
+        if([...selectEl.options].some(o => o.value===prev)) selectEl.value = prev;
+      }
+
+      function populateAdminPlayerSelects(){
+        populateSelectWithPlayers(adminGiveTarget, true);
+        populateSelectWithPlayers(adminWinTarget, true);
+        populateSelectWithPlayers(adminTurnTarget, true);
+        populateSelectWithPlayers(adminDrawTarget, true);
+        populateSelectWithPlayers(adminRemoveTarget, true);
+        populateSelectWithPlayers(adminPickSource, true);
+        populateSelectWithPlayers(adminPickTarget, true);
+        populateSelectWithPlayers(adminSwapA, true);
+        populateSelectWithPlayers(adminSwapB, true);
+
+        populateSelectWithPlayers(adminVisualSource, true);
+        populateSelectWithPlayers(adminVisualTarget, true);
+
+        const prevSteal = adminStealFrom.value;
+        const aiOnly = [];
+        for(let p=1;p<settings.players;p++){
+          aiOnly.push(`<option value="${p}">AI ${p}</option>`);
+        }
+        adminStealFrom.innerHTML = aiOnly.join("") || `<option value="">No AI</option>`;
+        if([...adminStealFrom.options].some(o => o.value===prevSteal)) adminStealFrom.value = prevSteal;
+
+        refreshAdminCardPicker();
+        renderAdminVisualCards();
+      }
+
+      function refreshAdminCardPicker(){
+        if(!adminPickSource || !adminPickCard || !adminPickTarget) return;
+        let src = Number(adminPickSource.value);
+        if(Number.isNaN(src) || src < 0 || src >= settings.players) src = 0;
+        adminPickSource.value = String(src);
+
+        const prevCard = adminPickCard.value;
+        const hand = hands[src] || [];
+        if(hand.length===0){
+          adminPickCard.innerHTML = `<option value="">No cards</option>`;
+        } else {
+          adminPickCard.innerHTML = hand.map((c,i)=>`<option value="${i}">${i+1}. ${escapeHtml(cardName(c))}</option>`).join("");
+          if(prevCard !== "" && Number(prevCard) < hand.length) adminPickCard.value = prevCard;
+        }
+
+        const prevTarget = adminPickTarget.value;
+        const opts = [];
+        for(let p=0;p<settings.players;p++){
+          if(p===src) continue;
+          opts.push(`<option value="${p}">${p===0?"You":"AI "+p}</option>`);
+        }
+        adminPickTarget.innerHTML = opts.join("") || `<option value="">No target</option>`;
+        if([...adminPickTarget.options].some(o => o.value===prevTarget)) adminPickTarget.value = prevTarget;
+      }
+
+      function applySeatMap(){
+        seatEls.north.classList.remove("hidden");
+        seatEls.east.classList.add("hidden");
+        seatEls.west.classList.add("hidden");
+
+        if(settings.players===2){
+          seatByPlayer = {0:"south",1:"north"};
+        } else if(settings.players===3){
+          seatByPlayer = {0:"south",1:"north",2:"east"};
+          seatEls.east.classList.remove("hidden");
+        } else {
+          seatByPlayer = {0:"south",1:"north",2:"east",3:"west"};
+          seatEls.east.classList.remove("hidden");
+          seatEls.west.classList.remove("hidden");
+        }
+      }
+
+      function getDiscardRect(){
+        const target = discardCardEl.firstElementChild || discardCardEl;
+        return target.getBoundingClientRect();
+      }
+
+      function getPlaySourceRect(player, sourceEl = null){
+        if (sourceEl && sourceEl.isConnected) {
+          const r = sourceEl.getBoundingClientRect();
+          if (r.width > 0 && r.height > 0) return r;
+        }
+        const row = getRowEl(player);
+        if(!row) return null;
+        const one = row.querySelector(".card");
+        if(one){
+          const r = one.getBoundingClientRect();
+          if (r.width > 0 && r.height > 0) return r;
+        }
+        const rr = row.getBoundingClientRect();
+        return {left:rr.left+8,top:rr.top+4,width:70,height:104};
+      }
+
+      function getDrawTargetRect(player){
+        const row = getRowEl(player);
+        if(!row) return deckCardEl.getBoundingClientRect();
+        const rr = row.getBoundingClientRect();
+        const cw = 70, ch = 104;
+        const orient = row.dataset.orient || "h";
+        const count = hands[player] ? hands[player].length : 0;
+
+        if(orient==="v"){
+          const offset = Math.min(count*10, Math.max(12, rr.height - ch - 10));
+          return {left: rr.left + 6, top: rr.top + 4 + offset, width:cw, height:ch};
+        }
+        const offset = Math.min(count*14, Math.max(16, rr.width - cw - 12));
+        return {left: rr.left + 8 + offset, top: rr.top + 2, width:cw, height:ch};
+      }
+
+      function createAnimCard(card, hidden=false){
+        const wrap=document.createElement("div");
+        wrap.className="anim-card";
+        wrap.innerHTML = hidden ? cardHTML(null,{hidden:true}) : cardHTML(card);
+        return wrap;
+      }
+
+      async function animateMove({fromRect,toRect,card,hiddenStart=false,revealMid=false}){
+        if(!fromRect || !toRect) return;
+        const ghost=createAnimCard(card,hiddenStart);
+        ghost.style.left=`${fromRect.left}px`;
+        ghost.style.top=`${fromRect.top}px`;
+        ghost.style.width=`${fromRect.width}px`;
+        ghost.style.height=`${fromRect.height}px`;
+        ghost.style.transition="transform 300ms ease,left 300ms ease,top 300ms ease,width 300ms ease,height 300ms ease";
+        document.body.appendChild(ghost);
+
+        requestAnimationFrame(()=>{
+          ghost.style.left=`${toRect.left}px`;
+          ghost.style.top=`${toRect.top}px`;
+          ghost.style.width=`${toRect.width}px`;
+          ghost.style.height=`${toRect.height}px`;
+          ghost.style.transform="rotate(2deg)";
+        });
+
+        if(revealMid){
+          setTimeout(()=>{
+            ghost.classList.add("flip");
+            const cardEl=ghost.firstElementChild;
+            cardEl.className="card " + cardClass(card);
+            cardEl.innerHTML=cardInner(card);
+          },150);
+        }
+
+        await delay(320);
+        ghost.remove();
+      }
+
+      async function animateDraw(player, card){
+        const from=deckCardEl.getBoundingClientRect();
+        const to=getDrawTargetRect(player);
+        await animateMove({fromRect:from,toRect:to,card,hiddenStart:true,revealMid:player===0});
+      }
+
+      async function animatePlay(player, card, sourceEl = null, sourceRectOverride = null){
+        const from = sourceRectOverride || getPlaySourceRect(player, sourceEl);
+        const to = getDiscardRect();
+        await animateMove({fromRect:from,toRect:to,card,hiddenStart:false,revealMid:false});
+      }
+
+      function scoreLuckyDrawForAI(player, card){
+        const hand = hands[player] || [];
+        let s = 0;
+        if(settings.stackPlus && pendingDraw>0){
+          s += plusAmount(card) * 90;
+          if(!isPlusCard(card)) s -= 220;
+        }
+        if(canPlay(card, hand)) s += 170;
+        if(card.type==="draw10") s += 240;
+        else if(card.type==="draw8") s += 170;
+        else if(card.type==="wild4") s += 140;
+        else if(card.type==="draw2") s += 120;
+        else if(card.type==="skipall") s += 120;
+        else if(card.type==="rickroll") s += 130;
+        else if(card.type==="skip") s += 95;
+        else if(card.type==="reverse") s += 85;
+        else if(card.type==="wild") s += 80;
+        else s += 20;
+        if(card.color){
+          s += hand.filter(x => x.color===card.color).length * 8;
+        }
+        s += Math.random() * 6;
+        return s;
+      }
+
+      function scoreLuckyDrawForPlayer(player, card){
+        const hand = hands[player] || [];
+        let s = 0;
+        if(settings.stackPlus && pendingDraw>0){
+          s += plusAmount(card) * 100;
+          if(!isPlusCard(card)) s -= 180;
+        }
+        if(canPlay(card, hand)) s += 220;
+        if(card.type==="draw10") s += 260;
+        else if(card.type==="draw8") s += 190;
+        else if(card.type==="wild4") s += 180;
+        else if(card.type==="draw2") s += 145;
+        else if(card.type==="skipall") s += 140;
+        else if(card.type==="rickroll") s += 150;
+        else if(card.type==="skip") s += 122;
+        else if(card.type==="reverse") s += 98;
+        else if(card.type==="wild") s += 90;
+        else s += 35;
+        if(hand.length <= 3 && canPlay(card, hand)) s += 80;
+        if(card.color){
+          s += hand.filter(x => x.color===card.color).length * 10;
+        }
+        s += Math.random() * 4;
+        return s;
+      }
+
+      function pickBestFromDeck(player, scorer){
+        if(deck.length===0) return null;
+        let bestIdx = -1;
+        let best = -Infinity;
+        for(let i=0;i<deck.length;i++){
+          const c=deck[i];
+          const sc=scorer(player,c);
+          if(sc>best){ best=sc; bestIdx=i; }
+        }
+        if(bestIdx<0) return null;
+        return deck.splice(bestIdx,1)[0];
+      }
+
+      function drawOneForPlayer(player){
+        refillDeckIfNeeded();
+        if(deck.length===0) return null;
+
+        if(player===0 && adminUnlocked && adminGodDraw){
+          const chosen = pickBestFromDeck(player, scoreLuckyDrawForPlayer);
+          if(chosen) return chosen;
+        }
+
+        if(player===0 && settings.playerLuck && Math.random() < 0.74){
+          const chosen = pickBestFromDeck(player, scoreLuckyDrawForPlayer);
+          if(chosen) return chosen;
+        }
+
+        if(player!==0 && settings.npcLuck && Math.random() < 0.72){
+          const chosen = pickBestFromDeck(player, scoreLuckyDrawForAI);
+          if(chosen) return chosen;
+        }
+
+        return deck.pop() || null;
+      }
+
+      async function drawCardsToPlayer(player,n){
+        let got=0;
+        for(let i=0;i<n;i++){
+          if(gameOver) break;
+          const c=drawOneForPlayer(player);
+          if(!c) break;
+          await animateDraw(player,c);
+          if(gameOver) break;
+          hands[player].push(c);
+          got++;
+          render();
+        }
+        return got;
+      }
+
+      function getPlayableIndices(player){
+        const hand=hands[player], out=[];
+        for(let i=0;i<hand.length;i++) if(canPlay(hand[i],hand)) out.push(i);
+        return out;
+      }
+
+      function playerLabel(p){ return p===0 ? "You" : `AI ${p}`; }
+
+      function renderTrailAndDirection(){
+        const seq=[currentPlayer];
+        for(let i=1;i<settings.players;i++) seq.push(nextPlayerIndex(currentPlayer,i));
+
+        const html=[];
+        seq.forEach((p,i)=>{
+          const next = seq[(i+1)%seq.length];
+          html.push(`<span class="chip">${escapeHtml(playerLabel(p))}</span>`);
+          if(i<seq.length-1) html.push(`<span class="arrow">${direction===1 ? "→" : "←"}</span>`);
+          if(i===0) html.push(`<span class="chip" style="border-color:#60a5fa;">Next: ${escapeHtml(playerLabel(next))}</span>`);
+        });
+
+        if(settings.stackPlus && pendingDraw>0){
+          html.push(`<span class="chip">Pending +${pendingDraw}</span>`);
+        }
+        turnTrail.innerHTML = html.join("");
+      }
+
+      function renderSeatHighlights(){
+        for(const k of Object.keys(seatEls)) seatEls[k].classList.remove("active-turn","next-turn");
+        const curSeat = seatByPlayer[currentPlayer];
+        const nxtSeat = seatByPlayer[nextPlayerIndex(currentPlayer,1)];
+        if(curSeat) seatEls[curSeat].classList.add("active-turn");
+        if(nxtSeat) seatEls[nxtSeat].classList.add("next-turn");
+      }
+
+      function seatAngle(seat){
+        if(seat==="north") return 0;
+        if(seat==="east") return 90;
+        if(seat==="south") return 180;
+        return 270;
+      }
+
+      function updateOrbitArrow(immediate=false){
+        const seat = seatByPlayer[currentPlayer] || "south";
+        const target = seatAngle(seat);
+
+        if(orbitBaseAngle === null || immediate){
+          orbitBaseAngle = target;
+        } else {
+          const delta = ((target - orbitBaseAngle + 540) % 360) - 180;
+          orbitBaseAngle += delta;
+        }
+
+        const facing = direction === 1 ? 90 : -90;
+        if(immediate){
+          const old = orbitArrow.style.transition;
+          orbitArrow.style.transition = "none";
+          orbitArrow.style.transform = `translate(-50%,-50%) rotate(${orbitBaseAngle}deg) translateY(-44px) rotate(${facing}deg)`;
+          requestAnimationFrame(() => { orbitArrow.style.transition = old || "transform 260ms ease"; });
+        } else {
+          orbitArrow.style.transform = `translate(-50%,-50%) rotate(${orbitBaseAngle}deg) translateY(-44px) rotate(${facing}deg)`;
+        }
+      }
+
+      function renderAdminDeckPeek(){
+        if(!adminUnlocked){
+          adminDeckPeek.textContent = "Deck peek hidden.";
+          return;
+        }
+        const top = deck.slice(Math.max(0, deck.length-8)).reverse();
+        if(top.length===0){
+          adminDeckPeek.textContent = "Deck empty.";
+          return;
+        }
+        adminDeckPeek.innerHTML = top.map((c,i)=>`${i+1}. ${escapeHtml(cardName(c))}`).join("<br>");
+      }
+
+      function renderAdminVisualCards(){
+        if(!adminVisualCards) return;
+        if(!adminUnlocked){
+          adminVisualCards.innerHTML = `<div class="admin-note">Unlock admin first.</div>`;
+          return;
+        }
+
+        let src = Number(adminVisualSource.value);
+        if(Number.isNaN(src) || src<0 || src>=settings.players) src = 0;
+        adminVisualSource.value = String(src);
+
+        const hand = hands[src] || [];
+        const dstPrev = adminVisualTarget.value;
+        const dstOpts = [];
+        for(let p=0;p<settings.players;p++){
+          if(p===src) continue;
+          dstOpts.push(`<option value="${p}">${p===0?"You":"AI "+p}</option>`);
+        }
+        adminVisualTarget.innerHTML = dstOpts.join("") || `<option value="">No target</option>`;
+        if([...adminVisualTarget.options].some(o => o.value===dstPrev)) adminVisualTarget.value = dstPrev;
+
+        if(adminVisualSelectedIndex >= hand.length) adminVisualSelectedIndex = -1;
+
+        adminVisualMeta.textContent = `${playerLabel(src)} has ${hand.length} card(s). ${adminVisualSelectedIndex>=0 ? `Selected: #${adminVisualSelectedIndex+1} ${cardName(hand[adminVisualSelectedIndex])}` : "Click a card to select."}`;
+
+        if(hand.length===0){
+          adminVisualCards.innerHTML = `<div class="admin-note">No cards in this hand.</div>`;
+          return;
+        }
+
+        adminVisualCards.innerHTML = hand.map((c,i)=>cardHTML(c,{
+          idx:i,
+          clickable:true,
+          title:cardName(c),
+          selected:i===adminVisualSelectedIndex
+        })).join("");
+      }
+
+      function render(){
+        ensureWinsSize();
+        seatNameEls.south.textContent = `You • W:${wins[0]||0}`;
+        for(let p=1;p<settings.players;p++){
+          const s=seatByPlayer[p];
+          seatNameEls[s].textContent = `AI ${p} • W:${wins[p]||0}`;
+        }
+
+        for(let p=1;p<settings.players;p++){
+          const seat=seatByPlayer[p];
+          const row=seatSlotEls[seat];
+          const cnt=seatCountEls[seat];
+          const count=hands[p].length;
+
+          const turnTag = (!gameOver && currentPlayer===p && !busy) ? `<span class="turn-pill">TURN</span>` : "";
+          const nextTag = (!gameOver && nextPlayerIndex(currentPlayer,1)===p) ? `<span class="next-pill">NEXT</span>` : "";
+          cnt.innerHTML = `${count} card${count===1?"":"s"} ${turnTag} ${nextTag}`;
+
+          if(adminUnlocked && adminReveal){
+            row.innerHTML = hands[p].map(c=>cardHTML(c,{title:cardName(c)})).join("");
+          } else {
+            const show = visibleAiCardCount(count);
+            row.innerHTML = Array.from({length:show}).map(()=>cardHTML(null,{hidden:true})).join("");
+            if(count>show){
+              row.innerHTML += `<div class="chip" style="align-self:center;">+${count-show}</div>`;
+            }
+          }
+        }
+
+        const top=topDiscard();
+        discardCardEl.innerHTML = top ? cardHTML(top) : `<div class="card back"><div class="big">?</div></div>`;
+        colorDot.style.background=currentColor;
+        colorName.textContent=cap(currentColor);
+        deckCountEl.textContent=`${deck.length} card${deck.length===1?"":"s"}`;
+
+        playerCountEl.innerHTML = `${hands[0].length} card${hands[0].length===1?"":"s"} ${(!gameOver && currentPlayer===0 && !busy)?'<span class="turn-pill">TURN</span>':''} ${(!gameOver && nextPlayerIndex(currentPlayer,1)===0)?'<span class="next-pill">NEXT</span>':''}`;
+
+        if(gameOver) statusText.textContent="Game Over";
+        else if(unoCatchWindow.active && unoCatchWindow.player!==0) statusText.textContent=`AI ${unoCatchWindow.player} forgot UNO! Press Catch UNO.`;
+        else if(jumpWindow && jumpWindow.active) statusText.textContent="Jump-In available! Play exact matching card now.";
+        else if(adminUnlocked && adminFreezeAI && currentPlayer!==0) statusText.textContent=`AI ${currentPlayer} frozen by Admin`;
+        else if(busy && currentPlayer!==0) statusText.textContent=`AI ${currentPlayer} is thinking...`;
+        else statusText.textContent = currentPlayer===0 ? "Your turn" : `AI ${currentPlayer}'s turn`;
+
+        renderTrailAndDirection();
+        renderSeatHighlights();
+        updateOrbitArrow(false);
+        renderWinsBoard();
+        updateAdminStateUI();
+        renderAdminDeckPeek();
+        refreshAdminCardPicker();
+        renderAdminVisualCards();
+
+        const isHumanTurn=!gameOver && !busy && currentPlayer===0;
+        const playable=getPlayableIndices(0);
+        const adminBypass = adminUnlocked && adminNoRules;
+        playerHandEl.innerHTML = hands[0].map((c,i)=>{
+          let can=false;
+          if(jumpWindow && jumpWindow.active){
+            can=exactMatchForJump(c,jumpWindow.card);
+          } else if(isHumanTurn){
+            can = adminBypass ? true : playable.includes(i);
+          }
+          return cardHTML(c,{clickable:can,unplayable:!can,idx:i,title:can?`Play ${cardName(c)}`:`Can't play ${cardName(c)}`});
+        }).join("");
+
+        deckCardEl.classList.toggle("clickable", isHumanTurn);
+        drawBtn.disabled=!isHumanTurn;
+        drawBtn.textContent = (settings.stackPlus && pendingDraw>0 && isHumanTurn) ? `Draw +${pendingDraw}` : "Draw";
+
+        const canUno = isHumanTurn && hands[0].length===2 && !playerUnoCalled;
+        unoBtn.disabled=!canUno;
+      }
+
+      function showColorPicker(){ colorOverlay.style.display="flex"; return new Promise(res=>resolveColor=res); }
+      function hideColorPicker(){ colorOverlay.style.display="none"; resolveColor=null; }
+
+      function showTargetPicker(options){
+        targetGrid.innerHTML = options.map(p=>`<button class="choice" data-target="${p}">${p===0?"You":"AI "+p} (${hands[p].length} cards)</button>`).join("");
+        targetOverlay.style.display="flex";
+        return new Promise(res=>resolveTarget=res);
+      }
+      function hideTargetPicker(){ targetOverlay.style.display="none"; resolveTarget=null; }
+
+      function showChallengePrompt(){ challengeOverlay.style.display="flex"; return new Promise(res=>resolveChallenge=res); }
+      function hideChallengePrompt(){ challengeOverlay.style.display="none"; resolveChallenge=null; }
+
+      function stopLoseGateInterval(){
+        if(loseGateInterval){ clearInterval(loseGateInterval); loseGateInterval = null; }
+      }
+
+      function closeLoseVideo(force=false){
+        if(!force && !loseGateUnlocked) return;
+        stopLoseGateInterval();
+        loseVideo.pause();
+        loseVideoOverlay.style.display = "none";
+        closeLoseBtn.disabled = true;
+        closeLoseBtn.style.display = "none";
+        loseVideo.currentTime = 0;
+        loseGateUnlocked = false;
+        loseVideoLoadFailed = false;
+      }
+
+      function unlockLoseClose(){
+        if(loseGateUnlocked) return;
+        loseGateUnlocked = true;
+        closeLoseBtn.disabled = false;
+        closeLoseBtn.style.display = "inline-block";
+        loseCountdown.textContent = "You may close now.";
+      }
+
+      function openLoseVideo(customMsg = null){
+        stopLoseGateInterval();
+        loseGateUnlocked = false;
+        loseVideoLoadFailed = false;
+        loseGateOpenedAt = Date.now();
+
+        closeLoseBtn.disabled = true;
+        closeLoseBtn.style.display = "none";
+        loseCountdown.textContent = customMsg || "Watch 15 seconds to unlock close";
+        loseHint.textContent = "If autoplay is blocked, tap video to play.";
+
+        loseVideoOverlay.style.display = "flex";
+        loseVideo.src = RICK_URL;
+        loseVideo.currentTime = 0;
+        loseVideo.controls = false;
+        loseVideo.muted = false;
+
+        const tryPlay = loseVideo.play();
+        if (tryPlay && typeof tryPlay.catch === "function") {
+          tryPlay.catch(() => {
+            loseHint.textContent = "Autoplay blocked. Tap the video to start playback.";
+          });
+        }
+
+        loseGateInterval = setInterval(() => {
+          const played = Number.isFinite(loseVideo.currentTime) ? loseVideo.currentTime : 0;
+          const elapsed = (Date.now() - loseGateOpenedAt) / 1000;
+          const watchProgress = loseVideoLoadFailed ? elapsed : played;
+          const remain = Math.max(0, Math.ceil(15 - watchProgress));
+
+          if(!loseGateUnlocked){
+            loseCountdown.textContent = remain > 0
+              ? `Watch ${remain}s more to unlock close`
+              : "You may close now.";
+          }
+          if(watchProgress >= 15) unlockLoseClose();
+        }, 200);
+      }
+
+      function clearUnoCatchWindow(resolveValue = null){
+        if(unoCatchWindow.timeoutId) clearTimeout(unoCatchWindow.timeoutId);
+        if(unoCatchWindow.intervalId) clearInterval(unoCatchWindow.intervalId);
+
+        const resolver = unoCatchWindow.resolver;
+        const shouldResolve = (resolveValue !== null && typeof resolver === "function");
+
+        unoCatchWindow.active = false;
+        unoCatchWindow.player = null;
+        unoCatchWindow.endsAt = 0;
+        unoCatchWindow.timeoutId = null;
+        unoCatchWindow.intervalId = null;
+        unoCatchWindow.resolver = null;
+
+        catchBtn.style.display = "none";
+        catchBtn.disabled = true;
+        catchBtn.textContent = "Catch UNO";
+
+        if(shouldResolve) resolver(resolveValue);
+      }
+
+      function openUnoCatchWindowForAI(aiPlayer){
+        clearUnoCatchWindow(null);
+        return new Promise(resolve => {
+          unoCatchWindow.active = true;
+          unoCatchWindow.player = aiPlayer;
+          unoCatchWindow.endsAt = Date.now() + 5000;
+          unoCatchWindow.resolver = resolve;
+
+          catchBtn.style.display = "inline-block";
+          catchBtn.disabled = false;
+
+          const refresh = () => {
+            if(!unoCatchWindow.active) return;
+            const remainMs = Math.max(0, unoCatchWindow.endsAt - Date.now());
+            const remainSec = Math.max(0, Math.ceil(remainMs / 1000));
+            catchBtn.textContent = `Catch AI ${aiPlayer} UNO (${remainSec})`;
+            if(remainMs <= 0) clearUnoCatchWindow(false);
+          };
+
+          refresh();
+          unoCatchWindow.intervalId = setInterval(refresh, 200);
+          unoCatchWindow.timeoutId = setTimeout(() => clearUnoCatchWindow(false), 5000);
+        });
+      }
+
+      async function punishForgotUno(targetPlayer, catcherText){
+        if(hands[targetPlayer].length !== 1) return false;
+        const got = await drawCardsToPlayer(targetPlayer,2);
+        log(`${catcherText} caught ${playerLabel(targetPlayer)} forgetting UNO. ${playerLabel(targetPlayer)} drew ${got}.`);
+        return true;
+      }
+
+      async function maybeNpcCatchesHumanForgotUno(){
+        const token = flowToken;
+        await delay(700 + Math.floor(Math.random()*900));
+        if(gameOver || token !== flowToken) return;
+        const catchChance = settings.playerLuck ? 0.35 : (29/30);
+        const catches = Math.random() < catchChance;
+        if(catches){
+          const npcId = 1 + Math.floor(Math.random() * (settings.players - 1));
+          await punishForgotUno(0, `AI ${npcId}`);
+        } else {
+          log("You forgot UNO, but no AI caught it.");
+        }
+      }
+
+      function chooseAISevenTarget(ai){
+        const opts=[]; for(let i=0;i<settings.players;i++) if(i!==ai) opts.push(i);
+        opts.sort((a,b)=>hands[a].length - hands[b].length);
+        return opts[0];
+      }
+
+      function rotateHandsOnZero(){
+        const old = hands.map(h=>h.slice());
+        const next = Array.from({length:settings.players},()=>[]);
+        for(let i=0;i<settings.players;i++){
+          const to = mod(i + direction, settings.players);
+          next[to]=old[i];
+        }
+        hands=next;
+      }
+
+      async function applySevenZero(player, card){
+        if(!settings.sevenZero) return;
+        if(card.type==="number" && card.value===7){
+          let target=null;
+          if(player===0){
+            const opts=[]; for(let i=1;i<settings.players;i++) opts.push(i);
+            target=await showTargetPicker(opts); hideTargetPicker();
+          } else target=chooseAISevenTarget(player);
+
+          if(target!==null && target!==undefined && target!==player){
+            const t=hands[player]; hands[player]=hands[target]; hands[target]=t;
+            log(`${playerLabel(player)} swapped hands with ${playerLabel(target)} (7 rule).`);
+          }
+        }
+        if(card.type==="number" && card.value===0){
+          rotateHandsOnZero();
+          log("0 played — all hands rotated.");
+        }
+      }
+
+      async function maybeWin(player){
+        if(hands[player].length===0){
+          gameOver=true;
+          busy=false;
+          bumpFlowToken();
+          clearUnoCatchWindow(null);
+          hideColorPicker();
+          hideTargetPicker();
+          hideChallengePrompt();
+
+          wins[player] = (wins[player]||0) + 1;
+          log(player===0 ? `🎉 You win! (Total wins: ${wins[0]})` : `🤖 AI ${player} wins! (Total wins: ${wins[player]})`);
+          render();
+
+          if(player !== 0){
+            openLoseVideo();
+          } else {
+            closeLoseVideo(true);
+          }
+          return true;
+        }
+        return false;
+      }
+
+      async function handleWild4ChallengeOrDraw(player, wasLegalWild4){
+        const target = nextPlayerIndex(player,1);
+        const challengeEnabled = settings.wild4Challenge;
+
+        let challenged=false;
+        if(challengeEnabled){
+          if(target===0){
+            challenged=await showChallengePrompt();
+            hideChallengePrompt();
+          } else {
+            challenged=Math.random()<0.5;
+          }
+        }
+
+        if(challenged){
+          if(!wasLegalWild4){
+            const got=await drawCardsToPlayer(player,4);
+            log(`${playerLabel(target)} challenged successfully! ${playerLabel(player)} drew ${got}.`);
+            currentPlayer=target;
+          } else {
+            const got=await drawCardsToPlayer(target,6);
+            log(`${playerLabel(target)} challenged and failed. Drew ${got}.`);
+            currentPlayer=nextPlayerIndex(target,1);
+          }
+          return;
+        }
+
+        if(settings.stackPlus){
+          pendingDraw+=4;
+          currentPlayer=target;
+        } else {
+          const got=await drawCardsToPlayer(target,4);
+          log(`${playerLabel(target)} drew ${got}.`);
+          currentPlayer=nextPlayerIndex(target,1);
+        }
+      }
+
+      function applyRickrollIfHumanTarget(player){
+        const target = nextPlayerIndex(player,1);
+        if(target===0){
+          log(`${playerLabel(player)} played Rickroll on You.`);
+          openLoseVideo("Rickrolled! Watch 15 seconds to unlock close");
+        } else {
+          log("Rickroll had no effect (target is NPC).");
+        }
+      }
+
+      async function maybeJumpIn(afterPlayer, justPlayedCard){
+        if(!settings.jumpIn || gameOver || pendingDraw>0) return false;
+
+        const order=[]; for(let s=1;s<settings.players;s++) order.push(nextPlayerIndex(afterPlayer,s));
+        const firstCandidate = order.find(p => hands[p].some(c=>exactMatchForJump(c,justPlayedCard)));
+        if(firstCandidate===undefined) return false;
+
+        if(firstCandidate===0){
+          const jumped = await new Promise(async (resolve)=>{
+            jumpWindow={active:true,card:justPlayedCard,resolve};
+            render();
+            await delay(1200);
+            if(jumpWindow && jumpWindow.active){
+              jumpWindow.active=false;
+              resolve(false);
+            }
+          });
+          jumpWindow=null; render();
+          return jumped;
+        }
+
+        await delay(260);
+        if(gameOver) return false;
+        const idx=hands[firstCandidate].findIndex(c=>exactMatchForJump(c,justPlayedCard));
+        if(idx>=0){
+          log(`AI ${firstCandidate} jumps in!`);
+          await playCard(firstCandidate,idx,null,null,{jumpIn:true});
+          return true;
+        }
+        return false;
+      }
+
+      async function handleUnoCallAfterPlay(player, hadTwoBefore){
+        if(hands[player].length!==1) return;
+
+        if(player===0){
+          if(hadTwoBefore && playerUnoCalled){
+            log("You called UNO in time.");
+          } else {
+            log("You forgot UNO!");
+            await maybeNpcCatchesHumanForgotUno();
+          }
+          playerUnoCalled = false;
+          return;
+        }
+
+        const aiCallsUno = Math.random() < 0.78;
+        if(aiCallsUno){
+          log(`AI ${player} says UNO!`);
+          return;
+        }
+
+        log(`AI ${player} forgot UNO! Catch within 5 seconds.`);
+        busy=false;
+        render();
+
+        const caught = await openUnoCatchWindowForAI(player);
+        if(!caught) log(`AI ${player} got away with forgetting UNO.`);
+
+        busy=true;
+        render();
+      }
+
+      async function playCard(player, index, sourceEl=null, forcedColor=null, meta={jumpIn:false}){
+        if(gameOver || busy) return false;
+        if(!meta.jumpIn && player!==currentPlayer) return false;
+        if(meta.jumpIn && pendingDraw>0) return false;
+
+        const hand=hands[player];
+        const card=hand[index];
+        if(!card) return false;
+
+        const adminBypass = player===0 && adminUnlocked && adminNoRules;
+
+        if(!meta.jumpIn && !canPlay(card,hand) && !adminBypass) return false;
+        if(meta.jumpIn && !exactMatchForJump(card,topDiscard())) return false;
+
+        const wasLegalWild4 = card.type!=="wild4"
+          ? true
+          : (adminBypass ? true : (settings.wild4Anytime ? true : !hasColorCard(hand,currentColor)));
+
+        const sourceRect = getPlaySourceRect(player, sourceEl);
+
+        busy=true; render();
+        const hadTwoBefore = (hand.length===2 && player===0);
+
+        await animatePlay(player,card,null,sourceRect);
+        if(gameOver) { busy=false; return false; }
+
+        hand.splice(index,1);
+        discardPile.push(card);
+
+        if(isColorChooser(card.type)){
+          if(player===0){
+            currentColor = forcedColor || await showColorPicker();
+            hideColorPicker();
+          } else {
+            currentColor = forcedColor || bestColorForHand(hand);
+          }
+        } else if(card.color){
+          currentColor = card.color;
+        }
+
+        if(adminBypass && pendingDraw>0 && !isPlusCard(card)){
+          log("Admin No-Rules: pending draw stack cleared.");
+          pendingDraw = 0;
+        }
+
+        log(`${playerLabel(player)} played ${cardName(card)}${meta.jumpIn ? " (jump-in)" : ""}${adminBypass ? " [ADMIN]" : ""}.`);
+
+        if(!meta.jumpIn){
+          busy=false; render();
+          const jumped=await maybeJumpIn(player,card);
+          if(jumped || gameOver) return true;
+          busy=true; render();
+        }
+
+        await applySevenZero(player,card);
+        if(await maybeWin(player)){ busy=false; return true; }
+
+        await handleUnoCallAfterPlay(player, hadTwoBefore);
+        if(gameOver){ busy=false; return true; }
+
+        const n=settings.players;
+        if(settings.stackPlus && card.type==="draw2"){
+          pendingDraw+=2;
+          currentPlayer=nextPlayerIndex(player,1);
+        } else if(settings.stackPlus && card.type==="draw8"){
+          pendingDraw+=8;
+          currentPlayer=nextPlayerIndex(player,1);
+        } else if(settings.stackPlus && card.type==="draw10"){
+          pendingDraw+=10;
+          currentPlayer=nextPlayerIndex(player,1);
+        } else if(card.type==="wild4"){
+          await handleWild4ChallengeOrDraw(player,wasLegalWild4);
+        } else if(!settings.stackPlus && card.type==="draw2"){
+          const target=nextPlayerIndex(player,1);
+          const got=await drawCardsToPlayer(target,2);
+          log(`${playerLabel(target)} drew ${got}.`);
+          currentPlayer=nextPlayerIndex(target,1);
+        } else if(!settings.stackPlus && card.type==="draw8"){
+          const target=nextPlayerIndex(player,1);
+          const got=await drawCardsToPlayer(target,8);
+          log(`${playerLabel(target)} drew ${got}.`);
+          currentPlayer=nextPlayerIndex(target,1);
+        } else if(!settings.stackPlus && card.type==="draw10"){
+          const target=nextPlayerIndex(player,1);
+          const got=await drawCardsToPlayer(target,10);
+          log(`${playerLabel(target)} drew ${got}.`);
+          currentPlayer=nextPlayerIndex(target,1);
+        } else if(card.type==="skipall"){
+          currentPlayer = player;
+          log("Skip All applied. All others were skipped.");
+        } else if(card.type==="rickroll"){
+          applyRickrollIfHumanTarget(player);
+          currentPlayer=nextPlayerIndex(player,1);
+        } else if(card.type==="skip"){
+          currentPlayer=nextPlayerIndex(player,2);
+          log("Skip applied.");
+        } else if(card.type==="reverse"){
+          if(n===2){
+            currentPlayer=nextPlayerIndex(player,2);
+            log("Reverse acts as skip in 2 players.");
+          } else {
+            direction*=-1;
+            currentPlayer=nextPlayerIndex(player,1);
+            log("Direction reversed.");
+          }
+        } else {
+          currentPlayer=nextPlayerIndex(player,1);
+        }
+
+        busy=false; render();
+        return true;
+      }
+
+      async function humanDrawAction(){
+        if(gameOver || busy || currentPlayer!==0) return;
+        const token = flowToken;
+        busy=true; render();
+
+        if(settings.stackPlus && pendingDraw>0){
+          const got=await drawCardsToPlayer(0,pendingDraw);
+          if(token !== flowToken || gameOver){ busy=false; render(); return; }
+          log(`You drew ${got} due to stacked draw.`);
+          pendingDraw=0;
+          currentPlayer=nextPlayerIndex(0,1);
+          playerUnoCalled=false;
+          busy=false; render();
+          await runAITurns();
+          return;
+        }
+
+        const got=await drawCardsToPlayer(0,1);
+        if(token !== flowToken || gameOver){ busy=false; render(); return; }
+        if(got>0) log("You drew a card.");
+        playerUnoCalled=false;
+        currentPlayer=nextPlayerIndex(0,1);
+        busy=false; render();
+        await runAITurns();
+      }
+
+      function scoreAI(card, hand){
+        let s=0;
+        if(card.type==="draw10") s+=140;
+        else if(card.type==="draw8") s+=112;
+        else if(card.type==="wild4") s+=95;
+        else if(card.type==="draw2") s+=82;
+        else if(card.type==="skipall") s+=96;
+        else if(card.type==="rickroll") s+=90;
+        else if(card.type==="skip") s+=70;
+        else if(card.type==="reverse") s+=65;
+        else if(card.type==="wild") s+=58;
+        else s+=20;
+        if(card.color) s += hand.filter(x=>x.color===card.color).length;
+        return s;
+      }
+
+      async function aiTurn(ai, token){
+        if(gameOver || currentPlayer!==ai || token!==flowToken) return;
+        if(adminUnlocked && adminFreezeAI){
+          busy=false; render();
+          return;
+        }
+
+        busy=true; render();
+        await delay(520);
+
+        if(gameOver || currentPlayer!==ai || token!==flowToken){
+          busy=false; render();
+          return;
+        }
+
+        const hand=hands[ai];
+
+        if(settings.stackPlus && pendingDraw>0){
+          const stackables = hand.map((c,i)=>({c,i})).filter(x=>isPlusCard(x.c));
+          if(stackables.length){
+            stackables.sort((a,b)=>scoreAI(b.c,hand)-scoreAI(a.c,hand));
+            const idx=stackables[0].i;
+            busy=false;
+            await playCard(ai,idx,null,bestColorForHand(hand),{jumpIn:false});
+            return;
+          } else {
+            const got=await drawCardsToPlayer(ai,pendingDraw);
+            if(gameOver || token!==flowToken){ busy=false; render(); return; }
+            log(`AI ${ai} drew ${got} due to stacked draw.`);
+            pendingDraw=0;
+            currentPlayer=nextPlayerIndex(ai,1);
+            busy=false; render();
+            return;
+          }
+        }
+
+        let playable=getPlayableIndices(ai);
+        if(playable.length===0){
+          const got=await drawCardsToPlayer(ai,1);
+          if(gameOver || token!==flowToken){ busy=false; render(); return; }
+          if(got>0) log(`AI ${ai} drew a card.`);
+          playable=getPlayableIndices(ai);
+          if(playable.length===0){
+            currentPlayer=nextPlayerIndex(ai,1);
+            busy=false; render();
+            return;
+          }
+        }
+
+        const picks=playable.map(i=>({i,s:scoreAI(hand[i],hand)}));
+        if(hand.length===2) picks.forEach(x=>x.s+=110);
+        picks.sort((a,b)=>b.s-a.s);
+
+        const idx=picks[0].i;
+        const chosen=hand[idx];
+        let color=null;
+        if(isColorChooser(chosen.type)){
+          color=bestColorForHand(hand.filter((_,j)=>j!==idx));
+        }
+
+        busy=false;
+        await playCard(ai,idx,null,color,{jumpIn:false});
+      }
+
+      async function runAITurns(){
+        const token = flowToken;
+        while(!gameOver && currentPlayer!==0 && token===flowToken){
+          if(adminUnlocked && adminFreezeAI){
+            busy=false;
+            render();
+            return;
+          }
+          await aiTurn(currentPlayer, token);
+        }
+        render();
+      }
+
+      function syncSettingsFromUI(){
+        const pb=playersSeg.querySelector("button.active");
+        settings.players=Number(pb?.dataset.players || 2);
+
+        const active = rule => !!rulesWrap.querySelector(`.rule-check[data-rule="${rule}"]`)?.classList.contains("checked");
+        settings.sevenZero = active("sevenZero");
+        settings.stackPlus = active("stackPlus");
+        settings.jumpIn = active("jumpIn");
+        settings.wild4Challenge = active("wild4Challenge");
+        settings.wild4Anytime = active("wild4Anytime");
+        settings.npcLuck = active("npcLuck");
+        settings.playerLuck = active("playerLuck");
+        settings.noMercy = active("noMercy");
+
+        if(settings.wild4Anytime && settings.wild4Challenge){
+          log("Note: Wild +4 Anytime is ON, so Wild +4 challenges always fail.");
+        }
+      }
+
+      function resetGame(){
+        bumpFlowToken();
+        clearUnoCatchWindow(null);
+        hideColorPicker();
+        hideTargetPicker();
+        hideChallengePrompt();
+        closeLoseVideo(true);
+
+        syncSettingsFromUI();
+        ensureWinsSize();
+        applySeatMap();
+        populateAdminPlayerSelects();
+
+        deck=shuffle(createDeck());
+        discardPile=[];
+        hands=Array.from({length:settings.players},()=>[]);
+        currentPlayer=0;
+        direction=1;
+        currentColor="red";
+        gameOver=false;
+        busy=false;
+        pendingDraw=0;
+        playerUnoCalled=false;
+        jumpWindow=null;
+        orbitBaseAngle=null;
+        adminVisualSelectedIndex = -1;
+        logs.length=0;
+
+        for(let i=0;i<7;i++){
+          for(let p=0;p<settings.players;p++){
+            const c=drawOneForPlayer(p);
+            if(c) hands[p].push(c);
+          }
+        }
+
+        let starter=null;
+        const temp=[];
+        while(deck.length){
+          const c=drawOneRaw();
+          if(!c) break;
+          if(c.type==="number"){ starter=c; break; }
+          temp.push(c);
+        }
+        deck.push(...temp);
+        deck=shuffle(deck);
+        if(!starter) starter={color:"red",type:"number",value:0};
+        discardPile.push(starter);
+        currentColor=starter.color;
+
+        log("Game started.");
+        if(settings.noMercy) log("No Mercy Mode ON: +8, Wild +10, Rickroll, and Skip All added.");
+        if(settings.npcLuck) log("NPC Luck is ON: AI draws are biased toward stronger cards.");
+        if(settings.playerLuck) log("Player Luck is ON: your draws are biased in your favor.");
+        if(adminUnlocked) log("Admin Mode is currently unlocked.");
+        render();
+        updateOrbitArrow(true);
+      }
+
+      function openAdminOverlay(){
+        adminPassInput.value = "";
+        adminPassMsg.textContent = "";
+        adminOverlay.style.display = "flex";
+        setTimeout(() => adminPassInput.focus(), 0);
+      }
+      function closeAdminOverlay(){ adminOverlay.style.display = "none"; }
+
+      function setAdminUnlocked(v){
+        adminUnlocked = !!v;
+        if(!adminUnlocked){
+          adminReveal = false;
+          adminNoRules = false;
+          adminFreezeAI = false;
+          adminGodDraw = false;
+          adminCardOverlay.style.display = "none";
+        }
+        updateAdminStateUI();
+        render();
+      }
+
+      function createCard(type, color, value){
+        if(type==="wild" || type==="wild4" || type==="draw10" || type==="rickroll" || type==="skipall"){
+          return {color:null, type};
+        }
+        if(type==="number"){
+          const v = Number(value);
+          if(Number.isNaN(v) || v<0 || v>9) return null;
+          return {color, type:"number", value:v};
+        }
+        return {color, type};
+      }
+
+      function createAdminCardFromUI(){
+        return createCard(adminCardType.value, adminCardColor.value, adminCardValue.value);
+      }
+
+      function createRigCardFromUI(){
+        return createCard(adminRigType.value, adminRigColor.value, adminRigValue.value);
+      }
+
+      function updateCardInputs(typeEl, colorEl, valueEl){
+        const t = typeEl.value;
+        const isColorless = t==="wild" || t==="wild4" || t==="draw10" || t==="rickroll" || t==="skipall";
+        const isNum = t==="number";
+        colorEl.disabled = isColorless;
+        valueEl.disabled = !isNum;
+      }
+
+      function adminAddWin(target, amount=1){
+        if(target<0 || target>=settings.players) return;
+        const n = Math.max(1, Math.min(999, Number(amount)||1));
+        wins[target] = (wins[target]||0) + n;
+        log(`Admin: +${n} win(s) granted to ${playerLabel(target)}. Total ${wins[target]}.`);
+        render();
+      }
+
+      async function adminInstantWinYou(){
+        if(gameOver){
+          wins[0] = (wins[0]||0) + 1;
+          log(`Admin: instant win credit added to You. Total ${wins[0]}.`);
+          render();
+          return;
+        }
+        hands[0] = [];
+        await maybeWin(0);
+        render();
+      }
+
+      function adminSpecificCardAction(mode, src, idx, dst){
+        if(!adminUnlocked) return false;
+        if(Number.isNaN(src) || src<0 || src>=settings.players) return false;
+        if(!hands[src] || Number.isNaN(idx) || idx<0 || idx>=hands[src].length){
+          log("Admin: selected card no longer valid.");
+          render();
+          return false;
+        }
+        if(mode==="move"){
+          if(Number.isNaN(dst) || dst<0 || dst>=settings.players){
+            log("Admin: invalid move target.");
+            return false;
+          }
+          if(src===dst){
+            log("Admin: source and target are the same.");
+            return false;
+          }
+        }
+
+        const [card] = hands[src].splice(idx,1);
+
+        if(mode==="remove"){
+          log(`Admin: removed selected card (${cardName(card)}) from ${playerLabel(src)}.`);
+        } else if(mode==="steal"){
+          hands[0].push(card);
+          log(`Admin: stole selected card (${cardName(card)}) from ${playerLabel(src)} to You.`);
+        } else if(mode==="move"){
+          hands[dst].push(card);
+          log(`Admin: moved selected card (${cardName(card)}) from ${playerLabel(src)} to ${playerLabel(dst)}.`);
+        } else {
+          return false;
+        }
+
+        adminVisualSelectedIndex = -1;
+        render();
+        return true;
+      }
+
+      function openAdminCardPicker(){
+        if(!adminUnlocked) return;
+        adminVisualSource.value = adminPickSource.value || "0";
+        adminVisualTarget.value = adminPickTarget.value || "0";
+        adminVisualSelectedIndex = Number(adminPickCard.value);
+        if(Number.isNaN(adminVisualSelectedIndex)) adminVisualSelectedIndex = -1;
+        adminCardOverlay.style.display = "flex";
+        renderAdminVisualCards();
+      }
+
+      function closeAdminCardPicker(){
+        adminCardOverlay.style.display = "none";
+      }
+
+      playersSeg.addEventListener("click",(e)=>{
+        const b=e.target.closest("button[data-players]");
+        if(!b) return;
+        playersSeg.querySelectorAll("button[data-players]").forEach(x=>x.classList.remove("active"));
+        b.classList.add("active");
+        syncSettingsFromUI();
+        ensureWinsSize();
+        populateAdminPlayerSelects();
+        renderWinsBoard();
+      });
+
+      rulesWrap.addEventListener("click",(e)=>{
+        const b=e.target.closest(".rule-check[data-rule]");
+        if(!b) return;
+        b.classList.toggle("checked");
+      });
+
+      newGameBtn.addEventListener("click", resetGame);
+
+      playerHandEl.addEventListener("click", async (e)=>{
+        const el=e.target.closest(".card[data-idx]");
+        if(!el || busy || gameOver) return;
+        const idx=Number(el.dataset.idx);
+        const c=hands[0][idx];
+        if(!c) return;
+
+        if(jumpWindow && jumpWindow.active){
+          if(!exactMatchForJump(c,jumpWindow.card)){
+            log("For Jump-In, play an exact matching card.");
+            return;
+          }
+          jumpWindow.active=false;
+          jumpWindow.resolve(true);
+          await playCard(0,idx,el,null,{jumpIn:true});
+          if(!gameOver) await runAITurns();
+          return;
+        }
+
+        if(currentPlayer!==0) return;
+        if(!canPlay(c,hands[0]) && !(adminUnlocked && adminNoRules)){ log("That card can't be played now."); return; }
+
+        await playCard(0,idx,el,null,{jumpIn:false});
+        if(!gameOver) await runAITurns();
+      });
+
+      async function onDraw(){ await humanDrawAction(); }
+      drawBtn.addEventListener("click", onDraw);
+      deckCardEl.addEventListener("click", onDraw);
+
+      unoBtn.addEventListener("click",()=>{
+        if(gameOver || busy || currentPlayer!==0) return;
+        if(hands[0].length===2){
+          playerUnoCalled=true;
+          log("You called UNO!");
+          render();
+        } else log("You can only call UNO with exactly 2 cards.");
+      });
+
+      catchBtn.addEventListener("click", async ()=>{
+        if(!unoCatchWindow.active) return;
+        const target = unoCatchWindow.player;
+        if(typeof target !== "number" || target===0) return;
+        catchBtn.disabled = true;
+        await punishForgotUno(target, "You");
+        clearUnoCatchWindow(true);
+        render();
+      });
+
+      colorOverlay.addEventListener("click",(e)=>{
+        const b=e.target.closest("button[data-color]");
+        if(!b || !resolveColor) return;
+        resolveColor(b.dataset.color);
+      });
+      targetOverlay.addEventListener("click",(e)=>{
+        const b=e.target.closest("button[data-target]");
+        if(!b || !resolveTarget) return;
+        resolveTarget(Number(b.dataset.target));
+      });
+      challengeOverlay.addEventListener("click",(e)=>{
+        const b=e.target.closest("button[data-challenge]");
+        if(!b || !resolveChallenge) return;
+        resolveChallenge(b.dataset.challenge==="yes");
+      });
+
+      closeLoseBtn.addEventListener("click", () => closeLoseVideo(false));
+      loseVideo.addEventListener("click", () => { if(loseVideo.paused){ loseVideo.play().catch(() => {}); } });
+      loseVideo.addEventListener("error", () => {
+        loseVideoLoadFailed = true;
+        loseHint.textContent = "Video failed to load in sandbox; close unlocks after 15s fail-safe.";
+      });
+
+      adminBtn.addEventListener("click", () => {
+        if(adminUnlocked){
+          adminPanel.classList.toggle("hidden");
+        } else openAdminOverlay();
+      });
+
+      adminCancel.addEventListener("click", closeAdminOverlay);
+
+      adminUnlockSubmit.addEventListener("click", () => {
+        const pass = adminPassInput.value;
+        if(pass === ADMIN_PASS){
+          setAdminUnlocked(true);
+          adminPassMsg.textContent = "";
+          closeAdminOverlay();
+          log("Admin mode unlocked.");
+        } else {
+          adminPassMsg.textContent = "Wrong password.";
+        }
+      });
+
+      adminOverlay.addEventListener("click", (e) => {
+        if(e.target === adminOverlay) closeAdminOverlay();
+      });
+
+      adminLockBtn.addEventListener("click", () => {
+        setAdminUnlocked(false);
+        log("Admin mode locked.");
+      });
+
+      adminRevealBtn.addEventListener("click", () => {
+        if(!adminUnlocked) return;
+        adminReveal = !adminReveal;
+        render();
+      });
+
+      adminNoRulesBtn.addEventListener("click", () => {
+        if(!adminUnlocked) return;
+        adminNoRules = !adminNoRules;
+        render();
+      });
+
+      adminFreezeBtn.addEventListener("click", () => {
+        if(!adminUnlocked) return;
+        adminFreezeAI = !adminFreezeAI;
+        log(`Admin: AI freeze ${adminFreezeAI ? "enabled" : "disabled"}.`);
+        render();
+      });
+
+      adminGodDrawBtn.addEventListener("click", () => {
+        if(!adminUnlocked) return;
+        adminGodDraw = !adminGodDraw;
+        log(`Admin: God Draw ${adminGodDraw ? "enabled" : "disabled"}.`);
+        render();
+      });
+
+      adminCardType.addEventListener("change", () => updateCardInputs(adminCardType, adminCardColor, adminCardValue));
+      adminRigType.addEventListener("change", () => updateCardInputs(adminRigType, adminRigColor, adminRigValue));
+      adminPickSource.addEventListener("change", refreshAdminCardPicker);
+
+      adminGiveCardBtn.addEventListener("click", () => {
+        if(!adminUnlocked) return;
+        const target = Number(adminGiveTarget.value);
+        if(Number.isNaN(target) || target<0 || target>=settings.players) return;
+        const card = createAdminCardFromUI();
+        if(!card) return;
+        hands[target].push(card);
+        log(`Admin: added ${cardName(card)} to ${playerLabel(target)}.`);
+        render();
+      });
+
+      adminAddWinBtn.addEventListener("click", () => {
+        if(!adminUnlocked) return;
+        const t = Number(adminWinTarget.value);
+        const amt = Number(adminWinAmount.value);
+        if(Number.isNaN(t)) return;
+        adminAddWin(t, amt);
+      });
+
+      adminResetWinsBtn.addEventListener("click", () => {
+        if(!adminUnlocked) return;
+        for(let i=0;i<wins.length;i++) wins[i]=0;
+        log("Admin: wins reset.");
+        render();
+      });
+
+      adminInstantWinBtn.addEventListener("click", async () => {
+        if(!adminUnlocked) return;
+        await adminInstantWinYou();
+      });
+
+      adminSetTurnBtn.addEventListener("click", () => {
+        if(!adminUnlocked || gameOver) return;
+        const t = Number(adminTurnTarget.value);
+        if(Number.isNaN(t) || t<0 || t>=settings.players) return;
+        currentPlayer = t;
+        busy = false;
+        log(`Admin: set turn to ${playerLabel(t)}.`);
+        render();
+      });
+
+      adminForceTurnBtn.addEventListener("click", () => {
+        if(!adminUnlocked || gameOver) return;
+        currentPlayer = 0;
+        busy = false;
+        log("Admin: forced turn to You.");
+        render();
+      });
+
+      adminMakeDrawBtn.addEventListener("click", async () => {
+        if(!adminUnlocked) return;
+        if(busy) return;
+        const t = Number(adminDrawTarget.value);
+        const n = Math.max(1, Math.min(20, Number(adminDrawCount.value)||1));
+        if(Number.isNaN(t) || t<0 || t>=settings.players) return;
+        busy = true; render();
+        const got = await drawCardsToPlayer(t,n);
+        busy = false;
+        log(`Admin: ${playerLabel(t)} drew ${got}.`);
+        render();
+      });
+
+      adminClearPendingBtn.addEventListener("click", () => {
+        if(!adminUnlocked) return;
+        pendingDraw = 0;
+        log("Admin: cleared pending draw stack.");
+        render();
+      });
+
+      adminRemoveRandomBtn.addEventListener("click", () => {
+        if(!adminUnlocked) return;
+        const t = Number(adminRemoveTarget.value);
+        if(Number.isNaN(t) || t<0 || t>=settings.players) return;
+        if(!hands[t] || hands[t].length===0){
+          log(`Admin: ${playerLabel(t)} has no cards to remove.`);
+          return;
+        }
+        const idx = Math.floor(Math.random()*hands[t].length);
+        const [removed] = hands[t].splice(idx,1);
+        log(`Admin: removed random card (${cardName(removed)}) from ${playerLabel(t)}.`);
+        render();
+      });
+
+      adminStealBtn.addEventListener("click", () => {
+        if(!adminUnlocked) return;
+        const from = Number(adminStealFrom.value);
+        if(Number.isNaN(from) || from<=0 || from>=settings.players) return;
+        if(!hands[from] || hands[from].length===0){
+          log(`Admin: AI ${from} has no cards to steal.`);
+          return;
+        }
+        const idx = Math.floor(Math.random()*hands[from].length);
+        const [stolen] = hands[from].splice(idx,1);
+        hands[0].push(stolen);
+        log(`Admin: stole ${cardName(stolen)} from AI ${from}.`);
+        render();
+      });
+
+      adminRemoveSelectedBtn.addEventListener("click", () => {
+        const src = Number(adminPickSource.value);
+        const idx = Number(adminPickCard.value);
+        adminSpecificCardAction("remove", src, idx, null);
+      });
+
+      adminStealSelectedBtn.addEventListener("click", () => {
+        const src = Number(adminPickSource.value);
+        const idx = Number(adminPickCard.value);
+        adminSpecificCardAction("steal", src, idx, null);
+      });
+
+      adminMoveSelectedBtn.addEventListener("click", () => {
+        const src = Number(adminPickSource.value);
+        const idx = Number(adminPickCard.value);
+        const dst = Number(adminPickTarget.value);
+        adminSpecificCardAction("move", src, idx, dst);
+      });
+
+      adminOpenVisualPickerBtn.addEventListener("click", openAdminCardPicker);
+      adminCardCloseBtn.addEventListener("click", closeAdminCardPicker);
+      adminCardOverlay.addEventListener("click", (e) => {
+        if(e.target === adminCardOverlay) closeAdminCardPicker();
+      });
+
+      adminVisualSource.addEventListener("change", () => {
+        adminVisualSelectedIndex = -1;
+        renderAdminVisualCards();
+      });
+
+      adminVisualTarget.addEventListener("change", renderAdminVisualCards);
+
+      adminVisualCards.addEventListener("click", (e) => {
+        const cardEl = e.target.closest(".card[data-idx]");
+        if(!cardEl) return;
+        adminVisualSelectedIndex = Number(cardEl.dataset.idx);
+        renderAdminVisualCards();
+      });
+
+      adminVisualRemoveBtn.addEventListener("click", () => {
+        const src = Number(adminVisualSource.value);
+        adminSpecificCardAction("remove", src, adminVisualSelectedIndex, null);
+      });
+
+      adminVisualStealBtn.addEventListener("click", () => {
+        const src = Number(adminVisualSource.value);
+        adminSpecificCardAction("steal", src, adminVisualSelectedIndex, null);
+      });
+
+      adminVisualMoveBtn.addEventListener("click", () => {
+        const src = Number(adminVisualSource.value);
+        const dst = Number(adminVisualTarget.value);
+        adminSpecificCardAction("move", src, adminVisualSelectedIndex, dst);
+      });
+
+      adminApplyColorBtn.addEventListener("click", () => {
+        if(!adminUnlocked) return;
+        currentColor = adminSetColor.value;
+        log(`Admin: active color set to ${cap(currentColor)}.`);
+        render();
+      });
+
+      adminReverseNowBtn.addEventListener("click", () => {
+        if(!adminUnlocked) return;
+        direction *= -1;
+        log("Admin: direction reversed immediately.");
+        render();
+      });
+
+      adminShuffleDeckBtn.addEventListener("click", () => {
+        if(!adminUnlocked) return;
+        deck = shuffle(deck);
+        log("Admin: deck shuffled.");
+        render();
+      });
+
+      adminRigTopBtn.addEventListener("click", () => {
+        if(!adminUnlocked) return;
+        const card = createRigCardFromUI();
+        if(!card) return;
+        deck.push(card);
+        log(`Admin: rigged top deck with ${cardName(card)}.`);
+        render();
+      });
+
+      adminPeekDeckBtn.addEventListener("click", () => {
+        if(!adminUnlocked) return;
+        renderAdminDeckPeek();
+        log("Admin: deck peek refreshed.");
+      });
+
+      adminSwapHandsBtn.addEventListener("click", () => {
+        if(!adminUnlocked) return;
+        const a = Number(adminSwapA.value);
+        const b = Number(adminSwapB.value);
+        if(Number.isNaN(a) || Number.isNaN(b) || a<0 || b<0 || a>=settings.players || b>=settings.players) return;
+        if(a===b){
+          log("Admin: choose two different players to swap.");
+          return;
+        }
+        const t = hands[a]; hands[a] = hands[b]; hands[b] = t;
+        log(`Admin: swapped hands between ${playerLabel(a)} and ${playerLabel(b)}.`);
+        render();
+      });
+
+      adminSetPendingBtn.addEventListener("click", () => {
+        if(!adminUnlocked) return;
+        const n = Math.max(0, Math.min(300, Number(adminSetPending.value)||0));
+        pendingDraw = n;
+        log(`Admin: pending draw set to +${n}.`);
+        render();
+      });
+
+      adminSkipTurnBtn.addEventListener("click", () => {
+        if(!adminUnlocked || gameOver) return;
+        currentPlayer = nextPlayerIndex(currentPlayer,1);
+        busy = false;
+        log("Admin: skipped current turn.");
+        render();
+      });
+
+      adminAllDrawBtn.addEventListener("click", async () => {
+        if(!adminUnlocked || busy) return;
+        const n = Math.max(1, Math.min(20, Number(adminAllDrawCount.value)||1));
+        busy = true; render();
+        let total = 0;
+        for(let p=0;p<settings.players;p++){
+          total += await drawCardsToPlayer(p,n);
+          if(gameOver) break;
+        }
+        busy = false;
+        log(`Admin: everyone drew ${n} card(s). Total dealt: ${total}.`);
+        render();
+      });
+
+      adminAllDiscardBtn.addEventListener("click", () => {
+        if(!adminUnlocked) return;
+        const n = Math.max(1, Math.min(20, Number(adminAllDiscardCount.value)||1));
+        let removed = 0;
+        for(let p=0;p<settings.players;p++){
+          for(let i=0;i<n;i++){
+            if(!hands[p] || hands[p].length===0) break;
+            const idx = Math.floor(Math.random()*hands[p].length);
+            hands[p].splice(idx,1);
+            removed++;
+          }
+        }
+        log(`Admin: everyone discarded random ${n} each (actual removed: ${removed}).`);
+        render();
+      });
+
+      window.addEventListener("resize", render);
+
+      updateCardInputs(adminCardType, adminCardColor, adminCardValue);
+      updateCardInputs(adminRigType, adminRigColor, adminRigValue);
+      populateAdminPlayerSelects();
+      resetGame();
+    })();
+  </script>
+</body>
+</html>
