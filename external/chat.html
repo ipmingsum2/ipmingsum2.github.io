@@ -73,6 +73,12 @@
         <button id="btnLogout" class="danger">Logout</button>
       </div>
       <div id="meInfo" class="muted" style="margin-top:6px"></div>
+      <div class="row" style="margin-top:8px">
+        <div style="flex:1">
+          <div class="muted">Rooms</div>
+          <div id="roomList" class="list"></div>
+      </div>
+    </div>
 
       <div class="chat" id="chat" style="margin-top:10px"></div>
 
@@ -304,6 +310,7 @@ async function loadMessages(){
 async function joinRoom(){
   room=($("roomInput").value.trim()||"lobby").slice(0,64);
   await loadMessages();
+  loadRooms();
   if(channel) await sb.removeChannel(channel);
   channel=sb.channel(`room-${room}-${Date.now()}`)
     .on("postgres_changes",{event:"INSERT",schema:"public",table:"messages",filter:`room=eq.${room}`},async(payload)=>{
@@ -321,7 +328,50 @@ async function joinRoom(){
       const single=new Map(); single.set(m.id,m); wireMessageActions(single);
     }).subscribe();
 }
+async function loadRooms(){
+  // Pull recent messages and derive unique rooms
+  const q = await sb.from("messages")
+    .select("room, created_at")
+    .order("created_at", { ascending:false })
+    .limit(2000);
 
+  if(q.error){
+    debugLog("rooms.load", q.error);
+    return;
+  }
+
+  const map = new Map();
+  for(const r of (q.data || [])){
+    if(!r.room) continue;
+    if(!map.has(r.room)) map.set(r.room, { room:r.room, last:r.created_at, count:0 });
+    map.get(r.room).count++;
+  }
+
+  const rooms = [...map.values()]
+    .sort((a,b)=>new Date(b.last)-new Date(a.last));
+
+  const box = $("roomList");
+  box.innerHTML = rooms.length ? rooms.map(r => `
+    <div class="list-item">
+      <div>
+        <div><b>#${esc(r.room)}</b></div>
+        <div class="muted">${r.count} msgs • last ${fmt(r.last)}</div>
+      </div>
+      <div>
+        <button class="ghost" data-open-room="${esc(r.room)}">Open</button>
+      </div>
+    </div>
+  `).join("") : `<div class="muted">No rooms yet.</div>`;
+
+  box.querySelectorAll("[data-open-room]").forEach(btn=>{
+    btn.onclick = async ()=>{
+      const rm = btn.getAttribute("data-open-room");
+      $("roomInput").value = rm;
+      await joinRoom();
+      toast(`Joined #${rm}`, "ok");
+    };
+  });
+}
 /* announcements */
 async function loadAnnouncements(){
   const q = await sb.from("announcements")
@@ -535,6 +585,7 @@ $("btnLogin").onclick=async()=>{
     await loadFilters();
     await loadAnnouncements();
     await joinRoom();
+    await loadRooms();
     toast("Login success");
   }catch(e){setAuthMsg(errText("login",e),true);debugLog("login",e);}
 };
@@ -602,6 +653,7 @@ function subscribeSideChannels(){
     await loadFilters();
     await loadAnnouncements();
     await joinRoom();
+    await loadRooms();
   }catch(e){debugLog("init",e);showAuth();toast(errText("init",e),"err",5000);}
 })();
 </script>
