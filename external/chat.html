@@ -3,48 +3,72 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Realtime Chat</title>
+  <title>Mobile Chat</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root{
-      --bg:#0e1320; --panel:#161c2f; --line:#25314f; --text:#ecf1ff; --muted:#a7b0c9;
-      --primary:#5ea1ff; --danger:#ff6d6d; --ok:#67d08b;
+      --bg:#0c1220; --panel:#141c31; --line:#273657; --txt:#eef3ff; --muted:#a8b3ce;
+      --pri:#68a7ff; --ok:#58c98b; --err:#ff6f6f; --warn:#ffcc66;
     }
     *{box-sizing:border-box}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text)}
-    .wrap{max-width:980px;margin:0 auto;padding:12px}
+    body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,Segoe UI,Roboto}
+    .app{max-width:980px;margin:0 auto;padding:12px}
     .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px}
-    h2,h3{margin:8px 0 10px}
     .row{display:flex;gap:8px;flex-wrap:wrap}
-    input,button,select,textarea{
-      border:1px solid #324266;background:#0f1628;color:var(--text);border-radius:10px;
+    .col{display:flex;flex-direction:column;gap:8px}
+    .sp{height:10px}
+    h2,h3{margin:0 0 8px}
+    input,textarea,button{
+      border-radius:10px;border:1px solid #31456f;background:#0e162a;color:var(--txt);
       padding:10px 12px;font-size:14px
     }
-    input,select,textarea{flex:1;min-width:140px}
-    button{cursor:pointer;background:var(--primary);border:none;color:#091427;font-weight:700}
-    button.danger{background:var(--danger);color:#290808}
-    button.ghost{background:#243455;color:#dfe9ff}
-    .muted{color:var(--muted);font-size:12px}
+    input,textarea{flex:1;min-width:140px}
+    textarea{resize:vertical;min-height:58px}
+    button{cursor:pointer;border:none;background:var(--pri);color:#081327;font-weight:700}
+    button.ghost{background:#22365d;color:#e4edff}
+    button.danger{background:var(--err);color:#2b0909}
+    button.warn{background:var(--warn);color:#3f2e00}
+    .muted{font-size:12px;color:var(--muted)}
     .hidden{display:none !important}
-    .topbar{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}
+    .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+    .pill{font-size:11px;padding:3px 8px;border-radius:999px;background:#213a66}
+    .pill.admin{background:#5a3c15;color:#ffd994}
     .chat{
-      height:52vh;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:10px;background:#0e1528;
+      height:52vh;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:10px;background:#0d1528;
       display:flex;flex-direction:column;gap:8px
     }
-    .msg{border:1px solid #2b395c;background:#192442;border-radius:10px;padding:8px}
-    .msg .meta{font-size:12px;color:#c5d0ec;margin-bottom:6px;display:flex;justify-content:space-between;gap:8px}
-    .msg .text{white-space:pre-wrap;word-break:break-word}
-    .msg img{max-width:220px;border-radius:8px;border:1px solid #334768;margin-top:6px}
-    .msg.deleted{opacity:.6;background:#2a2f3f}
-    .badge{display:inline-block;padding:3px 8px;border-radius:999px;font-size:11px;background:#243455;color:#d8e5ff}
-    .badge.admin{background:#3f2d0e;color:#ffd58f}
-    .ok{color:var(--ok)} .err{color:var(--danger)}
+    .msg{border:1px solid #2a3b61;background:#182546;border-radius:10px;padding:8px}
+    .msg.deleted{opacity:.66;background:#2a3145}
+    .meta{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:#cad4ef;margin-bottom:6px}
+    .body{white-space:pre-wrap;word-break:break-word}
+    .msg img.up{max-width:220px;max-height:220px;border-radius:8px;border:1px solid #38507f;margin-top:8px}
+    .msg .avatar{width:22px;height:22px;border-radius:50%;border:1px solid #445c8d;object-fit:cover;vertical-align:middle;margin-right:6px}
+    .actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+    .actions button{padding:6px 9px;font-size:12px}
+    .file-ui{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .fname{font-size:12px;color:var(--muted);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .toast-wrap{position:fixed;right:12px;bottom:12px;display:flex;flex-direction:column;gap:8px;z-index:9999}
+    .toast{
+      min-width:220px;max-width:320px;padding:10px 12px;border-radius:10px;font-size:13px;
+      border:1px solid #3a4f7c;background:#172643;color:#ebf2ff;box-shadow:0 8px 20px rgba(0,0,0,.35)
+    }
+    .toast.ok{background:#133125;border-color:#2f7d52}
+    .toast.err{background:#381919;border-color:#8e3f3f}
+    .toast.warn{background:#3b2f14;border-color:#876a2e}
+    .modal-backdrop{
+      position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:10000
+    }
+    .modal{
+      width:min(94vw,420px);background:#141f38;border:1px solid #31456f;border-radius:12px;padding:12px
+    }
+    .modal h4{margin:0 0 8px}
+    .modal .row{margin-top:8px}
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="topbar">
-      <h2>Chat Room</h2>
+  <div class="app">
+    <div class="top">
+      <h2>Realtime Chat</h2>
       <div id="status" class="muted">Not logged in</div>
     </div>
 
@@ -55,355 +79,424 @@
         <input id="email" placeholder="Email" />
         <input id="password" type="password" placeholder="Password" />
       </div>
-      <div class="row" style="margin-top:8px">
-        <input id="username" placeholder="Username (register only)" />
-        <input id="displayName" placeholder="Display Name (register only)" />
+      <div class="row">
+        <input id="regUsername" placeholder="Username (for register)" />
+        <input id="regDisplay" placeholder="Display Name (for register)" />
       </div>
-      <div class="row" style="margin-top:8px">
+      <div class="row">
         <button id="btnLogin">Login</button>
         <button id="btnRegister" class="ghost">Register</button>
       </div>
-      <div id="authMsg" class="muted" style="margin-top:8px"></div>
+      <div id="authInfo" class="muted"></div>
     </div>
 
     <!-- APP -->
-    <div id="appCard" class="card hidden" style="margin-top:12px">
+    <div id="appCard" class="card hidden">
       <div class="row" style="align-items:center">
-        <span id="roleBadge" class="badge">user</span>
-        <input id="room" value="lobby" placeholder="room" style="max-width:180px" />
-        <button id="btnJoin" class="ghost">Join Room</button>
+        <span id="rolePill" class="pill">user</span>
+        <input id="roomInput" value="lobby" style="max-width:180px" placeholder="room"/>
+        <button id="btnJoin" class="ghost">Join</button>
         <button id="btnLogout" class="danger">Logout</button>
       </div>
 
-      <div class="row" style="margin-top:8px">
-        <input id="profileDisplayName" placeholder="New Display Name" />
-        <input id="avatarFile" type="file" accept="image/*" />
+      <div class="sp"></div>
+
+      <div class="row">
+        <input id="newDisplayName" placeholder="New display name" />
+        <div class="file-ui">
+          <input id="avatarFile" type="file" accept="image/*" hidden />
+          <button id="pickAvatarBtn" type="button" class="ghost">Choose Avatar</button>
+          <span id="avatarName" class="fname">No file chosen</span>
+        </div>
         <button id="btnSaveProfile" class="ghost">Save Profile</button>
       </div>
 
-      <div id="meLine" class="muted" style="margin-top:8px"></div>
+      <div id="meInfo" class="muted"></div>
 
-      <div id="chat" class="chat" style="margin-top:10px"></div>
+      <div id="chat" class="chat"></div>
 
-      <div class="row" style="margin-top:10px">
-        <textarea id="msgText" rows="2" placeholder="Type message..."></textarea>
-      </div>
-      <div class="row" style="margin-top:8px">
-        <input id="msgImage" type="file" accept="image/*" />
+      <div class="sp"></div>
+
+      <textarea id="msgText" placeholder="Type message..."></textarea>
+      <div class="row">
+        <div class="file-ui">
+          <input id="msgFile" type="file" accept="image/*" hidden />
+          <button id="pickMsgBtn" type="button" class="ghost">Attach Image</button>
+          <span id="msgFileName" class="fname">No file chosen</span>
+        </div>
         <button id="btnSend">Send</button>
       </div>
 
-      <!-- ADMIN PANEL -->
-      <div id="adminPanel" class="card hidden" style="margin-top:12px;background:#1b2034">
-        <h3>Admin Panel</h3>
+      <div id="adminCard" class="card hidden" style="margin-top:10px;background:#1a2138">
+        <h3>Admin Controls</h3>
         <div class="row">
-          <input id="targetIp" placeholder="Target IP (e.g. 1.2.3.4)" />
-          <input id="muteSeconds" type="number" value="60" placeholder="Mute seconds" style="max-width:140px" />
+          <input id="targetIp" placeholder="Target IP" />
+          <input id="muteSec" type="number" value="60" style="max-width:140px" placeholder="seconds"/>
         </div>
-        <div class="row" style="margin-top:8px">
-          <button id="btnMute" class="ghost">Mute IP</button>
+        <div class="row">
+          <button id="btnMute" class="warn">Mute IP</button>
           <button id="btnUnmute" class="ghost">Unmute IP</button>
           <button id="btnBan" class="danger">Ban IP</button>
           <button id="btnUnban" class="ghost">Unban IP</button>
         </div>
-        <div id="adminMsg" class="muted" style="margin-top:8px"></div>
+        <div id="adminInfo" class="muted"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toastWrap" class="toast-wrap"></div>
+
+  <!-- custom confirm modal -->
+  <div id="confirmBackdrop" class="modal-backdrop">
+    <div class="modal">
+      <h4 id="confirmTitle">Confirm</h4>
+      <div id="confirmText" class="muted"></div>
+      <div class="row" style="justify-content:flex-end">
+        <button id="confirmCancel" class="ghost">Cancel</button>
+        <button id="confirmOk" class="danger">Delete</button>
       </div>
     </div>
   </div>
 
 <script>
-/* =========================
-   CONFIG
-========================= */
-const SUPABASE_URL = "https://lflkpziiwnoamvtrbcil.supabase.co"; // e.g. https://abcxyz.supabase.co
+/* ================= CONFIG ================= */
+const SUPABASE_URL = "https://lflkpziiwnoamvtrbcil.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_tFvlhmTEDV3SOSVp0JvVzg_KHXFiDNb";
+/* ========================================= */
 
-/* ========================= */
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const el = (id) => document.getElementById(id);
-const authCard = el("authCard"), appCard = el("appCard"), statusEl = el("status"), chatEl = el("chat");
-const adminPanel = el("adminPanel"), roleBadge = el("roleBadge"), meLine = el("meLine");
+// Elements
+const $ = (id)=>document.getElementById(id);
+const statusEl = $("status"), authCard=$("authCard"), appCard=$("appCard"), chatEl=$("chat");
+const rolePill=$("rolePill"), meInfo=$("meInfo"), adminCard=$("adminCard");
+const confirmBackdrop=$("confirmBackdrop"), confirmTitle=$("confirmTitle"), confirmText=$("confirmText");
+let confirmResolve = null;
 
-let currentUser = null;
-let profile = null;
-let room = "lobby";
-let channel = null;
+let me=null, profile=null, room="lobby", channel=null;
 
-function uiMsg(id, msg, good=false) {
-  const x = el(id);
-  x.className = good ? "ok muted" : "err muted";
-  x.textContent = msg;
+// UI helpers
+function toast(msg,type="ok",ms=2600){
+  const wrap=$("toastWrap"); const d=document.createElement("div");
+  d.className=`toast ${type}`; d.textContent=msg; wrap.appendChild(d);
+  setTimeout(()=>d.remove(),ms);
 }
-function esc(s=""){ return s.replace(/[&<>"']/g, m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m])); }
-function dt(iso){ try { return new Date(iso).toLocaleString(); } catch { return iso; } }
+function setInfo(id,msg,isErr=false){
+  const e=$(id); e.textContent=msg; e.style.color=isErr?"var(--err)":"var(--muted)";
+}
+function esc(s=""){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));}
+function when(iso){ try{return new Date(iso).toLocaleString();}catch{return iso;} }
 
-async function ensureProfile(user, usernameHint="", displayHint="") {
-  let { data: p } = await sb.from("profiles").select("*").eq("id", user.id).maybeSingle();
-  if (!p) {
-    const username = usernameHint || user.email.split("@")[0].slice(0,24);
-    const display_name = displayHint || username;
-    const ins = await sb.from("profiles").insert({ id:user.id, username, display_name, role:"user" }).select("*").single();
-    if (ins.error) throw ins.error;
+function openConfirm(title,text){
+  confirmTitle.textContent=title; confirmText.textContent=text;
+  confirmBackdrop.style.display="flex";
+  return new Promise((resolve)=>{ confirmResolve=resolve; });
+}
+$("confirmCancel").onclick=()=>{ confirmBackdrop.style.display="none"; confirmResolve?.(false); confirmResolve=null; };
+$("confirmOk").onclick=()=>{ confirmBackdrop.style.display="none"; confirmResolve?.(true); confirmResolve=null; };
+
+// auth/app state
+function loggedOut(){
+  me=null; profile=null;
+  authCard.classList.remove("hidden"); appCard.classList.add("hidden");
+  statusEl.textContent="Not logged in";
+  chatEl.innerHTML="";
+  if(channel){ sb.removeChannel(channel); channel=null; }
+}
+function loggedInUI(){
+  authCard.classList.add("hidden"); appCard.classList.remove("hidden");
+  statusEl.textContent=`Logged in: ${profile.display_name} (@${profile.username})`;
+  rolePill.textContent=profile.role;
+  rolePill.className="pill" + (profile.role==="admin" ? " admin":"");
+  adminCard.classList.toggle("hidden", profile.role!=="admin");
+  meInfo.innerHTML = `You: <b>${esc(profile.display_name)}</b> @${esc(profile.username)}`;
+}
+
+// profile
+async function ensureProfile(user, usernameHint="", displayHint=""){
+  let {data:p,error:e1} = await sb.from("profiles").select("*").eq("id",user.id).maybeSingle();
+  if(e1) throw e1;
+  if(!p){
+    const username=(usernameHint || user.email.split("@")[0]).trim().slice(0,24) || ("u"+Date.now());
+    const display_name=(displayHint || username).trim().slice(0,48);
+    const ins = await sb.from("profiles").insert({
+      id:user.id, username, display_name, role:"user"
+    }).select("*").single();
+    if(ins.error) throw ins.error;
     p = ins.data;
   }
   return p;
 }
 
-function setLoggedOut() {
-  currentUser = null; profile = null;
-  authCard.classList.remove("hidden");
-  appCard.classList.add("hidden");
-  statusEl.textContent = "Not logged in";
-  chatEl.innerHTML = "";
-  if (channel) { sb.removeChannel(channel); channel = null; }
+// files
+$("pickAvatarBtn").onclick=()=>$("avatarFile").click();
+$("pickMsgBtn").onclick=()=>$("msgFile").click();
+$("avatarFile").addEventListener("change",()=>{
+  $("avatarName").textContent = $("avatarFile").files?.[0]?.name || "No file chosen";
+});
+$("msgFile").addEventListener("change",()=>{
+  $("msgFileName").textContent = $("msgFile").files?.[0]?.name || "No file chosen";
+});
+
+async function uploadToBucket(file){
+  const ext=(file.name.split(".").pop()||"jpg").toLowerCase();
+  const path=`${me.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  const up = await sb.storage.from("chat-media").upload(path,file,{upsert:false});
+  if(up.error) throw up.error;
+  const pub = sb.storage.from("chat-media").getPublicUrl(path);
+  return pub.data.publicUrl;
 }
 
-function renderMe() {
-  roleBadge.textContent = profile?.role || "user";
-  roleBadge.className = "badge" + (profile?.role === "admin" ? " admin" : "");
-  adminPanel.classList.toggle("hidden", profile?.role !== "admin");
-  meLine.innerHTML = `Signed in as <b>${esc(profile?.display_name || "")}</b> (@${esc(profile?.username || "")})`;
-  statusEl.textContent = `Logged in: ${profile?.display_name || currentUser?.email}`;
-}
+// login/register/logout
+$("btnLogin").onclick = async ()=>{
+  setInfo("authInfo","");
+  const email=$("email").value.trim();
+  const password=$("password").value;
+  if(!email || !password) return setInfo("authInfo","Email and password required.",true);
 
-function msgActions(m) {
-  const isOwner = currentUser && m.user_id === currentUser.id;
-  const isAdmin = profile?.role === "admin";
-  if (!isOwner && !isAdmin) return "";
-  return `<button class="ghost" onclick="deleteMessage('${m.id}')">Delete</button>`;
-}
+  const res = await sb.auth.signInWithPassword({email,password});
+  if(res.error) return setInfo("authInfo",res.error.message,true);
 
-function renderMessage(m) {
-  const deleted = m.deleted ? "deleted" : "";
-  const avatar = m.avatar_url ? `<img src="${esc(m.avatar_url)}" alt="avatar" style="width:26px;height:26px;border-radius:50%;object-fit:cover;border:1px solid #445;" />` : "";
-  const img = m.image_url ? `<div><img src="${esc(m.image_url)}" alt="upload" /></div>` : "";
-  const text = m.deleted ? "<i>[deleted]</i>" : esc(m.text || "");
-  const adminIP = (profile?.role === "admin" && m.ip) ? `<span class="muted">IP: ${esc(m.ip)}</span>` : "";
-  return `
-  <div class="msg ${deleted}" id="msg-${m.id}">
-    <div class="meta">
-      <span>${avatar} <b>${esc(m.display_name || m.username || "user")}</b> @${esc(m.username || "")}</span>
-      <span>${dt(m.created_at)} ${adminIP}</span>
-    </div>
-    <div class="text">${text}</div>
-    ${img}
-    <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
-      ${msgActions(m)}
-      ${profile?.role==="admin" && m.ip ? `
-        <button class="ghost" onclick="fillIp('${m.ip}')">Use IP</button>
-      ` : ""}
-    </div>
-  </div>`;
-}
+  me=res.data.user;
+  try{
+    profile=await ensureProfile(me);
+    loggedInUI();
+    await joinRoom();
+    toast("Login success","ok");
+  }catch(err){
+    setInfo("authInfo",err.message||"Profile error",true);
+  }
+};
 
-function appendMessage(m) {
-  chatEl.insertAdjacentHTML("beforeend", renderMessage(m));
-  chatEl.scrollTop = chatEl.scrollHeight;
-}
+$("btnRegister").onclick = async ()=>{
+  setInfo("authInfo","");
+  const email=$("email").value.trim();
+  const password=$("password").value;
+  const username=$("regUsername").value.trim();
+  const display=$("regDisplay").value.trim();
+  if(!email || !password || !username) return setInfo("authInfo","Email, password, username required.",true);
 
-async function loadMessages() {
-  chatEl.innerHTML = "";
-  const { data, error } = await sb.from("messages")
-    .select("*")
-    .eq("room", room)
-    .order("created_at", { ascending: true })
-    .limit(200);
-  if (error) return console.error(error);
-  data.forEach(appendMessage);
-}
-
-async function joinRoom() {
-  room = (el("room").value || "lobby").trim();
-  await loadMessages();
-
-  if (channel) await sb.removeChannel(channel);
-  channel = sb.channel(`room-${room}-${Date.now()}`)
-    .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `room=eq.${room}` },
-      (payload) => appendMessage(payload.new))
-    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter: `room=eq.${room}` },
-      (payload) => {
-        const box = document.getElementById(`msg-${payload.new.id}`);
-        if (box) box.outerHTML = renderMessage(payload.new);
-      })
-    .subscribe();
-}
-
-async function uploadImage(file) {
-  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-  const path = `${currentUser.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-  const { error } = await sb.storage.from("chat-media").upload(path, file, { upsert: false });
-  if (error) throw error;
-  const { data } = sb.storage.from("chat-media").getPublicUrl(path);
-  return data.publicUrl;
-}
-
-async function login() {
-  uiMsg("authMsg", "");
-  const email = el("email").value.trim();
-  const password = el("password").value;
-  const { data, error } = await sb.auth.signInWithPassword({ email, password });
-  if (error) return uiMsg("authMsg", error.message);
-  currentUser = data.user;
-  profile = await ensureProfile(currentUser);
-  authCard.classList.add("hidden");
-  appCard.classList.remove("hidden");
-  renderMe();
-  await joinRoom();
-  uiMsg("authMsg", "Login success", true);
-}
-
-async function register() {
-  uiMsg("authMsg", "");
-  const email = el("email").value.trim();
-  const password = el("password").value;
-  const username = el("username").value.trim();
-  const displayName = el("displayName").value.trim() || username;
-
-  const { data, error } = await sb.auth.signUp({ email, password });
-  if (error) return uiMsg("authMsg", error.message);
-  if (!data.user) return uiMsg("authMsg", "Check your email confirmation, then login.", true);
-
-  currentUser = data.user;
-  try {
-    profile = await ensureProfile(currentUser, username, displayName);
-  } catch (e) {
-    return uiMsg("authMsg", e.message || "Profile creation failed");
+  const sign = await sb.auth.signUp({email,password});
+  if(sign.error) return setInfo("authInfo",sign.error.message,true);
+  if(!sign.data.user){
+    toast("Check email confirmation, then login.","warn",3500);
+    return;
   }
 
-  authCard.classList.add("hidden");
-  appCard.classList.remove("hidden");
-  renderMe();
-  await joinRoom();
-  uiMsg("authMsg", "Registered + logged in", true);
-}
+  me=sign.data.user;
+  try{
+    profile=await ensureProfile(me,username,display||username);
+    loggedInUI();
+    await joinRoom();
+    toast("Registered + logged in","ok");
+  }catch(err){
+    setInfo("authInfo",err.message||"Profile error",true);
+  }
+};
 
-async function logout() {
+$("btnLogout").onclick = async ()=>{
   await sb.auth.signOut();
-  setLoggedOut();
-}
+  loggedOut();
+  toast("Logged out","ok");
+};
 
-async function saveProfile() {
-  const display_name = el("profileDisplayName").value.trim() || profile.display_name;
+// profile save
+$("btnSaveProfile").onclick = async ()=>{
+  if(!me) return;
+  let display_name = $("newDisplayName").value.trim() || profile.display_name;
+  display_name = display_name.slice(0,48);
+
   let avatar_url = profile.avatar_url || null;
+  const f = $("avatarFile").files?.[0];
+  try{
+    if(f) avatar_url = await uploadToBucket(f);
+    const upd = await sb.from("profiles").update({display_name,avatar_url}).eq("id",me.id);
+    if(upd.error) throw upd.error;
+    profile.display_name = display_name;
+    profile.avatar_url = avatar_url;
+    loggedInUI();
+    toast("Profile updated","ok");
+  }catch(err){
+    toast(err.message||"Profile update failed","err",3500);
+  }
+};
 
-  const file = el("avatarFile").files[0];
-  if (file) avatar_url = await uploadImage(file);
-
-  const { error } = await sb.from("profiles")
-    .update({ display_name, avatar_url })
-    .eq("id", currentUser.id);
-  if (error) return alert(error.message);
-
-  profile.display_name = display_name;
-  profile.avatar_url = avatar_url;
-  renderMe();
-  alert("Profile updated");
+// message rendering
+function actionButtons(m){
+  const isOwner = me && m.user_id===me.id;
+  const isAdmin = profile?.role==="admin";
+  let html = "";
+  if(isOwner || isAdmin){
+    html += `<button class="ghost" data-del="${m.id}">Delete</button>`;
+  }
+  if(isAdmin && m.ip){
+    html += `<button class="warn" data-fillip="${esc(m.ip)}">Use IP</button>`;
+  }
+  return html;
+}
+function renderMsg(m){
+  const av = m.avatar_url ? `<img class="avatar" src="${esc(m.avatar_url)}" alt="a" />` : "";
+  const deleted = m.deleted ? "deleted":"";
+  const text = m.deleted ? "<i>[deleted]</i>" : esc(m.text||"");
+  const img = (!m.deleted && m.image_url) ? `<img class="up" src="${esc(m.image_url)}" alt="upload"/>` : "";
+  const ipView = profile?.role==="admin" && m.ip ? ` • IP:${esc(m.ip)}` : "";
+  return `
+    <div class="msg ${deleted}" id="msg-${m.id}">
+      <div class="meta">
+        <span>${av}<b>${esc(m.display_name||m.username||"user")}</b> @${esc(m.username||"")}</span>
+        <span>${when(m.created_at)}${ipView}</span>
+      </div>
+      <div class="body">${text}</div>
+      ${img}
+      <div class="actions">${actionButtons(m)}</div>
+    </div>
+  `;
+}
+function addMsg(m){
+  chatEl.insertAdjacentHTML("beforeend",renderMsg(m));
+  chatEl.scrollTop=chatEl.scrollHeight;
+}
+function wireMsgButtons(){
+  chatEl.querySelectorAll("[data-del]").forEach(btn=>{
+    btn.onclick = async ()=>{
+      const id=btn.getAttribute("data-del");
+      const ok = await openConfirm("Delete message","This will hide message content.");
+      if(!ok) return;
+      const q = await sb.from("messages").update({deleted:true,text:null,image_url:null}).eq("id",id);
+      if(q.error) toast(q.error.message,"err",3500);
+      else toast("Message deleted","ok");
+    };
+  });
+  chatEl.querySelectorAll("[data-fillip]").forEach(btn=>{
+    btn.onclick = ()=>{ $("targetIp").value = btn.getAttribute("data-fillip") || ""; };
+  });
 }
 
-async function sendMessage() {
-  const text = el("msgText").value.trim();
-  const file = el("msgImage").files[0];
-  if (!text && !file) return;
+async function reloadMessages(){
+  chatEl.innerHTML="";
+  const q = await sb.from("messages")
+    .select("*")
+    .eq("room",room)
+    .order("created_at",{ascending:true})
+    .limit(200);
+  if(q.error){ toast(q.error.message,"err",3500); return; }
+  q.data.forEach(addMsg);
+  wireMsgButtons();
+}
+
+// room + realtime
+async function joinRoom(){
+  room = ($("roomInput").value.trim() || "lobby").slice(0,64);
+  await reloadMessages();
+
+  if(channel) await sb.removeChannel(channel);
+  channel = sb.channel(`room-${room}-${Date.now()}`)
+    .on("postgres_changes",{event:"INSERT",schema:"public",table:"messages",filter:`room=eq.${room}`},(p)=>{
+      addMsg(p.new); wireMsgButtons();
+    })
+    .on("postgres_changes",{event:"UPDATE",schema:"public",table:"messages",filter:`room=eq.${room}`},(p)=>{
+      const old=document.getElementById(`msg-${p.new.id}`);
+      if(old) old.outerHTML = renderMsg(p.new);
+      wireMsgButtons();
+    })
+    .subscribe();
+}
+$("btnJoin").onclick = joinRoom;
+
+// send message
+$("btnSend").onclick = async ()=>{
+  const text = $("msgText").value.trim();
+  const file = $("msgFile").files?.[0];
+  if(!text && !file) return toast("Write message or attach image.","warn");
 
   let image_url = null;
-  if (file) image_url = await uploadImage(file);
+  try{
+    if(file) image_url = await uploadToBucket(file);
 
-  // Optional: get IP via external service (not fully reliable)
-  let ip = null;
-  try {
-    const r = await fetch("https://api.ipify.org?format=json");
-    const j = await r.json();
-    ip = j.ip || null;
-  } catch {}
+    // Optional client IP capture (not tamper-proof)
+    let ip = null;
+    try{
+      const rr = await fetch("https://api.ipify.org?format=json");
+      const jj = await rr.json();
+      ip = jj.ip || null;
+    }catch{}
 
-  const row = {
-    room,
-    user_id: currentUser.id,
-    text: text || null,
-    image_url,
-    username: profile.username,
-    display_name: profile.display_name,
-    avatar_url: profile.avatar_url || null,
-    ip // for admin tools (client-provided, spoofable). For true security use Edge Function.
-  };
+    // Read moderation tables client-side (works with RLS admin/user design)
+    if(ip){
+      const b = await sb.from("ip_bans").select("ip").eq("ip",ip).maybeSingle();
+      if(b.data) return toast("You are banned.","err",3500);
 
-  const { error } = await sb.from("messages").insert(row);
-  if (error) return alert(error.message);
+      const m = await sb.from("ip_mutes").select("muted_until").eq("ip",ip).maybeSingle();
+      if(m.data && new Date(m.data.muted_until).getTime() > Date.now()){
+        return toast("You are muted.","warn",3500);
+      }
+    }
 
-  el("msgText").value = "";
-  el("msgImage").value = "";
-}
+    const ins = await sb.from("messages").insert({
+      room,
+      user_id:me.id,
+      username:profile.username,
+      display_name:profile.display_name,
+      avatar_url:profile.avatar_url || null,
+      text:text || null,
+      image_url:image_url || null,
+      ip: ip
+    });
+    if(ins.error) throw ins.error;
 
-window.deleteMessage = async function(messageId) {
-  // safer soft-delete
-  const { error } = await sb.from("messages")
-    .update({ deleted: true, text: null, image_url: null })
-    .eq("id", messageId);
-  if (error) alert(error.message);
+    $("msgText").value="";
+    $("msgFile").value="";
+    $("msgFileName").textContent="No file chosen";
+  }catch(err){
+    toast(err.message||"Send failed","err",3500);
+  }
 };
 
-window.fillIp = function(ip) {
-  el("targetIp").value = ip || "";
+// admin actions
+$("btnMute").onclick = async ()=>{
+  const ip=$("targetIp").value.trim();
+  const sec=Math.max(1,Number($("muteSec").value||60));
+  if(!ip) return setInfo("adminInfo","Target IP required",true);
+  const muted_until = new Date(Date.now()+sec*1000).toISOString();
+  const q = await sb.from("ip_mutes").upsert({ip,muted_until,reason:"admin mute",updated_at:new Date().toISOString()});
+  if(q.error) return setInfo("adminInfo",q.error.message,true);
+  setInfo("adminInfo",`Muted ${ip} for ${sec}s`);
+  toast("IP muted","ok");
+};
+$("btnUnmute").onclick = async ()=>{
+  const ip=$("targetIp").value.trim();
+  if(!ip) return setInfo("adminInfo","Target IP required",true);
+  const q = await sb.from("ip_mutes").delete().eq("ip",ip);
+  if(q.error) return setInfo("adminInfo",q.error.message,true);
+  setInfo("adminInfo",`Unmuted ${ip}`); toast("IP unmuted","ok");
+};
+$("btnBan").onclick = async ()=>{
+  const ip=$("targetIp").value.trim();
+  if(!ip) return setInfo("adminInfo","Target IP required",true);
+  const q = await sb.from("ip_bans").upsert({ip,reason:"admin ban",created_at:new Date().toISOString()});
+  if(q.error) return setInfo("adminInfo",q.error.message,true);
+  setInfo("adminInfo",`Banned ${ip}`); toast("IP banned","ok");
+};
+$("btnUnban").onclick = async ()=>{
+  const ip=$("targetIp").value.trim();
+  if(!ip) return setInfo("adminInfo","Target IP required",true);
+  const q = await sb.from("ip_bans").delete().eq("ip",ip);
+  if(q.error) return setInfo("adminInfo",q.error.message,true);
+  setInfo("adminInfo",`Unbanned ${ip}`); toast("IP unbanned","ok");
 };
 
-// ADMIN (table-based moderation states)
-async function adminMute() {
-  const targetIp = el("targetIp").value.trim();
-  const seconds = Number(el("muteSeconds").value || 60);
-  if (!targetIp) return uiMsg("adminMsg", "Enter target IP");
-  const muted_until = new Date(Date.now() + seconds * 1000).toISOString();
-  const { error } = await sb.from("ip_mutes").upsert({ ip: targetIp, muted_until, reason: "admin mute" });
-  if (error) return uiMsg("adminMsg", error.message);
-  uiMsg("adminMsg", `Muted ${targetIp} for ${seconds}s`, true);
-}
-async function adminUnmute() {
-  const targetIp = el("targetIp").value.trim();
-  if (!targetIp) return uiMsg("adminMsg", "Enter target IP");
-  const { error } = await sb.from("ip_mutes").delete().eq("ip", targetIp);
-  if (error) return uiMsg("adminMsg", error.message);
-  uiMsg("adminMsg", `Unmuted ${targetIp}`, true);
-}
-async function adminBan() {
-  const targetIp = el("targetIp").value.trim();
-  if (!targetIp) return uiMsg("adminMsg", "Enter target IP");
-  const { error } = await sb.from("ip_bans").upsert({ ip: targetIp, reason: "admin ban" });
-  if (error) return uiMsg("adminMsg", error.message);
-  uiMsg("adminMsg", `Banned ${targetIp}`, true);
-}
-async function adminUnban() {
-  const targetIp = el("targetIp").value.trim();
-  if (!targetIp) return uiMsg("adminMsg", "Enter target IP");
-  const { error } = await sb.from("ip_bans").delete().eq("ip", targetIp);
-  if (error) return uiMsg("adminMsg", error.message);
-  uiMsg("adminMsg", `Unbanned ${targetIp}`, true);
-}
-
-// hook buttons
-el("btnLogin").onclick = login;
-el("btnRegister").onclick = register;
-el("btnLogout").onclick = logout;
-el("btnJoin").onclick = joinRoom;
-el("btnSaveProfile").onclick = saveProfile;
-el("btnSend").onclick = sendMessage;
-el("btnMute").onclick = adminMute;
-el("btnUnmute").onclick = adminUnmute;
-el("btnBan").onclick = adminBan;
-el("btnUnban").onclick = adminUnban;
-
-// session restore
-(async () => {
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session?.user) return setLoggedOut();
-  currentUser = session.user;
-  try {
-    profile = await ensureProfile(currentUser);
-    authCard.classList.add("hidden");
-    appCard.classList.remove("hidden");
-    renderMe();
+// restore session
+(async ()=>{
+  const s = await sb.auth.getSession();
+  if(!s.data.session?.user) return loggedOut();
+  me = s.data.session.user;
+  try{
+    profile = await ensureProfile(me);
+    loggedInUI();
     await joinRoom();
-  } catch {
-    setLoggedOut();
+  }catch(err){
+    toast(err.message||"Init failed","err",3500);
+    loggedOut();
   }
 })();
 </script>
