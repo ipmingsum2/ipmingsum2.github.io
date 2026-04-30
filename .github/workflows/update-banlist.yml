@@ -126,7 +126,7 @@ jobs:
 
           git commit -m "Banlist update (${{
             github.event.inputs.action
-          }}) [skip retype]"
+          }}) [hi]"
 
           for i in 1 2 3 4 5; do
             echo "Push attempt $i..."
