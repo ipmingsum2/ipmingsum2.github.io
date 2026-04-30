@@ -249,6 +249,7 @@ function messageHTML(m){
   const p=profileMap.get(m.user_id)||{};
   const isAdmin=myProfile?.role==="admin";
   const canDelete=(me&&m.user_id===me.id)||isAdmin;
+  const canEdit = (me && m.user_id===me.id) || (myProfile?.role==="admin");
   const avatar=p.avatar_url?`<img class="avatar" src="${esc(p.avatar_url)}">`:"";
   const rich=m.deleted?"<i>[deleted]</i>":parseRich(m.text||"");
   const img=(!m.deleted&&m.image_url)?`<img class="img" src="${esc(m.image_url)}">`:"";
@@ -257,13 +258,29 @@ function messageHTML(m){
     ${dot}
     <div class="meta"><span>${avatar}<b>${esc(p.display_name||"user")}</b> @${esc(p.username||"unknown")}</span><span>${fmt(m.created_at)}</span></div>
     <div class="body">${rich}</div>${img}
-    <div class="actions">${canDelete?`<button class="ghost" data-del="${m.id}">Delete</button>`:""}</div>
+    <div class="actions">
+      ${canDelete?`<button class="ghost" data-del="${m.id}">Delete</button>`:""}
+      ${canEdit && !m.deleted ? `<button class="ghost" data-edit-msg="${m.id}">Edit</button>` : ""}
+    </div>
   </div>`;
 }
 
 function wireMessageActions(map){
   document.querySelectorAll("[data-del]").forEach(btn=>btn.onclick=async()=>{try{await softDelete(btn.getAttribute("data-del"));}catch(e){toast(errText("delete",e),"err");}});
   document.querySelectorAll("[data-dot]").forEach(dot=>dot.onclick=(ev)=>{const msg=map.get(dot.getAttribute("data-dot")); addAdminMenu(ev.clientX,ev.clientY,msg);});
+  document.querySelectorAll("[data-edit-msg]").forEach(btn=>{
+  btn.onclick = async ()=>{
+    const id = btn.getAttribute("data-edit-msg");
+    const m = map.get(id);
+    try{
+      await editMessage(id, m?.text || "");
+      toast("Message edited", "ok");
+    }catch(e){
+      toast(errText("edit message", e), "err", 4500);
+      debugLog("msg.edit", e);
+    }
+  };
+});
 }
 async function softDelete(id){
   const q=await sb.from("messages").update({deleted:true,text:null,image_url:null}).eq("id",id);
@@ -309,8 +326,10 @@ async function joinRoom(){
 async function loadAnnouncements(){
   const q = await sb.from("announcements")
     .select("*")
+    .order("is_pinned", { ascending:false })
+    .order("pinned_at", { ascending:false, nullsFirst:false })
     .order("created_at", { ascending:false })
-    .limit(50);
+    .limit(100);
 
   if(q.error){
     debugLog("ann.load", q.error);
@@ -318,15 +337,24 @@ async function loadAnnouncements(){
   }
 
   const isAdmin = myProfile?.role === "admin";
-  $("annList").innerHTML = (q.data || []).map(a => `
-    <div class="list-item">
+  const rows = q.data || [];
+
+  $("annList").innerHTML = rows.map(a => `
+    <div class="list-item" style="${a.is_pinned ? 'border-left:4px solid #ffd06a;padding-left:8px' : ''}">
       <div style="flex:1">
-        <div><b>${esc(a.title)}</b></div>
+        <div>
+          ${a.is_pinned ? '📌 ' : ''}<b>${esc(a.title)}</b>
+        </div>
         <div class="muted">${esc(a.body)}</div>
-        <div class="muted">${fmt(a.created_at)}</div>
+        <div class="muted">
+          ${fmt(a.created_at)}
+          ${a.pinned_at ? ` • pinned ${fmt(a.pinned_at)}` : ''}
+        </div>
       </div>
       ${isAdmin ? `
-        <div>
+        <div class="row">
+          <button class="ghost" data-edit-ann="${a.id}">Edit</button>
+          <button class="warn" data-pin-ann="${a.id}">${a.is_pinned ? "Unpin" : "Pin"}</button>
           <button class="danger" data-del-ann="${a.id}">Delete</button>
         </div>
       ` : ""}
@@ -334,8 +362,40 @@ async function loadAnnouncements(){
   `).join("") || `<div class="muted">No announcements yet.</div>`;
 
   if(isAdmin){
-    document.querySelectorAll("[data-del-ann]").forEach(btn => {
-      btn.onclick = async () => {
+    const map = new Map(rows.map(a => [a.id, a]));
+
+    document.querySelectorAll("[data-edit-ann]").forEach(btn=>{
+      btn.onclick = async ()=>{
+        const id = btn.getAttribute("data-edit-ann");
+        const a = map.get(id);
+        try{
+          await editAnnouncement(id, a?.title || "", a?.body || "");
+          toast("Announcement updated", "ok");
+          await loadAnnouncements();
+        }catch(e){
+          toast(errText("edit announcement", e), "err", 4500);
+          debugLog("ann.edit", e);
+        }
+      };
+    });
+
+    document.querySelectorAll("[data-pin-ann]").forEach(btn=>{
+      btn.onclick = async ()=>{
+        const id = btn.getAttribute("data-pin-ann");
+        const a = map.get(id);
+        try{
+          await togglePinAnnouncement(a);
+          toast(a?.is_pinned ? "Announcement unpinned" : "Announcement pinned", "ok");
+          await loadAnnouncements();
+        }catch(e){
+          toast(errText("pin announcement", e), "err", 4500);
+          debugLog("ann.pin", e);
+        }
+      };
+    });
+
+    document.querySelectorAll("[data-del-ann]").forEach(btn=>{
+      btn.onclick = async ()=>{
         const id = btn.getAttribute("data-del-ann");
         try{
           const qd = await sb.from("announcements").delete().eq("id", id);
@@ -349,6 +409,45 @@ async function loadAnnouncements(){
       };
     });
   }
+}async function editAnnouncement(id, currentTitle, currentBody){
+  const title = prompt("Edit title:", currentTitle || "");
+  if(title === null) return;
+  const body = prompt("Edit body:", currentBody || "");
+  if(body === null) return;
+
+  const q = await sb.from("announcements")
+    .update({ title: title.trim(), body: body.trim() })
+    .eq("id", id);
+
+  if(q.error) throw q.error;
+}
+
+async function togglePinAnnouncement(a){
+  const nextPinned = !a.is_pinned;
+  const q = await sb.from("announcements")
+    .update({
+      is_pinned: nextPinned,
+      pinned_at: nextPinned ? new Date().toISOString() : null
+    })
+    .eq("id", a.id);
+
+  if(q.error) throw q.error;
+}
+
+async function editMessage(msgId, oldText){
+  const next = prompt("Edit message:", oldText || "");
+  if(next === null) return;
+  const cleaned = next.trim();
+  if(!cleaned) return toast("Message cannot be empty", "warn");
+
+  const q = await sb.from("messages")
+    .update({
+      text: cleaned,
+      edited_at: new Date().toISOString()
+    })
+    .eq("id", msgId);
+
+  if(q.error) throw q.error;
 }
 async function publishAnnouncement(){
   const title=$("annTitle").value.trim(), body=$("annBody").value.trim();
