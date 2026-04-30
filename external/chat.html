@@ -307,9 +307,48 @@ async function joinRoom(){
 
 /* announcements */
 async function loadAnnouncements(){
-  const q=await sb.from("announcements").select("*").order("created_at",{ascending:false}).limit(50);
-  if(q.error){debugLog("ann.load",q.error);return;}
-  $("annList").innerHTML=(q.data||[]).map(a=>`<div class="list-item"><div><div><b>${esc(a.title)}</b></div><div class="muted">${esc(a.body)}</div><div class="muted">${fmt(a.created_at)}</div></div></div>`).join("") || `<div class="muted">No announcements yet.</div>`;
+  const q = await sb.from("announcements")
+    .select("*")
+    .order("created_at", { ascending:false })
+    .limit(50);
+
+  if(q.error){
+    debugLog("ann.load", q.error);
+    return;
+  }
+
+  const isAdmin = myProfile?.role === "admin";
+  $("annList").innerHTML = (q.data || []).map(a => `
+    <div class="list-item">
+      <div style="flex:1">
+        <div><b>${esc(a.title)}</b></div>
+        <div class="muted">${esc(a.body)}</div>
+        <div class="muted">${fmt(a.created_at)}</div>
+      </div>
+      ${isAdmin ? `
+        <div>
+          <button class="danger" data-del-ann="${a.id}">Delete</button>
+        </div>
+      ` : ""}
+    </div>
+  `).join("") || `<div class="muted">No announcements yet.</div>`;
+
+  if(isAdmin){
+    document.querySelectorAll("[data-del-ann]").forEach(btn => {
+      btn.onclick = async () => {
+        const id = btn.getAttribute("data-del-ann");
+        try{
+          const qd = await sb.from("announcements").delete().eq("id", id);
+          if(qd.error) throw qd.error;
+          toast("Announcement deleted", "ok");
+          await loadAnnouncements();
+        }catch(e){
+          toast(errText("delete announcement", e), "err", 4500);
+          debugLog("ann.delete", e);
+        }
+      };
+    });
+  }
 }
 async function publishAnnouncement(){
   const title=$("annTitle").value.trim(), body=$("annBody").value.trim();
