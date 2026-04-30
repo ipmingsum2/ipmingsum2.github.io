@@ -6,8 +6,6 @@
   <title>CHATBOX</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <!-- Markdown + sanitize + KaTeX -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
@@ -15,67 +13,39 @@
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
 
   <style>
-    :root{
-      --bg:#0b1220; --panel:#141d32; --line:#2a3c63; --txt:#edf3ff; --muted:#a8b5d2;
-      --primary:#68a8ff; --ok:#59ca8e; --warn:#ffd06a; --danger:#ff7171;
-      --chip:#223a65;
-    }
-    *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui}
-    .app{max-width:1200px;margin:0 auto;padding:12px}
-    .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px}
-    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    .col{display:flex;flex-direction:column;gap:8px}
-    input,textarea,button{
-      border-radius:10px;font-size:14px;padding:10px 12px;border:1px solid #355083;background:#0e182d;color:var(--txt)
-    }
-    input,textarea{flex:1;min-width:140px}
-    textarea{min-height:70px;resize:vertical}
+    :root{--bg:#0b1220;--panel:#141d32;--line:#2a3c63;--txt:#edf3ff;--muted:#a8b5d2;--primary:#68a8ff;--ok:#59ca8e;--warn:#ffd06a;--danger:#ff7171;--chip:#223a65}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui}
+    .app{max-width:1200px;margin:0 auto;padding:12px}.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px}
+    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.col{display:flex;flex-direction:column;gap:8px}
+    input,textarea,button{border-radius:10px;font-size:14px;padding:10px 12px;border:1px solid #355083;background:#0e182d;color:var(--txt)}
+    input,textarea{flex:1;min-width:140px} textarea{min-height:70px;resize:vertical}
     button{border:none;cursor:pointer;background:var(--primary);color:#081428;font-weight:700}
-    button.ghost{background:#24406d;color:#e2ecff}
-    button.warn{background:var(--warn);color:#3c2f00}
-    button.danger{background:var(--danger);color:#300909}
-    .hidden{display:none!important}
-    .muted{font-size:12px;color:var(--muted)}
+    button.ghost{background:#24406d;color:#e2ecff} button.warn{background:var(--warn);color:#3c2f00} button.danger{background:var(--danger);color:#300909}
+    .hidden{display:none!important}.muted{font-size:12px;color:var(--muted)}
     .titlebar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-    .chip{display:inline-block;font-size:11px;padding:3px 8px;border-radius:999px;background:var(--chip)}
-    .chip.admin{background:#5f4115;color:#ffdca0}
-    .layout{display:grid;grid-template-columns:1fr;gap:10px}
-    @media(min-width:980px){.layout{grid-template-columns:2fr 1fr}}
+    .chip{display:inline-block;font-size:11px;padding:3px 8px;border-radius:999px;background:var(--chip)} .chip.admin{background:#5f4115;color:#ffdca0}
+    .layout{display:grid;grid-template-columns:1fr;gap:10px}@media(min-width:980px){.layout{grid-template-columns:2fr 1fr}}
     .chat{height:56vh;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:10px;background:#0d172c;display:flex;flex-direction:column;gap:8px}
     .msg{border:1px solid #2b406a;background:#17274a;border-radius:10px;padding:8px;position:relative}
     .msg.deleted{opacity:.65;background:#2a3248}
     .meta{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:#cad5f1;margin-bottom:6px}
     .avatar{width:22px;height:22px;border-radius:50%;object-fit:cover;border:1px solid #4b67a5;vertical-align:middle;margin-right:6px}
-    .body{word-break:break-word}
-    .body img{max-width:100%}
+    .body{word-break:break-word}.body img{max-width:100%}
     .img{max-width:260px;max-height:260px;border-radius:8px;border:1px solid #3f578c;margin-top:8px}
-    .actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-    .actions button{font-size:12px;padding:6px 9px}
-    .admin-dot{
-      position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:8px;background:#2a426f;color:#fff;
-      display:flex;align-items:center;justify-content:center;font-weight:800;cursor:pointer
-    }
-    .menu{
-      position:fixed;z-index:10002;background:#182749;border:1px solid #365287;border-radius:10px;padding:6px;min-width:170px;
-      box-shadow:0 10px 24px rgba(0,0,0,.35)
-    }
+    .actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.actions button{font-size:12px;padding:6px 9px}
+    .admin-dot{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:8px;background:#2a426f;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;cursor:pointer}
+    .menu{position:fixed;z-index:10002;background:#182749;border:1px solid #365287;border-radius:10px;padding:6px;min-width:170px;box-shadow:0 10px 24px rgba(0,0,0,.35)}
     .menu button{width:100%;text-align:left;background:transparent;color:#e8f0ff;padding:8px;border-radius:8px}
     .menu button:hover{background:#2a416d}
-    .file-ui{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-    .fname{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--muted)}
+    .file-ui{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.fname{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--muted)}
     .toast-wrap{position:fixed;right:12px;bottom:12px;z-index:9999;display:flex;flex-direction:column;gap:8px}
     .toast{min-width:220px;max-width:350px;border-radius:10px;padding:10px 12px;border:1px solid #466193;background:#162746;color:#ecf3ff}
     .toast.ok{background:#123125;border-color:#2f7d52}.toast.err{background:#3b1919;border-color:#8f4141}.toast.warn{background:#3f3216;border-color:#8b6d32}
-    .tabs{display:flex;gap:6px;flex-wrap:wrap}
-    .tabbtn{background:#223a65;color:#dce9ff}
-    .tabbtn.active{background:#68a8ff;color:#0a1630}
+    .tabs{display:flex;gap:6px;flex-wrap:wrap}.tabbtn{background:#223a65;color:#dce9ff}.tabbtn.active{background:#68a8ff;color:#0a1630}
     .tabpane{display:none}.tabpane.active{display:block}
     .list{max-height:180px;overflow:auto;border:1px solid #355083;border-radius:10px;padding:8px}
-    .list-item{display:flex;justify-content:space-between;gap:8px;padding:6px;border-bottom:1px solid #2a3d67}
-    .list-item:last-child{border-bottom:none}
-    .toolbar{display:flex;gap:6px;flex-wrap:wrap}
-    .toolbar button{padding:6px 8px;font-size:12px}
+    .list-item{display:flex;justify-content:space-between;gap:8px;padding:6px;border-bottom:1px solid #2a3d67}.list-item:last-child{border-bottom:none}
+    .toolbar{display:flex;gap:6px;flex-wrap:wrap}.toolbar button{padding:6px 8px;font-size:12px}
     .debug{max-height:160px;overflow:auto;border:1px dashed #3a507f;border-radius:10px;padding:8px;background:#0f1931;font-size:12px;white-space:pre-wrap}
   </style>
 </head>
@@ -200,18 +170,11 @@ function fmt(ts){try{return new Date(ts).toLocaleString();}catch{return ts;}}
 
 function parseRich(text=""){
   const md = marked.parse(text, { breaks:true, gfm:true });
-  const clean = DOMPurify.sanitize(md, {ADD_TAGS:['u']});
-  return clean;
+  return DOMPurify.sanitize(md, {ADD_TAGS:['u']});
 }
 function renderMathIn(el){
-  if(!window.renderMathInElement) return;
-  renderMathInElement(el,{
-    delimiters:[
-      {left:"$$",right:"$$",display:true},
-      {left:"$",right:"$",display:false}
-    ],
-    throwOnError:false
-  });
+  if(!window.renderMathInElement || !el) return;
+  renderMathInElement(el,{delimiters:[{left:"$$",right:"$$",display:true},{left:"$",right:"$",display:false}],throwOnError:false});
 }
 
 function showAuth(){ $("authCard").classList.remove("hidden"); $("appCard").classList.add("hidden"); $("status").textContent="Not logged in"; if(channel){sb.removeChannel(channel);channel=null;} }
@@ -225,7 +188,6 @@ function showApp(){
   $("adminNotAllowed").classList.toggle("hidden",isAdmin);
   $("annComposer").classList.toggle("hidden",!isAdmin);
 }
-
 async function requireAuthedUser(){const gu=await sb.auth.getUser(); if(!gu.data.user) throw new Error("Session expired"); return gu.data.user;}
 
 async function ensureProfileAfterLogin(user, uh="", dh=""){
@@ -257,10 +219,10 @@ async function loadProfileMap(){
 function addAdminMenu(x,y,msg){
   const host=$("menuHost"); host.innerHTML="";
   const m=document.createElement("div"); m.className="menu"; m.style.left=x+"px"; m.style.top=y+"px";
-  const ip = msg.ip || "";
-  m.innerHTML = `
-    <button data-act="copyip">Copy IP</button>
-    <button data-act="mute">Mute ${ip ? "" : "(no ip)"}</button>
+  const fakeIp = msg.client_ip || "not-available";
+  m.innerHTML=`
+    <button data-act="copyip">Copy IP (${esc(fakeIp)})</button>
+    <button data-act="mute">Mute</button>
     <button data-act="unmute">Unmute</button>
     <button data-act="ban">Ban</button>
     <button data-act="unban">Unban</button>
@@ -268,118 +230,89 @@ function addAdminMenu(x,y,msg){
   `;
   host.appendChild(m);
 
-  m.onclick = async (e)=>{
+  m.onclick=async(e)=>{
     const act=e.target.getAttribute("data-act"); if(!act) return;
     try{
-      if(act==="copyip"){ if(!ip) throw new Error("No IP on this message"); await navigator.clipboard.writeText(ip); toast("IP copied"); }
-      if(act==="mute"){ if(!ip) throw new Error("No IP"); const sec=Number(prompt("Mute seconds?", "60")||60); await adminMute(ip,sec); }
-      if(act==="unmute"){ if(!ip) throw new Error("No IP"); await adminUnmute(ip); }
-      if(act==="ban"){ if(!ip) throw new Error("No IP"); await adminBan(ip); }
-      if(act==="unban"){ if(!ip) throw new Error("No IP"); await adminUnban(ip); }
-      if(act==="delete"){ await softDelete(msg.id); }
-    }catch(err){ toast(err.message||String(err),"err",4000); }
+      if(act==="copyip"){await navigator.clipboard.writeText(fakeIp); toast("IP copied (or placeholder)");}
+      if(act==="mute"){const sec=Number(prompt("Mute seconds?","60")||60); await adminMute(($("targetIp").value.trim()||fakeIp),sec);}
+      if(act==="unmute"){await adminUnmute(($("targetIp").value.trim()||fakeIp));}
+      if(act==="ban"){await adminBan(($("targetIp").value.trim()||fakeIp));}
+      if(act==="unban"){await adminUnban(($("targetIp").value.trim()||fakeIp));}
+      if(act==="delete"){await softDelete(msg.id);}
+    }catch(err){toast(err.message||String(err),"err",4000);}
     host.innerHTML="";
   };
-  setTimeout(()=>{document.addEventListener("click",()=>host.innerHTML="",{once:true});},0);
+  setTimeout(()=>document.addEventListener("click",()=>host.innerHTML="",{once:true}),0);
 }
 
 function messageHTML(m){
   const p=profileMap.get(m.user_id)||{};
   const isAdmin=myProfile?.role==="admin";
-  const canDelete=(me && m.user_id===me.id)||isAdmin;
+  const canDelete=(me&&m.user_id===me.id)||isAdmin;
   const avatar=p.avatar_url?`<img class="avatar" src="${esc(p.avatar_url)}">`:"";
-  const rich = m.deleted ? "<i>[deleted]</i>" : parseRich(m.text||"");
-  const img = (!m.deleted && m.image_url)?`<img class="img" src="${esc(m.image_url)}">`:"";
-  const dot = isAdmin ? `<div class="admin-dot" data-dot="${m.id}">…</div>` : "";
-
+  const rich=m.deleted?"<i>[deleted]</i>":parseRich(m.text||"");
+  const img=(!m.deleted&&m.image_url)?`<img class="img" src="${esc(m.image_url)}">`:"";
+  const dot=isAdmin?`<div class="admin-dot" data-dot="${m.id}">…</div>`:"";
   return `<div class="msg ${m.deleted?"deleted":""}" id="m-${m.id}">
     ${dot}
     <div class="meta"><span>${avatar}<b>${esc(p.display_name||"user")}</b> @${esc(p.username||"unknown")}</span><span>${fmt(m.created_at)}</span></div>
-    <div class="body">${rich}</div>
-    ${img}
+    <div class="body">${rich}</div>${img}
     <div class="actions">${canDelete?`<button class="ghost" data-del="${m.id}">Delete</button>`:""}</div>
   </div>`;
 }
 
-function wireMessageActions(messageMap){
-  document.querySelectorAll("[data-del]").forEach(btn=>{
-    btn.onclick=async()=>{ const id=btn.getAttribute("data-del"); await softDelete(id); };
-  });
-  document.querySelectorAll("[data-dot]").forEach(dot=>{
-    dot.onclick=(ev)=>{
-      const id=dot.getAttribute("data-dot");
-      const msg=messageMap.get(id);
-      addAdminMenu(ev.clientX, ev.clientY, msg);
-    };
-  });
+function wireMessageActions(map){
+  document.querySelectorAll("[data-del]").forEach(btn=>btn.onclick=async()=>{try{await softDelete(btn.getAttribute("data-del"));}catch(e){toast(errText("delete",e),"err");}});
+  document.querySelectorAll("[data-dot]").forEach(dot=>dot.onclick=(ev)=>{const msg=map.get(dot.getAttribute("data-dot")); addAdminMenu(ev.clientX,ev.clientY,msg);});
 }
-
 async function softDelete(id){
   const q=await sb.from("messages").update({deleted:true,text:null,image_url:null}).eq("id",id);
   if(q.error) throw q.error;
   toast("Message deleted");
 }
 
-function getMatchedFilter(text){
-  const lc=(text||"").toLowerCase();
-  return filters.find(f=>f.enabled && lc.includes(f.pattern.toLowerCase()));
-}
+function getMatchedFilter(text){const lc=(text||"").toLowerCase(); return filters.find(f=>f.enabled && lc.includes(f.pattern.toLowerCase()));}
 
 async function loadMessages(){
   await loadProfileMap();
-  const q=await sb.from("messages").select("id,room,user_id,text,image_url,deleted,created_at,ip").eq("room",room).order("created_at",{ascending:true}).limit(400);
+  const q=await sb.from("messages").select("id,room,user_id,text,image_url,deleted,created_at").eq("room",room).order("created_at",{ascending:true}).limit(400);
   if(q.error) throw q.error;
   const chat=$("chat"); chat.innerHTML="";
   const map=new Map();
-  (q.data||[]).forEach(m=>{ map.set(m.id,m); chat.insertAdjacentHTML("beforeend",messageHTML(m)); });
+  (q.data||[]).forEach(m=>{map.set(m.id,m); chat.insertAdjacentHTML("beforeend",messageHTML(m));});
   chat.querySelectorAll(".body").forEach(renderMathIn);
   wireMessageActions(map);
   chat.scrollTop=chat.scrollHeight;
 }
-
 async function joinRoom(){
   room=($("roomInput").value.trim()||"lobby").slice(0,64);
   await loadMessages();
-
   if(channel) await sb.removeChannel(channel);
   channel=sb.channel(`room-${room}-${Date.now()}`)
     .on("postgres_changes",{event:"INSERT",schema:"public",table:"messages",filter:`room=eq.${room}`},async(payload)=>{
       const m=payload.new;
-      if(!profileMap.has(m.user_id)){
-        const p=await sb.from("profiles").select("id,username,display_name,avatar_url,role").eq("id",m.user_id).maybeSingle();
-        if(p.data) profileMap.set(m.user_id,p.data);
-      }
+      if(!profileMap.has(m.user_id)){const p=await sb.from("profiles").select("id,username,display_name,avatar_url,role").eq("id",m.user_id).maybeSingle(); if(p.data) profileMap.set(m.user_id,p.data);}
       const chat=$("chat"); chat.insertAdjacentHTML("beforeend",messageHTML(m));
       const el=document.getElementById(`m-${m.id}`); if(el) renderMathIn(el.querySelector(".body"));
-      const current = new Map(); current.set(m.id,m); wireMessageActions(current);
+      const single=new Map(); single.set(m.id,m); wireMessageActions(single);
       chat.scrollTop=chat.scrollHeight;
     })
     .on("postgres_changes",{event:"UPDATE",schema:"public",table:"messages",filter:`room=eq.${room}`},async(payload)=>{
       const m=payload.new;
       const old=document.getElementById(`m-${m.id}`);
-      if(old){ old.outerHTML=messageHTML(m); const ne=document.getElementById(`m-${m.id}`); if(ne) renderMathIn(ne.querySelector(".body")); }
-      const current = new Map(); current.set(m.id,m); wireMessageActions(current);
+      if(old){old.outerHTML=messageHTML(m); const ne=document.getElementById(`m-${m.id}`); if(ne) renderMathIn(ne.querySelector(".body"));}
+      const single=new Map(); single.set(m.id,m); wireMessageActions(single);
     }).subscribe();
 }
 
-/* Announcements */
+/* announcements */
 async function loadAnnouncements(){
   const q=await sb.from("announcements").select("*").order("created_at",{ascending:false}).limit(50);
-  if(q.error){debugLog("ann.load.error",q.error);return;}
-  const box=$("annList");
-  box.innerHTML=(q.data||[]).map(a=>`
-    <div class="list-item">
-      <div>
-        <div><b>${esc(a.title)}</b></div>
-        <div class="muted">${esc(a.body)}</div>
-        <div class="muted">${fmt(a.created_at)}</div>
-      </div>
-    </div>
-  `).join("") || `<div class="muted">No announcements yet.</div>`;
+  if(q.error){debugLog("ann.load",q.error);return;}
+  $("annList").innerHTML=(q.data||[]).map(a=>`<div class="list-item"><div><div><b>${esc(a.title)}</b></div><div class="muted">${esc(a.body)}</div><div class="muted">${fmt(a.created_at)}</div></div></div>`).join("") || `<div class="muted">No announcements yet.</div>`;
 }
 async function publishAnnouncement(){
-  const title=$("annTitle").value.trim();
-  const body=$("annBody").value.trim();
+  const title=$("annTitle").value.trim(), body=$("annBody").value.trim();
   if(!title||!body) return toast("Need title and body","warn");
   const q=await sb.from("announcements").insert({title,body,created_by:me.id});
   if(q.error) throw q.error;
@@ -388,7 +321,7 @@ async function publishAnnouncement(){
   await loadAnnouncements();
 }
 
-/* Filters */
+/* filters */
 async function loadFilters(){
   const q=await sb.from("message_filters").select("*").order("created_at",{ascending:false});
   if(q.error) throw q.error;
@@ -397,33 +330,9 @@ async function loadFilters(){
 }
 function renderFilterList(){
   const box=$("filterList");
-  box.innerHTML=filters.map(f=>`
-    <div class="list-item">
-      <div><b>${esc(f.pattern)}</b> <span class="muted">${f.enabled?"enabled":"disabled"}</span></div>
-      <div class="row">
-        <button class="ghost" data-toggle="${f.id}">${f.enabled?"Disable":"Enable"}</button>
-        <button class="danger" data-del-filter="${f.id}">Delete</button>
-      </div>
-    </div>
-  `).join("") || `<div class="muted">No filters.</div>`;
-
-  box.querySelectorAll("[data-toggle]").forEach(btn=>{
-    btn.onclick=async()=>{
-      const id=btn.getAttribute("data-toggle");
-      const f=filters.find(x=>x.id===id); if(!f) return;
-      const q=await sb.from("message_filters").update({enabled:!f.enabled}).eq("id",id);
-      if(q.error) return toast(errText("toggle filter",q.error),"err");
-      await loadFilters();
-    };
-  });
-  box.querySelectorAll("[data-del-filter]").forEach(btn=>{
-    btn.onclick=async()=>{
-      const id=btn.getAttribute("data-del-filter");
-      const q=await sb.from("message_filters").delete().eq("id",id);
-      if(q.error) return toast(errText("delete filter",q.error),"err");
-      await loadFilters();
-    };
-  });
+  box.innerHTML=filters.map(f=>`<div class="list-item"><div><b>${esc(f.pattern)}</b> <span class="muted">${f.enabled?"enabled":"disabled"}</span></div><div class="row"><button class="ghost" data-toggle="${f.id}">${f.enabled?"Disable":"Enable"}</button><button class="danger" data-del-filter="${f.id}">Delete</button></div></div>`).join("") || `<div class="muted">No filters.</div>`;
+  box.querySelectorAll("[data-toggle]").forEach(btn=>btn.onclick=async()=>{const id=btn.getAttribute("data-toggle"); const f=filters.find(x=>x.id===id); if(!f) return; const q=await sb.from("message_filters").update({enabled:!f.enabled}).eq("id",id); if(q.error) return toast(errText("toggle filter",q.error),"err"); await loadFilters();});
+  box.querySelectorAll("[data-del-filter]").forEach(btn=>btn.onclick=async()=>{const id=btn.getAttribute("data-del-filter"); const q=await sb.from("message_filters").delete().eq("id",id); if(q.error) return toast(errText("delete filter",q.error),"err"); await loadFilters();});
 }
 async function addFilter(){
   const pattern=$("filterInput").value.trim();
@@ -435,56 +344,31 @@ async function addFilter(){
   toast("Filter added");
 }
 
-/* Admin moderation actions */
-async function requireAdmin(){ if(myProfile?.role!=="admin") throw new Error("Admin only"); }
-async function adminMute(ip,seconds=60){
-  await requireAdmin();
-  const until=new Date(Date.now()+Math.max(1,seconds)*1000).toISOString();
-  const q=await sb.from("ip_mutes").upsert({ip,muted_until:until,reason:"admin",updated_at:new Date().toISOString()});
-  if(q.error) throw q.error;
-}
-async function adminUnmute(ip){
-  await requireAdmin();
-  const q=await sb.from("ip_mutes").delete().eq("ip",ip);
-  if(q.error) throw q.error;
-}
-async function adminBan(ip){
-  await requireAdmin();
-  const q=await sb.from("ip_bans").upsert({ip,reason:"admin",created_at:new Date().toISOString()});
-  if(q.error) throw q.error;
-}
-async function adminUnban(ip){
-  await requireAdmin();
-  const q=await sb.from("ip_bans").delete().eq("ip",ip);
-  if(q.error) throw q.error;
-}
+/* admin */
+async function requireAdmin(){if(myProfile?.role!=="admin") throw new Error("Admin only");}
+async function adminMute(ip,seconds=60){await requireAdmin(); if(!ip||ip==="not-available") throw new Error("Set target IP manually"); const until=new Date(Date.now()+Math.max(1,seconds)*1000).toISOString(); const q=await sb.from("ip_mutes").upsert({ip,muted_until:until,reason:"admin",updated_at:new Date().toISOString()}); if(q.error) throw q.error;}
+async function adminUnmute(ip){await requireAdmin(); if(!ip||ip==="not-available") throw new Error("Set target IP manually"); const q=await sb.from("ip_mutes").delete().eq("ip",ip); if(q.error) throw q.error;}
+async function adminBan(ip){await requireAdmin(); if(!ip||ip==="not-available") throw new Error("Set target IP manually"); const q=await sb.from("ip_bans").upsert({ip,reason:"admin",created_at:new Date().toISOString()}); if(q.error) throw q.error;}
+async function adminUnban(ip){await requireAdmin(); if(!ip||ip==="not-available") throw new Error("Set target IP manually"); const q=await sb.from("ip_bans").delete().eq("ip",ip); if(q.error) throw q.error;}
 
-/* Events */
+/* ui wiring */
 $("btnPickAvatar").onclick=()=>$("avatarFile").click();
 $("btnPickMsg").onclick=()=>$("msgFile").click();
 $("avatarFile").onchange=()=>$("avatarFileName").textContent=$("avatarFile").files?.[0]?.name||"No file chosen";
 $("msgFile").onchange=()=>$("msgFileName").textContent=$("msgFile").files?.[0]?.name||"No file chosen";
 
-document.querySelectorAll("[data-md]").forEach(btn=>{
-  btn.onclick=()=>{
-    const snippet=btn.getAttribute("data-md");
-    const ta=$("msgText");
-    const start=ta.selectionStart,end=ta.selectionEnd,val=ta.value;
-    ta.value=val.slice(0,start)+snippet+val.slice(end);
-    ta.focus();
-  };
+document.querySelectorAll("[data-md]").forEach(btn=>btn.onclick=()=>{
+  const s=btn.getAttribute("data-md"), ta=$("msgText");
+  const a=ta.selectionStart,b=ta.selectionEnd,v=ta.value;
+  ta.value=v.slice(0,a)+s+v.slice(b); ta.focus();
 });
 
-document.querySelectorAll(".tabbtn").forEach(btn=>{
-  btn.onclick=()=>{
-    document.querySelectorAll(".tabbtn").forEach(x=>x.classList.remove("active"));
-    document.querySelectorAll(".tabpane").forEach(x=>x.classList.remove("active"));
-    btn.classList.add("active");
-    $("tab-"+btn.getAttribute("data-tab")).classList.add("active");
-  };
+document.querySelectorAll(".tabbtn").forEach(btn=>btn.onclick=()=>{
+  document.querySelectorAll(".tabbtn").forEach(x=>x.classList.remove("active"));
+  document.querySelectorAll(".tabpane").forEach(x=>x.classList.remove("active"));
+  btn.classList.add("active"); $("tab-"+btn.getAttribute("data-tab")).classList.add("active");
 });
-
-$("btnClearDebug").onclick=()=>{$("debug").textContent="";};
+$("btnClearDebug").onclick=()=>$("debug").textContent="";
 
 $("btnRegister").onclick=async()=>{
   setAuthMsg("");
@@ -522,7 +406,7 @@ $("btnJoin").onclick=joinRoom;
 
 $("btnSaveProfile").onclick=async()=>{
   try{
-    const authUser=(await requireAuthedUser());
+    const authUser=await requireAuthedUser();
     let display_name=($("newDisplay").value.trim()||myProfile.display_name).slice(0,48);
     let avatar_url=myProfile.avatar_url||null;
     const f=$("avatarFile").files?.[0];
@@ -543,26 +427,13 @@ $("btnSend").onclick=async()=>{
     const file=$("msgFile").files?.[0];
     if(!text&&!file) return toast("Write text or attach image","warn");
 
-    // filter blocking
     const hit=getMatchedFilter(text);
     if(hit) return toast(`Blocked by filter: "${hit.pattern}"`,"err",4500);
-
-    // client ip best-effort
-    let ip=null;
-    try{const r=await fetch("https://api.ipify.org?format=json");ip=(await r.json()).ip||null;}catch{}
-
-    // mute/ban checks (best effort)
-    if(ip){
-      const b=await sb.from("ip_bans").select("ip").eq("ip",ip).maybeSingle();
-      if(b.data) return toast("You are banned","err",4500);
-      const m=await sb.from("ip_mutes").select("muted_until").eq("ip",ip).maybeSingle();
-      if(m.data && new Date(m.data.muted_until).getTime()>Date.now()) return toast("You are muted","warn",4500);
-    }
 
     let image_url=null;
     if(file) image_url=await uploadImage(file);
 
-    const ins=await sb.from("messages").insert({room,user_id:authUser.id,text:text||null,image_url,ip});
+    const ins=await sb.from("messages").insert({room,user_id:authUser.id,text:text||null,image_url});
     if(ins.error) throw ins.error;
 
     $("msgText").value=""; $("msgFile").value=""; $("msgFileName").textContent="No file chosen";
@@ -577,18 +448,11 @@ $("btnUnmute").onclick=async()=>{try{await requireAdmin();await adminUnmute($("t
 $("btnBan").onclick=async()=>{try{await requireAdmin();await adminBan($("targetIp").value.trim());setAdminMsg("Banned");toast("Banned");}catch(e){setAdminMsg(errText("ban",e),true);}};
 $("btnUnban").onclick=async()=>{try{await requireAdmin();await adminUnban($("targetIp").value.trim());setAdminMsg("Unbanned");toast("Unbanned");}catch(e){setAdminMsg(errText("unban",e),true);}};
 
-/* realtime for announcements/filters */
 function subscribeSideChannels(){
-  sb.channel("ann-live")
-    .on("postgres_changes",{event:"*",schema:"public",table:"announcements"},()=>loadAnnouncements())
-    .subscribe();
-
-  sb.channel("filters-live")
-    .on("postgres_changes",{event:"*",schema:"public",table:"message_filters"},()=>loadFilters())
-    .subscribe();
+  sb.channel("ann-live").on("postgres_changes",{event:"*",schema:"public",table:"announcements"},()=>loadAnnouncements()).subscribe();
+  sb.channel("filters-live").on("postgres_changes",{event:"*",schema:"public",table:"message_filters"},()=>loadFilters()).subscribe();
 }
 
-/* boot */
 (async()=>{
   const s=await sb.auth.getSession();
   if(!s.data.session?.user){showAuth();return;}
@@ -600,9 +464,7 @@ function subscribeSideChannels(){
     await loadFilters();
     await loadAnnouncements();
     await joinRoom();
-  }catch(e){
-    debugLog("init",e); showAuth(); toast(errText("init",e),"err",5000);
-  }
+  }catch(e){debugLog("init",e);showAuth();toast(errText("init",e),"err",5000);}
 })();
 </script>
 </body>
