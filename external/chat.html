@@ -3,501 +3,273 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Mobile Chat</title>
+  <title>Chat Fixed</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    :root{
-      --bg:#0c1220; --panel:#141c31; --line:#273657; --txt:#eef3ff; --muted:#a8b3ce;
-      --pri:#68a7ff; --ok:#58c98b; --err:#ff6f6f; --warn:#ffcc66;
-    }
-    *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,Segoe UI,Roboto}
-    .app{max-width:980px;margin:0 auto;padding:12px}
-    .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px}
-    .row{display:flex;gap:8px;flex-wrap:wrap}
-    .col{display:flex;flex-direction:column;gap:8px}
-    .sp{height:10px}
-    h2,h3{margin:0 0 8px}
-    input,textarea,button{
-      border-radius:10px;border:1px solid #31456f;background:#0e162a;color:var(--txt);
-      padding:10px 12px;font-size:14px
-    }
-    input,textarea{flex:1;min-width:140px}
-    textarea{resize:vertical;min-height:58px}
-    button{cursor:pointer;border:none;background:var(--pri);color:#081327;font-weight:700}
-    button.ghost{background:#22365d;color:#e4edff}
-    button.danger{background:var(--err);color:#2b0909}
-    button.warn{background:var(--warn);color:#3f2e00}
-    .muted{font-size:12px;color:var(--muted)}
-    .hidden{display:none !important}
-    .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-    .pill{font-size:11px;padding:3px 8px;border-radius:999px;background:#213a66}
-    .pill.admin{background:#5a3c15;color:#ffd994}
-    .chat{
-      height:52vh;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:10px;background:#0d1528;
-      display:flex;flex-direction:column;gap:8px
-    }
-    .msg{border:1px solid #2a3b61;background:#182546;border-radius:10px;padding:8px}
-    .msg.deleted{opacity:.66;background:#2a3145}
-    .meta{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:#cad4ef;margin-bottom:6px}
-    .body{white-space:pre-wrap;word-break:break-word}
-    .msg img.up{max-width:220px;max-height:220px;border-radius:8px;border:1px solid #38507f;margin-top:8px}
-    .msg .avatar{width:22px;height:22px;border-radius:50%;border:1px solid #445c8d;object-fit:cover;vertical-align:middle;margin-right:6px}
-    .actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-    .actions button{padding:6px 9px;font-size:12px}
-    .file-ui{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-    .fname{font-size:12px;color:var(--muted);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .toast-wrap{position:fixed;right:12px;bottom:12px;display:flex;flex-direction:column;gap:8px;z-index:9999}
-    .toast{
-      min-width:220px;max-width:320px;padding:10px 12px;border-radius:10px;font-size:13px;
-      border:1px solid #3a4f7c;background:#172643;color:#ebf2ff;box-shadow:0 8px 20px rgba(0,0,0,.35)
-    }
-    .toast.ok{background:#133125;border-color:#2f7d52}
-    .toast.err{background:#381919;border-color:#8e3f3f}
-    .toast.warn{background:#3b2f14;border-color:#876a2e}
-    .modal-backdrop{
-      position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:10000
-    }
-    .modal{
-      width:min(94vw,420px);background:#141f38;border:1px solid #31456f;border-radius:12px;padding:12px
-    }
-    .modal h4{margin:0 0 8px}
-    .modal .row{margin-top:8px}
+    :root{--bg:#0c1220;--panel:#141c31;--line:#28385e;--txt:#eef3ff;--muted:#a8b3ce;--pri:#69a8ff;--ok:#58c98b;--err:#ff6f6f}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui}
+    .app{max-width:920px;margin:0 auto;padding:12px}.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px}
+    .row{display:flex;gap:8px;flex-wrap:wrap} input,textarea,button{padding:10px;border-radius:10px}
+    input,textarea{border:1px solid #345;background:#0e1629;color:var(--txt);flex:1;min-width:120px}
+    button{border:none;cursor:pointer;background:var(--pri);color:#081327;font-weight:700}.ghost{background:#24385f;color:#dfe9ff}.danger{background:var(--err);color:#2f0909}
+    .hidden{display:none!important}.muted{font-size:12px;color:var(--muted)}
+    .chat{height:50vh;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:10px;background:#0d162c;display:flex;flex-direction:column;gap:8px}
+    .msg{border:1px solid #2a3b61;background:#192746;border-radius:10px;padding:8px}.msg.deleted{opacity:.65;background:#2a3042}
+    .meta{display:flex;justify-content:space-between;font-size:12px;color:#cbd4ec}.avatar{width:22px;height:22px;border-radius:50%;vertical-align:middle;margin-right:6px;border:1px solid #456}
+    .img{max-width:220px;border-radius:8px;border:1px solid #3b4e79;margin-top:8px}
+    .actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}.actions button{padding:6px 9px;font-size:12px}
+    .toastWrap{position:fixed;right:12px;bottom:12px;display:flex;flex-direction:column;gap:8px;z-index:9999}
+    .toast{background:#16243f;border:1px solid #3d5281;padding:10px 12px;border-radius:10px;max-width:320px}
+    .toast.ok{background:#133025;border-color:#2f7d52}.toast.err{background:#381818;border-color:#8a4040}
   </style>
 </head>
 <body>
-  <div class="app">
-    <div class="top">
-      <h2>Realtime Chat</h2>
-      <div id="status" class="muted">Not logged in</div>
-    </div>
-
-    <!-- AUTH -->
-    <div id="authCard" class="card">
-      <h3>Login / Register</h3>
-      <div class="row">
-        <input id="email" placeholder="Email" />
-        <input id="password" type="password" placeholder="Password" />
-      </div>
-      <div class="row">
-        <input id="regUsername" placeholder="Username (for register)" />
-        <input id="regDisplay" placeholder="Display Name (for register)" />
-      </div>
-      <div class="row">
-        <button id="btnLogin">Login</button>
-        <button id="btnRegister" class="ghost">Register</button>
-      </div>
-      <div id="authInfo" class="muted"></div>
-    </div>
-
-    <!-- APP -->
-    <div id="appCard" class="card hidden">
-      <div class="row" style="align-items:center">
-        <span id="rolePill" class="pill">user</span>
-        <input id="roomInput" value="lobby" style="max-width:180px" placeholder="room"/>
-        <button id="btnJoin" class="ghost">Join</button>
-        <button id="btnLogout" class="danger">Logout</button>
-      </div>
-
-      <div class="sp"></div>
-
-      <div class="row">
-        <input id="newDisplayName" placeholder="New display name" />
-        <div class="file-ui">
-          <input id="avatarFile" type="file" accept="image/*" hidden />
-          <button id="pickAvatarBtn" type="button" class="ghost">Choose Avatar</button>
-          <span id="avatarName" class="fname">No file chosen</span>
-        </div>
-        <button id="btnSaveProfile" class="ghost">Save Profile</button>
-      </div>
-
-      <div id="meInfo" class="muted"></div>
-
-      <div id="chat" class="chat"></div>
-
-      <div class="sp"></div>
-
-      <textarea id="msgText" placeholder="Type message..."></textarea>
-      <div class="row">
-        <div class="file-ui">
-          <input id="msgFile" type="file" accept="image/*" hidden />
-          <button id="pickMsgBtn" type="button" class="ghost">Attach Image</button>
-          <span id="msgFileName" class="fname">No file chosen</span>
-        </div>
-        <button id="btnSend">Send</button>
-      </div>
-
-      <div id="adminCard" class="card hidden" style="margin-top:10px;background:#1a2138">
-        <h3>Admin Controls</h3>
-        <div class="row">
-          <input id="targetIp" placeholder="Target IP" />
-          <input id="muteSec" type="number" value="60" style="max-width:140px" placeholder="seconds"/>
-        </div>
-        <div class="row">
-          <button id="btnMute" class="warn">Mute IP</button>
-          <button id="btnUnmute" class="ghost">Unmute IP</button>
-          <button id="btnBan" class="danger">Ban IP</button>
-          <button id="btnUnban" class="ghost">Unban IP</button>
-        </div>
-        <div id="adminInfo" class="muted"></div>
-      </div>
-    </div>
+<div class="app">
+  <div class="card" id="authCard">
+    <h3>Login / Register</h3>
+    <div class="row"><input id="email" placeholder="Email"><input id="password" type="password" placeholder="Password"></div>
+    <div class="row"><input id="username" placeholder="Username (register)"><input id="displayName" placeholder="Display name (register)"></div>
+    <div class="row"><button id="loginBtn">Login</button><button id="registerBtn" class="ghost">Register</button></div>
+    <div id="authMsg" class="muted"></div>
   </div>
 
-  <div id="toastWrap" class="toast-wrap"></div>
+  <div class="card hidden" id="appCard" style="margin-top:10px">
+    <div class="row"><input id="room" value="lobby" style="max-width:180px"><button id="joinBtn" class="ghost">Join</button><button id="logoutBtn" class="danger">Logout</button></div>
+    <div class="row">
+      <input id="newDisplay" placeholder="New display name">
+      <input id="avatarInput" type="file" accept="image/*" hidden>
+      <button id="avatarPick" class="ghost" type="button">Choose Avatar</button>
+      <span id="avatarFileName" class="muted">No file</span>
+      <button id="saveProfileBtn" class="ghost">Save Profile</button>
+    </div>
+    <div id="me" class="muted"></div>
 
-  <!-- custom confirm modal -->
-  <div id="confirmBackdrop" class="modal-backdrop">
-    <div class="modal">
-      <h4 id="confirmTitle">Confirm</h4>
-      <div id="confirmText" class="muted"></div>
-      <div class="row" style="justify-content:flex-end">
-        <button id="confirmCancel" class="ghost">Cancel</button>
-        <button id="confirmOk" class="danger">Delete</button>
-      </div>
+    <div id="chat" class="chat"></div>
+
+    <div class="row" style="margin-top:8px"><textarea id="msg" placeholder="Message"></textarea></div>
+    <div class="row">
+      <input id="imgInput" type="file" accept="image/*" hidden>
+      <button id="imgPick" class="ghost" type="button">Attach Image</button>
+      <span id="imgFileName" class="muted">No file</span>
+      <button id="sendBtn">Send</button>
+    </div>
+
+    <div id="adminBox" class="hidden" style="margin-top:8px;border-top:1px solid #2d3f68;padding-top:8px">
+      <div class="row"><input id="targetIp" placeholder="Target IP"><input id="muteSec" type="number" value="60" style="max-width:120px"></div>
+      <div class="row"><button id="muteBtn">Mute</button><button id="unmuteBtn" class="ghost">Unmute</button><button id="banBtn" class="danger">Ban</button><button id="unbanBtn" class="ghost">Unban</button></div>
+      <div id="adminMsg" class="muted"></div>
     </div>
   </div>
+</div>
+<div id="toastWrap" class="toastWrap"></div>
 
 <script>
-/* ================= CONFIG ================= */
-const SUPABASE_URL = "https://lflkpziiwnoamvtrbcil.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_tFvlhmTEDV3SOSVp0JvVzg_KHXFiDNb";
-/* ========================================= */
+const SUPABASE_URL="https://lflkpziiwnoamvtrbcil.supabase.co";
+const SUPABASE_ANON_KEY="sb_publishable_tFvlhmTEDV3SOSVp0JvVzg_KHXFiDNb";
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const $=id=>document.getElementById(id);
+let user=null, profile=null, room="lobby", channel=null;
 
-// Elements
-const $ = (id)=>document.getElementById(id);
-const statusEl = $("status"), authCard=$("authCard"), appCard=$("appCard"), chatEl=$("chat");
-const rolePill=$("rolePill"), meInfo=$("meInfo"), adminCard=$("adminCard");
-const confirmBackdrop=$("confirmBackdrop"), confirmTitle=$("confirmTitle"), confirmText=$("confirmText");
-let confirmResolve = null;
+const t=(m,type="ok")=>{const d=document.createElement("div");d.className="toast "+type;d.textContent=m;$("toastWrap").appendChild(d);setTimeout(()=>d.remove(),2800);}
+const eMsg=(ctx,err)=>`${ctx}: ${err?.message||err?.error_description||JSON.stringify(err)}`;
+const esc=s=>String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+const time=s=>new Date(s).toLocaleString();
 
-let me=null, profile=null, room="lobby", channel=null;
+$("avatarPick").onclick=()=>$("avatarInput").click();
+$("imgPick").onclick=()=>$("imgInput").click();
+$("avatarInput").onchange=()=>$("avatarFileName").textContent=$("avatarInput").files?.[0]?.name||"No file";
+$("imgInput").onchange=()=>$("imgFileName").textContent=$("imgInput").files?.[0]?.name||"No file";
 
-// UI helpers
-function toast(msg,type="ok",ms=2600){
-  const wrap=$("toastWrap"); const d=document.createElement("div");
-  d.className=`toast ${type}`; d.textContent=msg; wrap.appendChild(d);
-  setTimeout(()=>d.remove(),ms);
-}
-function setInfo(id,msg,isErr=false){
-  const e=$(id); e.textContent=msg; e.style.color=isErr?"var(--err)":"var(--muted)";
-}
-function esc(s=""){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));}
-function when(iso){ try{return new Date(iso).toLocaleString();}catch{return iso;} }
-
-function openConfirm(title,text){
-  confirmTitle.textContent=title; confirmText.textContent=text;
-  confirmBackdrop.style.display="flex";
-  return new Promise((resolve)=>{ confirmResolve=resolve; });
-}
-$("confirmCancel").onclick=()=>{ confirmBackdrop.style.display="none"; confirmResolve?.(false); confirmResolve=null; };
-$("confirmOk").onclick=()=>{ confirmBackdrop.style.display="none"; confirmResolve?.(true); confirmResolve=null; };
-
-// auth/app state
-function loggedOut(){
-  me=null; profile=null;
-  authCard.classList.remove("hidden"); appCard.classList.add("hidden");
-  statusEl.textContent="Not logged in";
-  chatEl.innerHTML="";
-  if(channel){ sb.removeChannel(channel); channel=null; }
-}
-function loggedInUI(){
-  authCard.classList.add("hidden"); appCard.classList.remove("hidden");
-  statusEl.textContent=`Logged in: ${profile.display_name} (@${profile.username})`;
-  rolePill.textContent=profile.role;
-  rolePill.className="pill" + (profile.role==="admin" ? " admin":"");
-  adminCard.classList.toggle("hidden", profile.role!=="admin");
-  meInfo.innerHTML = `You: <b>${esc(profile.display_name)}</b> @${esc(profile.username)}`;
-}
-
-// profile
-async function ensureProfile(user, usernameHint="", displayHint=""){
-  let {data:p,error:e1} = await sb.from("profiles").select("*").eq("id",user.id).maybeSingle();
-  if(e1) throw e1;
-  if(!p){
-    const username=(usernameHint || user.email.split("@")[0]).trim().slice(0,24) || ("u"+Date.now());
-    const display_name=(displayHint || username).trim().slice(0,48);
-    const ins = await sb.from("profiles").insert({
-      id:user.id, username, display_name, role:"user"
-    }).select("*").single();
+async function ensureProfile(u,uname="",dname=""){
+  let {data,error}=await sb.from("profiles").select("*").eq("id",u.id).maybeSingle();
+  if(error) throw error;
+  if(!data){
+    const username=(uname||u.email.split("@")[0]).slice(0,24);
+    const display_name=(dname||username).slice(0,48);
+    const ins=await sb.from("profiles").insert({id:u.id,username,display_name,role:"user"}).select("*").single();
     if(ins.error) throw ins.error;
-    p = ins.data;
+    data=ins.data;
   }
-  return p;
+  return data;
 }
 
-// files
-$("pickAvatarBtn").onclick=()=>$("avatarFile").click();
-$("pickMsgBtn").onclick=()=>$("msgFile").click();
-$("avatarFile").addEventListener("change",()=>{
-  $("avatarName").textContent = $("avatarFile").files?.[0]?.name || "No file chosen";
-});
-$("msgFile").addEventListener("change",()=>{
-  $("msgFileName").textContent = $("msgFile").files?.[0]?.name || "No file chosen";
-});
+function showApp(){
+  $("authCard").classList.add("hidden");
+  $("appCard").classList.remove("hidden");
+  $("me").innerHTML=`You: <b>${esc(profile.display_name)}</b> @${esc(profile.username)} (${esc(profile.role)})`;
+  $("adminBox").classList.toggle("hidden",profile.role!=="admin");
+}
 
-async function uploadToBucket(file){
+function showAuth(){
+  $("authCard").classList.remove("hidden");
+  $("appCard").classList.add("hidden");
+  $("chat").innerHTML="";
+  if(channel){sb.removeChannel(channel);channel=null;}
+}
+
+async function upload(file){
   const ext=(file.name.split(".").pop()||"jpg").toLowerCase();
-  const path=`${me.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-  const up = await sb.storage.from("chat-media").upload(path,file,{upsert:false});
+  const path=`${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  const up=await sb.storage.from("chat-media").upload(path,file,{upsert:false});
   if(up.error) throw up.error;
-  const pub = sb.storage.from("chat-media").getPublicUrl(path);
-  return pub.data.publicUrl;
+  return sb.storage.from("chat-media").getPublicUrl(path).data.publicUrl;
 }
 
-// login/register/logout
-$("btnLogin").onclick = async ()=>{
-  setInfo("authInfo","");
-  const email=$("email").value.trim();
-  const password=$("password").value;
-  if(!email || !password) return setInfo("authInfo","Email and password required.",true);
+function drawMessage(m){
+  const av=m.profiles?.avatar_url?`<img class="avatar" src="${esc(m.profiles.avatar_url)}">`:"";
+  const disp=m.profiles?.display_name||"user";
+  const uname=m.profiles?.username||"";
+  const mine=m.user_id===user.id;
+  const admin=profile.role==="admin";
+  const canDelete=mine||admin;
+  const deleted=m.deleted;
+  const text=deleted?"<i>[deleted]</i>":esc(m.text||"");
+  const img=(!deleted&&m.image_url)?`<img class="img" src="${esc(m.image_url)}">`:"";
+  return `<div class="msg ${deleted?"deleted":""}" id="m-${m.id}">
+    <div class="meta"><span>${av}<b>${esc(disp)}</b> @${esc(uname)}</span><span>${time(m.created_at)}</span></div>
+    <div>${text}</div>${img}
+    <div class="actions">
+      ${canDelete?`<button class="ghost" onclick="delMsg('${m.id}')">Delete</button>`:""}
+    </div></div>`;
+}
 
-  const res = await sb.auth.signInWithPassword({email,password});
-  if(res.error) return setInfo("authInfo",res.error.message,true);
+async function loadMessages(){
+  $("chat").innerHTML="";
+  const q=await sb.from("messages")
+    .select("id,room,user_id,text,image_url,created_at,deleted,profiles(username,display_name,avatar_url)")
+    .eq("room",room).order("created_at",{ascending:true}).limit(200);
 
-  me=res.data.user;
-  try{
-    profile=await ensureProfile(me);
-    loggedInUI();
-    await joinRoom();
-    toast("Login success","ok");
-  }catch(err){
-    setInfo("authInfo",err.message||"Profile error",true);
-  }
+  if(q.error){t(eMsg("loadMessages",q.error),"err");return;}
+  q.data.forEach(m=>$("chat").insertAdjacentHTML("beforeend",drawMessage(m)));
+  $("chat").scrollTop=$("chat").scrollHeight;
+}
+
+window.delMsg=async(id)=>{
+  const q=await sb.from("messages").update({deleted:true,text:null,image_url:null}).eq("id",id);
+  if(q.error) t(eMsg("delete",q.error),"err");
+  else t("Message deleted");
 };
 
-$("btnRegister").onclick = async ()=>{
-  setInfo("authInfo","");
-  const email=$("email").value.trim();
-  const password=$("password").value;
-  const username=$("regUsername").value.trim();
-  const display=$("regDisplay").value.trim();
-  if(!email || !password || !username) return setInfo("authInfo","Email, password, username required.",true);
-
-  const sign = await sb.auth.signUp({email,password});
-  if(sign.error) return setInfo("authInfo",sign.error.message,true);
-  if(!sign.data.user){
-    toast("Check email confirmation, then login.","warn",3500);
-    return;
-  }
-
-  me=sign.data.user;
-  try{
-    profile=await ensureProfile(me,username,display||username);
-    loggedInUI();
-    await joinRoom();
-    toast("Registered + logged in","ok");
-  }catch(err){
-    setInfo("authInfo",err.message||"Profile error",true);
-  }
-};
-
-$("btnLogout").onclick = async ()=>{
-  await sb.auth.signOut();
-  loggedOut();
-  toast("Logged out","ok");
-};
-
-// profile save
-$("btnSaveProfile").onclick = async ()=>{
-  if(!me) return;
-  let display_name = $("newDisplayName").value.trim() || profile.display_name;
-  display_name = display_name.slice(0,48);
-
-  let avatar_url = profile.avatar_url || null;
-  const f = $("avatarFile").files?.[0];
-  try{
-    if(f) avatar_url = await uploadToBucket(f);
-    const upd = await sb.from("profiles").update({display_name,avatar_url}).eq("id",me.id);
-    if(upd.error) throw upd.error;
-    profile.display_name = display_name;
-    profile.avatar_url = avatar_url;
-    loggedInUI();
-    toast("Profile updated","ok");
-  }catch(err){
-    toast(err.message||"Profile update failed","err",3500);
-  }
-};
-
-// message rendering
-function actionButtons(m){
-  const isOwner = me && m.user_id===me.id;
-  const isAdmin = profile?.role==="admin";
-  let html = "";
-  if(isOwner || isAdmin){
-    html += `<button class="ghost" data-del="${m.id}">Delete</button>`;
-  }
-  if(isAdmin && m.ip){
-    html += `<button class="warn" data-fillip="${esc(m.ip)}">Use IP</button>`;
-  }
-  return html;
-}
-function renderMsg(m){
-  const av = m.avatar_url ? `<img class="avatar" src="${esc(m.avatar_url)}" alt="a" />` : "";
-  const deleted = m.deleted ? "deleted":"";
-  const text = m.deleted ? "<i>[deleted]</i>" : esc(m.text||"");
-  const img = (!m.deleted && m.image_url) ? `<img class="up" src="${esc(m.image_url)}" alt="upload"/>` : "";
-  const ipView = profile?.role==="admin" && m.ip ? ` • IP:${esc(m.ip)}` : "";
-  return `
-    <div class="msg ${deleted}" id="msg-${m.id}">
-      <div class="meta">
-        <span>${av}<b>${esc(m.display_name||m.username||"user")}</b> @${esc(m.username||"")}</span>
-        <span>${when(m.created_at)}${ipView}</span>
-      </div>
-      <div class="body">${text}</div>
-      ${img}
-      <div class="actions">${actionButtons(m)}</div>
-    </div>
-  `;
-}
-function addMsg(m){
-  chatEl.insertAdjacentHTML("beforeend",renderMsg(m));
-  chatEl.scrollTop=chatEl.scrollHeight;
-}
-function wireMsgButtons(){
-  chatEl.querySelectorAll("[data-del]").forEach(btn=>{
-    btn.onclick = async ()=>{
-      const id=btn.getAttribute("data-del");
-      const ok = await openConfirm("Delete message","This will hide message content.");
-      if(!ok) return;
-      const q = await sb.from("messages").update({deleted:true,text:null,image_url:null}).eq("id",id);
-      if(q.error) toast(q.error.message,"err",3500);
-      else toast("Message deleted","ok");
-    };
-  });
-  chatEl.querySelectorAll("[data-fillip]").forEach(btn=>{
-    btn.onclick = ()=>{ $("targetIp").value = btn.getAttribute("data-fillip") || ""; };
-  });
-}
-
-async function reloadMessages(){
-  chatEl.innerHTML="";
-  const q = await sb.from("messages")
-    .select("*")
-    .eq("room",room)
-    .order("created_at",{ascending:true})
-    .limit(200);
-  if(q.error){ toast(q.error.message,"err",3500); return; }
-  q.data.forEach(addMsg);
-  wireMsgButtons();
-}
-
-// room + realtime
-async function joinRoom(){
-  room = ($("roomInput").value.trim() || "lobby").slice(0,64);
-  await reloadMessages();
-
+async function join(){
+  room=($("room").value.trim()||"lobby").slice(0,64);
+  await loadMessages();
   if(channel) await sb.removeChannel(channel);
-  channel = sb.channel(`room-${room}-${Date.now()}`)
-    .on("postgres_changes",{event:"INSERT",schema:"public",table:"messages",filter:`room=eq.${room}`},(p)=>{
-      addMsg(p.new); wireMsgButtons();
+  channel=sb.channel("room-"+room+"-"+Date.now())
+    .on("postgres_changes",{event:"INSERT",schema:"public",table:"messages",filter:`room=eq.${room}`},async(p)=>{
+      // fetch joined row for profile data
+      const one=await sb.from("messages")
+        .select("id,room,user_id,text,image_url,created_at,deleted,profiles(username,display_name,avatar_url)")
+        .eq("id",p.new.id).single();
+      if(one.data){ $("chat").insertAdjacentHTML("beforeend",drawMessage(one.data)); $("chat").scrollTop=$("chat").scrollHeight; }
     })
-    .on("postgres_changes",{event:"UPDATE",schema:"public",table:"messages",filter:`room=eq.${room}`},(p)=>{
-      const old=document.getElementById(`msg-${p.new.id}`);
-      if(old) old.outerHTML = renderMsg(p.new);
-      wireMsgButtons();
+    .on("postgres_changes",{event:"UPDATE",schema:"public",table:"messages",filter:`room=eq.${room}`},async(p)=>{
+      const one=await sb.from("messages")
+        .select("id,room,user_id,text,image_url,created_at,deleted,profiles(username,display_name,avatar_url)")
+        .eq("id",p.new.id).single();
+      const old=document.getElementById("m-"+p.new.id);
+      if(old && one.data) old.outerHTML=drawMessage(one.data);
     })
     .subscribe();
 }
-$("btnJoin").onclick = joinRoom;
 
-// send message
-$("btnSend").onclick = async ()=>{
-  const text = $("msgText").value.trim();
-  const file = $("msgFile").files?.[0];
-  if(!text && !file) return toast("Write message or attach image.","warn");
-
-  let image_url = null;
+$("loginBtn").onclick=async()=>{
   try{
-    if(file) image_url = await uploadToBucket(file);
+    const email=$("email").value.trim(), password=$("password").value;
+    const r=await sb.auth.signInWithPassword({email,password});
+    if(r.error) throw r.error;
+    user=r.data.user;
+    profile=await ensureProfile(user);
+    showApp(); await join(); t("Logged in");
+  }catch(err){$("authMsg").textContent=eMsg("login",err);}
+};
 
-    // Optional client IP capture (not tamper-proof)
-    let ip = null;
-    try{
-      const rr = await fetch("https://api.ipify.org?format=json");
-      const jj = await rr.json();
-      ip = jj.ip || null;
-    }catch{}
+$("registerBtn").onclick=async()=>{
+  try{
+    const email=$("email").value.trim(), password=$("password").value;
+    const username=$("username").value.trim(), display=$("displayName").value.trim();
+    const r=await sb.auth.signUp({email,password});
+    if(r.error) throw r.error;
+    if(!r.data.user){$("authMsg").textContent="Check email confirmation then login.";return;}
+    user=r.data.user;
+    profile=await ensureProfile(user,username,display||username);
+    showApp(); await join(); t("Registered");
+  }catch(err){$("authMsg").textContent=eMsg("register",err);}
+};
 
-    // Read moderation tables client-side (works with RLS admin/user design)
-    if(ip){
-      const b = await sb.from("ip_bans").select("ip").eq("ip",ip).maybeSingle();
-      if(b.data) return toast("You are banned.","err",3500);
+$("logoutBtn").onclick=async()=>{await sb.auth.signOut();showAuth();t("Logged out");};
+$("joinBtn").onclick=join;
 
-      const m = await sb.from("ip_mutes").select("muted_until").eq("ip",ip).maybeSingle();
-      if(m.data && new Date(m.data.muted_until).getTime() > Date.now()){
-        return toast("You are muted.","warn",3500);
-      }
-    }
+$("saveProfileBtn").onclick=async()=>{
+  try{
+    let display_name=($("newDisplay").value.trim()||profile.display_name).slice(0,48);
+    let avatar_url=profile.avatar_url||null;
+    const f=$("avatarInput").files?.[0];
+    if(f) avatar_url=await upload(f);
+    const q=await sb.from("profiles").update({display_name,avatar_url}).eq("id",user.id);
+    if(q.error) throw q.error;
+    profile.display_name=display_name; profile.avatar_url=avatar_url;
+    showApp(); t("Profile saved");
+  }catch(err){t(eMsg("profile",err),"err");}
+};
 
-    const ins = await sb.from("messages").insert({
-      room,
-      user_id:me.id,
-      username:profile.username,
-      display_name:profile.display_name,
-      avatar_url:profile.avatar_url || null,
-      text:text || null,
-      image_url:image_url || null,
-      ip: ip
+$("sendBtn").onclick=async()=>{
+  try{
+    const text=$("msg").value.trim();
+    const f=$("imgInput").files?.[0];
+    if(!text && !f){t("Write message or attach image.","err");return;}
+    let image_url=null;
+    if(f) image_url=await upload(f);
+
+    const ins=await sb.from("messages").insert({
+      room,user_id:user.id,text:text||null,image_url
     });
     if(ins.error) throw ins.error;
 
-    $("msgText").value="";
-    $("msgFile").value="";
-    $("msgFileName").textContent="No file chosen";
-  }catch(err){
-    toast(err.message||"Send failed","err",3500);
-  }
+    $("msg").value=""; $("imgInput").value=""; $("imgFileName").textContent="No file";
+  }catch(err){t(eMsg("send",err),"err");}
 };
 
-// admin actions
-$("btnMute").onclick = async ()=>{
-  const ip=$("targetIp").value.trim();
-  const sec=Math.max(1,Number($("muteSec").value||60));
-  if(!ip) return setInfo("adminInfo","Target IP required",true);
-  const muted_until = new Date(Date.now()+sec*1000).toISOString();
-  const q = await sb.from("ip_mutes").upsert({ip,muted_until,reason:"admin mute",updated_at:new Date().toISOString()});
-  if(q.error) return setInfo("adminInfo",q.error.message,true);
-  setInfo("adminInfo",`Muted ${ip} for ${sec}s`);
-  toast("IP muted","ok");
-};
-$("btnUnmute").onclick = async ()=>{
-  const ip=$("targetIp").value.trim();
-  if(!ip) return setInfo("adminInfo","Target IP required",true);
-  const q = await sb.from("ip_mutes").delete().eq("ip",ip);
-  if(q.error) return setInfo("adminInfo",q.error.message,true);
-  setInfo("adminInfo",`Unmuted ${ip}`); toast("IP unmuted","ok");
-};
-$("btnBan").onclick = async ()=>{
-  const ip=$("targetIp").value.trim();
-  if(!ip) return setInfo("adminInfo","Target IP required",true);
-  const q = await sb.from("ip_bans").upsert({ip,reason:"admin ban",created_at:new Date().toISOString()});
-  if(q.error) return setInfo("adminInfo",q.error.message,true);
-  setInfo("adminInfo",`Banned ${ip}`); toast("IP banned","ok");
-};
-$("btnUnban").onclick = async ()=>{
-  const ip=$("targetIp").value.trim();
-  if(!ip) return setInfo("adminInfo","Target IP required",true);
-  const q = await sb.from("ip_bans").delete().eq("ip",ip);
-  if(q.error) return setInfo("adminInfo",q.error.message,true);
-  setInfo("adminInfo",`Unbanned ${ip}`); toast("IP unbanned","ok");
-};
+// Admin tools
+$("muteBtn").onclick=async()=>adminOp("mute");
+$("unmuteBtn").onclick=async()=>adminOp("unmute");
+$("banBtn").onclick=async()=>adminOp("ban");
+$("unbanBtn").onclick=async()=>adminOp("unban");
 
-// restore session
-(async ()=>{
-  const s = await sb.auth.getSession();
-  if(!s.data.session?.user) return loggedOut();
-  me = s.data.session.user;
+async function adminOp(type){
+  const ip=$("targetIp").value.trim();
+  if(!ip){$("adminMsg").textContent="Target IP required";return;}
+  if(profile.role!=="admin"){t("Not admin","err");return;}
   try{
-    profile = await ensureProfile(me);
-    loggedInUI();
-    await joinRoom();
-  }catch(err){
-    toast(err.message||"Init failed","err",3500);
-    loggedOut();
-  }
+    if(type==="mute"){
+      const sec=Math.max(1,Number($("muteSec").value||60));
+      const until=new Date(Date.now()+sec*1000).toISOString();
+      const q=await sb.from("ip_mutes").upsert({ip,muted_until:until,reason:"admin",updated_at:new Date().toISOString()});
+      if(q.error) throw q.error;
+      $("adminMsg").textContent=`Muted ${ip} for ${sec}s`;
+    }else if(type==="unmute"){
+      const q=await sb.from("ip_mutes").delete().eq("ip",ip); if(q.error) throw q.error;
+      $("adminMsg").textContent=`Unmuted ${ip}`;
+    }else if(type==="ban"){
+      const q=await sb.from("ip_bans").upsert({ip,reason:"admin",created_at:new Date().toISOString()}); if(q.error) throw q.error;
+      $("adminMsg").textContent=`Banned ${ip}`;
+    }else{
+      const q=await sb.from("ip_bans").delete().eq("ip",ip); if(q.error) throw q.error;
+      $("adminMsg").textContent=`Unbanned ${ip}`;
+    }
+    t("Admin action done");
+  }catch(err){$("adminMsg").textContent=eMsg("admin",err);}
+}
+
+// restore
+(async()=>{
+  const s=await sb.auth.getSession();
+  if(!s.data.session?.user){showAuth();return;}
+  try{
+    user=s.data.session.user;
+    profile=await ensureProfile(user);
+    showApp(); await join();
+  }catch(err){showAuth();t(eMsg("init",err),"err");}
 })();
 </script>
 </body>
