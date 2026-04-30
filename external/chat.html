@@ -3,281 +3,695 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Chat Stable</title>
+  <title>CHATBOX</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    :root{--bg:#0d1322;--panel:#151d33;--line:#2a3b62;--txt:#edf3ff;--muted:#a9b4ce;--pri:#69a7ff;--ok:#5cca8d;--err:#ff7070;--warn:#ffd06a}
-    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui}
-    .app{max-width:980px;margin:0 auto;padding:12px}.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px}
-    .row{display:flex;gap:8px;flex-wrap:wrap}
-    input,textarea,button{border-radius:10px;padding:10px;border:1px solid #334977;background:#0f172b;color:var(--txt);font-size:14px}
-    input,textarea{flex:1;min-width:140px} button{border:none;cursor:pointer;background:var(--pri);color:#081428;font-weight:700}
-    button.ghost{background:#23385f;color:#deebff} button.danger{background:var(--err);color:#2b0909} button.warn{background:#ffd06a;color:#402f00}
-    .hidden{display:none!important}.muted{font-size:12px;color:var(--muted)}
-    .chat{height:52vh;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:10px;background:#0e162b;display:flex;flex-direction:column;gap:8px}
-    .msg{border:1px solid #2d3f68;background:#1a2748;border-radius:10px;padding:8px}.msg.deleted{opacity:.66;background:#2a3146}
-    .meta{display:flex;justify-content:space-between;font-size:12px;color:#c8d4ef;margin-bottom:6px}
-    .avatar{width:22px;height:22px;border-radius:50%;border:1px solid #48629b;object-fit:cover;vertical-align:middle;margin-right:6px}
-    .text{white-space:pre-wrap;word-break:break-word}.img{max-width:220px;max-height:220px;border:1px solid #3a5082;border-radius:8px;margin-top:8px}
-    .actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.actions button{padding:6px 9px;font-size:12px}
-    .fileui{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.fname{font-size:12px;color:var(--muted);max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .toastWrap{position:fixed;right:12px;bottom:12px;display:flex;flex-direction:column;gap:8px;z-index:9999}
-    .toast{min-width:220px;max-width:340px;padding:10px 12px;border-radius:10px;border:1px solid #415886;background:#172643}
-    .toast.ok{background:#143126;border-color:#2f7d52}.toast.err{background:#3a1818;border-color:#8d4040}.toast.warn{background:#3f3216;border-color:#8a6e33}
+    :root{
+      --bg:#0b1220; --panel:#141d32; --line:#2a3c63; --txt:#edf3ff; --muted:#a8b5d2;
+      --primary:#68a8ff; --ok:#59ca8e; --warn:#ffd06a; --danger:#ff7171;
+      --chip:#223a65;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; background:var(--bg); color:var(--txt);
+      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    }
+    .app{max-width:1100px; margin:0 auto; padding:12px}
+    .card{
+      background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:12px;
+      box-shadow:0 8px 24px rgba(0,0,0,.2);
+    }
+    .row{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+    .col{display:flex; flex-direction:column; gap:8px}
+    input,textarea,button,select{
+      border-radius:10px; font-size:14px; padding:10px 12px;
+      border:1px solid #355083; background:#0e182d; color:var(--txt);
+    }
+    input,textarea,select{flex:1; min-width:140px}
+    textarea{min-height:70px; resize:vertical}
+    button{
+      border:none; cursor:pointer; background:var(--primary); color:#081428; font-weight:700;
+    }
+    button.ghost{background:#24406d; color:#e2ecff}
+    button.warn{background:var(--warn); color:#3c2f00}
+    button.danger{background:var(--danger); color:#300909}
+    button:disabled{opacity:.55; cursor:not-allowed}
+    .hidden{display:none !important}
+    .muted{font-size:12px; color:var(--muted)}
+    .titlebar{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px}
+    .chip{display:inline-block; font-size:11px; padding:3px 8px; border-radius:999px; background:var(--chip)}
+    .chip.admin{background:#5f4115; color:#ffdca0}
+    .layout{display:grid; grid-template-columns: 1fr; gap:10px}
+    @media(min-width:980px){
+      .layout{grid-template-columns: 2fr 1fr}
+    }
+
+    .chat{
+      height:56vh; overflow:auto; border:1px solid var(--line);
+      border-radius:12px; padding:10px; background:#0d172c;
+      display:flex; flex-direction:column; gap:8px;
+    }
+    .msg{
+      border:1px solid #2b406a; background:#17274a; border-radius:10px; padding:8px;
+    }
+    .msg.deleted{opacity:.65; background:#2a3248}
+    .meta{
+      display:flex; justify-content:space-between; gap:8px; font-size:12px; color:#cad5f1; margin-bottom:6px;
+    }
+    .avatar{
+      width:22px; height:22px; border-radius:50%; object-fit:cover; border:1px solid #4b67a5;
+      vertical-align:middle; margin-right:6px;
+    }
+    .text{white-space:pre-wrap; word-break:break-word}
+    .img{max-width:260px; max-height:260px; border-radius:8px; border:1px solid #3f578c; margin-top:8px}
+    .actions{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px}
+    .actions button{font-size:12px; padding:6px 9px}
+
+    .file-ui{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+    .fname{
+      max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+      font-size:12px; color:var(--muted);
+    }
+
+    .toast-wrap{
+      position:fixed; right:12px; bottom:12px; z-index:9999;
+      display:flex; flex-direction:column; gap:8px;
+    }
+    .toast{
+      min-width:220px; max-width:350px; border-radius:10px; padding:10px 12px;
+      border:1px solid #466193; background:#162746; color:#ecf3ff;
+      box-shadow:0 8px 20px rgba(0,0,0,.3);
+    }
+    .toast.ok{background:#123125; border-color:#2f7d52}
+    .toast.err{background:#3b1919; border-color:#8f4141}
+    .toast.warn{background:#3f3216; border-color:#8b6d32}
+
+    .modal-backdrop{
+      position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:10000;
+      display:none; align-items:center; justify-content:center;
+    }
+    .modal{
+      width:min(94vw,430px); background:#141f38; border:1px solid #335084; border-radius:12px; padding:12px;
+    }
+    .modal h4{margin:0 0 8px}
+    .modal .row{justify-content:flex-end}
+
+    .debug{
+      max-height:180px; overflow:auto; border:1px dashed #3a507f; border-radius:10px;
+      padding:8px; background:#0f1931; font-size:12px; white-space:pre-wrap;
+    }
+    .divider{height:1px; background:#2a3d67; margin:8px 0}
   </style>
 </head>
 <body>
 <div class="app">
-  <div class="card" id="authCard">
-    <h3>Login / Register</h3>
-    <div class="row"><input id="email" placeholder="Email"><input id="password" type="password" placeholder="Password"></div>
-    <div class="row"><input id="regUsername" placeholder="Username (register)"><input id="regDisplay" placeholder="Display Name (register)"></div>
-    <div class="row"><button id="btnLogin">Login</button><button id="btnRegister" class="ghost">Register</button></div>
+  <div class="titlebar">
+    <h2 style="margin:0">Realtime Chat</h2>
+    <div id="status" class="muted">Not logged in</div>
+  </div>
+
+  <!-- AUTH -->
+  <div id="authCard" class="card">
+    <h3 style="margin-top:0">Login / Register CHATBOX</h3>
+    <div class="row">
+      <input id="email" placeholder="Email" />
+      <input id="password" type="password" placeholder="Password" />
+    </div>
+    <div class="row">
+      <input id="regUsername" placeholder="Username (register only)" />
+      <input id="regDisplay" placeholder="Display Name (register only)" />
+    </div>
+    <div class="row">
+      <button id="btnLogin">Login</button>
+      <button id="btnRegister" class="ghost">Register</button>
+    </div>
     <div id="authMsg" class="muted"></div>
   </div>
 
-  <div class="card hidden" id="appCard" style="margin-top:10px">
-    <div class="row"><input id="roomInput" value="lobby" style="max-width:180px"><button id="btnJoin" class="ghost">Join Room</button><button id="btnLogout" class="danger">Logout</button></div>
-    <div class="row">
-      <input id="newDisplay" placeholder="New display name">
-      <input id="avatarFile" type="file" accept="image/*" hidden>
-      <button id="btnPickAvatar" type="button" class="ghost">Choose Avatar</button>
-      <span id="avatarName" class="fname">No file chosen</span>
-      <button id="btnSaveProfile" class="ghost">Save Profile</button>
+  <!-- APP -->
+  <div id="appCard" class="hidden layout">
+    <!-- LEFT: CHAT -->
+    <div class="card">
+      <div class="row">
+        <span id="roleChip" class="chip">user</span>
+        <input id="roomInput" value="lobby" style="max-width:180px" />
+        <button id="btnJoin" class="ghost">Join Room</button>
+        <button id="btnLogout" class="danger">Logout</button>
+      </div>
+      <div id="meInfo" class="muted" style="margin-top:6px"></div>
+
+      <div class="divider"></div>
+
+      <div id="chat" class="chat"></div>
+
+      <div class="divider"></div>
+
+      <textarea id="msgText" placeholder="Type your message..."></textarea>
+      <div class="row">
+        <input id="msgFile" type="file" accept="image/*" hidden />
+        <button id="btnPickMsg" class="ghost" type="button">Attach Image</button>
+        <span id="msgFileName" class="fname">No file chosen</span>
+        <button id="btnSend">Send</button>
+      </div>
     </div>
-    <div id="meInfo" class="muted"></div>
 
-    <div id="chat" class="chat"></div>
+    <!-- RIGHT: PROFILE + ADMIN + DEBUG -->
+    <div class="col">
+      <div class="card">
+        <h3 style="margin-top:0">Profile</h3>
+        <div class="row">
+          <input id="newDisplay" placeholder="New display name" />
+        </div>
+        <div class="file-ui">
+          <input id="avatarFile" type="file" accept="image/*" hidden />
+          <button id="btnPickAvatar" class="ghost" type="button">Choose Avatar</button>
+          <span id="avatarFileName" class="fname">No file chosen</span>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <button id="btnSaveProfile" class="ghost">Save Profile</button>
+        </div>
+      </div>
 
-    <div class="row" style="margin-top:8px"><textarea id="msgText" placeholder="Type message..."></textarea></div>
-    <div class="row">
-      <input id="msgFile" type="file" accept="image/*" hidden>
-      <button id="btnPickMsg" type="button" class="ghost">Attach Image</button>
-      <span id="msgFileName" class="fname">No file chosen</span>
-      <button id="btnSend">Send</button>
+      <div id="adminCard" class="card hidden">
+        <h3 style="margin-top:0">CHATBOX Admin Panel</h3>
+        <div class="row">
+          <input id="targetIp" placeholder="Target IP" />
+          <input id="muteSec" type="number" value="60" style="max-width:120px" />
+        </div>
+        <div class="row">
+          <button id="btnMute" class="warn">Mute IP</button>
+          <button id="btnUnmute" class="ghost">Unmute IP</button>
+          <button id="btnBan" class="danger">Ban IP</button>
+          <button id="btnUnban" class="ghost">Unban IP</button>
+        </div>
+        <div id="adminMsg" class="muted"></div>
+      </div>
+
+      <div class="card">
+        <div class="row" style="justify-content:space-between">
+          <h3 style="margin:0">Debug</h3>
+          <button id="btnClearDebug" class="ghost" type="button">Clear</button>
+        </div>
+        <div id="debug" class="debug"></div>
+      </div>
     </div>
   </div>
 </div>
 
-<div id="toastWrap" class="toastWrap"></div>
+<div id="toastWrap" class="toast-wrap"></div>
+
+<!-- confirm modal -->
+<div id="confirmBackdrop" class="modal-backdrop">
+  <div class="modal">
+    <h4 id="confirmTitle">Confirm</h4>
+    <div id="confirmText" class="muted"></div>
+    <div class="row" style="margin-top:12px">
+      <button id="confirmCancel" class="ghost">Cancel</button>
+      <button id="confirmOk" class="danger">Confirm</button>
+    </div>
+  </div>
+</div>
 
 <script>
+/* ================= CONFIG ================= */
 const SUPABASE_URL = "https://lflkpziiwnoamvtrbcil.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_tFvlhmTEDV3SOSVp0JvVzg_KHXFiDNb";
+/* ========================================== */
+
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const $ = (id)=>document.getElementById(id);
 
-const $ = id => document.getElementById(id);
-let me = null, myProfile = null, room = "lobby", channel = null;
+let me = null;
+let myProfile = null;
+let room = "lobby";
+let channel = null;
 let profileMap = new Map();
+let confirmResolver = null;
 
-const toast=(msg,type="ok",ms=3000)=>{const d=document.createElement("div");d.className=`toast ${type}`;d.textContent=msg;$("toastWrap").appendChild(d);setTimeout(()=>d.remove(),ms);}
-const esc=s=>String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
-const when=t=>new Date(t).toLocaleString();
-const errTxt=(ctx,e)=>`${ctx}: ${e?.message||JSON.stringify(e)}`;
+/* ---------- UI Helpers ---------- */
+function toast(msg, type="ok", ms=3200){
+  const wrap = $("toastWrap");
+  const t = document.createElement("div");
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  wrap.appendChild(t);
+  setTimeout(()=>t.remove(), ms);
+}
+function debugLog(label, obj){
+  const d = $("debug");
+  const line = `[${new Date().toLocaleTimeString()}] ${label}: ${typeof obj==="string"?obj:JSON.stringify(obj)}`;
+  d.textContent = (line + "\n" + d.textContent).slice(0, 12000);
+}
+function esc(s=""){ return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m])); }
+function fmtTime(ts){ try{return new Date(ts).toLocaleString();}catch{return ts;} }
+function setAuthMsg(msg, isErr=false){
+  $("authMsg").textContent = msg;
+  $("authMsg").style.color = isErr ? "var(--danger)" : "var(--muted)";
+}
+function setAdminMsg(msg, isErr=false){
+  $("adminMsg").textContent = msg;
+  $("adminMsg").style.color = isErr ? "var(--danger)" : "var(--muted)";
+}
+function errText(ctx, e){
+  const msg = e?.message || e?.error_description || JSON.stringify(e);
+  return `${ctx}: ${msg}`;
+}
+function showAuth(){
+  $("authCard").classList.remove("hidden");
+  $("appCard").classList.add("hidden");
+  $("status").textContent = "Not logged in";
+  $("chat").innerHTML = "";
+  if(channel){ sb.removeChannel(channel); channel = null; }
+}
+function showApp(){
+  $("authCard").classList.add("hidden");
+  $("appCard").classList.remove("hidden");
+  $("status").textContent = `Logged in: ${myProfile?.display_name || me?.email || "user"}`;
+  $("meInfo").innerHTML = `You: <b>${esc(myProfile?.display_name||"")}</b> @${esc(myProfile?.username||"")} (${esc(myProfile?.role||"user")})`;
 
-function setAuthMsg(msg,err=false){$("authMsg").textContent=msg;$("authMsg").style.color=err?"var(--err)":"var(--muted)"}
-function showAuth(){ $("authCard").classList.remove("hidden"); $("appCard").classList.add("hidden"); $("chat").innerHTML=""; if(channel){sb.removeChannel(channel); channel=null;} }
-function showApp(){ $("authCard").classList.add("hidden"); $("appCard").classList.remove("hidden"); $("meInfo").innerHTML=`You: <b>${esc(myProfile?.display_name||"")}</b> @${esc(myProfile?.username||"")}`; }
+  const rc = $("roleChip");
+  rc.textContent = myProfile?.role || "user";
+  rc.className = "chip" + (myProfile?.role === "admin" ? " admin" : "");
 
-$("btnPickAvatar").onclick=()=>$("avatarFile").click();
-$("btnPickMsg").onclick=()=>$("msgFile").click();
-$("avatarFile").onchange=()=>$("avatarName").textContent=$("avatarFile").files?.[0]?.name||"No file chosen";
-$("msgFile").onchange=()=>$("msgFileName").textContent=$("msgFile").files?.[0]?.name||"No file chosen";
+  $("adminCard").classList.toggle("hidden", myProfile?.role !== "admin");
+}
+function openConfirm(title, text, okLabel="Confirm"){
+  $("confirmTitle").textContent = title;
+  $("confirmText").textContent = text;
+  $("confirmOk").textContent = okLabel;
+  $("confirmBackdrop").style.display = "flex";
+  return new Promise(resolve => { confirmResolver = resolve; });
+}
+$("confirmCancel").onclick = ()=>{ $("confirmBackdrop").style.display="none"; confirmResolver?.(false); confirmResolver=null; };
+$("confirmOk").onclick = ()=>{ $("confirmBackdrop").style.display="none"; confirmResolver?.(true); confirmResolver=null; };
 
-async function ensureProfileAfterLogin(user, uHint="", dHint=""){
-  const one = await sb.from("profiles").select("*").eq("id", user.id).maybeSingle();
-  if(one.error) throw one.error;
-  if(one.data) return one.data;
+$("btnClearDebug").onclick = ()=> $("debug").textContent = "";
 
-  const username=(uHint || user.email.split("@")[0] || ("u"+Date.now())).slice(0,24);
-  const display_name=(dHint || username).slice(0,48);
-  const ins=await sb.from("profiles").insert({id:user.id,username,display_name,role:"user"}).select("*").single();
+/* ---------- Custom File Controls ---------- */
+$("btnPickAvatar").onclick = ()=> $("avatarFile").click();
+$("btnPickMsg").onclick = ()=> $("msgFile").click();
+$("avatarFile").addEventListener("change", ()=>{
+  $("avatarFileName").textContent = $("avatarFile").files?.[0]?.name || "No file chosen";
+});
+$("msgFile").addEventListener("change", ()=>{
+  $("msgFileName").textContent = $("msgFile").files?.[0]?.name || "No file chosen";
+});
+
+/* ---------- Core Data ---------- */
+async function requireAuthedUser(){
+  const gu = await sb.auth.getUser();
+  if(!gu.data.user) throw new Error("Session expired. Please login again.");
+  return gu.data.user;
+}
+
+async function ensureProfileAfterLogin(user, usernameHint="", displayHint=""){
+  let q = await sb.from("profiles").select("*").eq("id", user.id).maybeSingle();
+  if(q.error) throw q.error;
+  if(q.data) return q.data;
+
+  const username = (usernameHint || user.email?.split("@")[0] || ("u"+Date.now())).trim().slice(0,24);
+  const display_name = (displayHint || username).trim().slice(0,48);
+
+  const ins = await sb.from("profiles")
+    .insert({ id:user.id, username, display_name, role:"user" })
+    .select("*")
+    .single();
+
   if(ins.error) throw ins.error;
   return ins.data;
 }
 
 async function uploadImage(file){
-  // ensure user/session exists before storage upload
-  const gu = await sb.auth.getUser();
-  if(!gu.data.user) throw new Error("Session expired. Please login again.");
+  const authUser = await requireAuthedUser();
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const path = `${authUser.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
-  const ext=(file.name.split(".").pop()||"jpg").toLowerCase();
-  const path=`${gu.data.user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-  const up=await sb.storage.from("chat-media").upload(path,file,{upsert:false});
+  const up = await sb.storage.from("chat-media").upload(path, file, { upsert:false });
   if(up.error) throw up.error;
-  return sb.storage.from("chat-media").getPublicUrl(path).data.publicUrl;
+
+  const pub = sb.storage.from("chat-media").getPublicUrl(path);
+  return pub.data.publicUrl;
 }
 
 async function loadProfileMap(){
-  const q=await sb.from("profiles").select("id,username,display_name,avatar_url,role");
+  const q = await sb.from("profiles").select("id,username,display_name,avatar_url,role");
   if(q.error) throw q.error;
-  profileMap=new Map((q.data||[]).map(p=>[p.id,p]));
+  profileMap = new Map((q.data || []).map(p => [p.id, p]));
 }
 
-function renderMessage(m){
-  const p=profileMap.get(m.user_id)||{};
-  const name=p.display_name||"user";
-  const uname=p.username||"unknown";
-  const avatar=p.avatar_url?`<img class="avatar" src="${esc(p.avatar_url)}">`:"";
-  const canDelete=(me && m.user_id===me.id) || myProfile?.role==="admin";
-  return `<div class="msg ${m.deleted?"deleted":""}" id="msg-${m.id}">
-    <div class="meta"><span>${avatar}<b>${esc(name)}</b> @${esc(uname)}</span><span>${when(m.created_at)}</span></div>
-    <div class="text">${m.deleted?"<i>[deleted]</i>":esc(m.text||"")}</div>
-    ${(!m.deleted&&m.image_url)?`<img class="img" src="${esc(m.image_url)}">`:""}
-    <div class="actions">${canDelete?`<button class="ghost" data-del="${m.id}">Delete</button>`:""}</div>
-  </div>`;
+function msgHTML(m){
+  const p = profileMap.get(m.user_id) || {};
+  const display = p.display_name || "user";
+  const uname = p.username || "unknown";
+  const avatar = p.avatar_url ? `<img class="avatar" src="${esc(p.avatar_url)}" alt="">` : "";
+  const canDelete = (me && m.user_id===me.id) || (myProfile?.role==="admin");
+
+  return `
+    <div class="msg ${m.deleted ? "deleted":""}" id="msg-${m.id}">
+      <div class="meta">
+        <span>${avatar}<b>${esc(display)}</b> @${esc(uname)}</span>
+        <span>${fmtTime(m.created_at)}</span>
+      </div>
+      <div class="text">${m.deleted ? "<i>[deleted]</i>" : esc(m.text || "")}</div>
+      ${(!m.deleted && m.image_url) ? `<img class="img" src="${esc(m.image_url)}" alt="upload">` : ""}
+      <div class="actions">
+        ${canDelete ? `<button class="ghost" data-del="${m.id}">Delete</button>` : ""}
+      </div>
+    </div>
+  `;
 }
-function wireDelete(){
+
+function wireMsgActions(){
   document.querySelectorAll("[data-del]").forEach(btn=>{
-    btn.onclick=async()=>{
-      const id=btn.getAttribute("data-del");
-      const q=await sb.from("messages").update({deleted:true,text:null,image_url:null}).eq("id",id);
-      if(q.error) toast(errTxt("delete",q.error),"err",4000); else toast("Message deleted");
+    btn.onclick = async ()=>{
+      const msgId = btn.getAttribute("data-del");
+      const ok = await openConfirm("Delete message", "This will hide text/image for all users.", "Delete");
+      if(!ok) return;
+
+      const q = await sb.from("messages")
+        .update({ deleted:true, text:null, image_url:null })
+        .eq("id", msgId);
+
+      if(q.error){
+        debugLog("delete.error", q.error);
+        toast(errText("delete", q.error), "err", 4500);
+      }else{
+        toast("Message deleted", "ok");
+      }
     };
   });
 }
 
 async function loadMessages(){
-  await loadProfileMap();
-  const q=await sb.from("messages").select("id,room,user_id,text,image_url,created_at,deleted").eq("room",room).order("created_at",{ascending:true}).limit(200);
-  if(q.error){toast(errTxt("loadMessages",q.error),"err",4500); return;}
-  $("chat").innerHTML="";
-  (q.data||[]).forEach(m=>$("chat").insertAdjacentHTML("beforeend",renderMessage(m)));
-  wireDelete();
-  $("chat").scrollTop=$("chat").scrollHeight;
+  try{
+    await loadProfileMap();
+
+    const q = await sb.from("messages")
+      .select("id,room,user_id,text,image_url,deleted,created_at")
+      .eq("room", room)
+      .order("created_at", { ascending:true })
+      .limit(300);
+
+    if(q.error) throw q.error;
+
+    $("chat").innerHTML = "";
+    (q.data || []).forEach(m => $("chat").insertAdjacentHTML("beforeend", msgHTML(m)));
+    wireMsgActions();
+    $("chat").scrollTop = $("chat").scrollHeight;
+  }catch(e){
+    debugLog("loadMessages.error", e);
+    toast(errText("loadMessages", e), "err", 5000);
+  }
 }
 
 async function joinRoom(){
-  room=($("roomInput").value.trim()||"lobby").slice(0,64);
+  room = ($("roomInput").value.trim() || "lobby").slice(0,64);
   await loadMessages();
+
   if(channel) await sb.removeChannel(channel);
-  channel=sb.channel(`room-${room}-${Date.now()}`)
-    .on("postgres_changes",{event:"INSERT",schema:"public",table:"messages",filter:`room=eq.${room}`},async(payload)=>{
-      const uid=payload.new.user_id;
+
+  channel = sb.channel(`room-${room}-${Date.now()}`)
+    .on("postgres_changes", {
+      event:"INSERT", schema:"public", table:"messages", filter:`room=eq.${room}`
+    }, async (payload)=>{
+      const uid = payload.new.user_id;
       if(!profileMap.has(uid)){
-        const p=await sb.from("profiles").select("id,username,display_name,avatar_url,role").eq("id",uid).maybeSingle();
-        if(p.data) profileMap.set(uid,p.data);
+        const p = await sb.from("profiles").select("id,username,display_name,avatar_url,role").eq("id", uid).maybeSingle();
+        if(p.data) profileMap.set(uid, p.data);
       }
-      $("chat").insertAdjacentHTML("beforeend",renderMessage(payload.new));
-      wireDelete();
-      $("chat").scrollTop=$("chat").scrollHeight;
+      $("chat").insertAdjacentHTML("beforeend", msgHTML(payload.new));
+      wireMsgActions();
+      $("chat").scrollTop = $("chat").scrollHeight;
     })
-    .on("postgres_changes",{event:"UPDATE",schema:"public",table:"messages",filter:`room=eq.${room}`},async(payload)=>{
-      const uid=payload.new.user_id;
+    .on("postgres_changes", {
+      event:"UPDATE", schema:"public", table:"messages", filter:`room=eq.${room}`
+    }, async (payload)=>{
+      const uid = payload.new.user_id;
       if(!profileMap.has(uid)){
-        const p=await sb.from("profiles").select("id,username,display_name,avatar_url,role").eq("id",uid).maybeSingle();
-        if(p.data) profileMap.set(uid,p.data);
+        const p = await sb.from("profiles").select("id,username,display_name,avatar_url,role").eq("id", uid).maybeSingle();
+        if(p.data) profileMap.set(uid, p.data);
       }
-      const old=document.getElementById(`msg-${payload.new.id}`);
-      if(old) old.outerHTML=renderMessage(payload.new);
-      wireDelete();
-    }).subscribe();
+      const old = document.getElementById(`msg-${payload.new.id}`);
+      if(old) old.outerHTML = msgHTML(payload.new);
+      wireMsgActions();
+    })
+    .subscribe();
 }
 
-// auth
-$("btnRegister").onclick=async()=>{
+/* ---------- Auth ---------- */
+$("btnRegister").onclick = async ()=>{
   setAuthMsg("");
   try{
-    const email=$("email").value.trim(), password=$("password").value;
-    if(!email||!password) return setAuthMsg("Email/password required",true);
-    const r=await sb.auth.signUp({email,password});
+    const email = $("email").value.trim();
+    const password = $("password").value;
+    if(!email || !password) return setAuthMsg("Email and password required.", true);
+
+    const r = await sb.auth.signUp({ email, password });
     if(r.error) throw r.error;
-    localStorage.setItem("pending_username",$("regUsername").value.trim());
-    localStorage.setItem("pending_display",$("regDisplay").value.trim());
-    setAuthMsg("Registered. Please login now (or confirm email first).");
-    toast("Account created","ok");
-  }catch(e){ setAuthMsg(errTxt("register",e),true); }
+
+    // Save intended profile values for first login
+    localStorage.setItem("pending_username", $("regUsername").value.trim());
+    localStorage.setItem("pending_display", $("regDisplay").value.trim());
+
+    setAuthMsg("Registered. Now login (confirm email first if your project requires it).");
+    toast("Account created", "ok");
+  }catch(e){
+    debugLog("register.error", e);
+    setAuthMsg(errText("register", e), true);
+  }
 };
 
-$("btnLogin").onclick=async()=>{
+$("btnLogin").onclick = async ()=>{
   setAuthMsg("");
   try{
-    const email=$("email").value.trim(), password=$("password").value;
-    const r=await sb.auth.signInWithPassword({email,password});
+    const email = $("email").value.trim();
+    const password = $("password").value;
+    const r = await sb.auth.signInWithPassword({ email, password });
     if(r.error) throw r.error;
 
-    me=r.data.user;
-    const pu=localStorage.getItem("pending_username")||"";
-    const pd=localStorage.getItem("pending_display")||"";
-    myProfile=await ensureProfileAfterLogin(me,pu,pd);
+    me = r.data.user;
+
+    const pu = localStorage.getItem("pending_username") || "";
+    const pd = localStorage.getItem("pending_display") || "";
+    myProfile = await ensureProfileAfterLogin(me, pu, pd);
     localStorage.removeItem("pending_username");
     localStorage.removeItem("pending_display");
 
     showApp();
     await joinRoom();
-    toast("Logged in","ok");
-  }catch(e){ setAuthMsg(errTxt("login",e),true); }
-};
-
-$("btnLogout").onclick=async()=>{ await sb.auth.signOut(); showAuth(); toast("Logged out"); };
-$("btnJoin").onclick=joinRoom;
-
-// profile
-$("btnSaveProfile").onclick=async()=>{
-  try{
-    const gu=await sb.auth.getUser();
-    if(!gu.data.user) throw new Error("Session expired. Please login again.");
-
-    let display_name=($("newDisplay").value.trim()||myProfile.display_name).slice(0,48);
-    let avatar_url=myProfile.avatar_url||null;
-    const f=$("avatarFile").files?.[0];
-    if(f) avatar_url=await uploadImage(f);
-
-    const q=await sb.from("profiles").update({display_name,avatar_url}).eq("id",gu.data.user.id);
-    if(q.error) throw q.error;
-
-    myProfile.display_name=display_name;
-    myProfile.avatar_url=avatar_url;
-    profileMap.set(gu.data.user.id,myProfile);
-    showApp();
-    await loadMessages();
-    toast("Profile updated","ok");
-  }catch(e){ toast(errTxt("profile",e),"err",4500); }
-};
-
-// send (RLS-safe)
-$("btnSend").onclick=async()=>{
-  try{
-    const gu=await sb.auth.getUser();
-    const authUser=gu.data.user;
-    if(!authUser) throw new Error("Session expired. Please login again.");
-
-    const text=$("msgText").value.trim();
-    const f=$("msgFile").files?.[0];
-    if(!text && !f){ toast("Write message or attach image","warn"); return; }
-
-    let image_url=null;
-    if(f) image_url=await uploadImage(f);
-
-    // CRITICAL: use authUser.id directly to satisfy auth.uid() = user_id
-    const ins=await sb.from("messages").insert({
-      room: room,
-      user_id: authUser.id,
-      text: text || null,
-      image_url: image_url
-    });
-    if(ins.error) throw ins.error;
-
-    $("msgText").value="";
-    $("msgFile").value="";
-    $("msgFileName").textContent="No file chosen";
+    toast("Login success", "ok");
   }catch(e){
-    toast(errTxt("send",e),"err",5000);
+    debugLog("login.error", e);
+    setAuthMsg(errText("login", e), true);
   }
 };
 
-// restore session
-(async()=>{
-  const s=await sb.auth.getSession();
-  if(!s.data.session?.user){ showAuth(); return; }
+$("btnLogout").onclick = async ()=>{
+  await sb.auth.signOut();
+  me = null;
+  myProfile = null;
+  showAuth();
+  toast("Logged out", "ok");
+};
+
+$("btnJoin").onclick = joinRoom;
+
+/* ---------- Profile ---------- */
+$("btnSaveProfile").onclick = async ()=>{
   try{
-    me=s.data.session.user;
-    myProfile=await ensureProfileAfterLogin(me);
+    const authUser = await requireAuthedUser();
+
+    let display_name = ($("newDisplay").value.trim() || myProfile.display_name).slice(0,48);
+    let avatar_url = myProfile.avatar_url || null;
+
+    const file = $("avatarFile").files?.[0];
+    if(file) avatar_url = await uploadImage(file);
+
+    const q = await sb.from("profiles")
+      .update({ display_name, avatar_url })
+      .eq("id", authUser.id);
+
+    if(q.error) throw q.error;
+
+    myProfile.display_name = display_name;
+    myProfile.avatar_url = avatar_url;
+    profileMap.set(authUser.id, myProfile);
+
+    showApp();
+    await loadMessages();
+    toast("Profile updated", "ok");
+  }catch(e){
+    debugLog("profile.error", e);
+    toast(errText("profile", e), "err", 4500);
+  }
+};
+
+/* ---------- Send Message ---------- */
+$("btnSend").onclick = async ()=>{
+  try{
+    const authUser = await requireAuthedUser();
+    const text = $("msgText").value.trim();
+    const file = $("msgFile").files?.[0];
+
+    if(!text && !file){
+      toast("Write text or attach image.", "warn");
+      return;
+    }
+
+    // Optional moderation check by IP tables (client-side best effort)
+    let ip = null;
+    try{
+      const rr = await fetch("https://api.ipify.org?format=json");
+      const jj = await rr.json();
+      ip = jj.ip || null;
+    }catch(_){}
+
+    if(ip){
+      const ban = await sb.from("ip_bans").select("ip").eq("ip", ip).maybeSingle();
+      if(ban.data){
+        toast("You are banned.", "err", 4000);
+        return;
+      }
+      const mute = await sb.from("ip_mutes").select("muted_until").eq("ip", ip).maybeSingle();
+      if(mute.data && new Date(mute.data.muted_until).getTime() > Date.now()){
+        toast("You are muted.", "warn", 4000);
+        return;
+      }
+    }
+
+    let image_url = null;
+    if(file) image_url = await uploadImage(file);
+
+    const ins = await sb.from("messages").insert({
+      room,
+      user_id: authUser.id, // critical for RLS auth.uid() = user_id
+      text: text || null,
+      image_url: image_url
+    });
+
+    if(ins.error) throw ins.error;
+
+    $("msgText").value = "";
+    $("msgFile").value = "";
+    $("msgFileName").textContent = "No file chosen";
+  }catch(e){
+    debugLog("send.error", e);
+    toast(errText("send", e), "err", 5000);
+  }
+};
+
+/* ---------- Admin ---------- */
+async function requireAdmin(){
+  if(myProfile?.role !== "admin") throw new Error("Admin only action.");
+}
+async function logAudit(action, targetIp=null, targetMessageId=null, meta={}){
+  try{
+    await sb.from("audit_logs").insert({
+      actor_user_id: me?.id || null,
+      action,
+      target_ip: targetIp,
+      target_message_id: targetMessageId,
+      meta_json: meta
+    });
+  }catch(e){
+    debugLog("audit.error", e);
+  }
+}
+
+$("btnMute").onclick = async ()=>{
+  try{
+    await requireAdmin();
+    const ip = $("targetIp").value.trim();
+    const sec = Math.max(1, Number($("muteSec").value || 60));
+    if(!ip) return setAdminMsg("Target IP required", true);
+
+    const muted_until = new Date(Date.now() + sec*1000).toISOString();
+    const q = await sb.from("ip_mutes").upsert({
+      ip, muted_until, reason:"admin mute", updated_at:new Date().toISOString()
+    });
+    if(q.error) throw q.error;
+
+    await logAudit("mute_ip", ip, null, { seconds:sec });
+    setAdminMsg(`Muted ${ip} for ${sec}s`);
+    toast("IP muted", "ok");
+  }catch(e){
+    debugLog("admin.mute.error", e);
+    setAdminMsg(errText("mute", e), true);
+  }
+};
+
+$("btnUnmute").onclick = async ()=>{
+  try{
+    await requireAdmin();
+    const ip = $("targetIp").value.trim();
+    if(!ip) return setAdminMsg("Target IP required", true);
+
+    const q = await sb.from("ip_mutes").delete().eq("ip", ip);
+    if(q.error) throw q.error;
+
+    await logAudit("unmute_ip", ip);
+    setAdminMsg(`Unmuted ${ip}`);
+    toast("IP unmuted", "ok");
+  }catch(e){
+    debugLog("admin.unmute.error", e);
+    setAdminMsg(errText("unmute", e), true);
+  }
+};
+
+$("btnBan").onclick = async ()=>{
+  try{
+    await requireAdmin();
+    const ip = $("targetIp").value.trim();
+    if(!ip) return setAdminMsg("Target IP required", true);
+
+    const q = await sb.from("ip_bans").upsert({
+      ip, reason:"admin ban", created_at:new Date().toISOString()
+    });
+    if(q.error) throw q.error;
+
+    await logAudit("ban_ip", ip);
+    setAdminMsg(`Banned ${ip}`);
+    toast("IP banned", "ok");
+  }catch(e){
+    debugLog("admin.ban.error", e);
+    setAdminMsg(errText("ban", e), true);
+  }
+};
+
+$("btnUnban").onclick = async ()=>{
+  try{
+    await requireAdmin();
+    const ip = $("targetIp").value.trim();
+    if(!ip) return setAdminMsg("Target IP required", true);
+
+    const q = await sb.from("ip_bans").delete().eq("ip", ip);
+    if(q.error) throw q.error;
+
+    await logAudit("unban_ip", ip);
+    setAdminMsg(`Unbanned ${ip}`);
+    toast("IP unbanned", "ok");
+  }catch(e){
+    debugLog("admin.unban.error", e);
+    setAdminMsg(errText("unban", e), true);
+  }
+};
+
+/* ---------- Boot ---------- */
+(async ()=>{
+  const s = await sb.auth.getSession();
+  if(!s.data.session?.user){
+    showAuth();
+    return;
+  }
+  try{
+    me = s.data.session.user;
+    myProfile = await ensureProfileAfterLogin(me);
     showApp();
     await joinRoom();
   }catch(e){
+    debugLog("init.error", e);
     showAuth();
-    toast(errTxt("init",e),"err",4500);
+    toast(errText("init", e), "err", 5000);
   }
 })();
 </script>
