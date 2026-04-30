@@ -3,3 +3,4 @@ exclude:
   - /assets/images
   - /socials
   - /.well-known
+	- /external
