@@ -4,7 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>CHATBOX</title>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Markdown + sanitize + KaTeX -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+
   <style>
     :root{
       --bg:#0b1220; --panel:#141d32; --line:#2a3c63; --txt:#edf3ff; --muted:#a8b5d2;
@@ -12,686 +21,587 @@
       --chip:#223a65;
     }
     *{box-sizing:border-box}
-    body{
-      margin:0; background:var(--bg); color:var(--txt);
-      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui}
+    .app{max-width:1200px;margin:0 auto;padding:12px}
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px}
+    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .col{display:flex;flex-direction:column;gap:8px}
+    input,textarea,button{
+      border-radius:10px;font-size:14px;padding:10px 12px;border:1px solid #355083;background:#0e182d;color:var(--txt)
     }
-    .app{max-width:1100px; margin:0 auto; padding:12px}
-    .card{
-      background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:12px;
-      box-shadow:0 8px 24px rgba(0,0,0,.2);
+    input,textarea{flex:1;min-width:140px}
+    textarea{min-height:70px;resize:vertical}
+    button{border:none;cursor:pointer;background:var(--primary);color:#081428;font-weight:700}
+    button.ghost{background:#24406d;color:#e2ecff}
+    button.warn{background:var(--warn);color:#3c2f00}
+    button.danger{background:var(--danger);color:#300909}
+    .hidden{display:none!important}
+    .muted{font-size:12px;color:var(--muted)}
+    .titlebar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+    .chip{display:inline-block;font-size:11px;padding:3px 8px;border-radius:999px;background:var(--chip)}
+    .chip.admin{background:#5f4115;color:#ffdca0}
+    .layout{display:grid;grid-template-columns:1fr;gap:10px}
+    @media(min-width:980px){.layout{grid-template-columns:2fr 1fr}}
+    .chat{height:56vh;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:10px;background:#0d172c;display:flex;flex-direction:column;gap:8px}
+    .msg{border:1px solid #2b406a;background:#17274a;border-radius:10px;padding:8px;position:relative}
+    .msg.deleted{opacity:.65;background:#2a3248}
+    .meta{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:#cad5f1;margin-bottom:6px}
+    .avatar{width:22px;height:22px;border-radius:50%;object-fit:cover;border:1px solid #4b67a5;vertical-align:middle;margin-right:6px}
+    .body{word-break:break-word}
+    .body img{max-width:100%}
+    .img{max-width:260px;max-height:260px;border-radius:8px;border:1px solid #3f578c;margin-top:8px}
+    .actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+    .actions button{font-size:12px;padding:6px 9px}
+    .admin-dot{
+      position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:8px;background:#2a426f;color:#fff;
+      display:flex;align-items:center;justify-content:center;font-weight:800;cursor:pointer
     }
-    .row{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
-    .col{display:flex; flex-direction:column; gap:8px}
-    input,textarea,button,select{
-      border-radius:10px; font-size:14px; padding:10px 12px;
-      border:1px solid #355083; background:#0e182d; color:var(--txt);
+    .menu{
+      position:fixed;z-index:10002;background:#182749;border:1px solid #365287;border-radius:10px;padding:6px;min-width:170px;
+      box-shadow:0 10px 24px rgba(0,0,0,.35)
     }
-    input,textarea,select{flex:1; min-width:140px}
-    textarea{min-height:70px; resize:vertical}
-    button{
-      border:none; cursor:pointer; background:var(--primary); color:#081428; font-weight:700;
-    }
-    button.ghost{background:#24406d; color:#e2ecff}
-    button.warn{background:var(--warn); color:#3c2f00}
-    button.danger{background:var(--danger); color:#300909}
-    button:disabled{opacity:.55; cursor:not-allowed}
-    .hidden{display:none !important}
-    .muted{font-size:12px; color:var(--muted)}
-    .titlebar{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px}
-    .chip{display:inline-block; font-size:11px; padding:3px 8px; border-radius:999px; background:var(--chip)}
-    .chip.admin{background:#5f4115; color:#ffdca0}
-    .layout{display:grid; grid-template-columns: 1fr; gap:10px}
-    @media(min-width:980px){
-      .layout{grid-template-columns: 2fr 1fr}
-    }
-
-    .chat{
-      height:56vh; overflow:auto; border:1px solid var(--line);
-      border-radius:12px; padding:10px; background:#0d172c;
-      display:flex; flex-direction:column; gap:8px;
-    }
-    .msg{
-      border:1px solid #2b406a; background:#17274a; border-radius:10px; padding:8px;
-    }
-    .msg.deleted{opacity:.65; background:#2a3248}
-    .meta{
-      display:flex; justify-content:space-between; gap:8px; font-size:12px; color:#cad5f1; margin-bottom:6px;
-    }
-    .avatar{
-      width:22px; height:22px; border-radius:50%; object-fit:cover; border:1px solid #4b67a5;
-      vertical-align:middle; margin-right:6px;
-    }
-    .text{white-space:pre-wrap; word-break:break-word}
-    .img{max-width:260px; max-height:260px; border-radius:8px; border:1px solid #3f578c; margin-top:8px}
-    .actions{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px}
-    .actions button{font-size:12px; padding:6px 9px}
-
-    .file-ui{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
-    .fname{
-      max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-      font-size:12px; color:var(--muted);
-    }
-
-    .toast-wrap{
-      position:fixed; right:12px; bottom:12px; z-index:9999;
-      display:flex; flex-direction:column; gap:8px;
-    }
-    .toast{
-      min-width:220px; max-width:350px; border-radius:10px; padding:10px 12px;
-      border:1px solid #466193; background:#162746; color:#ecf3ff;
-      box-shadow:0 8px 20px rgba(0,0,0,.3);
-    }
-    .toast.ok{background:#123125; border-color:#2f7d52}
-    .toast.err{background:#3b1919; border-color:#8f4141}
-    .toast.warn{background:#3f3216; border-color:#8b6d32}
-
-    .modal-backdrop{
-      position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:10000;
-      display:none; align-items:center; justify-content:center;
-    }
-    .modal{
-      width:min(94vw,430px); background:#141f38; border:1px solid #335084; border-radius:12px; padding:12px;
-    }
-    .modal h4{margin:0 0 8px}
-    .modal .row{justify-content:flex-end}
-
-    .debug{
-      max-height:180px; overflow:auto; border:1px dashed #3a507f; border-radius:10px;
-      padding:8px; background:#0f1931; font-size:12px; white-space:pre-wrap;
-    }
-    .divider{height:1px; background:#2a3d67; margin:8px 0}
+    .menu button{width:100%;text-align:left;background:transparent;color:#e8f0ff;padding:8px;border-radius:8px}
+    .menu button:hover{background:#2a416d}
+    .file-ui{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .fname{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--muted)}
+    .toast-wrap{position:fixed;right:12px;bottom:12px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+    .toast{min-width:220px;max-width:350px;border-radius:10px;padding:10px 12px;border:1px solid #466193;background:#162746;color:#ecf3ff}
+    .toast.ok{background:#123125;border-color:#2f7d52}.toast.err{background:#3b1919;border-color:#8f4141}.toast.warn{background:#3f3216;border-color:#8b6d32}
+    .tabs{display:flex;gap:6px;flex-wrap:wrap}
+    .tabbtn{background:#223a65;color:#dce9ff}
+    .tabbtn.active{background:#68a8ff;color:#0a1630}
+    .tabpane{display:none}.tabpane.active{display:block}
+    .list{max-height:180px;overflow:auto;border:1px solid #355083;border-radius:10px;padding:8px}
+    .list-item{display:flex;justify-content:space-between;gap:8px;padding:6px;border-bottom:1px solid #2a3d67}
+    .list-item:last-child{border-bottom:none}
+    .toolbar{display:flex;gap:6px;flex-wrap:wrap}
+    .toolbar button{padding:6px 8px;font-size:12px}
+    .debug{max-height:160px;overflow:auto;border:1px dashed #3a507f;border-radius:10px;padding:8px;background:#0f1931;font-size:12px;white-space:pre-wrap}
   </style>
 </head>
 <body>
 <div class="app">
   <div class="titlebar">
-    <h2 style="margin:0">Realtime Chat</h2>
+    <h2 style="margin:0">CHATBOX</h2>
     <div id="status" class="muted">Not logged in</div>
   </div>
 
-  <!-- AUTH -->
   <div id="authCard" class="card">
     <h3 style="margin-top:0">Login / Register CHATBOX</h3>
-    <div class="row">
-      <input id="email" placeholder="Email" />
-      <input id="password" type="password" placeholder="Password" />
-    </div>
-    <div class="row">
-      <input id="regUsername" placeholder="Username (register only)" />
-      <input id="regDisplay" placeholder="Display Name (register only)" />
-    </div>
-    <div class="row">
-      <button id="btnLogin">Login</button>
-      <button id="btnRegister" class="ghost">Register</button>
-    </div>
+    <div class="row"><input id="email" placeholder="Email"><input id="password" type="password" placeholder="Password"></div>
+    <div class="row"><input id="regUsername" placeholder="Username (register)"><input id="regDisplay" placeholder="Display Name (register)"></div>
+    <div class="row"><button id="btnLogin">Login</button><button id="btnRegister" class="ghost">Register</button></div>
     <div id="authMsg" class="muted"></div>
   </div>
 
-  <!-- APP -->
   <div id="appCard" class="hidden layout">
-    <!-- LEFT: CHAT -->
     <div class="card">
       <div class="row">
         <span id="roleChip" class="chip">user</span>
-        <input id="roomInput" value="lobby" style="max-width:180px" />
+        <input id="roomInput" value="lobby" style="max-width:180px">
         <button id="btnJoin" class="ghost">Join Room</button>
         <button id="btnLogout" class="danger">Logout</button>
       </div>
       <div id="meInfo" class="muted" style="margin-top:6px"></div>
 
-      <div class="divider"></div>
+      <div class="chat" id="chat" style="margin-top:10px"></div>
 
-      <div id="chat" class="chat"></div>
-
-      <div class="divider"></div>
-
-      <textarea id="msgText" placeholder="Type your message..."></textarea>
-      <div class="row">
-        <input id="msgFile" type="file" accept="image/*" hidden />
-        <button id="btnPickMsg" class="ghost" type="button">Attach Image</button>
-        <span id="msgFileName" class="fname">No file chosen</span>
-        <button id="btnSend">Send</button>
+      <div style="margin-top:10px">
+        <div class="toolbar">
+          <button class="ghost" data-md="**bold**">Bold</button>
+          <button class="ghost" data-md="*italic*">Italic</button>
+          <button class="ghost" data-md="<u>underline</u>">Underline</button>
+          <button class="ghost" data-md="`code`">Code</button>
+          <button class="ghost" data-md="> quote">Quote</button>
+          <button class="ghost" data-md="[title](https://example.com)">Link</button>
+          <button class="ghost" data-md="$x^2+y^2=z^2$">LaTeX</button>
+          <button class="ghost" data-md="$$\\int_0^1 x^2 dx$$">Block LaTeX</button>
+        </div>
+        <textarea id="msgText" placeholder="Write message with markdown/latex..."></textarea>
+        <div class="row">
+          <input id="msgFile" type="file" accept="image/*" hidden>
+          <button id="btnPickMsg" class="ghost" type="button">Attach Image</button>
+          <span id="msgFileName" class="fname">No file chosen</span>
+          <button id="btnSend">Send</button>
+        </div>
       </div>
     </div>
 
-    <!-- RIGHT: PROFILE + ADMIN + DEBUG -->
     <div class="col">
       <div class="card">
         <h3 style="margin-top:0">Profile</h3>
-        <div class="row">
-          <input id="newDisplay" placeholder="New display name" />
-        </div>
+        <input id="newDisplay" placeholder="New display name">
         <div class="file-ui">
-          <input id="avatarFile" type="file" accept="image/*" hidden />
+          <input id="avatarFile" type="file" accept="image/*" hidden>
           <button id="btnPickAvatar" class="ghost" type="button">Choose Avatar</button>
           <span id="avatarFileName" class="fname">No file chosen</span>
         </div>
-        <div class="row" style="margin-top:8px">
-          <button id="btnSaveProfile" class="ghost">Save Profile</button>
-        </div>
-      </div>
-
-      <div id="adminCard" class="card hidden">
-        <h3 style="margin-top:0">CHATBOX Admin Panel</h3>
-        <div class="row">
-          <input id="targetIp" placeholder="Target IP" />
-          <input id="muteSec" type="number" value="60" style="max-width:120px" />
-        </div>
-        <div class="row">
-          <button id="btnMute" class="warn">Mute IP</button>
-          <button id="btnUnmute" class="ghost">Unmute IP</button>
-          <button id="btnBan" class="danger">Ban IP</button>
-          <button id="btnUnban" class="ghost">Unban IP</button>
-        </div>
-        <div id="adminMsg" class="muted"></div>
+        <button id="btnSaveProfile" class="ghost">Save Profile</button>
       </div>
 
       <div class="card">
-        <div class="row" style="justify-content:space-between">
-          <h3 style="margin:0">Debug</h3>
-          <button id="btnClearDebug" class="ghost" type="button">Clear</button>
+        <div class="tabs">
+          <button class="tabbtn active" data-tab="ann">Announcements</button>
+          <button class="tabbtn" data-tab="admin">Admin</button>
+          <button class="tabbtn" data-tab="debug">Debug</button>
         </div>
-        <div id="debug" class="debug"></div>
+
+        <div id="tab-ann" class="tabpane active" style="margin-top:8px">
+          <div id="annList" class="list"></div>
+          <div id="annComposer" class="hidden" style="margin-top:8px">
+            <input id="annTitle" placeholder="Announcement title">
+            <textarea id="annBody" placeholder="Announcement body"></textarea>
+            <button id="btnPublishAnn">Publish Announcement</button>
+          </div>
+        </div>
+
+        <div id="tab-admin" class="tabpane" style="margin-top:8px">
+          <div id="adminOnly" class="hidden">
+            <h4 style="margin:0 0 6px">Moderation</h4>
+            <div class="row"><input id="targetIp" placeholder="Target IP"><input id="muteSec" type="number" value="60" style="max-width:120px"></div>
+            <div class="row"><button id="btnMute" class="warn">Mute</button><button id="btnUnmute" class="ghost">Unmute</button><button id="btnBan" class="danger">Ban</button><button id="btnUnban" class="ghost">Unban</button></div>
+            <div id="adminMsg" class="muted"></div>
+
+            <h4 style="margin:10px 0 6px">Message Filters</h4>
+            <div class="row"><input id="filterInput" placeholder="blocked word/phrase"><button id="btnAddFilter">Add Filter</button></div>
+            <div id="filterList" class="list" style="margin-top:8px"></div>
+          </div>
+          <div id="adminNotAllowed" class="muted">Admin only.</div>
+        </div>
+
+        <div id="tab-debug" class="tabpane" style="margin-top:8px">
+          <button id="btnClearDebug" class="ghost">Clear Debug</button>
+          <div id="debug" class="debug" style="margin-top:8px"></div>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
 <div id="toastWrap" class="toast-wrap"></div>
-
-<!-- confirm modal -->
-<div id="confirmBackdrop" class="modal-backdrop">
-  <div class="modal">
-    <h4 id="confirmTitle">Confirm</h4>
-    <div id="confirmText" class="muted"></div>
-    <div class="row" style="margin-top:12px">
-      <button id="confirmCancel" class="ghost">Cancel</button>
-      <button id="confirmOk" class="danger">Confirm</button>
-    </div>
-  </div>
-</div>
+<div id="menuHost"></div>
 
 <script>
-/* ================= CONFIG ================= */
 const SUPABASE_URL = "https://lflkpziiwnoamvtrbcil.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_tFvlhmTEDV3SOSVp0JvVzg_KHXFiDNb";
-/* ========================================== */
-
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-const $ = (id)=>document.getElementById(id);
+const $ = id => document.getElementById(id);
 
-let me = null;
-let myProfile = null;
-let room = "lobby";
-let channel = null;
-let profileMap = new Map();
-let confirmResolver = null;
+let me=null, myProfile=null, room="lobby", channel=null;
+let profileMap=new Map(), filters=[];
 
-/* ---------- UI Helpers ---------- */
-function toast(msg, type="ok", ms=3200){
-  const wrap = $("toastWrap");
-  const t = document.createElement("div");
-  t.className = `toast ${type}`;
-  t.textContent = msg;
-  wrap.appendChild(t);
-  setTimeout(()=>t.remove(), ms);
+function toast(msg,type="ok",ms=3200){const d=document.createElement("div");d.className=`toast ${type}`;d.textContent=msg;$("toastWrap").appendChild(d);setTimeout(()=>d.remove(),ms);}
+function debugLog(label,obj){$("debug").textContent=`[${new Date().toLocaleTimeString()}] ${label}: ${typeof obj==="string"?obj:JSON.stringify(obj)}\n` + $("debug").textContent;}
+function esc(s=""){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));}
+function errText(ctx,e){return `${ctx}: ${e?.message||JSON.stringify(e)}`;}
+function setAuthMsg(msg,err=false){$("authMsg").textContent=msg;$("authMsg").style.color=err?"var(--danger)":"var(--muted)";}
+function setAdminMsg(msg,err=false){$("adminMsg").textContent=msg;$("adminMsg").style.color=err?"var(--danger)":"var(--muted)";}
+function fmt(ts){try{return new Date(ts).toLocaleString();}catch{return ts;}}
+
+function parseRich(text=""){
+  const md = marked.parse(text, { breaks:true, gfm:true });
+  const clean = DOMPurify.sanitize(md, {ADD_TAGS:['u']});
+  return clean;
 }
-function debugLog(label, obj){
-  const d = $("debug");
-  const line = `[${new Date().toLocaleTimeString()}] ${label}: ${typeof obj==="string"?obj:JSON.stringify(obj)}`;
-  d.textContent = (line + "\n" + d.textContent).slice(0, 12000);
+function renderMathIn(el){
+  if(!window.renderMathInElement) return;
+  renderMathInElement(el,{
+    delimiters:[
+      {left:"$$",right:"$$",display:true},
+      {left:"$",right:"$",display:false}
+    ],
+    throwOnError:false
+  });
 }
-function esc(s=""){ return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m])); }
-function fmtTime(ts){ try{return new Date(ts).toLocaleString();}catch{return ts;} }
-function setAuthMsg(msg, isErr=false){
-  $("authMsg").textContent = msg;
-  $("authMsg").style.color = isErr ? "var(--danger)" : "var(--muted)";
-}
-function setAdminMsg(msg, isErr=false){
-  $("adminMsg").textContent = msg;
-  $("adminMsg").style.color = isErr ? "var(--danger)" : "var(--muted)";
-}
-function errText(ctx, e){
-  const msg = e?.message || e?.error_description || JSON.stringify(e);
-  return `${ctx}: ${msg}`;
-}
-function showAuth(){
-  $("authCard").classList.remove("hidden");
-  $("appCard").classList.add("hidden");
-  $("status").textContent = "Not logged in";
-  $("chat").innerHTML = "";
-  if(channel){ sb.removeChannel(channel); channel = null; }
-}
+
+function showAuth(){ $("authCard").classList.remove("hidden"); $("appCard").classList.add("hidden"); $("status").textContent="Not logged in"; if(channel){sb.removeChannel(channel);channel=null;} }
 function showApp(){
-  $("authCard").classList.add("hidden");
-  $("appCard").classList.remove("hidden");
-  $("status").textContent = `Logged in: ${myProfile?.display_name || me?.email || "user"}`;
-  $("meInfo").innerHTML = `You: <b>${esc(myProfile?.display_name||"")}</b> @${esc(myProfile?.username||"")} (${esc(myProfile?.role||"user")})`;
-
-  const rc = $("roleChip");
-  rc.textContent = myProfile?.role || "user";
-  rc.className = "chip" + (myProfile?.role === "admin" ? " admin" : "");
-
-  $("adminCard").classList.toggle("hidden", myProfile?.role !== "admin");
-}
-function openConfirm(title, text, okLabel="Confirm"){
-  $("confirmTitle").textContent = title;
-  $("confirmText").textContent = text;
-  $("confirmOk").textContent = okLabel;
-  $("confirmBackdrop").style.display = "flex";
-  return new Promise(resolve => { confirmResolver = resolve; });
-}
-$("confirmCancel").onclick = ()=>{ $("confirmBackdrop").style.display="none"; confirmResolver?.(false); confirmResolver=null; };
-$("confirmOk").onclick = ()=>{ $("confirmBackdrop").style.display="none"; confirmResolver?.(true); confirmResolver=null; };
-
-$("btnClearDebug").onclick = ()=> $("debug").textContent = "";
-
-/* ---------- Custom File Controls ---------- */
-$("btnPickAvatar").onclick = ()=> $("avatarFile").click();
-$("btnPickMsg").onclick = ()=> $("msgFile").click();
-$("avatarFile").addEventListener("change", ()=>{
-  $("avatarFileName").textContent = $("avatarFile").files?.[0]?.name || "No file chosen";
-});
-$("msgFile").addEventListener("change", ()=>{
-  $("msgFileName").textContent = $("msgFile").files?.[0]?.name || "No file chosen";
-});
-
-/* ---------- Core Data ---------- */
-async function requireAuthedUser(){
-  const gu = await sb.auth.getUser();
-  if(!gu.data.user) throw new Error("Session expired. Please login again.");
-  return gu.data.user;
+  $("authCard").classList.add("hidden"); $("appCard").classList.remove("hidden");
+  $("status").textContent=`Logged in: ${myProfile?.display_name||me?.email||"user"}`;
+  $("meInfo").innerHTML=`You: <b>${esc(myProfile?.display_name||"")}</b> @${esc(myProfile?.username||"")} (${esc(myProfile?.role||"user")})`;
+  const rc=$("roleChip"); rc.textContent=myProfile?.role||"user"; rc.className="chip"+(myProfile?.role==="admin"?" admin":"");
+  const isAdmin=myProfile?.role==="admin";
+  $("adminOnly").classList.toggle("hidden",!isAdmin);
+  $("adminNotAllowed").classList.toggle("hidden",isAdmin);
+  $("annComposer").classList.toggle("hidden",!isAdmin);
 }
 
-async function ensureProfileAfterLogin(user, usernameHint="", displayHint=""){
-  let q = await sb.from("profiles").select("*").eq("id", user.id).maybeSingle();
-  if(q.error) throw q.error;
-  if(q.data) return q.data;
+async function requireAuthedUser(){const gu=await sb.auth.getUser(); if(!gu.data.user) throw new Error("Session expired"); return gu.data.user;}
 
-  const username = (usernameHint || user.email?.split("@")[0] || ("u"+Date.now())).trim().slice(0,24);
-  const display_name = (displayHint || username).trim().slice(0,48);
-
-  const ins = await sb.from("profiles")
-    .insert({ id:user.id, username, display_name, role:"user" })
-    .select("*")
-    .single();
-
+async function ensureProfileAfterLogin(user, uh="", dh=""){
+  const one=await sb.from("profiles").select("*").eq("id",user.id).maybeSingle();
+  if(one.error) throw one.error;
+  if(one.data) return one.data;
+  const username=(uh||user.email.split("@")[0]||("u"+Date.now())).slice(0,24);
+  const display_name=(dh||username).slice(0,48);
+  const ins=await sb.from("profiles").insert({id:user.id,username,display_name,role:"user"}).select("*").single();
   if(ins.error) throw ins.error;
   return ins.data;
 }
 
 async function uploadImage(file){
-  const authUser = await requireAuthedUser();
-  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-  const path = `${authUser.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-
-  const up = await sb.storage.from("chat-media").upload(path, file, { upsert:false });
+  const authUser=await requireAuthedUser();
+  const ext=(file.name.split(".").pop()||"jpg").toLowerCase();
+  const path=`${authUser.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  const up=await sb.storage.from("chat-media").upload(path,file,{upsert:false});
   if(up.error) throw up.error;
-
-  const pub = sb.storage.from("chat-media").getPublicUrl(path);
-  return pub.data.publicUrl;
+  return sb.storage.from("chat-media").getPublicUrl(path).data.publicUrl;
 }
 
 async function loadProfileMap(){
-  const q = await sb.from("profiles").select("id,username,display_name,avatar_url,role");
+  const q=await sb.from("profiles").select("id,username,display_name,avatar_url,role");
   if(q.error) throw q.error;
-  profileMap = new Map((q.data || []).map(p => [p.id, p]));
+  profileMap=new Map((q.data||[]).map(p=>[p.id,p]));
 }
 
-function msgHTML(m){
-  const p = profileMap.get(m.user_id) || {};
-  const display = p.display_name || "user";
-  const uname = p.username || "unknown";
-  const avatar = p.avatar_url ? `<img class="avatar" src="${esc(p.avatar_url)}" alt="">` : "";
-  const canDelete = (me && m.user_id===me.id) || (myProfile?.role==="admin");
-
-  return `
-    <div class="msg ${m.deleted ? "deleted":""}" id="msg-${m.id}">
-      <div class="meta">
-        <span>${avatar}<b>${esc(display)}</b> @${esc(uname)}</span>
-        <span>${fmtTime(m.created_at)}</span>
-      </div>
-      <div class="text">${m.deleted ? "<i>[deleted]</i>" : esc(m.text || "")}</div>
-      ${(!m.deleted && m.image_url) ? `<img class="img" src="${esc(m.image_url)}" alt="upload">` : ""}
-      <div class="actions">
-        ${canDelete ? `<button class="ghost" data-del="${m.id}">Delete</button>` : ""}
-      </div>
-    </div>
+function addAdminMenu(x,y,msg){
+  const host=$("menuHost"); host.innerHTML="";
+  const m=document.createElement("div"); m.className="menu"; m.style.left=x+"px"; m.style.top=y+"px";
+  const ip = msg.ip || "";
+  m.innerHTML = `
+    <button data-act="copyip">Copy IP</button>
+    <button data-act="mute">Mute ${ip ? "" : "(no ip)"}</button>
+    <button data-act="unmute">Unmute</button>
+    <button data-act="ban">Ban</button>
+    <button data-act="unban">Unban</button>
+    <button data-act="delete">Delete Message</button>
   `;
+  host.appendChild(m);
+
+  m.onclick = async (e)=>{
+    const act=e.target.getAttribute("data-act"); if(!act) return;
+    try{
+      if(act==="copyip"){ if(!ip) throw new Error("No IP on this message"); await navigator.clipboard.writeText(ip); toast("IP copied"); }
+      if(act==="mute"){ if(!ip) throw new Error("No IP"); const sec=Number(prompt("Mute seconds?", "60")||60); await adminMute(ip,sec); }
+      if(act==="unmute"){ if(!ip) throw new Error("No IP"); await adminUnmute(ip); }
+      if(act==="ban"){ if(!ip) throw new Error("No IP"); await adminBan(ip); }
+      if(act==="unban"){ if(!ip) throw new Error("No IP"); await adminUnban(ip); }
+      if(act==="delete"){ await softDelete(msg.id); }
+    }catch(err){ toast(err.message||String(err),"err",4000); }
+    host.innerHTML="";
+  };
+  setTimeout(()=>{document.addEventListener("click",()=>host.innerHTML="",{once:true});},0);
 }
 
-function wireMsgActions(){
+function messageHTML(m){
+  const p=profileMap.get(m.user_id)||{};
+  const isAdmin=myProfile?.role==="admin";
+  const canDelete=(me && m.user_id===me.id)||isAdmin;
+  const avatar=p.avatar_url?`<img class="avatar" src="${esc(p.avatar_url)}">`:"";
+  const rich = m.deleted ? "<i>[deleted]</i>" : parseRich(m.text||"");
+  const img = (!m.deleted && m.image_url)?`<img class="img" src="${esc(m.image_url)}">`:"";
+  const dot = isAdmin ? `<div class="admin-dot" data-dot="${m.id}">…</div>` : "";
+
+  return `<div class="msg ${m.deleted?"deleted":""}" id="m-${m.id}">
+    ${dot}
+    <div class="meta"><span>${avatar}<b>${esc(p.display_name||"user")}</b> @${esc(p.username||"unknown")}</span><span>${fmt(m.created_at)}</span></div>
+    <div class="body">${rich}</div>
+    ${img}
+    <div class="actions">${canDelete?`<button class="ghost" data-del="${m.id}">Delete</button>`:""}</div>
+  </div>`;
+}
+
+function wireMessageActions(messageMap){
   document.querySelectorAll("[data-del]").forEach(btn=>{
-    btn.onclick = async ()=>{
-      const msgId = btn.getAttribute("data-del");
-      const ok = await openConfirm("Delete message", "This will hide text/image for all users.", "Delete");
-      if(!ok) return;
-
-      const q = await sb.from("messages")
-        .update({ deleted:true, text:null, image_url:null })
-        .eq("id", msgId);
-
-      if(q.error){
-        debugLog("delete.error", q.error);
-        toast(errText("delete", q.error), "err", 4500);
-      }else{
-        toast("Message deleted", "ok");
-      }
+    btn.onclick=async()=>{ const id=btn.getAttribute("data-del"); await softDelete(id); };
+  });
+  document.querySelectorAll("[data-dot]").forEach(dot=>{
+    dot.onclick=(ev)=>{
+      const id=dot.getAttribute("data-dot");
+      const msg=messageMap.get(id);
+      addAdminMenu(ev.clientX, ev.clientY, msg);
     };
   });
 }
 
+async function softDelete(id){
+  const q=await sb.from("messages").update({deleted:true,text:null,image_url:null}).eq("id",id);
+  if(q.error) throw q.error;
+  toast("Message deleted");
+}
+
+function getMatchedFilter(text){
+  const lc=(text||"").toLowerCase();
+  return filters.find(f=>f.enabled && lc.includes(f.pattern.toLowerCase()));
+}
+
 async function loadMessages(){
-  try{
-    await loadProfileMap();
-
-    const q = await sb.from("messages")
-      .select("id,room,user_id,text,image_url,deleted,created_at")
-      .eq("room", room)
-      .order("created_at", { ascending:true })
-      .limit(300);
-
-    if(q.error) throw q.error;
-
-    $("chat").innerHTML = "";
-    (q.data || []).forEach(m => $("chat").insertAdjacentHTML("beforeend", msgHTML(m)));
-    wireMsgActions();
-    $("chat").scrollTop = $("chat").scrollHeight;
-  }catch(e){
-    debugLog("loadMessages.error", e);
-    toast(errText("loadMessages", e), "err", 5000);
-  }
+  await loadProfileMap();
+  const q=await sb.from("messages").select("id,room,user_id,text,image_url,deleted,created_at,ip").eq("room",room).order("created_at",{ascending:true}).limit(400);
+  if(q.error) throw q.error;
+  const chat=$("chat"); chat.innerHTML="";
+  const map=new Map();
+  (q.data||[]).forEach(m=>{ map.set(m.id,m); chat.insertAdjacentHTML("beforeend",messageHTML(m)); });
+  chat.querySelectorAll(".body").forEach(renderMathIn);
+  wireMessageActions(map);
+  chat.scrollTop=chat.scrollHeight;
 }
 
 async function joinRoom(){
-  room = ($("roomInput").value.trim() || "lobby").slice(0,64);
+  room=($("roomInput").value.trim()||"lobby").slice(0,64);
   await loadMessages();
 
   if(channel) await sb.removeChannel(channel);
+  channel=sb.channel(`room-${room}-${Date.now()}`)
+    .on("postgres_changes",{event:"INSERT",schema:"public",table:"messages",filter:`room=eq.${room}`},async(payload)=>{
+      const m=payload.new;
+      if(!profileMap.has(m.user_id)){
+        const p=await sb.from("profiles").select("id,username,display_name,avatar_url,role").eq("id",m.user_id).maybeSingle();
+        if(p.data) profileMap.set(m.user_id,p.data);
+      }
+      const chat=$("chat"); chat.insertAdjacentHTML("beforeend",messageHTML(m));
+      const el=document.getElementById(`m-${m.id}`); if(el) renderMathIn(el.querySelector(".body"));
+      const current = new Map(); current.set(m.id,m); wireMessageActions(current);
+      chat.scrollTop=chat.scrollHeight;
+    })
+    .on("postgres_changes",{event:"UPDATE",schema:"public",table:"messages",filter:`room=eq.${room}`},async(payload)=>{
+      const m=payload.new;
+      const old=document.getElementById(`m-${m.id}`);
+      if(old){ old.outerHTML=messageHTML(m); const ne=document.getElementById(`m-${m.id}`); if(ne) renderMathIn(ne.querySelector(".body")); }
+      const current = new Map(); current.set(m.id,m); wireMessageActions(current);
+    }).subscribe();
+}
 
-  channel = sb.channel(`room-${room}-${Date.now()}`)
-    .on("postgres_changes", {
-      event:"INSERT", schema:"public", table:"messages", filter:`room=eq.${room}`
-    }, async (payload)=>{
-      const uid = payload.new.user_id;
-      if(!profileMap.has(uid)){
-        const p = await sb.from("profiles").select("id,username,display_name,avatar_url,role").eq("id", uid).maybeSingle();
-        if(p.data) profileMap.set(uid, p.data);
-      }
-      $("chat").insertAdjacentHTML("beforeend", msgHTML(payload.new));
-      wireMsgActions();
-      $("chat").scrollTop = $("chat").scrollHeight;
-    })
-    .on("postgres_changes", {
-      event:"UPDATE", schema:"public", table:"messages", filter:`room=eq.${room}`
-    }, async (payload)=>{
-      const uid = payload.new.user_id;
-      if(!profileMap.has(uid)){
-        const p = await sb.from("profiles").select("id,username,display_name,avatar_url,role").eq("id", uid).maybeSingle();
-        if(p.data) profileMap.set(uid, p.data);
-      }
-      const old = document.getElementById(`msg-${payload.new.id}`);
-      if(old) old.outerHTML = msgHTML(payload.new);
-      wireMsgActions();
-    })
+/* Announcements */
+async function loadAnnouncements(){
+  const q=await sb.from("announcements").select("*").order("created_at",{ascending:false}).limit(50);
+  if(q.error){debugLog("ann.load.error",q.error);return;}
+  const box=$("annList");
+  box.innerHTML=(q.data||[]).map(a=>`
+    <div class="list-item">
+      <div>
+        <div><b>${esc(a.title)}</b></div>
+        <div class="muted">${esc(a.body)}</div>
+        <div class="muted">${fmt(a.created_at)}</div>
+      </div>
+    </div>
+  `).join("") || `<div class="muted">No announcements yet.</div>`;
+}
+async function publishAnnouncement(){
+  const title=$("annTitle").value.trim();
+  const body=$("annBody").value.trim();
+  if(!title||!body) return toast("Need title and body","warn");
+  const q=await sb.from("announcements").insert({title,body,created_by:me.id});
+  if(q.error) throw q.error;
+  $("annTitle").value=""; $("annBody").value="";
+  toast("Announcement published");
+  await loadAnnouncements();
+}
+
+/* Filters */
+async function loadFilters(){
+  const q=await sb.from("message_filters").select("*").order("created_at",{ascending:false});
+  if(q.error) throw q.error;
+  filters=q.data||[];
+  renderFilterList();
+}
+function renderFilterList(){
+  const box=$("filterList");
+  box.innerHTML=filters.map(f=>`
+    <div class="list-item">
+      <div><b>${esc(f.pattern)}</b> <span class="muted">${f.enabled?"enabled":"disabled"}</span></div>
+      <div class="row">
+        <button class="ghost" data-toggle="${f.id}">${f.enabled?"Disable":"Enable"}</button>
+        <button class="danger" data-del-filter="${f.id}">Delete</button>
+      </div>
+    </div>
+  `).join("") || `<div class="muted">No filters.</div>`;
+
+  box.querySelectorAll("[data-toggle]").forEach(btn=>{
+    btn.onclick=async()=>{
+      const id=btn.getAttribute("data-toggle");
+      const f=filters.find(x=>x.id===id); if(!f) return;
+      const q=await sb.from("message_filters").update({enabled:!f.enabled}).eq("id",id);
+      if(q.error) return toast(errText("toggle filter",q.error),"err");
+      await loadFilters();
+    };
+  });
+  box.querySelectorAll("[data-del-filter]").forEach(btn=>{
+    btn.onclick=async()=>{
+      const id=btn.getAttribute("data-del-filter");
+      const q=await sb.from("message_filters").delete().eq("id",id);
+      if(q.error) return toast(errText("delete filter",q.error),"err");
+      await loadFilters();
+    };
+  });
+}
+async function addFilter(){
+  const pattern=$("filterInput").value.trim();
+  if(!pattern) return toast("Filter text required","warn");
+  const q=await sb.from("message_filters").insert({pattern,enabled:true,created_by:me.id});
+  if(q.error) throw q.error;
+  $("filterInput").value="";
+  await loadFilters();
+  toast("Filter added");
+}
+
+/* Admin moderation actions */
+async function requireAdmin(){ if(myProfile?.role!=="admin") throw new Error("Admin only"); }
+async function adminMute(ip,seconds=60){
+  await requireAdmin();
+  const until=new Date(Date.now()+Math.max(1,seconds)*1000).toISOString();
+  const q=await sb.from("ip_mutes").upsert({ip,muted_until:until,reason:"admin",updated_at:new Date().toISOString()});
+  if(q.error) throw q.error;
+}
+async function adminUnmute(ip){
+  await requireAdmin();
+  const q=await sb.from("ip_mutes").delete().eq("ip",ip);
+  if(q.error) throw q.error;
+}
+async function adminBan(ip){
+  await requireAdmin();
+  const q=await sb.from("ip_bans").upsert({ip,reason:"admin",created_at:new Date().toISOString()});
+  if(q.error) throw q.error;
+}
+async function adminUnban(ip){
+  await requireAdmin();
+  const q=await sb.from("ip_bans").delete().eq("ip",ip);
+  if(q.error) throw q.error;
+}
+
+/* Events */
+$("btnPickAvatar").onclick=()=>$("avatarFile").click();
+$("btnPickMsg").onclick=()=>$("msgFile").click();
+$("avatarFile").onchange=()=>$("avatarFileName").textContent=$("avatarFile").files?.[0]?.name||"No file chosen";
+$("msgFile").onchange=()=>$("msgFileName").textContent=$("msgFile").files?.[0]?.name||"No file chosen";
+
+document.querySelectorAll("[data-md]").forEach(btn=>{
+  btn.onclick=()=>{
+    const snippet=btn.getAttribute("data-md");
+    const ta=$("msgText");
+    const start=ta.selectionStart,end=ta.selectionEnd,val=ta.value;
+    ta.value=val.slice(0,start)+snippet+val.slice(end);
+    ta.focus();
+  };
+});
+
+document.querySelectorAll(".tabbtn").forEach(btn=>{
+  btn.onclick=()=>{
+    document.querySelectorAll(".tabbtn").forEach(x=>x.classList.remove("active"));
+    document.querySelectorAll(".tabpane").forEach(x=>x.classList.remove("active"));
+    btn.classList.add("active");
+    $("tab-"+btn.getAttribute("data-tab")).classList.add("active");
+  };
+});
+
+$("btnClearDebug").onclick=()=>{$("debug").textContent="";};
+
+$("btnRegister").onclick=async()=>{
+  setAuthMsg("");
+  try{
+    const email=$("email").value.trim(), password=$("password").value;
+    if(!email||!password) return setAuthMsg("Email/password required",true);
+    const r=await sb.auth.signUp({email,password});
+    if(r.error) throw r.error;
+    localStorage.setItem("pending_username",$("regUsername").value.trim());
+    localStorage.setItem("pending_display",$("regDisplay").value.trim());
+    setAuthMsg("Registered. Login now (confirm email if required).");
+    toast("Account created");
+  }catch(e){setAuthMsg(errText("register",e),true);debugLog("register",e);}
+};
+
+$("btnLogin").onclick=async()=>{
+  setAuthMsg("");
+  try{
+    const email=$("email").value.trim(), password=$("password").value;
+    const r=await sb.auth.signInWithPassword({email,password});
+    if(r.error) throw r.error;
+    me=r.data.user;
+    myProfile=await ensureProfileAfterLogin(me,localStorage.getItem("pending_username")||"",localStorage.getItem("pending_display")||"");
+    localStorage.removeItem("pending_username"); localStorage.removeItem("pending_display");
+    showApp();
+    await loadFilters();
+    await loadAnnouncements();
+    await joinRoom();
+    toast("Login success");
+  }catch(e){setAuthMsg(errText("login",e),true);debugLog("login",e);}
+};
+
+$("btnLogout").onclick=async()=>{await sb.auth.signOut();me=null;myProfile=null;showAuth();toast("Logged out");};
+$("btnJoin").onclick=joinRoom;
+
+$("btnSaveProfile").onclick=async()=>{
+  try{
+    const authUser=(await requireAuthedUser());
+    let display_name=($("newDisplay").value.trim()||myProfile.display_name).slice(0,48);
+    let avatar_url=myProfile.avatar_url||null;
+    const f=$("avatarFile").files?.[0];
+    if(f) avatar_url=await uploadImage(f);
+    const q=await sb.from("profiles").update({display_name,avatar_url}).eq("id",authUser.id);
+    if(q.error) throw q.error;
+    myProfile.display_name=display_name; myProfile.avatar_url=avatar_url;
+    showApp();
+    await loadMessages();
+    toast("Profile updated");
+  }catch(e){toast(errText("profile",e),"err",4500);debugLog("profile",e);}
+};
+
+$("btnSend").onclick=async()=>{
+  try{
+    const authUser=await requireAuthedUser();
+    const text=$("msgText").value.trim();
+    const file=$("msgFile").files?.[0];
+    if(!text&&!file) return toast("Write text or attach image","warn");
+
+    // filter blocking
+    const hit=getMatchedFilter(text);
+    if(hit) return toast(`Blocked by filter: "${hit.pattern}"`,"err",4500);
+
+    // client ip best-effort
+    let ip=null;
+    try{const r=await fetch("https://api.ipify.org?format=json");ip=(await r.json()).ip||null;}catch{}
+
+    // mute/ban checks (best effort)
+    if(ip){
+      const b=await sb.from("ip_bans").select("ip").eq("ip",ip).maybeSingle();
+      if(b.data) return toast("You are banned","err",4500);
+      const m=await sb.from("ip_mutes").select("muted_until").eq("ip",ip).maybeSingle();
+      if(m.data && new Date(m.data.muted_until).getTime()>Date.now()) return toast("You are muted","warn",4500);
+    }
+
+    let image_url=null;
+    if(file) image_url=await uploadImage(file);
+
+    const ins=await sb.from("messages").insert({room,user_id:authUser.id,text:text||null,image_url,ip});
+    if(ins.error) throw ins.error;
+
+    $("msgText").value=""; $("msgFile").value=""; $("msgFileName").textContent="No file chosen";
+  }catch(e){toast(errText("send",e),"err",5000);debugLog("send",e);}
+};
+
+$("btnPublishAnn").onclick=async()=>{try{await requireAdmin();await publishAnnouncement();}catch(e){toast(errText("publish ann",e),"err",4500);}};
+$("btnAddFilter").onclick=async()=>{try{await requireAdmin();await addFilter();}catch(e){toast(errText("add filter",e),"err",4500);}};
+
+$("btnMute").onclick=async()=>{try{await requireAdmin();await adminMute($("targetIp").value.trim(),Number($("muteSec").value||60));setAdminMsg("Muted");toast("Muted");}catch(e){setAdminMsg(errText("mute",e),true);}};
+$("btnUnmute").onclick=async()=>{try{await requireAdmin();await adminUnmute($("targetIp").value.trim());setAdminMsg("Unmuted");toast("Unmuted");}catch(e){setAdminMsg(errText("unmute",e),true);}};
+$("btnBan").onclick=async()=>{try{await requireAdmin();await adminBan($("targetIp").value.trim());setAdminMsg("Banned");toast("Banned");}catch(e){setAdminMsg(errText("ban",e),true);}};
+$("btnUnban").onclick=async()=>{try{await requireAdmin();await adminUnban($("targetIp").value.trim());setAdminMsg("Unbanned");toast("Unbanned");}catch(e){setAdminMsg(errText("unban",e),true);}};
+
+/* realtime for announcements/filters */
+function subscribeSideChannels(){
+  sb.channel("ann-live")
+    .on("postgres_changes",{event:"*",schema:"public",table:"announcements"},()=>loadAnnouncements())
+    .subscribe();
+
+  sb.channel("filters-live")
+    .on("postgres_changes",{event:"*",schema:"public",table:"message_filters"},()=>loadFilters())
     .subscribe();
 }
 
-/* ---------- Auth ---------- */
-$("btnRegister").onclick = async ()=>{
-  setAuthMsg("");
+/* boot */
+(async()=>{
+  const s=await sb.auth.getSession();
+  if(!s.data.session?.user){showAuth();return;}
   try{
-    const email = $("email").value.trim();
-    const password = $("password").value;
-    if(!email || !password) return setAuthMsg("Email and password required.", true);
-
-    const r = await sb.auth.signUp({ email, password });
-    if(r.error) throw r.error;
-
-    // Save intended profile values for first login
-    localStorage.setItem("pending_username", $("regUsername").value.trim());
-    localStorage.setItem("pending_display", $("regDisplay").value.trim());
-
-    setAuthMsg("Registered. Now login (confirm email first if your project requires it).");
-    toast("Account created", "ok");
-  }catch(e){
-    debugLog("register.error", e);
-    setAuthMsg(errText("register", e), true);
-  }
-};
-
-$("btnLogin").onclick = async ()=>{
-  setAuthMsg("");
-  try{
-    const email = $("email").value.trim();
-    const password = $("password").value;
-    const r = await sb.auth.signInWithPassword({ email, password });
-    if(r.error) throw r.error;
-
-    me = r.data.user;
-
-    const pu = localStorage.getItem("pending_username") || "";
-    const pd = localStorage.getItem("pending_display") || "";
-    myProfile = await ensureProfileAfterLogin(me, pu, pd);
-    localStorage.removeItem("pending_username");
-    localStorage.removeItem("pending_display");
-
+    me=s.data.session.user;
+    myProfile=await ensureProfileAfterLogin(me);
     showApp();
-    await joinRoom();
-    toast("Login success", "ok");
-  }catch(e){
-    debugLog("login.error", e);
-    setAuthMsg(errText("login", e), true);
-  }
-};
-
-$("btnLogout").onclick = async ()=>{
-  await sb.auth.signOut();
-  me = null;
-  myProfile = null;
-  showAuth();
-  toast("Logged out", "ok");
-};
-
-$("btnJoin").onclick = joinRoom;
-
-/* ---------- Profile ---------- */
-$("btnSaveProfile").onclick = async ()=>{
-  try{
-    const authUser = await requireAuthedUser();
-
-    let display_name = ($("newDisplay").value.trim() || myProfile.display_name).slice(0,48);
-    let avatar_url = myProfile.avatar_url || null;
-
-    const file = $("avatarFile").files?.[0];
-    if(file) avatar_url = await uploadImage(file);
-
-    const q = await sb.from("profiles")
-      .update({ display_name, avatar_url })
-      .eq("id", authUser.id);
-
-    if(q.error) throw q.error;
-
-    myProfile.display_name = display_name;
-    myProfile.avatar_url = avatar_url;
-    profileMap.set(authUser.id, myProfile);
-
-    showApp();
-    await loadMessages();
-    toast("Profile updated", "ok");
-  }catch(e){
-    debugLog("profile.error", e);
-    toast(errText("profile", e), "err", 4500);
-  }
-};
-
-/* ---------- Send Message ---------- */
-$("btnSend").onclick = async ()=>{
-  try{
-    const authUser = await requireAuthedUser();
-    const text = $("msgText").value.trim();
-    const file = $("msgFile").files?.[0];
-
-    if(!text && !file){
-      toast("Write text or attach image.", "warn");
-      return;
-    }
-
-    // Optional moderation check by IP tables (client-side best effort)
-    let ip = null;
-    try{
-      const rr = await fetch("https://api.ipify.org?format=json");
-      const jj = await rr.json();
-      ip = jj.ip || null;
-    }catch(_){}
-
-    if(ip){
-      const ban = await sb.from("ip_bans").select("ip").eq("ip", ip).maybeSingle();
-      if(ban.data){
-        toast("You are banned.", "err", 4000);
-        return;
-      }
-      const mute = await sb.from("ip_mutes").select("muted_until").eq("ip", ip).maybeSingle();
-      if(mute.data && new Date(mute.data.muted_until).getTime() > Date.now()){
-        toast("You are muted.", "warn", 4000);
-        return;
-      }
-    }
-
-    let image_url = null;
-    if(file) image_url = await uploadImage(file);
-
-    const ins = await sb.from("messages").insert({
-      room,
-      user_id: authUser.id, // critical for RLS auth.uid() = user_id
-      text: text || null,
-      image_url: image_url
-    });
-
-    if(ins.error) throw ins.error;
-
-    $("msgText").value = "";
-    $("msgFile").value = "";
-    $("msgFileName").textContent = "No file chosen";
-  }catch(e){
-    debugLog("send.error", e);
-    toast(errText("send", e), "err", 5000);
-  }
-};
-
-/* ---------- Admin ---------- */
-async function requireAdmin(){
-  if(myProfile?.role !== "admin") throw new Error("Admin only action.");
-}
-async function logAudit(action, targetIp=null, targetMessageId=null, meta={}){
-  try{
-    await sb.from("audit_logs").insert({
-      actor_user_id: me?.id || null,
-      action,
-      target_ip: targetIp,
-      target_message_id: targetMessageId,
-      meta_json: meta
-    });
-  }catch(e){
-    debugLog("audit.error", e);
-  }
-}
-
-$("btnMute").onclick = async ()=>{
-  try{
-    await requireAdmin();
-    const ip = $("targetIp").value.trim();
-    const sec = Math.max(1, Number($("muteSec").value || 60));
-    if(!ip) return setAdminMsg("Target IP required", true);
-
-    const muted_until = new Date(Date.now() + sec*1000).toISOString();
-    const q = await sb.from("ip_mutes").upsert({
-      ip, muted_until, reason:"admin mute", updated_at:new Date().toISOString()
-    });
-    if(q.error) throw q.error;
-
-    await logAudit("mute_ip", ip, null, { seconds:sec });
-    setAdminMsg(`Muted ${ip} for ${sec}s`);
-    toast("IP muted", "ok");
-  }catch(e){
-    debugLog("admin.mute.error", e);
-    setAdminMsg(errText("mute", e), true);
-  }
-};
-
-$("btnUnmute").onclick = async ()=>{
-  try{
-    await requireAdmin();
-    const ip = $("targetIp").value.trim();
-    if(!ip) return setAdminMsg("Target IP required", true);
-
-    const q = await sb.from("ip_mutes").delete().eq("ip", ip);
-    if(q.error) throw q.error;
-
-    await logAudit("unmute_ip", ip);
-    setAdminMsg(`Unmuted ${ip}`);
-    toast("IP unmuted", "ok");
-  }catch(e){
-    debugLog("admin.unmute.error", e);
-    setAdminMsg(errText("unmute", e), true);
-  }
-};
-
-$("btnBan").onclick = async ()=>{
-  try{
-    await requireAdmin();
-    const ip = $("targetIp").value.trim();
-    if(!ip) return setAdminMsg("Target IP required", true);
-
-    const q = await sb.from("ip_bans").upsert({
-      ip, reason:"admin ban", created_at:new Date().toISOString()
-    });
-    if(q.error) throw q.error;
-
-    await logAudit("ban_ip", ip);
-    setAdminMsg(`Banned ${ip}`);
-    toast("IP banned", "ok");
-  }catch(e){
-    debugLog("admin.ban.error", e);
-    setAdminMsg(errText("ban", e), true);
-  }
-};
-
-$("btnUnban").onclick = async ()=>{
-  try{
-    await requireAdmin();
-    const ip = $("targetIp").value.trim();
-    if(!ip) return setAdminMsg("Target IP required", true);
-
-    const q = await sb.from("ip_bans").delete().eq("ip", ip);
-    if(q.error) throw q.error;
-
-    await logAudit("unban_ip", ip);
-    setAdminMsg(`Unbanned ${ip}`);
-    toast("IP unbanned", "ok");
-  }catch(e){
-    debugLog("admin.unban.error", e);
-    setAdminMsg(errText("unban", e), true);
-  }
-};
-
-/* ---------- Boot ---------- */
-(async ()=>{
-  const s = await sb.auth.getSession();
-  if(!s.data.session?.user){
-    showAuth();
-    return;
-  }
-  try{
-    me = s.data.session.user;
-    myProfile = await ensureProfileAfterLogin(me);
-    showApp();
+    subscribeSideChannels();
+    await loadFilters();
+    await loadAnnouncements();
     await joinRoom();
   }catch(e){
-    debugLog("init.error", e);
-    showAuth();
-    toast(errText("init", e), "err", 5000);
+    debugLog("init",e); showAuth(); toast(errText("init",e),"err",5000);
   }
 })();
 </script>
