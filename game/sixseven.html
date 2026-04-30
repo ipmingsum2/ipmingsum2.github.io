@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>67 Counter (20s)</title>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --panel: #111827;
+      --panel2: #1f2937;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --line: #374151;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(180deg, #0b1220, #111827);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 14px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+    .app {
+      width: 100%;
+      max-width: 960px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      background: rgba(17, 24, 39, 0.95);
+    }
+    .header {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .title { font-weight: 700; }
+    .pill {
+      font-size: 12px;
+      color: #86efac;
+      border: 1px solid #14532d;
+      background: #052e16;
+      padding: 5px 9px;
+      border-radius: 999px;
+    }
+    .content {
+      display: grid;
+      grid-template-columns: 1fr 280px;
+      gap: 12px;
+      padding: 12px;
+    }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--panel);
+      overflow: hidden;
+    }
+    .video-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #000;
+    }
+    video, canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .status {
+      position: absolute;
+      left: 10px;
+      bottom: 10px;
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.55);
+      border: 1px solid rgba(255,255,255,0.25);
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 10px;
+      border-top: 1px solid var(--line);
+      background: var(--panel2);
+    }
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 9px 12px;
+      cursor: pointer;
+      font-weight: 700;
+      color: #0b1220;
+      background: #93c5fd;
+    }
+    button.success { background: #4ade80; }
+    button.warn { background: #fbbf24; }
+    button.secondary { background: #d1d5db; color: #111827; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+
+    .side { padding: 12px; }
+    .stat {
+      background: #0b1220;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    .label { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+    .value { font-size: 28px; font-weight: 700; line-height: 1; }
+    .msg { min-height: 24px; font-size: 14px; color: #fcd34d; }
+    .help { color: var(--muted); font-size: 12px; line-height: 1.4; }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(2,6,23,.78);
+      z-index: 999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 14px;
+    }
+    .consent {
+      width: 100%;
+      max-width: 560px;
+      background: #111827;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+    }
+    .consent h2 { margin-top: 0; margin-bottom: 10px; font-size: 18px; }
+    .notice {
+      color: #86efac;
+      background: #052e16;
+      border: 1px solid #14532d;
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 14px;
+      margin: 8px 0;
+    }
+    .row { display: flex; gap: 8px; margin-top: 10px; align-items: flex-start; }
+    .actions { margin-top: 12px; display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+
+    @media (max-width: 860px) {
+      .content { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Consent Modal -->
+  <div class="overlay" id="consentOverlay">
+    <div class="consent">
+      <h2>Camera Use & Privacy Notice</h2>
+      <p>This tool uses your camera for real-time body tracking to count your 67 reps for 20 seconds.</p>
+      <div class="notice">
+        <strong>Privacy:</strong> Video is processed locally in your browser and is <strong>not recorded, saved, or uploaded</strong> by this page.
+      </div>
+      <label class="row">
+        <input type="checkbox" id="agreeCheck" />
+        <span>I understand and agree to use the camera under these terms.</span>
+      </label>
+      <div class="actions">
+        <button class="secondary" id="declineBtn">Decline</button>
+        <button class="success" id="agreeBtn" disabled>Agree & Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <main class="app">
+    <div class="header">
+      <div class="title">67 Counter — 20s Challenge</div>
+      <div class="pill">Local processing • No video saved</div>
+    </div>
+
+    <div class="content">
+      <section class="card">
+        <div class="video-wrap">
+          <video id="video" playsinline muted></video>
+          <canvas id="canvas"></canvas>
+          <div class="status" id="poseStatus">Camera not started</div>
+        </div>
+        <div class="controls">
+          <button id="startCameraBtn">Start Camera</button>
+          <button id="startChallengeBtn" class="success" disabled>Start 20s</button>
+          <button id="stopBtn" class="warn" disabled>Stop</button>
+          <button id="resetBtn" class="secondary">Reset</button>
+        </div>
+      </section>
+
+      <aside class="card side">
+        <div class="stat">
+          <div class="label">Count</div>
+          <div class="value" id="repCount">0</div>
+        </div>
+        <div class="stat">
+          <div class="label">Time Left</div>
+          <div class="value" id="timeLeft">20.0s</div>
+        </div>
+        <div class="stat">
+          <div class="label">Pose State</div>
+          <div class="value" id="poseState" style="font-size:18px;">Idle</div>
+        </div>
+        <div class="msg" id="message"></div>
+        <div class="help">
+          Counting rule: each time pose enters <strong>one hand up + one hand down</strong>, it adds 1.<br/>
+          Left wrist shows <strong>6</strong>, right wrist shows <strong>7</strong>.
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+
+  <script>
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    const startCameraBtn = document.getElementById("startCameraBtn");
+    const startChallengeBtn = document.getElementById("startChallengeBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    const resetBtn = document.getElementById("resetBtn");
+
+    const repCountEl = document.getElementById("repCount");
+    const timeLeftEl = document.getElementById("timeLeft");
+    const poseStateEl = document.getElementById("poseState");
+    const poseStatusEl = document.getElementById("poseStatus");
+    const messageEl = document.getElementById("message");
+
+    const consentOverlay = document.getElementById("consentOverlay");
+    const agreeCheck = document.getElementById("agreeCheck");
+    const agreeBtn = document.getElementById("agreeBtn");
+    const declineBtn = document.getElementById("declineBtn");
+
+    let stream = null;
+    let pose = null;
+    let rafId = null;
+    let ready = false;
+
+    let repCount = 0;
+    let challengeRunning = false;
+    let timerInterval = null;
+    let challengeStart = 0;
+    const challengeSeconds = 20;
+
+    // Count rule state
+    let inOppositePose = false;      // true while currently in one-up-one-down
+    let lastCountTime = 0;
+    const countCooldownMs = 220;     // prevents accidental double count
+
+    function setMessage(text, color = "#fcd34d") {
+      messageEl.textContent = text;
+      messageEl.style.color = color;
+    }
+
+    function resetStats() {
+      repCount = 0;
+      challengeRunning = false;
+      inOppositePose = false;
+      lastCountTime = 0;
+      clearInterval(timerInterval);
+      timerInterval = null;
+      repCountEl.textContent = "0";
+      timeLeftEl.textContent = "20.0s";
+      poseStateEl.textContent = "Idle";
+      setMessage("");
+    }
+
+    function resizeCanvas() {
+      const rect = video.getBoundingClientRect();
+      canvas.width = Math.max(1, Math.floor(rect.width));
+      canvas.height = Math.max(1, Math.floor(rect.height));
+    }
+
+    function getLm(lms, idx) {
+      return lms && lms[idx] ? lms[idx] : null;
+    }
+
+    function visible(lm) {
+      return lm && typeof lm.visibility === "number" && lm.visibility > 0.5;
+    }
+
+    function drawTag(x, y, text, colorBg, colorText) {
+      const px = x * canvas.width;
+      const py = y * canvas.height;
+      const r = 14;
+      ctx.beginPath();
+      ctx.arc(px, py - 18, r, 0, Math.PI * 2);
+      ctx.fillStyle = colorBg;
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "rgba(255,255,255,.9)";
+      ctx.stroke();
+
+      ctx.fillStyle = colorText;
+      ctx.font = "bold 16px Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(text, px, py - 18);
+    }
+
+    function evaluateCounting(landmarks) {
+      const lw = getLm(landmarks, 15); // left wrist
+      const rw = getLm(landmarks, 16); // right wrist
+      const ls = getLm(landmarks, 11); // left shoulder
+      const rs = getLm(landmarks, 12); // right shoulder
+      const lh = getLm(landmarks, 23); // left hip
+      const rh = getLm(landmarks, 24); // right hip
+
+      const req = [lw, rw, ls, rs, lh, rh];
+      if (!req.every(visible)) {
+        poseStatusEl.textContent = "Low confidence (keep full upper body visible)";
+        poseStateEl.textContent = "No track";
+        inOppositePose = false;
+        return;
+      }
+
+      poseStatusEl.textContent = "Pose tracked";
+
+      const upMargin = 0.04;
+      const downMargin = 0.03;
+
+      const leftUp = lw.y < (ls.y - upMargin);
+      const rightUp = rw.y < (rs.y - upMargin);
+      const leftDown = lw.y > (lh.y + downMargin);
+      const rightDown = rw.y > (rh.y + downMargin);
+
+      const oppositeA = leftUp && rightDown; // left up, right down
+      const oppositeB = rightUp && leftDown; // right up, left down
+      const oppositePose = oppositeA || oppositeB;
+
+      poseStateEl.textContent = oppositePose ? (oppositeA ? "Left↑ Right↓" : "Right↑ Left↓") : "Not opposite";
+
+      if (!challengeRunning) {
+        inOppositePose = oppositePose;
+        return;
+      }
+
+      // Count once when entering the opposite-pose state
+      const now = performance.now();
+      if (oppositePose && !inOppositePose && (now - lastCountTime > countCooldownMs)) {
+        repCount += 1;
+        repCountEl.textContent = String(repCount);
+        lastCountTime = now;
+      }
+
+      inOppositePose = oppositePose;
+    }
+
+    function drawResults(results) {
+      resizeCanvas();
+      ctx.save();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Mirror the whole canvas so selfie mode feels natural
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
+
+      // Draw current video frame
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      if (results.poseLandmarks) {
+        // Mirror landmarks to match mirrored video
+        const mirrored = results.poseLandmarks.map(lm => ({
+          x: 1 - lm.x,
+          y: lm.y,
+          z: lm.z,
+          visibility: lm.visibility
+        }));
+
+        window.drawConnectors(ctx, mirrored, window.POSE_CONNECTIONS, {
+          color: "#60a5fa",
+          lineWidth: 3
+        });
+        window.drawLandmarks(ctx, mirrored, {
+          color: "#22c55e",
+          lineWidth: 1,
+          radius: 3
+        });
+
+        const lw = getLm(mirrored, 15);
+        const rw = getLm(mirrored, 16);
+
+        if (visible(lw)) drawTag(lw.x, lw.y, "6", "#f59e0b", "#111827");
+        if (visible(rw)) drawTag(rw.x, rw.y, "7", "#a78bfa", "#111827");
+
+        evaluateCounting(mirrored);
+      } else {
+        poseStatusEl.textContent = "No person detected";
+        poseStateEl.textContent = "No track";
+        inOppositePose = false;
+      }
+
+      ctx.restore();
+    }
+
+    async function frameLoop() {
+      if (!ready || video.readyState < 2) {
+        rafId = requestAnimationFrame(frameLoop);
+        return;
+      }
+      await pose.send({ image: video });
+      rafId = requestAnimationFrame(frameLoop);
+    }
+
+    async function startCamera() {
+      try {
+        setMessage("");
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false
+        });
+
+        video.srcObject = stream;
+        await video.play();
+
+        pose = new window.Pose({
+          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
+        });
+
+        pose.setOptions({
+          modelComplexity: 1,
+          smoothLandmarks: true,
+          enableSegmentation: false,
+          minDetectionConfidence: 0.6,
+          minTrackingConfidence: 0.6
+        });
+
+        pose.onResults(drawResults);
+
+        ready = true;
+        startCameraBtn.disabled = true;
+        startChallengeBtn.disabled = false;
+        stopBtn.disabled = false;
+        poseStatusEl.textContent = "Camera ready";
+
+        rafId = requestAnimationFrame(frameLoop);
+      } catch (e) {
+        console.error(e);
+        setMessage("Camera permission failed. Please allow access and try again.", "#fca5a5");
+      }
+    }
+
+    function startChallenge() {
+      if (!ready) return;
+
+      repCount = 0;
+      repCountEl.textContent = "0";
+      inOppositePose = false;
+      lastCountTime = 0;
+      challengeRunning = true;
+      challengeStart = performance.now();
+      setMessage("Challenge started!", "#93c5fd");
+
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        const elapsed = (performance.now() - challengeStart) / 1000;
+        const left = Math.max(0, challengeSeconds - elapsed);
+        timeLeftEl.textContent = left.toFixed(1) + "s";
+        if (left <= 0) {
+          challengeRunning = false;
+          clearInterval(timerInterval);
+          timerInterval = null;
+          setMessage(`Done! You scored ${repCount}.`, "#86efac");
+        }
+      }, 50);
+    }
+
+    function stopAll() {
+      challengeRunning = false;
+      clearInterval(timerInterval);
+      timerInterval = null;
+
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+        stream = null;
+      }
+      ready = false;
+      startCameraBtn.disabled = false;
+      startChallengeBtn.disabled = true;
+      stopBtn.disabled = true;
+      poseStatusEl.textContent = "Camera stopped";
+    }
+
+    // Consent flow
+    agreeCheck.addEventListener("change", () => {
+      agreeBtn.disabled = !agreeCheck.checked;
+    });
+
+    agreeBtn.addEventListener("click", () => {
+      consentOverlay.style.display = "none";
+    });
+
+    declineBtn.addEventListener("click", () => {
+      consentOverlay.style.display = "none";
+      startCameraBtn.disabled = true;
+      startChallengeBtn.disabled = true;
+      setMessage("Consent declined. Camera features disabled.", "#fca5a5");
+    });
+
+    // Buttons
+    startCameraBtn.addEventListener("click", startCamera);
+    startChallengeBtn.addEventListener("click", startChallenge);
+
+    stopBtn.addEventListener("click", () => {
+      stopAll();
+      setMessage("Stopped.");
+    });
+
+    resetBtn.addEventListener("click", () => {
+      resetStats();
+      setMessage("Reset complete.");
+    });
+
+    resetStats();
+  </script>
+</body>
+</html>
