@@ -1,0 +1,1812 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cues & Hues AI</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f3ea;
+      --panel: #fffdf8;
+      --panel-2: #f2f7f6;
+      --ink: #20262d;
+      --muted: #65717d;
+      --line: #d8e0e6;
+      --button: #ffffff;
+      --button-ink: #20262d;
+      --primary: #20262d;
+      --primary-ink: #ffffff;
+      --accent: #e0b944;
+      --shadow: 0 18px 50px rgba(27, 35, 43, 0.13);
+      --radius: 8px;
+    }
+
+    [data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #14191e;
+      --panel: #1f262d;
+      --panel-2: #182126;
+      --ink: #f1f5f7;
+      --muted: #a6b4c0;
+      --line: #35424d;
+      --button: #26313a;
+      --button-ink: #f1f5f7;
+      --primary: #f1f5f7;
+      --primary-ink: #11161a;
+      --accent: #f0cb5b;
+      --shadow: 0 18px 50px rgba(0, 0, 0, 0.32);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        linear-gradient(180deg, color-mix(in srgb, var(--bg) 92%, white), var(--bg)),
+        repeating-linear-gradient(90deg, rgba(120, 130, 140, 0.08) 0 1px, transparent 1px 78px);
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button,
+    input {
+      min-height: 42px;
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+    }
+
+    button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 14px;
+      background: var(--button);
+      color: var(--button-ink);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-1px);
+      border-color: color-mix(in srgb, var(--line), var(--ink) 36%);
+      box-shadow: 0 9px 22px rgba(20, 26, 32, 0.13);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.48;
+    }
+
+    button.primary {
+      background: var(--primary);
+      color: var(--primary-ink);
+      border-color: var(--primary);
+    }
+
+    button.warn {
+      background: color-mix(in srgb, var(--accent) 24%, var(--button));
+      border-color: color-mix(in srgb, var(--accent), var(--line));
+    }
+
+    input {
+      width: 100%;
+      padding: 0 12px;
+      color: var(--ink);
+      background: var(--button);
+      outline: none;
+    }
+
+    input:focus {
+      border-color: #38a0c7;
+      box-shadow: 0 0 0 3px rgba(56, 160, 199, 0.18);
+    }
+
+    .icon {
+      width: 18px;
+      height: 18px;
+      flex: 0 0 auto;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      border-bottom: 1px solid color-mix(in srgb, var(--line), transparent 18%);
+      background: color-mix(in srgb, var(--panel), transparent 8%);
+      backdrop-filter: blur(12px);
+    }
+
+    .topbar {
+      width: min(1500px, calc(100vw - 32px));
+      min-height: 74px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 3px solid var(--panel);
+      background: conic-gradient(from 25deg, #e84943, #efc449, #43b75e, #18aeb8, #456fd8, #a653bd, #e84943);
+      box-shadow: 0 10px 24px rgba(24, 30, 36, 0.22);
+      flex: 0 0 auto;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.34rem, 2.5vw, 2.1rem);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .round-pill {
+      color: var(--muted);
+      font-size: 0.76rem;
+      font-weight: 850;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    main {
+      width: min(1500px, calc(100vw - 32px));
+      margin: 20px auto 28px;
+      display: grid;
+      grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .side {
+      display: grid;
+      gap: 14px;
+      position: sticky;
+      top: 94px;
+    }
+
+    .panel {
+      overflow: hidden;
+      border: 1px solid color-mix(in srgb, var(--line), transparent 12%);
+      border-radius: var(--radius);
+      background: color-mix(in srgb, var(--panel), transparent 2%);
+      box-shadow: 0 8px 28px rgba(25, 32, 39, 0.08);
+    }
+
+    .panel-head {
+      min-height: 48px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid color-mix(in srgb, var(--line), transparent 18%);
+    }
+
+    .panel-title {
+      font-weight: 900;
+      font-size: 0.94rem;
+    }
+
+    .panel-body {
+      padding: 14px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .custom-select {
+      position: relative;
+    }
+
+    .select-button {
+      width: 100%;
+      justify-content: space-between;
+      min-height: 42px;
+    }
+
+    .select-button[aria-expanded="true"] {
+      border-color: #38a0c7;
+      box-shadow: 0 0 0 3px rgba(56, 160, 199, 0.16);
+    }
+
+    .select-menu {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: calc(100% + 6px);
+      z-index: 12;
+      display: none;
+      max-height: 230px;
+      overflow: auto;
+      padding: 6px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .custom-select.open .select-menu {
+      display: grid;
+      gap: 4px;
+    }
+
+    .select-option {
+      width: 100%;
+      min-height: 36px;
+      justify-content: flex-start;
+      border-color: transparent;
+      box-shadow: none;
+    }
+
+    .select-option[aria-selected="true"] {
+      background: color-mix(in srgb, #38a0c7 18%, var(--button));
+      border-color: color-mix(in srgb, #38a0c7 42%, var(--line));
+      font-weight: 900;
+    }
+
+    .toggle-row {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 10px;
+      align-items: center;
+      min-height: 44px;
+      border: 1px solid color-mix(in srgb, var(--line), transparent 20%);
+      border-radius: var(--radius);
+      background: var(--button);
+      padding: 8px;
+    }
+
+    .check-button {
+      width: 28px;
+      min-width: 28px;
+      height: 28px;
+      min-height: 28px;
+      padding: 0;
+      border-radius: 6px;
+    }
+
+    .check-button[aria-checked="true"] {
+      background: var(--primary);
+      color: var(--primary-ink);
+      border-color: var(--primary);
+    }
+
+    .check-button[aria-checked="true"]::after {
+      content: "";
+      width: 7px;
+      height: 12px;
+      border-right: 3px solid currentColor;
+      border-bottom: 3px solid currentColor;
+      transform: rotate(42deg) translateY(-1px);
+    }
+
+    .color-picker-row {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .native-color-input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      border: 0;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    label {
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 850;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .names {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .name-row {
+      display: grid;
+      grid-template-columns: 34px 1fr;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .player-dot {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-weight: 950;
+      box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.34);
+    }
+
+    .stack {
+      display: grid;
+      gap: 10px;
+    }
+
+    .cue-display {
+      min-height: 92px;
+      border: 1px solid color-mix(in srgb, var(--line), transparent 18%);
+      border-radius: var(--radius);
+      padding: 14px;
+      display: grid;
+      align-content: center;
+      gap: 5px;
+      background:
+        linear-gradient(135deg, color-mix(in srgb, var(--panel), transparent 6%), color-mix(in srgb, var(--panel), transparent 24%)),
+        linear-gradient(90deg, #dff2a4, #a6efe7, #ffd1db);
+    }
+
+    .cue-label {
+      color: var(--muted);
+      font-size: 0.74rem;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .cue-text {
+      font-size: clamp(1.2rem, 3.6vw, 1.9rem);
+      font-weight: 950;
+      line-height: 1.05;
+      word-break: break-word;
+    }
+
+    .target-strip {
+      display: grid;
+      grid-template-columns: 82px 1fr;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .target-swatch {
+      width: 82px;
+      aspect-ratio: 1;
+      border-radius: var(--radius);
+      border: 1px solid rgba(0, 0, 0, 0.2);
+      background: repeating-linear-gradient(45deg, #1d252b 0 9px, #34404a 9px 18px);
+      box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .target-swatch.hidden::after {
+      content: "?";
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-size: 2.2rem;
+      font-weight: 950;
+      background: rgba(20, 26, 32, 0.2);
+    }
+
+    .target-meta {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .target-name,
+    .player-name {
+      font-weight: 900;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .status-line,
+    .target-code {
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.38;
+    }
+
+    .action-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .action-row button {
+      flex: 1 1 auto;
+    }
+
+    .scoreboard,
+    .results,
+    .turn-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .score-row,
+    .result-row,
+    .turn-row {
+      min-height: 44px;
+      border: 1px solid color-mix(in srgb, var(--line), transparent 20%);
+      border-radius: var(--radius);
+      background: var(--button);
+      display: grid;
+      grid-template-columns: 34px 1fr auto;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 10px 6px 6px;
+    }
+
+    .score-row.current,
+    .turn-row.current {
+      border-color: color-mix(in srgb, var(--ink), var(--line) 42%);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink) 9%, transparent);
+    }
+
+    .score-value,
+    .points {
+      font-size: 1.1rem;
+      font-weight: 950;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .small-copy {
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.25;
+    }
+
+    .board-shell {
+      display: grid;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .board-shell.native-picker-mode .board-toolbar,
+    .board-shell.native-picker-mode .board-wrap {
+      display: none;
+    }
+
+    .system-picker-panel {
+      display: none;
+      min-height: min(68vh, 620px);
+      border: 1px solid color-mix(in srgb, var(--line), transparent 8%);
+      border-radius: var(--radius);
+      background:
+        linear-gradient(135deg, color-mix(in srgb, var(--panel), transparent 4%), color-mix(in srgb, var(--panel-2), transparent 8%)),
+        conic-gradient(from 30deg, #e84943, #efc449, #43b75e, #18aeb8, #456fd8, #a653bd, #e84943);
+      box-shadow: var(--shadow);
+      padding: 18px;
+      place-items: center;
+    }
+
+    .board-shell.native-picker-mode .system-picker-panel {
+      display: grid;
+    }
+
+    .system-picker-inner {
+      width: min(420px, 100%);
+      display: grid;
+      gap: 12px;
+      padding: 18px;
+      border: 1px solid color-mix(in srgb, var(--line), transparent 10%);
+      border-radius: var(--radius);
+      background: color-mix(in srgb, var(--panel), transparent 2%);
+      box-shadow: 0 14px 36px rgba(20, 26, 32, 0.16);
+    }
+
+    .board-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .legend {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-weight: 780;
+      font-size: 0.86rem;
+    }
+
+    .legend-chip {
+      min-height: 30px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid color-mix(in srgb, var(--line), transparent 20%);
+      border-radius: 999px;
+      padding: 0 10px;
+      background: color-mix(in srgb, var(--button), transparent 16%);
+    }
+
+    .mini-swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 1px solid rgba(0, 0, 0, 0.16);
+    }
+
+    .board-wrap {
+      width: 100%;
+      overflow: auto;
+      border: 1px solid color-mix(in srgb, var(--line), transparent 8%);
+      border-radius: var(--radius);
+      padding: 8px;
+      background: color-mix(in srgb, var(--panel), transparent 10%);
+      box-shadow: var(--shadow);
+    }
+
+    .board {
+      --cols: 30;
+      --rows: 16;
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(var(--cols), minmax(18px, 1fr));
+      grid-template-rows: repeat(var(--rows), minmax(18px, 1fr));
+      width: min(100%, 1120px);
+      min-width: 720px;
+      aspect-ratio: 30 / 16;
+      margin: 0 auto;
+      border: 1px solid rgba(0, 0, 0, 0.32);
+      background: #fff;
+    }
+
+    .tile {
+      position: relative;
+      min-width: 0;
+      min-height: 0;
+      border: 0;
+      border-radius: 0;
+      padding: 0;
+      outline: 1px solid rgba(0, 0, 0, 0.08);
+      outline-offset: -1px;
+      cursor: crosshair;
+      transition: transform 100ms ease, outline-color 100ms ease, filter 100ms ease;
+    }
+
+    .tile:hover,
+    .tile:focus-visible {
+      z-index: 2;
+      transform: scale(1.24);
+      outline: 2px solid rgba(255, 255, 255, 0.92);
+      filter: saturate(1.08) contrast(1.06);
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
+    }
+
+    .tile.target-revealed::after,
+    .tile.target-pending::after {
+      content: "";
+      position: absolute;
+      inset: 17%;
+      border: 3px solid #10151a;
+      border-radius: 50%;
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.82);
+      pointer-events: none;
+    }
+
+    .tile.target-zone::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(255, 255, 255, 0.2);
+      outline: 2px solid rgba(16, 21, 26, 0.42);
+      outline-offset: -2px;
+      pointer-events: none;
+    }
+
+    .tile.target-pending::after {
+      border-style: dashed;
+    }
+
+    .pin {
+      position: absolute;
+      z-index: 4;
+      width: min(70%, 25px);
+      aspect-ratio: 1;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-weight: 950;
+      font-size: clamp(0.62rem, 1.2vw, 0.86rem);
+      border: 2px solid rgba(255, 255, 255, 0.84);
+      box-shadow: 0 8px 14px rgba(0, 0, 0, 0.24);
+      pointer-events: none;
+    }
+
+    .pin.stack-1 {
+      transform: translate(-14%, -68%);
+    }
+
+    .pin.stack-2 {
+      transform: translate(-84%, -30%);
+    }
+
+    .pin.stack-3 {
+      transform: translate(-32%, -8%);
+    }
+
+    .empty {
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.4;
+      padding: 4px 0;
+    }
+
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 20;
+      max-width: min(360px, calc(100vw - 36px));
+      min-height: 46px;
+      display: none;
+      align-items: center;
+      padding: 12px 14px;
+      border-radius: var(--radius);
+      background: #20262d;
+      color: #fff;
+      box-shadow: var(--shadow);
+      font-weight: 780;
+    }
+
+    .toast.show {
+      display: flex;
+    }
+
+    @media (max-width: 1020px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+
+      .side {
+        position: static;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .panel.wide {
+        grid-column: 1 / -1;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .topbar {
+        width: min(100vw - 20px, 1500px);
+        min-height: 104px;
+        align-items: flex-start;
+        flex-direction: column;
+        justify-content: center;
+        gap: 10px;
+        padding: 10px 0;
+      }
+
+      .header-actions {
+        width: 100%;
+      }
+
+      .header-actions button {
+        flex: 1 1 auto;
+      }
+
+      main {
+        width: min(100vw - 20px, 1500px);
+        margin-top: 12px;
+      }
+
+      .side,
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+
+      .board {
+        min-width: 620px;
+      }
+
+      .target-strip {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body data-theme="light">
+  <div class="app">
+    <header>
+      <div class="topbar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true"></div>
+          <div>
+            <h1>Cues & Hues</h1>
+            <div class="round-pill" id="roundLabel">Round 1 of 3</div>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button id="themeBtn" title="Change theme">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 7.5A9 9 0 1 1 12 3Z"></path></svg>
+            Theme
+          </button>
+          <button class="warn" id="revealBtn" title="Reveal turn">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18"></path><path d="m5 10 7-7 7 7"></path><path d="M5 14h14"></path></svg>
+            Reveal
+          </button>
+          <button class="primary" id="newGameBtn" title="Start new game">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"></path><path d="M21 3v6h-6"></path></svg>
+            New Game
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <aside class="side">
+        <section class="panel wide" aria-labelledby="settingsTitle">
+          <div class="panel-head">
+            <div class="panel-title" id="settingsTitle">Table</div>
+            <button id="applySettingsBtn">Apply</button>
+          </div>
+          <div class="panel-body">
+            <div class="grid-2">
+              <div class="field">
+                <label id="playerCountLabel">Players</label>
+                <div class="custom-select" data-select="players">
+                  <button class="select-button" id="playerCountBtn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="playerCountLabel playerCountValue">
+                    <span id="playerCountValue">3</span>
+                    <span aria-hidden="true">v</span>
+                  </button>
+                  <div class="select-menu" role="listbox" aria-labelledby="playerCountLabel">
+                    <button class="select-option" type="button" role="option" data-value="2">2</button>
+                    <button class="select-option" type="button" role="option" data-value="3" aria-selected="true">3</button>
+                    <button class="select-option" type="button" role="option" data-value="4">4</button>
+                  </div>
+                </div>
+              </div>
+              <div class="field">
+                <label id="roundTargetLabel">Win rounds</label>
+                <div class="custom-select" data-select="rounds">
+                  <button class="select-button" id="roundTargetBtn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="roundTargetLabel roundTargetValue">
+                    <span id="roundTargetValue">3</span>
+                    <span aria-hidden="true">v</span>
+                  </button>
+                  <div class="select-menu" role="listbox" aria-labelledby="roundTargetLabel">
+                    <button class="select-option" type="button" role="option" data-value="1">1</button>
+                    <button class="select-option" type="button" role="option" data-value="2">2</button>
+                    <button class="select-option" type="button" role="option" data-value="3" aria-selected="true">3</button>
+                    <button class="select-option" type="button" role="option" data-value="4">4</button>
+                    <button class="select-option" type="button" role="option" data-value="5">5</button>
+                    <button class="select-option" type="button" role="option" data-value="6">6</button>
+                    <button class="select-option" type="button" role="option" data-value="7">7</button>
+                    <button class="select-option" type="button" role="option" data-value="8">8</button>
+                    <button class="select-option" type="button" role="option" data-value="9">9</button>
+                    <button class="select-option" type="button" role="option" data-value="10">10</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="color-picker-row">
+              <div class="toggle-row">
+                <button class="check-button" id="systemColorToggle" type="button" role="checkbox" aria-checked="false" aria-label="Use system color picker"></button>
+                <div>
+                  <div class="player-name">Use system color picker</div>
+                  <div class="small-copy">Off by default. When on, the native color picker can choose the secret color.</div>
+                </div>
+              </div>
+            </div>
+            <div class="names" id="nameFields"></div>
+          </div>
+        </section>
+
+        <section class="panel wide" aria-labelledby="turnTitle">
+          <div class="panel-head">
+            <div class="panel-title" id="turnTitle">Turn</div>
+            <span class="round-pill" id="phaseLabel">Pick</span>
+          </div>
+          <div class="panel-body stack">
+            <div class="cue-display">
+              <div class="cue-label">Current Cue</div>
+              <div class="cue-text" id="cueText">sunlit mango</div>
+            </div>
+            <div class="field">
+              <label for="cueInput">Your clue</label>
+              <input id="cueInput" type="text" maxlength="36" value="sunlit mango" aria-label="Cue text">
+            </div>
+            <div class="action-row">
+              <button id="randomCueBtn" title="Random cue">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m16 3 5 5-5 5"></path><path d="M21 8H8a5 5 0 0 0 0 10h1"></path><path d="m8 21-5-5 5-5"></path><path d="M3 16h13a5 5 0 0 0 0-10h-1"></path></svg>
+                Cue
+              </button>
+              <button class="primary" id="lockCueBtn">Lock Cue</button>
+            </div>
+            <div class="status-line" id="gameStatus">Pick a secret color for your clue.</div>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="targetTitle">
+          <div class="panel-head">
+            <div class="panel-title" id="targetTitle">Secret Color</div>
+            <span class="round-pill" id="targetCoords">Hidden</span>
+          </div>
+          <div class="panel-body">
+            <div class="target-strip">
+              <div class="target-swatch hidden" id="targetSwatch"></div>
+              <div class="target-meta">
+                <div class="target-name" id="targetName">No target yet</div>
+                <div class="target-code" id="targetCode">Click the board when you are clue giver.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="orderTitle">
+          <div class="panel-head">
+            <div class="panel-title" id="orderTitle">Clue Order</div>
+            <span class="round-pill" id="turnCountLabel">1 / 3</span>
+          </div>
+          <div class="panel-body">
+            <div class="turn-list" id="turnList"></div>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="scoreTitle">
+          <div class="panel-head">
+            <div class="panel-title" id="scoreTitle">Scores</div>
+            <button id="resetScoresBtn" title="Reset scores">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="m19 6-1 14H6L5 6"></path><path d="M10 11v5"></path><path d="M14 11v5"></path></svg>
+              Reset
+            </button>
+          </div>
+          <div class="panel-body">
+            <div class="scoreboard" id="scoreboard"></div>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="resultsTitle">
+          <div class="panel-head">
+            <div class="panel-title" id="resultsTitle">Reveal</div>
+          </div>
+          <div class="panel-body">
+            <div class="results" id="results"></div>
+          </div>
+        </section>
+      </aside>
+
+      <section class="board-shell" aria-label="Color board">
+        <div class="system-picker-panel" id="systemPickerPanel">
+          <div class="system-picker-inner">
+            <div>
+              <div class="panel-title">System Color Picker</div>
+              <div class="status-line">Pick a secret color with your device color picker.</div>
+            </div>
+            <button class="primary" id="systemColorBtn" type="button">Open System Color Picker</button>
+            <input class="native-color-input" id="systemColorInput" type="color" value="#f0cb5b" aria-label="System color picker">
+          </div>
+        </div>
+        <div class="board-toolbar">
+          <div class="legend" id="legend"></div>
+          <div class="legend">
+            <span class="legend-chip"><span class="mini-swatch" style="background:#20262c"></span> Exact 5</span>
+            <span class="legend-chip"><span class="mini-swatch" style="background:#f0cb5b"></span> 3x3 correct 3</span>
+            <span class="legend-chip"><span class="mini-swatch" style="background:#a6efe7"></span> Near 1</span>
+          </div>
+        </div>
+        <div class="board-wrap">
+          <div class="board" id="board"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const COLS = 30;
+    const ROWS = 16;
+    const HUMAN_INDEX = 0;
+
+    const nameBank = ["Alvin","beluga","Big Mac","FAHHH"];
+    const playerColors = ["#2f7fbe", "#cf3e68", "#2b9a5f", "#6f49b6"];
+    const cueBank = [
+      "sunlit mango", "rain jacket", "fresh basil", "movie velvet",
+      "pool tile", "campfire ember", "plum soda", "storm glass",
+      "chalk bloom", "neon lime", "tidepool", "rose quartz",
+      "old postcard", "blueberry jam", "tennis ball", "midnight ink"
+    ];
+
+    const cueHints = [
+      { words: ["tomato", "stop", "ruby", "red"], col: 0, row: 7 },
+      { words: ["salmon", "peach", "shell", "coral"], col: 3, row: 5 },
+      { words: ["traffic", "cone", "pumpkin", "orange", "peel"], col: 5, row: 6 },
+      { words: ["honey", "autumn", "candle", "fire", "flame", "ember", "postcard"], col: 7, row: 8 },
+      { words: ["lemon", "bus", "butter", "buttercup", "sun", "sunlit", "mango"], col: 9, row: 4 },
+      { words: ["tennis", "lime", "neon"], col: 11, row: 5 },
+      { words: ["basil", "garden", "forest", "fern", "leaf"], col: 13, row: 6 },
+      { words: ["lagoon", "patina", "spruce", "tidepool", "teal"], col: 15, row: 8 },
+      { words: ["pool", "tile", "glacier", "mint", "glass", "cyan"], col: 17, row: 4 },
+      { words: ["sky", "clear", "summer", "azure"], col: 19, row: 4 },
+      { words: ["denim", "blueberry", "lake", "blue"], col: 21, row: 9 },
+      { words: ["ink", "midnight", "storm", "night", "indigo"], col: 23, row: 12 },
+      { words: ["purple", "iris", "grape", "velvet", "royal", "violet"], col: 25, row: 10 },
+      { words: ["orchid", "berry", "party", "magenta"], col: 27, row: 7 },
+      { words: ["rose", "pink", "cotton", "candy", "quartz"], col: 29, row: 5 }
+    ];
+
+    let players = [
+      { name: "You", color: playerColors[0], ai: false, score: 0 },
+      { name: "FAHH", color: playerColors[1], ai: true, score: 0 },
+      { name: "Big Mac", color: playerColors[2], ai: true, score: 0 }
+    ];
+
+    const state = {
+      targetRounds: 3,
+      settingsPlayerCount: 3,
+      settingsRoundTarget: 3,
+      useSystemColorPicker: false,
+      completedRounds: 0,
+      turnIndex: 0,
+      phase: "pick",
+      target: null,
+      cue: "clear sky",
+      guesses: [],
+      revealed: false,
+      gameOver: false,
+      lastResults: []
+    };
+
+    const board = document.querySelector("#board");
+    const roundLabel = document.querySelector("#roundLabel");
+    const phaseLabel = document.querySelector("#phaseLabel");
+    const cueText = document.querySelector("#cueText");
+    const cueInput = document.querySelector("#cueInput");
+    const targetSwatch = document.querySelector("#targetSwatch");
+    const targetName = document.querySelector("#targetName");
+    const targetCode = document.querySelector("#targetCode");
+    const targetCoords = document.querySelector("#targetCoords");
+    const gameStatus = document.querySelector("#gameStatus");
+    const scoreboard = document.querySelector("#scoreboard");
+    const results = document.querySelector("#results");
+    const legend = document.querySelector("#legend");
+    const toast = document.querySelector("#toast");
+    const nameFields = document.querySelector("#nameFields");
+    const boardShell = document.querySelector(".board-shell");
+    const revealBtn = document.querySelector("#revealBtn");
+    const lockCueBtn = document.querySelector("#lockCueBtn");
+    const randomCueBtn = document.querySelector("#randomCueBtn");
+    const turnList = document.querySelector("#turnList");
+    const turnCountLabel = document.querySelector("#turnCountLabel");
+    const systemColorToggle = document.querySelector("#systemColorToggle");
+    const systemColorBtn = document.querySelector("#systemColorBtn");
+    const systemColorInput = document.querySelector("#systemColorInput");
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function randomName(used) {
+      const options = nameBank.filter((name) => !used.has(name));
+      return options.length ? options[Math.floor(Math.random() * options.length)] : `NPC ${used.size}`;
+    }
+
+    function colorFor(col, row) {
+      const hue = Math.round((col / COLS) * 360);
+      const light = 88 - (row / (ROWS - 1)) * 54;
+      const sat = 72 + Math.sin((col / COLS) * Math.PI) * 16;
+      return `hsl(${hue} ${sat.toFixed(0)}% ${light.toFixed(0)}%)`;
+    }
+
+    function colorName(col, row) {
+      const hueNames = [
+        "Red", "Coral", "Orange", "Amber", "Yellow", "Lime",
+        "Green", "Teal", "Cyan", "Azure", "Blue", "Indigo",
+        "Violet", "Magenta", "Rose"
+      ];
+      const toneNames = ["Mist", "Glow", "Bright", "Clear", "Rich", "Deep", "Night", "Ink"];
+      const hueIndex = Math.min(hueNames.length - 1, Math.floor((col / COLS) * hueNames.length));
+      const toneIndex = Math.min(toneNames.length - 1, Math.floor((row / ROWS) * toneNames.length));
+      return `${toneNames[toneIndex]} ${hueNames[hueIndex]}`;
+    }
+
+    function coord(col, row) {
+      return `${String.fromCharCode(65 + row)}${String(col + 1).padStart(2, "0")}`;
+    }
+
+    function activeClueGiver() {
+      return players[state.turnIndex];
+    }
+
+    function currentRoundNumber() {
+      return Math.min(state.completedRounds + 1, state.targetRounds);
+    }
+
+    function randomTarget() {
+      return {
+        col: Math.floor(Math.random() * COLS),
+        row: Math.floor(Math.random() * ROWS)
+      };
+    }
+
+    function hexToRgb(hex) {
+      const clean = hex.replace("#", "");
+      return {
+        r: parseInt(clean.slice(0, 2), 16),
+        g: parseInt(clean.slice(2, 4), 16),
+        b: parseInt(clean.slice(4, 6), 16)
+      };
+    }
+
+    function rgbToHsl({ r, g, b }) {
+      r /= 255;
+      g /= 255;
+      b /= 255;
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      let h = 0;
+      let s = 0;
+      const l = (max + min) / 2;
+      const d = max - min;
+
+      if (d !== 0) {
+        s = d / (1 - Math.abs(2 * l - 1));
+        if (max === r) h = 60 * (((g - b) / d) % 6);
+        if (max === g) h = 60 * ((b - r) / d + 2);
+        if (max === b) h = 60 * ((r - g) / d + 4);
+      }
+
+      return {
+        h: h < 0 ? h + 360 : h,
+        s: s * 100,
+        l: l * 100
+      };
+    }
+
+    function targetFromHex(hex) {
+      const hsl = rgbToHsl(hexToRgb(hex));
+      return {
+        col: clamp(Math.round((hsl.h / 360) * COLS), 0, COLS - 1),
+        row: clamp(Math.round(((88 - hsl.l) / 54) * (ROWS - 1)), 0, ROWS - 1)
+      };
+    }
+
+    function hslToHex(h, s, l) {
+      s /= 100;
+      l /= 100;
+      const c = (1 - Math.abs(2 * l - 1)) * s;
+      const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+      const m = l - c / 2;
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      if (h < 60) [r, g, b] = [c, x, 0];
+      else if (h < 120) [r, g, b] = [x, c, 0];
+      else if (h < 180) [r, g, b] = [0, c, x];
+      else if (h < 240) [r, g, b] = [0, x, c];
+      else if (h < 300) [r, g, b] = [x, 0, c];
+      else [r, g, b] = [c, 0, x];
+      return [r, g, b].map((channel) => {
+        return Math.round((channel + m) * 255).toString(16).padStart(2, "0");
+      }).join("");
+    }
+
+    function hslTileToHex(col, row) {
+      const hue = Math.round((col / COLS) * 360);
+      const light = 88 - (row / (ROWS - 1)) * 54;
+      const sat = 72 + Math.sin((col / COLS) * Math.PI) * 16;
+      return `#${hslToHex(hue, sat, light)}`;
+    }
+
+    function distance(a, b) {
+      return Math.max(Math.abs(a.col - b.col), Math.abs(a.row - b.row));
+    }
+
+    function pointValue(dist) {
+      if (dist === 0) return 5;
+      if (dist <= 1) return 3;
+      if (dist <= 3) return 1;
+      return 0;
+    }
+
+    function resultLabel(dist) {
+      if (dist === 0) return "exact hit";
+      if (dist <= 1) return "correct 3x3 square";
+      if (dist <= 3) return "near the color";
+      return "miss";
+    }
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add("show");
+      window.clearTimeout(showToast.timer);
+      showToast.timer = window.setTimeout(() => toast.classList.remove("show"), 1900);
+    }
+
+    function setCustomSelect(name, value) {
+      const root = document.querySelector(`[data-select="${name}"]`);
+      if (!root) return;
+      root.querySelector(".select-button span").textContent = String(value);
+      root.querySelectorAll(".select-option").forEach((option) => {
+        option.setAttribute("aria-selected", option.dataset.value === String(value) ? "true" : "false");
+      });
+    }
+
+    function closeCustomSelects(except) {
+      document.querySelectorAll(".custom-select").forEach((root) => {
+        if (root === except) return;
+        root.classList.remove("open");
+        const button = root.querySelector(".select-button");
+        if (button) button.setAttribute("aria-expanded", "false");
+      });
+    }
+
+    function renderCustomControls() {
+      setCustomSelect("players", state.settingsPlayerCount);
+      setCustomSelect("rounds", state.settingsRoundTarget);
+      systemColorToggle.setAttribute("aria-checked", state.useSystemColorPicker ? "true" : "false");
+      boardShell.classList.toggle("native-picker-mode", state.useSystemColorPicker);
+    }
+
+    function buildBoard() {
+      board.innerHTML = "";
+      const fragment = document.createDocumentFragment();
+      for (let row = 0; row < ROWS; row += 1) {
+        for (let col = 0; col < COLS; col += 1) {
+          const tile = document.createElement("button");
+          tile.type = "button";
+          tile.className = "tile";
+          tile.dataset.col = String(col);
+          tile.dataset.row = String(row);
+          tile.style.background = colorFor(col, row);
+          tile.title = `${coord(col, row)} ${colorName(col, row)}`;
+          tile.setAttribute("aria-label", tile.title);
+          tile.addEventListener("click", () => handleTileClick(col, row));
+          fragment.appendChild(tile);
+        }
+      }
+      board.appendChild(fragment);
+    }
+
+    function tileAt(col, row) {
+      return board.querySelector(`[data-col="${col}"][data-row="${row}"]`);
+    }
+
+    function renderLegend() {
+      legend.innerHTML = "";
+      [
+        { text: "Light", color: colorFor(5, 1) },
+        { text: "Vivid", color: colorFor(14, 6) },
+        { text: "Deep", color: colorFor(24, 13) }
+      ].forEach((item) => {
+        const chip = document.createElement("span");
+        chip.className = "legend-chip";
+        chip.innerHTML = `<span class="mini-swatch" style="background:${item.color}"></span>${item.text}`;
+        legend.appendChild(chip);
+      });
+    }
+
+    function renderNames() {
+      nameFields.innerHTML = "";
+      players.forEach((player, index) => {
+        const row = document.createElement("div");
+        row.className = "name-row";
+        row.innerHTML = `
+          <div class="player-dot" style="background:${player.color}">${player.name.charAt(0) || "?"}</div>
+          <input data-name-index="${index}" value="${player.name}" maxlength="18" aria-label="Player ${index + 1} name">
+        `;
+        nameFields.appendChild(row);
+      });
+    }
+
+    function renderScores() {
+      scoreboard.innerHTML = "";
+      players.forEach((player, index) => {
+        const row = document.createElement("div");
+        row.className = `score-row${index === state.turnIndex && !state.gameOver ? " current" : ""}`;
+        row.innerHTML = `
+          <div class="player-dot" style="background:${player.color}">${player.name.charAt(0) || "?"}</div>
+          <div>
+            <div class="player-name">${player.name}</div>
+            <div class="small-copy">${player.ai ? "AI player" : "You"}</div>
+          </div>
+          <div class="score-value">${player.score}</div>
+        `;
+        scoreboard.appendChild(row);
+      });
+    }
+
+    function renderTurnList() {
+      turnList.innerHTML = "";
+      players.forEach((player, index) => {
+        const done = index < state.turnIndex || state.completedRounds >= state.targetRounds;
+        const row = document.createElement("div");
+        row.className = `turn-row${index === state.turnIndex && !state.gameOver ? " current" : ""}`;
+        row.innerHTML = `
+          <div class="player-dot" style="background:${player.color}">${player.name.charAt(0) || "?"}</div>
+          <div>
+            <div class="player-name">${player.name}</div>
+            <div class="small-copy">${done ? "Clue placed" : index === state.turnIndex ? "Clue giver" : "Waiting"}</div>
+          </div>
+          <div class="round-pill">${done ? "Done" : index === state.turnIndex ? "Up" : "Next"}</div>
+        `;
+        turnList.appendChild(row);
+      });
+    }
+
+    function clearPins() {
+      board.querySelectorAll(".pin").forEach((pin) => pin.remove());
+      board.querySelectorAll(".target-revealed, .target-pending, .target-zone").forEach((tile) => {
+        tile.classList.remove("target-revealed", "target-pending", "target-zone");
+      });
+    }
+
+    function renderPins() {
+      clearPins();
+      const stacks = new Map();
+      state.guesses.forEach((guess) => {
+        const key = `${guess.col}-${guess.row}`;
+        const count = stacks.get(key) || 0;
+        stacks.set(key, count + 1);
+        const tile = tileAt(guess.col, guess.row);
+        if (!tile) return;
+        const pin = document.createElement("span");
+        pin.className = `pin stack-${count % 4}`;
+        pin.style.background = players[guess.player].color;
+        pin.textContent = players[guess.player].name.charAt(0) || "?";
+        tile.appendChild(pin);
+      });
+
+      if (state.target) {
+        if (state.revealed) {
+          for (let row = state.target.row - 1; row <= state.target.row + 1; row += 1) {
+            for (let col = state.target.col - 1; col <= state.target.col + 1; col += 1) {
+              const zoneTile = tileAt(col, row);
+              if (zoneTile) zoneTile.classList.add("target-zone");
+            }
+          }
+        }
+        const tile = tileAt(state.target.col, state.target.row);
+        if (tile && state.revealed) tile.classList.add("target-revealed");
+        if (tile && !state.revealed && activeClueGiver() && !activeClueGiver().ai) tile.classList.add("target-pending");
+      }
+    }
+
+    function renderTarget() {
+      const visible = state.revealed || (state.target && !activeClueGiver().ai && !state.revealed);
+      targetSwatch.classList.toggle("hidden", !visible);
+      targetSwatch.style.background = visible && state.target ? colorFor(state.target.col, state.target.row) : "";
+      targetCoords.textContent = visible && state.target ? coord(state.target.col, state.target.row) : "Hidden";
+      targetName.textContent = visible && state.target ? colorName(state.target.col, state.target.row) : "Secret hue";
+      if (!state.target) {
+        targetCode.textContent = activeClueGiver().ai ? "The AI is choosing a clue." : "Click the board or enable the system picker.";
+      } else if (visible) {
+        targetCode.textContent = `${coord(state.target.col, state.target.row)} on the board`;
+      } else {
+        targetCode.textContent = "Guess from the clue. The target stays hidden until reveal.";
+      }
+    }
+
+    function renderResults() {
+      results.innerHTML = "";
+      if (state.gameOver) {
+        const top = [...players].sort((a, b) => b.score - a.score)[0];
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = `${top.name} wins after ${state.targetRounds} round${state.targetRounds === 1 ? "" : "s"}.`;
+        results.appendChild(empty);
+        return;
+      }
+
+      if (!state.revealed) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = state.phase === "guess" ? "Reveal after all guesses are placed." : "Results appear after reveal.";
+        results.appendChild(empty);
+        return;
+      }
+
+      state.lastResults.forEach((result) => {
+        const player = players[result.player];
+        const row = document.createElement("div");
+        row.className = "result-row";
+        row.innerHTML = `
+          <div class="player-dot" style="background:${player.color}">${player.name.charAt(0) || "?"}</div>
+          <div>
+            <div class="player-name">${player.name}</div>
+            <div class="small-copy">${result.note}</div>
+          </div>
+          <div class="points">+${result.points}</div>
+        `;
+        results.appendChild(row);
+      });
+    }
+
+    function renderControls() {
+      const giver = activeClueGiver();
+      const humanGiver = giver && !giver.ai;
+      const needsHumanGuess = state.phase === "guess" && !humanGiver && !state.guesses.some((guess) => guess.player === HUMAN_INDEX);
+      const canUseSystemPicker = state.useSystemColorPicker && !state.gameOver && !state.revealed
+        && ((humanGiver && (state.phase === "pick" || state.phase === "reveal")) || needsHumanGuess);
+
+      cueInput.disabled = state.gameOver || !humanGiver || state.phase !== "pick";
+      randomCueBtn.disabled = cueInput.disabled;
+      lockCueBtn.disabled = state.gameOver || state.revealed || !humanGiver || state.phase !== "pick" || !state.target;
+      lockCueBtn.textContent = humanGiver ? "Lock Cue" : "AI Turn";
+      revealBtn.disabled = state.gameOver || (state.phase !== "reveal" && !state.revealed);
+      revealBtn.textContent = state.revealed ? "Next Turn" : "Reveal";
+      systemColorBtn.disabled = !canUseSystemPicker;
+
+      if (state.gameOver) {
+        gameStatus.textContent = "Game complete. Start a new game to play again.";
+      } else if (state.phase === "pick" && humanGiver) {
+        gameStatus.textContent = state.target
+          ? "You can still change the secret color before reveal. Type a clue, then lock it."
+          : "You are clue giver. Click a secret color on the board.";
+      } else if (state.phase === "reveal" && humanGiver && !state.revealed) {
+        gameStatus.textContent = "All guesses are in. You can still change the secret color before reveal.";
+      } else if (state.phase === "pick") {
+        gameStatus.textContent = `${giver.name} is thinking of a cue.`;
+      } else if (needsHumanGuess) {
+        gameStatus.textContent = state.useSystemColorPicker
+          ? `${giver.name} gave the clue. Use the system color picker for your guess.`
+          : `${giver.name} gave the clue. Click your guess on the board.`;
+      } else if (state.phase === "guess") {
+        gameStatus.textContent = "AI players are placing their guesses.";
+      } else if (state.phase === "reveal") {
+        gameStatus.textContent = "All guesses are in. Reveal the target.";
+      } else {
+        gameStatus.textContent = "Review the scores, then go to the next clue giver.";
+      }
+    }
+
+    function render() {
+      const giver = activeClueGiver();
+      roundLabel.textContent = state.gameOver
+        ? `Game Over - ${state.targetRounds} round${state.targetRounds === 1 ? "" : "s"}`
+        : `Round ${currentRoundNumber()} of ${state.targetRounds}`;
+      phaseLabel.textContent = state.phase;
+      turnCountLabel.textContent = `${Math.min(state.turnIndex + 1, players.length)} / ${players.length}`;
+      cueText.textContent = state.cue || "silent clue";
+      cueInput.value = state.cue;
+      renderTarget();
+      renderScores();
+      renderTurnList();
+      renderResults();
+      renderPins();
+      renderControls();
+      renderCustomControls();
+    }
+
+    function aiCueForTarget(target) {
+      const name = colorName(target.col, target.row).toLowerCase();
+      const hueWord = name.split(" ").pop();
+      const cuesByHue = {
+        red: ["tomato soup", "stop sign", "ruby candy"],
+        coral: ["salmon sunset", "peach coral", "warm shell"],
+        orange: ["traffic cone", "pumpkin glow", "orange peel"],
+        amber: ["honey jar", "autumn leaf", "candle flame"],
+        yellow: ["lemon zest", "school bus", "buttercup"],
+        lime: ["tennis ball", "lime soda", "spring leaf"],
+        green: ["fresh basil", "garden hose", "forest fern"],
+        teal: ["tropical lagoon", "old patina", "blue spruce"],
+        cyan: ["pool tile", "glacier mint", "clean glass"],
+        azure: ["clear sky", "blue candy", "summer pool"],
+        blue: ["denim jacket", "blueberry jam", "deep lake"],
+        indigo: ["ink bottle", "night denim", "storm cloud"],
+        violet: ["purple iris", "grape soda", "royal velvet"],
+        magenta: ["neon orchid", "berry gelato", "party light"],
+        rose: ["rose quartz", "pink lemonade", "cotton candy"]
+      };
+      const choices = cuesByHue[hueWord] || cueBank;
+      return choices[Math.floor(Math.random() * choices.length)];
+    }
+
+    function inferColorFromCue(cue) {
+      const text = cue.toLowerCase().replace(/[^a-z0-9 ]/g, " ");
+      let best = null;
+      cueHints.forEach((hint) => {
+        const score = hint.words.reduce((total, word) => {
+          return total + (text.includes(word) ? 1 : 0);
+        }, 0);
+        if (score && (!best || score > best.score)) {
+          best = { ...hint, score };
+        }
+      });
+
+      if (!best) return null;
+
+      let row = best.row;
+      if (/(dark|deep|night|midnight|ink|velvet|storm)/.test(text)) row += 3;
+      if (/(light|sun|sunlit|sky|chalk|cotton|clear)/.test(text)) row -= 3;
+      if (/(neon|bright|glow)/.test(text)) row -= 2;
+      if (/(old|autumn|honey|candle|ember|fire|flame)/.test(text)) row += 1;
+
+      return {
+        col: clamp(best.col, 0, COLS - 1),
+        row: clamp(row, 0, ROWS - 1),
+        matched: best.words.filter((word) => text.includes(word)).join(", ")
+      };
+    }
+
+    function aiGuessFromCue(cue, target, playerIndex) {
+      const inferred = inferColorFromCue(cue);
+      const skill = 0.42 + (playerIndex % 3) * 0.12;
+      const luckyRead = Math.random() < (inferred ? 0.18 + skill * 0.12 : 0.08);
+      const wildRead = Math.random() < 0.16;
+      let base = inferred || randomTarget();
+
+      if (luckyRead) {
+        base = {
+          col: Math.round(base.col * 0.35 + target.col * 0.65),
+          row: Math.round(base.row * 0.35 + target.row * 0.65)
+        };
+      } else if (wildRead) {
+        base = {
+          col: clamp(base.col + (Math.random() < 0.5 ? -1 : 1) * (3 + Math.floor(Math.random() * 6)), 0, COLS - 1),
+          row: clamp(base.row + Math.round((Math.random() - 0.5) * 6), 0, ROWS - 1)
+        };
+      }
+
+      const noise = inferred ? 2 + Math.round((1 - skill) * 4) : 6;
+      const col = clamp(base.col + Math.round((Math.random() - 0.5) * noise * 2), 0, COLS - 1);
+      const row = clamp(base.row + Math.round((Math.random() - 0.5) * noise * 2), 0, ROWS - 1);
+      return { col, row };
+    }
+
+    function beginAiTurnIfNeeded() {
+      if (state.gameOver || state.revealed || state.phase !== "pick") return;
+      const giver = activeClueGiver();
+      if (!giver.ai) return;
+      state.target = randomTarget();
+      state.cue = aiCueForTarget(state.target);
+      state.phase = "guess";
+      showToast(`${giver.name} gave the clue: ${state.cue}`);
+      render();
+    }
+
+    function setHumanTarget(col, row, source) {
+      if (state.gameOver || state.revealed || activeClueGiver().ai) return false;
+      if (state.phase !== "pick" && state.phase !== "reveal") return false;
+
+      state.target = { col, row };
+      systemColorInput.value = hslTileToHex(col, row);
+      if (state.phase === "reveal") {
+        state.guesses = [];
+        addAiGuesses();
+        showToast(`Secret color changed to ${coord(col, row)}; AI re-guessed from the clue.`);
+      } else {
+        showToast(`${source} set to ${coord(col, row)}.`);
+      }
+      render();
+      return true;
+    }
+
+    function setHumanGuess(col, row, source) {
+      const giver = activeClueGiver();
+      if (state.gameOver || state.revealed || !giver.ai || state.phase !== "guess") return false;
+      if (state.guesses.some((guess) => guess.player === HUMAN_INDEX)) {
+        showToast("Your guess is already placed.");
+        return false;
+      }
+
+      state.guesses.push({ player: HUMAN_INDEX, col, row });
+      showToast(`${source} guessed ${coord(col, row)}.`);
+      addAiGuesses();
+      state.phase = "reveal";
+      render();
+      return true;
+    }
+
+    function handleSystemColorChoice(hex) {
+      const target = targetFromHex(hex);
+      if (setHumanTarget(target.col, target.row, "System color")) return;
+      setHumanGuess(target.col, target.row, "System color");
+    }
+
+    function handleTileClick(col, row) {
+      if (state.gameOver) return;
+      const giver = activeClueGiver();
+      const humanGiver = !giver.ai;
+
+      if (humanGiver && !state.revealed && (state.phase === "pick" || state.phase === "reveal")) {
+        setHumanTarget(col, row, "Secret color");
+        return;
+      }
+
+      if (state.phase === "guess" && giver.ai) {
+        const existing = state.guesses.some((guess) => guess.player === HUMAN_INDEX);
+        if (existing) {
+          showToast("Your guess is already placed.");
+          return;
+        }
+        state.guesses.push({ player: HUMAN_INDEX, col, row });
+        showToast(`You guessed ${coord(col, row)}.`);
+        addAiGuesses();
+        state.phase = "reveal";
+        render();
+        return;
+      }
+
+      if (state.phase === "guess" && humanGiver) {
+        showToast("The AI players are guessing this one.");
+        return;
+      }
+
+      showToast("That color is not selectable right now.");
+    }
+
+    function addAiGuesses() {
+      const giverIndex = state.turnIndex;
+      players.forEach((player, index) => {
+        if (!player.ai || index === giverIndex) return;
+        if (state.guesses.some((guess) => guess.player === index)) return;
+        const guess = aiGuessFromCue(state.cue, state.target, index);
+        state.guesses.push({ player: index, col: guess.col, row: guess.row });
+      });
+    }
+
+    function lockHumanCue() {
+      if (state.gameOver || activeClueGiver().ai || state.phase !== "pick") return;
+      if (!state.target) {
+        showToast("Pick a secret color first.");
+        return;
+      }
+      state.cue = cueInput.value.trim() || "silent clue";
+      state.phase = "guess";
+      addAiGuesses();
+      state.phase = "reveal";
+      showToast("AI guesses are in.");
+      render();
+    }
+
+    function revealTurn() {
+      if (state.phase !== "reveal" || state.revealed || !state.target) return;
+      const giverIndex = state.turnIndex;
+      state.revealed = true;
+      state.lastResults = [];
+
+      let totalGuessPoints = 0;
+      state.guesses.forEach((guess) => {
+        const dist = distance(guess, state.target);
+        const points = pointValue(dist);
+        players[guess.player].score += points;
+        totalGuessPoints += points;
+        state.lastResults.push({
+          player: guess.player,
+          points,
+          note: `${coord(guess.col, guess.row)} - ${resultLabel(dist)}`
+        });
+      });
+
+      const cluePoints = state.guesses.length ? Math.round(totalGuessPoints / state.guesses.length) : 0;
+      players[giverIndex].score += cluePoints;
+      state.lastResults.push({
+        player: giverIndex,
+        points: cluePoints,
+        note: `clue giver bonus for "${state.cue}"`
+      });
+
+      showToast(`Target was ${coord(state.target.col, state.target.row)}.`);
+      render();
+    }
+
+    function advanceTurn() {
+      if (!state.revealed || state.gameOver) return;
+      state.turnIndex += 1;
+      if (state.turnIndex >= players.length) {
+        state.turnIndex = 0;
+        state.completedRounds += 1;
+      }
+
+      if (state.completedRounds >= state.targetRounds) {
+        state.gameOver = true;
+        state.phase = "done";
+        render();
+        return;
+      }
+
+      startTurn();
+    }
+
+    function startTurn() {
+      state.phase = "pick";
+      state.target = null;
+      state.guesses = [];
+      state.revealed = false;
+      state.lastResults = [];
+      state.cue = activeClueGiver().ai ? "thinking..." : cueBank[Math.floor(Math.random() * cueBank.length)];
+      render();
+      window.setTimeout(beginAiTurnIfNeeded, 400);
+    }
+
+    function applySettings() {
+      const nextCount = state.settingsPlayerCount;
+      const used = new Set();
+      const currentNames = [...nameFields.querySelectorAll("input")].map((input) => input.value.trim()).filter(Boolean);
+      players = Array.from({ length: nextCount }, (_, index) => {
+        const previous = players[index];
+        const name = currentNames[index] || (index === 0 ? "You" : randomName(used));
+        used.add(name);
+        return {
+          name,
+          color: playerColors[index],
+          ai: index !== HUMAN_INDEX,
+          score: previous ? previous.score : 0
+        };
+      });
+      state.targetRounds = state.settingsRoundTarget;
+      startNewGame(false);
+      showToast("Table updated.");
+    }
+
+    function startNewGame(randomizeNpcNames) {
+      if (randomizeNpcNames) {
+        const used = new Set([players[0].name]);
+        players = players.map((player, index) => {
+          if (index === 0) return { ...player, score: 0 };
+          const name = randomName(used);
+          used.add(name);
+          return { ...player, name, score: 0 };
+        });
+      } else {
+        players = players.map((player) => ({ ...player, score: 0 }));
+      }
+      state.completedRounds = 0;
+      state.turnIndex = 0;
+      state.gameOver = false;
+      renderNames();
+      startTurn();
+    }
+
+    function resetScores() {
+      players = players.map((player) => ({ ...player, score: 0 }));
+      state.completedRounds = 0;
+      state.turnIndex = 0;
+      state.gameOver = false;
+      startTurn();
+      showToast("Scores reset.");
+    }
+
+    function syncNamesFromInputs() {
+      nameFields.querySelectorAll("input").forEach((input) => {
+        const index = Number(input.dataset.nameIndex);
+        players[index].name = input.value.trim() || (index === 0 ? "You" : `NPC ${index}`);
+      });
+      render();
+    }
+
+    document.querySelector("#themeBtn").addEventListener("click", () => {
+      const next = document.body.dataset.theme === "dark" ? "light" : "dark";
+      document.body.dataset.theme = next;
+      showToast(`${next.charAt(0).toUpperCase() + next.slice(1)} theme.`);
+    });
+
+    document.querySelector("#newGameBtn").addEventListener("click", () => startNewGame(true));
+    document.querySelector("#applySettingsBtn").addEventListener("click", applySettings);
+    document.querySelector("#resetScoresBtn").addEventListener("click", resetScores);
+    document.querySelectorAll(".custom-select").forEach((root) => {
+      const selectName = root.dataset.select;
+      const button = root.querySelector(".select-button");
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const isOpen = root.classList.contains("open");
+        closeCustomSelects(root);
+        root.classList.toggle("open", !isOpen);
+        button.setAttribute("aria-expanded", isOpen ? "false" : "true");
+      });
+      root.querySelectorAll(".select-option").forEach((option) => {
+        option.addEventListener("click", (event) => {
+          event.stopPropagation();
+          const value = Number(option.dataset.value);
+          if (selectName === "players") state.settingsPlayerCount = value;
+          if (selectName === "rounds") state.settingsRoundTarget = value;
+          closeCustomSelects();
+          renderCustomControls();
+        });
+      });
+    });
+    document.addEventListener("click", () => closeCustomSelects());
+    systemColorToggle.addEventListener("click", () => {
+      state.useSystemColorPicker = !state.useSystemColorPicker;
+      render();
+    });
+    systemColorBtn.addEventListener("click", () => {
+      if (systemColorBtn.disabled) return;
+      systemColorInput.click();
+    });
+    systemColorInput.addEventListener("input", () => {
+      handleSystemColorChoice(systemColorInput.value);
+    });
+    revealBtn.addEventListener("click", () => {
+      if (state.revealed) {
+        advanceTurn();
+      } else {
+        revealTurn();
+      }
+    });
+    lockCueBtn.addEventListener("click", () => {
+      if (state.revealed) {
+        advanceTurn();
+      } else {
+        lockHumanCue();
+      }
+    });
+
+    randomCueBtn.addEventListener("click", () => {
+      let next = state.cue;
+      while (next === state.cue && cueBank.length > 1) {
+        next = cueBank[Math.floor(Math.random() * cueBank.length)];
+      }
+      state.cue = next;
+      render();
+    });
+
+    cueInput.addEventListener("input", () => {
+      if (!activeClueGiver().ai && state.phase === "pick") {
+        state.cue = cueInput.value;
+        cueText.textContent = state.cue || "silent clue";
+      }
+    });
+
+    nameFields.addEventListener("change", syncNamesFromInputs);
+
+    buildBoard();
+    renderLegend();
+    renderNames();
+    startTurn();
+    showToast("running c&h v1.2 by alvin :)")
+  </script>
+</body>
+</html>
