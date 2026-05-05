@@ -346,61 +346,74 @@ async function loadProfileMap() {
   profileMap = new Map((q.data || []).map(p => [p.id, p]));
 }
 
-function addAdminMenu(x, y, msg) {
+function addAdminMenu(x, y, msg){
   const host = $("menuHost");
   host.innerHTML = "";
+
+  const p = profileMap.get(msg.user_id) || {};
+  const username = p.username || "unknown";
 
   const m = document.createElement("div");
   m.className = "menu";
   m.style.left = x + "px";
   m.style.top = y + "px";
 
-  const fakeIp = msg.client_ip || "not-available";
   m.innerHTML = `
-    <button data-act="copyip">Copy IP (${esc(fakeIp)})</button>
-    <button data-act="mute">Mute</button>
-    <button data-act="unmute">Unmute</button>
-    <button data-act="ban">Ban</button>
-    <button data-act="unban">Unban</button>
-    <button data-act="delete">Delete Message</button>
+    <button data-act="copyuser">Copy username (@${esc(username)})</button>
+    <button data-act="mute">Mute user</button>
+    <button data-act="unmute">Unmute user</button>
+    <button data-act="ban">Ban user</button>
+    <button data-act="unban">Unban user</button>
+    <button data-act="delete">Delete message</button>
   `;
   host.appendChild(m);
 
   m.onclick = async (e) => {
     const act = e.target.getAttribute("data-act");
-    if (!act) return;
+    if(!act) return;
 
-    try {
-      if (act === "copyip") {
-        await navigator.clipboard.writeText(fakeIp);
-        toast("IP copied (or placeholder)");
+    try{
+      if(act === "copyuser"){
+        await navigator.clipboard.writeText(username);
+        toast("Username copied", "ok");
       }
-      if (act === "mute") {
+
+      if(act === "mute"){
         const sec = Number(prompt("Mute seconds?", "60") || 60);
-        await adminMute(($("targetIp").value.trim() || fakeIp), sec);
+        await adminMuteUser(msg.user_id, sec);
+        toast(`Muted @${username} for ${sec}s`, "ok");
       }
-      if (act === "unmute") {
-        await adminUnmute(($("targetIp").value.trim() || fakeIp));
+
+      if(act === "unmute"){
+        await adminUnmuteUser(msg.user_id);
+        toast(`Unmuted @${username}`, "ok");
       }
-      if (act === "ban") {
-        await adminBan(($("targetIp").value.trim() || fakeIp));
+
+      if(act === "ban"){
+        await adminBanUser(msg.user_id);
+        toast(`Banned @${username}`, "ok");
       }
-      if (act === "unban") {
-        await adminUnban(($("targetIp").value.trim() || fakeIp));
+
+      if(act === "unban"){
+        await adminUnbanUser(msg.user_id);
+        toast(`Unbanned @${username}`, "ok");
       }
-      if (act === "delete") {
+
+      if(act === "delete"){
         await softDelete(msg.id);
       }
-    } catch (err) {
-      toast(err.message || String(err), "err", 4000);
+    }catch(err){
+      toast(err.message || String(err), "err", 4500);
+      debugLog("admin.menu.error", err);
     }
 
     host.innerHTML = "";
   };
 
-  setTimeout(() => document.addEventListener("click", () => host.innerHTML = "", { once: true }), 0);
+  setTimeout(() => {
+    document.addEventListener("click", () => host.innerHTML = "", { once:true });
+  }, 0);
 }
-
 function messageHTML(m) {
   const p = profileMap.get(m.user_id) || {};
   const isAdmin = myProfile?.role === "admin";
