@@ -7,6 +7,7 @@ authors:
     avatar: https://avatars.githubusercontent.com/u/107190717
 order: 2
 ---
+## Games
 
 Play games that I made!
 
@@ -15,3 +16,11 @@ Play games that I made!
 [!button UNO](/game/uno.html)
 
 [!button Cues and Hues](/game/c-and-h.html)
+
+## External
+
+Useful things!
+
+[!button Chat](/external/chat)
+
+[!button Chat Source Code](/external/chat-source)
