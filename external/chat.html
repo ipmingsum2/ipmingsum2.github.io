@@ -903,20 +903,28 @@ $("btnRegister").onclick = async () => {
 $("btnLogin").onclick = async () => {
   setAuthMsg("");
   try {
-		const ban = await sb.from("user_bans")
-  		.select("user_id")
-  		.eq("user_id", authUser.id)
-  		.maybeSingle();
-		if(ban.data){
-  		toast("Your account is banned.", "err", 4500);
-  		return;
-		}
     const email = $("email").value.trim();
     const password = $("password").value;
     const r = await sb.auth.signInWithPassword({ email, password });
     if (r.error) throw r.error;
 
     me = r.data.user;
+
+    // check account ban AFTER login (now we have me.id)
+    const ban = await sb.from("user_bans")
+      .select("user_id")
+      .eq("user_id", me.id)
+      .maybeSingle();
+
+    if (ban.data) {
+      await sb.auth.signOut();
+      me = null;
+      myProfile = null;
+      showAuth();
+      toast("Your account is banned.", "err", 4500);
+      return;
+    }
+
     myProfile = await ensureProfileAfterLogin(
       me,
       localStorage.getItem("pending_username") || "",
@@ -937,7 +945,6 @@ $("btnLogin").onclick = async () => {
     debugLog("login", e);
   }
 };
-
 $("btnLogout").onclick = async () => {
   await sb.auth.signOut();
   me = null;
@@ -974,26 +981,17 @@ $("btnSaveProfile").onclick = async () => {
 
 $("btnSend").onclick = async () => {
   try {
-    const ban = await sb.from("user_bans")
-  		.select("user_id")
-  		.eq("user_id", authUser.id)
-  		.maybeSingle();
-		if(ban.data){
-  		toast("Your account is banned.", "err", 4500);
-  		return;
-		}
+    const authUser = await requireAuthedUser();
+    const text = $("msgText").value.trim();
+    const file = $("msgFile").files?.[0];
 		const mute = await sb.from("user_mutes")
   		.select("muted_until")
   		.eq("user_id", authUser.id)
   		.maybeSingle();
 		if(mute.data && new Date(mute.data.muted_until).getTime() > Date.now()){
-  		toast("Your account is muted.", "warn", 4500);
+  		toast("Your account is muted. You probably got muted by one of the admins.", "warn", 4500);
   		return;
 		}
-    const authUser = await requireAuthedUser();
-    const text = $("msgText").value.trim();
-    const file = $("msgFile").files?.[0];
-
     if (!text && !file) return toast("Write text or attach image", "warn");
 
     const hit = getMatchedFilter(text);
