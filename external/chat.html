@@ -988,8 +988,9 @@ $("btnSend").onclick = async () => {
   		.select("muted_until")
   		.eq("user_id", authUser.id)
   		.maybeSingle();
-		if(mute.data && new Date(mute.data.muted_until).getTime() > Date.now()){
-  		toast("Your account is muted. You probably got muted by one of the admins.", "warn", 4500);
+		if (mute.data && new Date(mute.data.muted_until).getTime() > Date.now()) {
+  		const mutedUntil = new Date(mute.data.muted_until).toLocaleString();
+  		toast(`Your account is muted. You are muted until ${mutedUntil}`,"warn",4500);
   		return;
 		}
     if (!text && !file) return toast("Write text or attach image", "warn");
