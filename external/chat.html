@@ -181,8 +181,8 @@
           <div id="adminOnly" class="hidden">
             <h4 style="margin:0 0 6px">Moderation</h4>
             <div class="row">
-              <input id="targetIp" placeholder="Target IP">
-              <input id="muteSec" type="number" value="60" style="max-width:120px">
+              <input id="targetUsername" placeholder="Target username">
+							<input id="muteSec" type="number" value="60" style="max-width:120px">
             </div>
             <div class="row">
               <button id="btnMute" class="warn">Mute</button>
@@ -199,7 +199,7 @@
             </div>
             <div id="filterList" class="list" style="margin-top:8px"></div>
           </div>
-          <div id="adminNotAllowed" class="muted">Admin only.</div>
+          <div id="adminNotAllowed" class="muted">Admin only. Ask Alvin for it.</div>
         </div>
 
         <div id="tab-debug" class="tabpane" style="margin-top:8px">
@@ -804,42 +804,40 @@ async function getUserIdByUsername(username){
   return q.data.id;
 }
 
-async function adminMute(ip, seconds = 60) {
+async function adminMuteUser(userId, seconds=60){
   await requireAdmin();
-  if (!ip || ip === "not-available") throw new Error("Set target IP manually");
-  const until = new Date(Date.now() + Math.max(1, seconds) * 1000).toISOString();
-  const q = await sb.from("ip_mutes").upsert({
-    ip,
-    muted_until: until,
-    reason: "admin",
-    updated_at: new Date().toISOString()
+  const muted_until = new Date(Date.now() + Math.max(1, seconds)*1000).toISOString();
+  const q = await sb.from("user_mutes").upsert({
+    user_id: userId,
+    muted_until,
+    reason: "admin mute",
+    updated_at: new Date().toISOString(),
+    updated_by: me.id
   });
-  if (q.error) throw q.error;
+  if(q.error) throw q.error;
 }
 
-async function adminUnmute(ip) {
+async function adminUnmuteUser(userId){
   await requireAdmin();
-  if (!ip || ip === "not-available") throw new Error("Set target IP manually");
-  const q = await sb.from("ip_mutes").delete().eq("ip", ip);
-  if (q.error) throw q.error;
+  const q = await sb.from("user_mutes").delete().eq("user_id", userId);
+  if(q.error) throw q.error;
 }
 
-async function adminBan(ip) {
+async function adminBanUser(userId){
   await requireAdmin();
-  if (!ip || ip === "not-available") throw new Error("Set target IP manually");
-  const q = await sb.from("ip_bans").upsert({
-    ip,
-    reason: "admin",
-    created_at: new Date().toISOString()
+  const q = await sb.from("user_bans").upsert({
+    user_id: userId,
+    reason: "admin ban",
+    created_at: new Date().toISOString(),
+    created_by: me.id
   });
-  if (q.error) throw q.error;
+  if(q.error) throw q.error;
 }
 
-async function adminUnban(ip) {
+async function adminUnbanUser(userId){
   await requireAdmin();
-  if (!ip || ip === "not-available") throw new Error("Set target IP manually");
-  const q = await sb.from("ip_bans").delete().eq("ip", ip);
-  if (q.error) throw q.error;
+  const q = await sb.from("user_bans").delete().eq("user_id", userId);
+  if(q.error) throw q.error;
 }
 
 /* ui wiring */
@@ -892,6 +890,14 @@ $("btnRegister").onclick = async () => {
 $("btnLogin").onclick = async () => {
   setAuthMsg("");
   try {
+		const ban = await sb.from("user_bans")
+  		.select("user_id")
+  		.eq("user_id", authUser.id)
+  		.maybeSingle();
+		if(ban.data){
+  		toast("Your account is banned.", "err", 4500);
+  		return;
+		}
     const email = $("email").value.trim();
     const password = $("password").value;
     const r = await sb.auth.signInWithPassword({ email, password });
@@ -955,6 +961,22 @@ $("btnSaveProfile").onclick = async () => {
 
 $("btnSend").onclick = async () => {
   try {
+    const ban = await sb.from("user_bans")
+  		.select("user_id")
+  		.eq("user_id", authUser.id)
+  		.maybeSingle();
+		if(ban.data){
+  		toast("Your account is banned.", "err", 4500);
+  		return;
+		}
+		const mute = await sb.from("user_mutes")
+  		.select("muted_until")
+  		.eq("user_id", authUser.id)
+  		.maybeSingle();
+		if(mute.data && new Date(mute.data.muted_until).getTime() > Date.now()){
+  		toast("Your account is muted.", "warn", 4500);
+  		return;
+		}
     const authUser = await requireAuthedUser();
     const text = $("msgText").value.trim();
     const file = $("msgFile").files?.[0];
@@ -997,48 +1019,49 @@ $("btnAddFilter").onclick = async () => {
   }
 };
 
-$("btnMute").onclick = async () => {
-  try {
+$("btnMute").onclick = async ()=>{
+  try{
     await requireAdmin();
-    await adminMute($("targetIp").value.trim(), Number($("muteSec").value || 60));
-    setAdminMsg("Muted");
-    toast("Muted");
-  } catch (e) {
-    setAdminMsg(errText("mute", e), true);
-  }
+    const uname = $("targetUsername").value.trim();
+    const uid = await getUserIdByUsername(uname);
+    const sec = Number($("muteSec").value || 60);
+    await adminMuteUser(uid, sec);
+    setAdminMsg(`Muted @${uname} for ${sec}s`);
+    toast("User muted");
+  }catch(e){ setAdminMsg(errText("mute user", e), true); }
 };
 
-$("btnUnmute").onclick = async () => {
-  try {
+$("btnUnmute").onclick = async ()=>{
+  try{
     await requireAdmin();
-    await adminUnmute($("targetIp").value.trim());
-    setAdminMsg("Unmuted");
-    toast("Unmuted");
-  } catch (e) {
-    setAdminMsg(errText("unmute", e), true);
-  }
+    const uname = $("targetUsername").value.trim();
+    const uid = await getUserIdByUsername(uname);
+    await adminUnmuteUser(uid);
+    setAdminMsg(`Unmuted @${uname}`);
+    toast("User unmuted");
+  }catch(e){ setAdminMsg(errText("unmute user", e), true); }
 };
 
-$("btnBan").onclick = async () => {
-  try {
+$("btnBan").onclick = async ()=>{
+  try{
     await requireAdmin();
-    await adminBan($("targetIp").value.trim());
-    setAdminMsg("Banned");
-    toast("Banned");
-  } catch (e) {
-    setAdminMsg(errText("ban", e), true);
-  }
+    const uname = $("targetUsername").value.trim();
+    const uid = await getUserIdByUsername(uname);
+    await adminBanUser(uid);
+    setAdminMsg(`Banned @${uname}`);
+    toast("User banned");
+  }catch(e){ setAdminMsg(errText("ban user", e), true); }
 };
 
-$("btnUnban").onclick = async () => {
-  try {
+$("btnUnban").onclick = async ()=>{
+  try{
     await requireAdmin();
-    await adminUnban($("targetIp").value.trim());
-    setAdminMsg("Unbanned");
-    toast("Unbanned");
-  } catch (e) {
-    setAdminMsg(errText("unban", e), true);
-  }
+    const uname = $("targetUsername").value.trim();
+    const uid = await getUserIdByUsername(uname);
+    await adminUnbanUser(uid);
+    setAdminMsg(`Unbanned @${uname}`);
+    toast("User unbanned");
+  }catch(e){ setAdminMsg(errText("unban user", e), true); }
 };
 
 function subscribeSideChannels() {
