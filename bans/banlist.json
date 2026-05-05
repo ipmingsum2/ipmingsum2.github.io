@@ -10,5 +10,11 @@
     "reason": "bad",
     "username": "yuki",
     "bannedat": "2026-04-28T14:43:46.708Z"
+  },
+  "1500000000": {
+    "bannedby": "2",
+    "reason": "Releasing bad updates :c",
+    "username": "david.baszucki",
+    "bannedat": "2026-05-05T12:35:08.611Z"
   }
 }
