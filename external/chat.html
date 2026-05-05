@@ -792,6 +792,18 @@ async function requireAdmin() {
   if (myProfile?.role !== "admin") throw new Error("Admin only");
 }
 
+async function getUserIdByUsername(username){
+  const q = await sb.from("profiles")
+    .select("id, username, display_name")
+    .ilike("username", username.trim())
+    .limit(1)
+    .maybeSingle();
+
+  if(q.error) throw q.error;
+  if(!q.data) throw new Error("User not found");
+  return q.data.id;
+}
+
 async function adminMute(ip, seconds = 60) {
   await requireAdmin();
   if (!ip || ip === "not-available") throw new Error("Set target IP manually");
