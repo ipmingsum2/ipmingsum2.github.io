@@ -807,7 +807,7 @@ async function requireAdmin() {
 
 async function getUserIdByUsername(username){
   const q = await sb.from("profiles")
-    .select("id, username, display_name")
+    .select("id, username")
     .ilike("username", username.trim())
     .limit(1)
     .maybeSingle();
@@ -815,6 +815,17 @@ async function getUserIdByUsername(username){
   if(q.error) throw q.error;
   if(!q.data) throw new Error("User not found");
   return q.data.id;
+}
+
+async function adminBanUser(userId){
+  await requireAdmin();
+  const q = await sb.from("user_bans").upsert({
+    user_id: userId,
+    reason: "instant admin ban",
+    created_at: new Date().toISOString(),
+    created_by: me.id
+  });
+  if(q.error) throw q.error;
 }
 
 async function adminMuteUser(userId, seconds=60){
@@ -836,21 +847,28 @@ async function adminUnmuteUser(userId){
   if(q.error) throw q.error;
 }
 
-async function adminBanUser(userId){
-  await requireAdmin();
-  const q = await sb.from("user_bans").upsert({
-    user_id: userId,
-    reason: "admin ban",
-    created_at: new Date().toISOString(),
-    created_by: me.id
-  });
-  if(q.error) throw q.error;
-}
-
 async function adminUnbanUser(userId){
   await requireAdmin();
   const q = await sb.from("user_bans").delete().eq("user_id", userId);
   if(q.error) throw q.error;
+}
+
+/* bans edit: added replication */
+function checkBan(userId){
+	const ban = await sb.from("user_bans")
+      .select("user_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (ban.data) {
+      await sb.auth.signOut();
+      me = null;
+      myProfile = null;
+      showAuth();
+      toast("Your account is banned.", "err", 4500);
+      return;
+    }
+
 }
 
 /* ui wiring */
@@ -1075,7 +1093,7 @@ $("btnUnban").onclick = async ()=>{
     toast("User unbanned");
   }catch(e){ setAdminMsg(errText("unban user", e), true); }
 };
-
+/* remember to lick and sub */
 function subscribeSideChannels() {
   sb.channel("ann-live")
     .on("postgres_changes", { event: "*", schema: "public", table: "announcements" }, () => loadAnnouncements())
@@ -1083,6 +1101,10 @@ function subscribeSideChannels() {
 
   sb.channel("filters-live")
     .on("postgres_changes", { event: "*", schema: "public", table: "message_filters" }, () => loadFilters())
+    .subscribe();
+
+sb.channel("user-bans")
+    .on("postgres_changes", { event: "*", schema: "public", table: "message_filters" }, () => checkBan(me.id))
     .subscribe();
 }
 
