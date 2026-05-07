@@ -65,7 +65,8 @@
     .avatar{width:22px;height:22px;border-radius:50%;object-fit:cover;border:1px solid #4b67a5;vertical-align:middle;margin-right:6px}
     .body{word-break:break-word}
     .body img{max-width:100%}
-    .img{max-width:260px;max-height:260px;border-radius:8px;border:1px solid #3f578c;margin-top:8px}
+    .img,.video{max-width:260px;max-height:260px;border-radius:8px;border:1px solid #3f578c;margin-top:8px}
+    .audio{width:min(100%,320px);margin-top:8px}
     .actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
     .actions button{font-size:12px;padding:6px 9px}
     .admin-dot{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:8px;background:#2a426f;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;cursor:pointer}
@@ -130,6 +131,7 @@
         <span id="roleChip" class="chip">user</span>
         <input id="roomInput" value="lobby" style="max-width:180px">
         <button id="btnJoin" class="ghost">Join Room</button>
+        <button id="btnShowChannelSettings" class="ghost hidden">Channel Settings</button>
         <button id="btnLogout" class="danger">Logout</button>
       </div>
 
@@ -180,8 +182,8 @@
         </div>
         <textarea id="msgText" placeholder="Write message with markdown/latex..."></textarea>
         <div class="row">
-          <input id="msgFile" type="file" accept="image/*" hidden>
-          <button id="btnPickMsg" class="ghost" type="button">Attach Image</button>
+          <input id="msgFile" type="file" accept="image/*,audio/*,video/*,.mp3,.wav,.ogg,.oga,.m4a,.aac,.flac,.opus,.weba,.mp4,.webm,.mov,.m4v,.avi,.mkv,.ogv,.3gp,.3g2" hidden>
+          <button id="btnPickMsg" class="ghost" type="button">Attach Media</button>
           <span id="msgFileName" class="fname">No file chosen</span>
           <button id="btnSend">Send</button>
         </div>
@@ -372,13 +374,49 @@ async function ensureProfileAfterLogin(user, uh = "", dh = "") {
   return ins.data;
 }
 
-async function uploadImage(file) {
+async function uploadFile(file, allowedKinds = ["image", "audio", "video"]) {
   const authUser = await requireAuthedUser();
-  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const kind = (file.type || "").split("/")[0];
+  const ext = (file.name.split(".").pop() || kind || "file").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 12) || "file";
+  const extKind = mediaKindFromExtension(ext);
+  if (!allowedKinds.includes(kind) && !allowedKinds.includes(extKind)) {
+    throw new Error(`Unsupported file type: ${file.type || file.name}`);
+  }
   const path = `${authUser.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-  const up = await sb.storage.from("chat-media").upload(path, file, { upsert: false });
+  const up = await sb.storage.from("chat-media").upload(path, file, {
+    upsert: false,
+    contentType: file.type || "application/octet-stream"
+  });
   if (up.error) throw up.error;
   return sb.storage.from("chat-media").getPublicUrl(path).data.publicUrl;
+}
+
+async function uploadImage(file) {
+  return uploadFile(file, ["image"]);
+}
+
+async function uploadMedia(file) {
+  return uploadFile(file, ["image", "audio", "video"]);
+}
+
+function mediaKindFromExtension(ext = "") {
+  if (["mp3", "wav", "ogg", "oga", "m4a", "aac", "flac", "opus", "weba"].includes(ext)) return "audio";
+  if (["mp4", "webm", "mov", "m4v", "avi", "mkv", "ogv", "3gp", "3g2"].includes(ext)) return "video";
+  return "image";
+}
+
+function mediaKindFromUrl(url = "") {
+  const clean = String(url).split("?")[0].toLowerCase();
+  return mediaKindFromExtension(clean.split(".").pop() || "");
+}
+
+function attachmentHTML(url) {
+  if (!url) return "";
+  const safeUrl = esc(url);
+  const kind = mediaKindFromUrl(url);
+  if (kind === "audio") return `<audio class="audio" controls preload="metadata" src="${safeUrl}"></audio>`;
+  if (kind === "video") return `<video class="video" controls preload="metadata" src="${safeUrl}"></video>`;
+  return `<img class="img" src="${safeUrl}">`;
 }
 
 async function loadProfileMap() {
@@ -452,6 +490,7 @@ function updateChannelSettingsUI() {
   }
 
   const canManage = canManageChannel();
+  $("btnShowChannelSettings").classList.toggle("hidden", !canManage);
   settings.classList.toggle("hidden", !canManage);
   $("channelSettingsInfo").textContent = `${currentChannel.is_private ? "Private" : "Public"} channel: #${currentChannel.name}`;
   $("channelRenameInput").value = currentChannel.name;
@@ -603,7 +642,7 @@ function messageHTML(m) {
   const canEdit = (me && m.user_id === me.id) || isAdmin;
   const avatar = p.avatar_url ? `<img class="avatar" src="${esc(p.avatar_url)}">` : "";
   const rich = m.deleted ? `<i>[deleted]</i>` : parseRich(m.text || "");
-  const img = (!m.deleted && m.image_url) ? `<img class="img" src="${esc(m.image_url)}">` : "";
+  const img = (!m.deleted && m.image_url) ? attachmentHTML(m.image_url) : "";
   const dot = isAdmin ? `<div class="admin-dot" data-dot="${m.id}">\u2026</div>` : "";
 
   return `<div class="msg ${m.deleted ? "deleted" : ""}" id="m-${m.id}">
@@ -1172,6 +1211,11 @@ $("btnJoin").onclick = async () => {
   }
 };
 
+$("btnShowChannelSettings").onclick = () => {
+  updateChannelSettingsUI();
+  $("channelSettings").scrollIntoView({ behavior: "smooth", block: "nearest" });
+};
+
 $("btnRenameChannel").onclick = async () => {
   try {
     await renameCurrentChannel();
@@ -1261,7 +1305,7 @@ $("btnSend").onclick = async () => {
     if (hit) return toast(`Blocked by filter: "${hit.pattern}"`, "err", 4500);
 
     let image_url = null;
-    if (file) image_url = await uploadImage(file);
+    if (file) image_url = await uploadMedia(file);
 
     const ins = await sb.from("messages").insert({ room, user_id: authUser.id, text: text || null, image_url });
     if (ins.error) throw ins.error;
