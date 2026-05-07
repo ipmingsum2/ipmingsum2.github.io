@@ -854,21 +854,26 @@ async function adminUnbanUser(userId){
 }
 
 /* bans edit: added replication */
-function checkBan(userId){
-	const ban = await sb.from("user_bans")
-      .select("user_id")
-      .eq("user_id", userId)
-      .maybeSingle();
+async function checkBan(userId){
+  if(!userId) return;
 
-    if (ban.data) {
-      await sb.auth.signOut();
-      me = null;
-      myProfile = null;
-      showAuth();
-      toast("Your account is banned.", "err", 4500);
-      return;
-    }
+  const q = await sb.from("user_bans")
+    .select("user_id")
+    .eq("user_id", userId)
+    .maybeSingle();
 
+  if(q.error){
+    debugLog("checkBan.error", q.error);
+    return;
+  }
+
+  if(q.data){
+    toast("Your account has been banned.", "err", 4500);
+    await sb.auth.signOut();
+    me = null;
+    myProfile = null;
+    showAuth();
+  }
 }
 
 /* ui wiring */
@@ -1103,9 +1108,20 @@ function subscribeSideChannels() {
     .on("postgres_changes", { event: "*", schema: "public", table: "message_filters" }, () => loadFilters())
     .subscribe();
 
-sb.channel("user-bans")
-    .on("postgres_changes", { event: "*", schema: "public", table: "message_filters" }, () => checkBan(me.id))
-    .subscribe();
+  if (me?.id) {
+    sb.channel("user-bans-live")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "user_bans",
+          filter: `user_id=eq.${me.id}`
+        },
+        () => checkBan(me.id)
+      )
+      .subscribe();
+  }
 }
 
 (async () => {
