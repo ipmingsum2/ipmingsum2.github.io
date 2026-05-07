@@ -82,14 +82,6 @@
     .toolbar{display:flex;gap:6px;flex-wrap:wrap}
     .toolbar button{padding:6px 8px;font-size:12px}
     .debug{max-height:160px;overflow:auto;border:1px dashed #3a507f;border-radius:10px;padding:8px;background:#0f1931;font-size:12px;white-space:pre-wrap}
-    .settings-card{margin-top:8px;border:1px solid #355083;border-radius:12px;padding:10px;background:#101b33}
-    .switch{position:relative;display:inline-block;width:52px;height:30px}
-    .switch input{opacity:0;width:0;height:0}
-    .slider{position:absolute;cursor:pointer;inset:0;background:#435371;border-radius:999px;transition:.25s}
-    .slider:before{position:absolute;content:"";height:24px;width:24px;left:3px;bottom:3px;background:white;border-radius:50%;transition:.25s;box-shadow:0 2px 8px rgba(0,0,0,.35)}
-    .switch input:checked + .slider{background:#68a8ff}
-    .switch input:checked + .slider:before{transform:translateX(22px)}
-    .lock{color:#ffd06a;margin-right:4px}
   </style>
 </head>
 <body>
@@ -132,29 +124,6 @@
           <div class="muted">Rooms</div>
           <div id="roomList" class="list"></div>
         </div>
-      </div>
-
-      <div id="channelSettings" class="settings-card hidden">
-        <div class="row" style="justify-content:space-between">
-          <div>
-            <b>Channel settings</b>
-            <div id="channelSettingsInfo" class="muted"></div>
-          </div>
-          <label class="switch" title="Private channel">
-            <input id="channelPrivateToggle" type="checkbox">
-            <span class="slider"></span>
-          </label>
-        </div>
-        <div class="row" style="margin-top:8px">
-          <input id="channelRenameInput" placeholder="Rename channel">
-          <button id="btnRenameChannel" class="ghost">Rename</button>
-          <button id="btnDeleteChannel" class="danger">Delete Channel</button>
-        </div>
-        <div id="privateMemberControls" class="row hidden" style="margin-top:8px">
-          <input id="privateMemberUsername" placeholder="Add username to private channel">
-          <button id="btnAddPrivateMember" class="ghost">Add User</button>
-        </div>
-        <div id="channelSettingsMsg" class="muted" style="margin-top:6px"></div>
       </div>
 
       <div class="chat" id="chat" style="margin-top:10px"></div>
@@ -251,7 +220,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_tFvlhmTEDV3SOSVp0JvVzg_KHXFiDNb";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = id => document.getElementById(id);
 
-let me = null, myProfile = null, room = "lobby", channel = null, currentChannel = null;
+let me = null, myProfile = null, room = "lobby", channel = null;
 let profileMap = new Map(), filters = [];
 
 function toast(msg, type = "ok", ms = 3200) {
@@ -317,8 +286,6 @@ function showAuth() {
   $("authCard").classList.remove("hidden");
   $("appCard").classList.add("hidden");
   $("status").textContent = "Not logged in";
-  currentChannel = null;
-  $("channelSettings").classList.add("hidden");
   if (channel) {
     sb.removeChannel(channel);
     channel = null;
@@ -377,147 +344,6 @@ async function loadProfileMap() {
   const q = await sb.from("profiles").select("id,username,display_name,avatar_url,role");
   if (q.error) throw q.error;
   profileMap = new Map((q.data || []).map(p => [p.id, p]));
-}
-
-function channelSlug(name = "lobby") {
-  const slug = String(name || "lobby")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9_-]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 48);
-  return slug || "lobby";
-}
-
-function canManageChannel(ch = currentChannel) {
-  return !!(ch && (myProfile?.role === "admin" || ch.created_by === me?.id));
-}
-
-async function getChannelMemberIds(channelId) {
-  const q = await sb.from("channel_members").select("user_id").eq("channel_id", channelId);
-  if (q.error) throw q.error;
-  return new Set((q.data || []).map(row => row.user_id));
-}
-
-async function canEnterChannel(ch) {
-  if (!ch?.is_private) return true;
-  if (myProfile?.role === "admin" || ch.created_by === me?.id) return true;
-  const members = await getChannelMemberIds(ch.id);
-  return members.has(me?.id);
-}
-
-async function ensureChannelByInput(inputName) {
-  const requestedName = (inputName || "lobby").trim().slice(0, 64) || "lobby";
-  const requestedSlug = channelSlug(requestedName);
-
-  let q = await sb.from("channels")
-    .select("id,name,created_by,is_private,created_at")
-    .eq("id", requestedSlug)
-    .maybeSingle();
-  if (q.error) throw q.error;
-  if (q.data) return q.data;
-
-  q = await sb.from("channels")
-    .select("id,name,created_by,is_private,created_at")
-    .ilike("name", requestedName)
-    .limit(1)
-    .maybeSingle();
-  if (q.error) throw q.error;
-  if (q.data) return q.data;
-
-  const ins = await sb.from("channels")
-    .insert({ id: requestedSlug, name: requestedName, created_by: me.id, is_private: false })
-    .select("id,name,created_by,is_private,created_at")
-    .single();
-  if (ins.error) {
-    if (ins.error.code === "23505") throw new Error("This channel is private or already exists.");
-    throw ins.error;
-  }
-  return ins.data;
-}
-
-function updateChannelSettingsUI() {
-  const settings = $("channelSettings");
-  if (!currentChannel) {
-    settings.classList.add("hidden");
-    return;
-  }
-
-  const canManage = canManageChannel();
-  settings.classList.toggle("hidden", !canManage);
-  $("channelSettingsInfo").textContent = `${currentChannel.is_private ? "Private" : "Public"} channel: #${currentChannel.name}`;
-  $("channelRenameInput").value = currentChannel.name;
-  $("channelPrivateToggle").checked = !!currentChannel.is_private;
-  $("privateMemberControls").classList.toggle("hidden", !currentChannel.is_private);
-  $("channelSettingsMsg").textContent = canManage ? "Admins and channel creators can rename, delete, and manage privacy." : "";
-}
-
-async function renameCurrentChannel() {
-  await requireAuthedUser();
-  if (!canManageChannel()) throw new Error("Only admins or the channel creator can rename this channel");
-  const nextName = $("channelRenameInput").value.trim().slice(0, 64);
-  if (!nextName) throw new Error("Channel name required");
-
-  const q = await sb.from("channels")
-    .update({ name: nextName })
-    .eq("id", currentChannel.id)
-    .select("id,name,created_by,is_private,created_at")
-    .single();
-  if (q.error) throw q.error;
-  currentChannel = q.data;
-  $("roomInput").value = currentChannel.name;
-  updateChannelSettingsUI();
-  await loadRooms();
-}
-
-async function deleteCurrentChannel() {
-  await requireAuthedUser();
-  if (!canManageChannel()) throw new Error("Only admins or the channel creator can delete this channel");
-  if (!confirm(`Delete #${currentChannel.name}? This also deletes messages in the channel.`)) return;
-
-  const channelId = currentChannel.id;
-  const msgDelete = await sb.from("messages").delete().eq("room", channelId);
-  if (msgDelete.error) throw msgDelete.error;
-  const memberDelete = await sb.from("channel_members").delete().eq("channel_id", channelId);
-  if (memberDelete.error) throw memberDelete.error;
-  const channelDelete = await sb.from("channels").delete().eq("id", channelId);
-  if (channelDelete.error) throw channelDelete.error;
-
-  toast("Channel deleted", "ok");
-  currentChannel = null;
-  $("roomInput").value = "lobby";
-  await joinRoom();
-  await loadRooms();
-}
-
-async function setCurrentChannelPrivate(isPrivate) {
-  await requireAuthedUser();
-  if (!canManageChannel()) throw new Error("Only admins or the channel creator can change privacy");
-  const q = await sb.from("channels")
-    .update({ is_private: isPrivate })
-    .eq("id", currentChannel.id)
-    .select("id,name,created_by,is_private,created_at")
-    .single();
-  if (q.error) throw q.error;
-  currentChannel = q.data;
-  updateChannelSettingsUI();
-  await loadRooms();
-}
-
-async function addPrivateMemberToCurrentChannel() {
-  await requireAuthedUser();
-  if (!canManageChannel()) throw new Error("Only admins or the channel creator can add users");
-  if (!currentChannel?.is_private) throw new Error("Make the channel private first");
-  const username = $("privateMemberUsername").value.trim();
-  const userId = await getUserIdByUsername(username);
-  const q = await sb.from("channel_members").insert({
-    channel_id: currentChannel.id,
-    user_id: userId,
-    added_by: me.id
-  });
-  if (q.error && q.error.code !== "23505") throw q.error;
-  $("privateMemberUsername").value = "";
-  toast(`Added @${username} to #${currentChannel.name}`, "ok");
 }
 
 function addAdminMenu(x, y, msg){
@@ -679,18 +505,7 @@ async function loadMessages() {
 }
 
 async function joinRoom() {
-  const requestedRoom = ($("roomInput").value.trim() || "lobby").slice(0, 64);
-  const ch = await ensureChannelByInput(requestedRoom);
-  const allowed = await canEnterChannel(ch);
-  if (!allowed) {
-    toast("This channel is private.", "err", 4500);
-    return;
-  }
-
-  currentChannel = ch;
-  room = ch.id;
-  $("roomInput").value = ch.name;
-  updateChannelSettingsUI();
+  room = ($("roomInput").value.trim() || "lobby").slice(0, 64);
   await loadMessages();
   loadRooms();
 
@@ -745,38 +560,44 @@ async function joinRoom() {
 }
 
 async function loadRooms() {
-  const q = await sb.from("channels")
-    .select("id,name,created_by,is_private,created_at")
-    .order("name", { ascending: true });
+  const q = await sb.from("messages")
+    .select("room, created_at")
+    .order("created_at", { ascending: false })
+    .limit(2000);
 
   if (q.error) {
     debugLog("rooms.load", q.error);
     return;
   }
 
-  const channels = q.data || [];
-  const box = $("roomList");
-  box.innerHTML = channels.length ? channels.map(ch => {
-    const manageable = myProfile?.role === "admin" || ch.created_by === me?.id;
-    return `
-      <div class="list-item">
-        <div>
-          <div><b>${ch.is_private ? '<span class="lock">🔒</span>' : ''}#${esc(ch.name)}</b></div>
-          <div class="muted">${ch.is_private ? "Private" : "Public"}${manageable ? " • manageable" : ""}</div>
-        </div>
-        <div><button class="ghost" data-open-channel="${esc(ch.id)}">Open</button></div>
-      </div>
-    `;
-  }).join("") : `<div class="muted">No rooms yet.</div>`;
+  const map = new Map();
+  for (const r of (q.data || [])) {
+    if (!r.room) continue;
+    if (!map.has(r.room)) map.set(r.room, { room: r.room, last: r.created_at, count: 0 });
+    map.get(r.room).count++;
+  }
 
-  box.querySelectorAll("[data-open-channel]").forEach(btn => {
+  const rooms = [...map.values()].sort((a, b) => new Date(b.last) - new Date(a.last));
+
+  const box = $("roomList");
+  box.innerHTML = rooms.length ? rooms.map(r => `
+    <div class="list-item">
+      <div>
+        <div><b>#${esc(r.room)}</b></div>
+        <div class="muted">${r.count} msgs \u2022 last ${fmt(r.last)}</div>
+      </div>
+      <div>
+        <button class="ghost" data-open-room="${esc(r.room)}">Open</button>
+      </div>
+    </div>
+  `).join("") : `<div class="muted">No rooms yet.</div>`;
+
+  box.querySelectorAll("[data-open-room]").forEach(btn => {
     btn.onclick = async () => {
-      const channelId = btn.getAttribute("data-open-channel");
-      const selected = channels.find(ch => ch.id === channelId);
-      if (!selected) return;
-      $("roomInput").value = selected.name;
+      const rm = btn.getAttribute("data-open-room");
+      $("roomInput").value = rm;
       await joinRoom();
-      toast(`Joined #${selected.name}`, "ok");
+      toast(`Joined #${rm}`, "ok");
     };
   });
 }
@@ -1155,53 +976,7 @@ $("btnLogout").onclick = async () => {
   toast("Logged out");
 };
 
-$("btnJoin").onclick = async () => {
-  try {
-    await joinRoom();
-  } catch (e) {
-    toast(errText("join channel", e), "err", 4500);
-    debugLog("channel.join", e);
-  }
-};
-
-$("btnRenameChannel").onclick = async () => {
-  try {
-    await renameCurrentChannel();
-    toast("Channel renamed", "ok");
-  } catch (e) {
-    $("channelSettingsMsg").textContent = errText("rename channel", e);
-    debugLog("channel.rename", e);
-  }
-};
-
-$("btnDeleteChannel").onclick = async () => {
-  try {
-    await deleteCurrentChannel();
-  } catch (e) {
-    $("channelSettingsMsg").textContent = errText("delete channel", e);
-    debugLog("channel.delete", e);
-  }
-};
-
-$("channelPrivateToggle").onchange = async () => {
-  try {
-    await setCurrentChannelPrivate($("channelPrivateToggle").checked);
-    toast($("channelPrivateToggle").checked ? "Channel is private" : "Channel is public", "ok");
-  } catch (e) {
-    $("channelPrivateToggle").checked = !!currentChannel?.is_private;
-    $("channelSettingsMsg").textContent = errText("channel privacy", e);
-    debugLog("channel.privacy", e);
-  }
-};
-
-$("btnAddPrivateMember").onclick = async () => {
-  try {
-    await addPrivateMemberToCurrentChannel();
-  } catch (e) {
-    $("channelSettingsMsg").textContent = errText("add private user", e);
-    debugLog("channel.member", e);
-  }
-};
+$("btnJoin").onclick = joinRoom;
 
 $("btnSaveProfile").onclick = async () => {
   try {
@@ -1242,12 +1017,6 @@ $("btnSend").onclick = async () => {
   		return;
 		}
     if (!text && !file) return toast("Write text or attach image", "warn");
-
-    if (currentChannel && !(await canEnterChannel(currentChannel))) {
-      toast("This channel is private.", "err", 4500);
-      await loadRooms();
-      return;
-    }
 
     const hit = getMatchedFilter(text);
     if (hit) return toast(`Blocked by filter: "${hit.pattern}"`, "err", 4500);
@@ -1337,14 +1106,6 @@ function subscribeSideChannels() {
 
   sb.channel("filters-live")
     .on("postgres_changes", { event: "*", schema: "public", table: "message_filters" }, () => loadFilters())
-    .subscribe();
-
-  sb.channel("channels-live")
-    .on("postgres_changes", { event: "*", schema: "public", table: "channels" }, () => loadRooms())
-    .subscribe();
-
-  sb.channel("channel-members-live")
-    .on("postgres_changes", { event: "*", schema: "public", table: "channel_members" }, () => loadRooms())
     .subscribe();
 
   if (me?.id) {
