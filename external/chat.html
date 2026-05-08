@@ -424,6 +424,18 @@ async function requireAuthedUser() {
 }
 
 function fallbackProfileForUser(user, uh = "", dh = "") {
+  const userEmail = user && user.email ? user.email : "";
+  const userId = user && user.id ? user.id : Date.now();
+  const emailName = userEmail.split("@")[0];
+  const idSuffix = String(userId).replace(/[^a-z0-9]/gi, "").slice(0, 8);
+  const fallbackUsername = "user" + idSuffix;
+  const username = (uh || emailName || fallbackUsername)
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 24) || fallbackUsername;
+  const display_name = (dh || username || userEmail || "User").slice(0, 48);
+  return { id: userId, username, display_name, avatar_url: null, role: "user" };
   const emailName = (user?.email || "").split("@")[0];
   const idSuffix = String(user?.id || Date.now()).replace(/[^a-z0-9]/gi, "").slice(0, 8);
   const username = (uh || emailName || `user${idSuffix}`)
@@ -444,6 +456,7 @@ async function ensureProfileAfterLogin(user, uh = "", dh = "") {
     toast("Login worked, but profile loading failed. Using a temporary profile.", "warn", 5500);
     return fallbackProfile;
   }
+   if (one.data) return Object.assign({}, fallbackProfile, one.data);
   if (one.data) return { ...fallbackProfile, ...one.data };
 
   const ins = await sb.from("profiles")
@@ -461,6 +474,7 @@ async function ensureProfileAfterLogin(user, uh = "", dh = "") {
     toast("Login worked, but profile creation failed. Using a temporary profile.", "warn", 5500);
     return fallbackProfile;
   }
+  return Object.assign({}, fallbackProfile, ins.data);
   return { ...fallbackProfile, ...ins.data };
 }
 
