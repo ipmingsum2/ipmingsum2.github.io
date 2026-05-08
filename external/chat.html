@@ -240,6 +240,19 @@
             </div>
             <div id="adminMsg" class="muted"></div>
 
+            <div id="rootAdminTools" class="hidden" style="margin-top:10px;border-top:1px solid #2a3d67;padding-top:10px">
+              <h4 style="margin:0 0 6px">Root-only Admin Manager</h4>
+              <div class="muted">Only @root / root@local.chat can see this.</div>
+              <div class="row" style="margin-top:8px">
+                <input id="adminRoleUsername" placeholder="Username to admin/unadmin">
+              </div>
+              <div class="row">
+                <button id="btnGiveAdmin" class="ghost">Give Admin</button>
+                <button id="btnRemoveAdmin" class="danger">Remove Admin</button>
+              </div>
+              <div id="rootAdminMsg" class="muted"></div>
+            </div>
+
             <h4 style="margin:10px 0 6px">Message Filters</h4>
             <div class="row">
               <input id="filterInput" placeholder="blocked word/phrase">
@@ -356,6 +369,7 @@ function showApp() {
   $("adminOnly").classList.toggle("hidden", !isAdmin);
   $("adminNotAllowed").classList.toggle("hidden", isAdmin);
   $("annComposer").classList.toggle("hidden", !isAdmin);
+  $("rootAdminTools").classList.toggle("hidden", !isRootOwner());
 }
 
 async function requireAuthedUser() {
@@ -1107,16 +1121,42 @@ async function requireAdmin() {
   if (myProfile?.role !== "admin") throw new Error("Admin only");
 }
 
-async function getUserIdByUsername(username){
+function isRootOwner() {
+  return me?.email === "root@local.chat" && myProfile?.username === "root";
+}
+
+async function requireRootOwner() {
+  if (!isRootOwner()) throw new Error("Root account only");
+}
+
+async function getUserProfileByUsername(username){
   const q = await sb.from("profiles")
-    .select("id, username")
+    .select("id, username, display_name, role")
     .ilike("username", username.trim())
     .limit(1)
     .maybeSingle();
 
   if(q.error) throw q.error;
   if(!q.data) throw new Error("User not found");
-  return q.data.id;
+  return q.data;
+}
+
+async function getUserIdByUsername(username){
+  const profile = await getUserProfileByUsername(username);
+  return profile.id;
+}
+
+async function setUserAdminRole(username, makeAdmin) {
+  await requireRootOwner();
+  const target = await getUserProfileByUsername(username);
+  if (target.username === "root" && !makeAdmin) throw new Error("Cannot remove admin from @root");
+
+  const q = await sb.from("profiles")
+    .update({ role: makeAdmin ? "admin" : "user" })
+    .eq("id", target.id);
+
+  if (q.error) throw q.error;
+  return target;
 }
 
 async function adminBanUser(userId){
@@ -1457,6 +1497,30 @@ $("btnUnban").onclick = async ()=>{
     setAdminMsg(`Unbanned @${uname}`);
     toast("User unbanned");
   }catch(e){ setAdminMsg(errText("unban user", e), true); }
+};
+
+$("btnGiveAdmin").onclick = async () => {
+  try {
+    const uname = $("adminRoleUsername").value.trim();
+    const target = await setUserAdminRole(uname, true);
+    $("rootAdminMsg").textContent = `Gave admin to @${target.username}`;
+    toast(`@${target.username} is now admin`, "ok");
+  } catch (e) {
+    $("rootAdminMsg").textContent = errText("give admin", e);
+    debugLog("root.giveAdmin", e);
+  }
+};
+
+$("btnRemoveAdmin").onclick = async () => {
+  try {
+    const uname = $("adminRoleUsername").value.trim();
+    const target = await setUserAdminRole(uname, false);
+    $("rootAdminMsg").textContent = `Removed admin from @${target.username}`;
+    toast(`@${target.username} is no longer admin`, "ok");
+  } catch (e) {
+    $("rootAdminMsg").textContent = errText("remove admin", e);
+    debugLog("root.removeAdmin", e);
+  }
 };
 /* remember to lick and sub */
 function subscribeSideChannels() {
