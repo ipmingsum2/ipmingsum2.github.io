@@ -423,21 +423,45 @@ async function requireAuthedUser() {
   return gu.data.user;
 }
 
-async function ensureProfileAfterLogin(user, uh = "", dh = "") {
-  const one = await sb.from("profiles").select("*").eq("id", user.id).maybeSingle();
-  if (one.error) throw one.error;
-  if (one.data) return one.data;
+function fallbackProfileForUser(user, uh = "", dh = "") {
+  const emailName = (user?.email || "").split("@")[0];
+  const idSuffix = String(user?.id || Date.now()).replace(/[^a-z0-9]/gi, "").slice(0, 8);
+  const username = (uh || emailName || `user${idSuffix}`)
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 24) || `user${idSuffix}`;
+  const display_name = (dh || username || user?.email || "User").slice(0, 48);
+  return { id: user?.id, username, display_name, avatar_url: null, role: "user" };
+}
 
-  const username = (uh || user.email.split("@")[0] || ("u" + Date.now())).slice(0, 24);
-  const display_name = (dh || username).slice(0, 48);
+async function ensureProfileAfterLogin(user, uh = "", dh = "") {
+  const fallbackProfile = fallbackProfileForUser(user, uh, dh);
+
+  const one = await sb.from("profiles").select("*").eq("id", user.id).maybeSingle();
+  if (one.error) {
+    debugLog("profile.load", one.error);
+    toast("Login worked, but profile loading failed. Using a temporary profile.", "warn", 5500);
+    return fallbackProfile;
+  }
+  if (one.data) return { ...fallbackProfile, ...one.data };
 
   const ins = await sb.from("profiles")
-    .insert({ id: user.id, username, display_name, role: "user" })
+    .insert({
+      id: user.id,
+      username: fallbackProfile.username,
+      display_name: fallbackProfile.display_name,
+      role: fallbackProfile.role
+    })
     .select("*")
     .single();
 
-  if (ins.error) throw ins.error;
-  return ins.data;
+  if (ins.error) {
+    debugLog("profile.create", ins.error);
+    toast("Login worked, but profile creation failed. Using a temporary profile.", "warn", 5500);
+    return fallbackProfile;
+  }
+  return { ...fallbackProfile, ...ins.data };
 }
 
 async function uploadFile(file, allowedKinds = ["image", "audio", "video"]) {
