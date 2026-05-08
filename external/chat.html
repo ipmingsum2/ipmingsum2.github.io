@@ -1,4 +1,5 @@
 <!doctype html>
+
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -20,6 +21,13 @@
       50% { background-position: 100% 50%; }
       100% { background-position: 0% 50%; }
     }
+	.default-rainbow {
+		background: linear-gradient(to right, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8b00ff); 
+		background-size: 200% auto;
+		-webkit-background-clip: text; 
+		-webkit-text-fill-color: transparent;
+		animation: rainbow 3s linear infinite; 
+	}
     .animated-rainbow {
       background: linear-gradient(to left, #f00, #ff2b00, #f50, #ff8000, #fa0, #ffd500, #ff0, #d4ff00, #af0, #80ff00, #5f0, #2bff00, #0f0, #00ff2a, #0f5, #00ff80, #0fa, #00ffd5, #0ff, #00d5ff, #0af, #0080ff, #05f, #002aff, #00f, #2b00ff, #50f, #8000ff, #a0f, #d400ff, #f0f, #ff00d4, #f0a, #ff0080, #f05, #ff002b, #f00);
       animation: rainbow-move-left-right 5s linear infinite alternate;
@@ -155,6 +163,13 @@
           <button id="btnRenameChannel" class="ghost">Rename</button>
           <button id="btnDeleteChannel" class="danger">Delete Channel</button>
         </div>
+        <div id="privateMemberControls" class="hidden" style="margin-top:8px">
+          <div class="row">
+            <input id="privateMemberUsername" placeholder="Add username to private channel">
+            <button id="btnAddPrivateMember" class="ghost">Add User</button>
+          </div>
+          <div class="muted" style="margin-top:8px">Private members</div>
+          <div id="privateMemberList" class="list" style="margin-top:6px"></div>
         <div id="privateMemberControls" class="row hidden" style="margin-top:8px">
           <input id="privateMemberUsername" placeholder="Add username to private channel">
           <button id="btnAddPrivateMember" class="ghost">Add User</button>
@@ -493,6 +508,7 @@ async function ensureChannelByInput(inputName) {
 
   let q = await sb.from("channels")
     .select("id,name,created_by,is_private,sort_order,created_at")
+    .select("id,name,created_by,is_private,created_at")
     .eq("id", requestedSlug)
     .maybeSingle();
   if (q.error) throw q.error;
@@ -500,6 +516,7 @@ async function ensureChannelByInput(inputName) {
 
   q = await sb.from("channels")
     .select("id,name,created_by,is_private,sort_order,created_at")
+    .select("id,name,created_by,is_private,created_at")
     .ilike("name", requestedName)
     .limit(1)
     .maybeSingle();
@@ -509,6 +526,8 @@ async function ensureChannelByInput(inputName) {
   const ins = await sb.from("channels")
     .insert({ id: requestedSlug, name: requestedName, created_by: me.id, is_private: false, sort_order: Date.now() })
     .select("id,name,created_by,is_private,sort_order,created_at")
+    .insert({ id: requestedSlug, name: requestedName, created_by: me.id, is_private: false })
+    .select("id,name,created_by,is_private,created_at")
     .single();
   if (ins.error) {
     if (ins.error.code === "23505") throw new Error("This channel is private or already exists.");
@@ -532,6 +551,11 @@ function updateChannelSettingsUI() {
   $("channelPrivateToggle").checked = !!currentChannel.is_private;
   $("privateMemberControls").classList.toggle("hidden", !currentChannel.is_private);
   $("channelSettingsMsg").textContent = canManage ? "Admins and channel creators can rename, delete, and manage privacy." : "";
+  if (canManage && currentChannel.is_private) {
+    loadChannelMembers().catch(e => debugLog("channel.members.load", e));
+  } else {
+    $("privateMemberList").innerHTML = "";
+  }
 }
 
 async function renameCurrentChannel() {
@@ -544,6 +568,7 @@ async function renameCurrentChannel() {
     .update({ name: nextName })
     .eq("id", currentChannel.id)
     .select("id,name,created_by,is_private,sort_order,created_at")
+    .select("id,name,created_by,is_private,created_at")
     .single();
   if (q.error) throw q.error;
   currentChannel = q.data;
@@ -579,6 +604,7 @@ async function setCurrentChannelPrivate(isPrivate) {
     .update({ is_private: isPrivate })
     .eq("id", currentChannel.id)
     .select("id,name,created_by,is_private,sort_order,created_at")
+    .select("id,name,created_by,is_private,created_at")
     .single();
   if (q.error) throw q.error;
   currentChannel = q.data;
@@ -600,6 +626,70 @@ async function addPrivateMemberToCurrentChannel() {
   if (q.error && q.error.code !== "23505") throw q.error;
   $("privateMemberUsername").value = "";
   toast(`Added @${username} to #${currentChannel.name}`, "ok");
+  await loadChannelMembers();
+}
+
+async function loadChannelMembers() {
+  if (!currentChannel?.is_private || !canManageChannel()) {
+    $("privateMemberList").innerHTML = "";
+    return;
+  }
+
+  const q = await sb.from("channel_members")
+    .select("user_id,created_at")
+    .eq("channel_id", currentChannel.id)
+    .order("created_at", { ascending: true });
+  if (q.error) throw q.error;
+
+  const rows = q.data || [];
+  const ids = rows.map(row => row.user_id);
+  let profilesById = new Map();
+  if (ids.length) {
+    const profiles = await sb.from("profiles")
+      .select("id,username,display_name")
+      .in("id", ids);
+    if (profiles.error) throw profiles.error;
+    profilesById = new Map((profiles.data || []).map(profile => [profile.id, profile]));
+  }
+
+  const list = $("privateMemberList");
+  list.innerHTML = rows.length ? rows.map(row => {
+    const profile = profilesById.get(row.user_id) || {};
+    const username = profile.username || row.user_id;
+    const label = profile.display_name ? `${esc(profile.display_name)} @${esc(username)}` : `@${esc(username)}`;
+    return `
+      <div class="list-item">
+        <div>
+          <div><b>${label}</b></div>
+          <div class="muted">Added ${fmt(row.created_at)}</div>
+        </div>
+        <button class="danger" data-remove-channel-member="${esc(row.user_id)}">Remove</button>
+      </div>
+    `;
+  }).join("") : `<div class="muted">No extra users added yet.</div>`;
+
+  list.querySelectorAll("[data-remove-channel-member]").forEach(btn => {
+    btn.onclick = async () => {
+      try {
+        await removePrivateMemberFromCurrentChannel(btn.getAttribute("data-remove-channel-member"));
+      } catch (e) {
+        $("channelSettingsMsg").textContent = errText("remove private user", e);
+        debugLog("channel.member.remove", e);
+      }
+    };
+  });
+}
+
+async function removePrivateMemberFromCurrentChannel(userId) {
+  await requireAuthedUser();
+  if (!canManageChannel()) throw new Error("Only admins or the channel creator can remove users");
+  const q = await sb.from("channel_members")
+    .delete()
+    .eq("channel_id", currentChannel.id)
+    .eq("user_id", userId);
+  if (q.error) throw q.error;
+  toast("Removed user from private channel", "ok");
+  await loadChannelMembers();
 }
 
 function addAdminMenu(x, y, msg){
@@ -678,6 +768,8 @@ function messageHTML(m) {
   const avatar = p.avatar_url ? `<img class="avatar" src="${esc(p.avatar_url)}">` : "";
   const rich = parseRich(m.text || "");
   const img = m.image_url ? attachmentHTML(m.image_url) : "";
+  const rich = m.deleted ? `<i>[deleted]</i>` : parseRich(m.text || "");
+  const img = (!m.deleted && m.image_url) ? attachmentHTML(m.image_url) : "";
   const dot = isAdmin ? `<div class="admin-dot" data-dot="${m.id}">\u2026</div>` : "";
 
   return `<div class="msg" id="m-${m.id}">
@@ -893,6 +985,9 @@ async function loadRooms() {
   const q = await sb.from("channels")
     .select("id,name,created_by,is_private,sort_order,created_at")
     .order("sort_order", { ascending: true, nullsFirst: false })
+async function loadRooms() {
+  const q = await sb.from("channels")
+    .select("id,name,created_by,is_private,created_at")
     .order("name", { ascending: true });
 
   if (q.error) {
@@ -905,6 +1000,9 @@ async function loadRooms() {
   const box = $("roomList");
   box.innerHTML = channels.length ? channels.map((ch, index) => {
     const manageable = isAdmin || ch.created_by === me?.id;
+  const box = $("roomList");
+  box.innerHTML = channels.length ? channels.map(ch => {
+    const manageable = myProfile?.role === "admin" || ch.created_by === me?.id;
     return `
       <div class="list-item">
         <div>
@@ -916,6 +1014,7 @@ async function loadRooms() {
           ${isAdmin ? `<button class="ghost" data-move-channel="${esc(ch.id)}" data-dir="1" ${index === channels.length - 1 ? "disabled" : ""}>↓</button>` : ""}
           <button class="ghost" data-open-channel="${esc(ch.id)}">Open</button>
         </div>
+        <div><button class="ghost" data-open-channel="${esc(ch.id)}">Open</button></div>
       </div>
     `;
   }).join("") : `<div class="muted">No rooms yet.</div>`;
@@ -1376,6 +1475,7 @@ $("btnDeleteChannel").onclick = async () => {
 $("channelPrivateToggle").onchange = async () => {
   try {
     await setCurrentChannelPrivate($("channelPrivateToggle").checked);
+    if (currentChannel?.is_private) await loadChannelMembers();
     toast($("channelPrivateToggle").checked ? "Channel is private" : "Channel is public", "ok");
   } catch (e) {
     $("channelPrivateToggle").checked = !!currentChannel?.is_private;
@@ -1558,6 +1658,12 @@ function subscribeSideChannels() {
     .subscribe();
 
   sb.channel("channel-members-live")
+    .on("postgres_changes", { event: "*", schema: "public", table: "channel_members" }, () => {
+      loadRooms();
+      if (currentChannel?.is_private && canManageChannel()) {
+        loadChannelMembers().catch(e => debugLog("channel.members.live", e));
+      }
+    })
     .on("postgres_changes", { event: "*", schema: "public", table: "channel_members" }, () => loadRooms())
     .subscribe();
 
