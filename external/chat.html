@@ -88,6 +88,8 @@
     .tabpane.active{display:block}
     .list{max-height:180px;overflow:auto;border:1px solid #355083;border-radius:10px;padding:8px}
     .list-item{display:flex;justify-content:space-between;gap:8px;padding:6px;border-bottom:1px solid #2a3d67}
+    .room-actions{display:flex;gap:4px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+    .room-actions button{padding:6px 8px;font-size:12px}
     .list-item:last-child{border-bottom:none}
     .toolbar{display:flex;gap:6px;flex-wrap:wrap}
     .toolbar button{padding:6px 8px;font-size:12px}
@@ -505,6 +507,7 @@ async function ensureChannelByInput(inputName) {
   const requestedSlug = channelSlug(requestedName);
 
   let q = await sb.from("channels")
+    .select("id,name,created_by,is_private,sort_order,created_at")
     .select("id,name,created_by,is_private,created_at")
     .eq("id", requestedSlug)
     .maybeSingle();
@@ -512,6 +515,7 @@ async function ensureChannelByInput(inputName) {
   if (q.data) return q.data;
 
   q = await sb.from("channels")
+    .select("id,name,created_by,is_private,sort_order,created_at")
     .select("id,name,created_by,is_private,created_at")
     .ilike("name", requestedName)
     .limit(1)
@@ -520,6 +524,8 @@ async function ensureChannelByInput(inputName) {
   if (q.data) return q.data;
 
   const ins = await sb.from("channels")
+    .insert({ id: requestedSlug, name: requestedName, created_by: me.id, is_private: false, sort_order: Date.now() })
+    .select("id,name,created_by,is_private,sort_order,created_at")
     .insert({ id: requestedSlug, name: requestedName, created_by: me.id, is_private: false })
     .select("id,name,created_by,is_private,created_at")
     .single();
@@ -561,6 +567,7 @@ async function renameCurrentChannel() {
   const q = await sb.from("channels")
     .update({ name: nextName })
     .eq("id", currentChannel.id)
+    .select("id,name,created_by,is_private,sort_order,created_at")
     .select("id,name,created_by,is_private,created_at")
     .single();
   if (q.error) throw q.error;
@@ -596,6 +603,7 @@ async function setCurrentChannelPrivate(isPrivate) {
   const q = await sb.from("channels")
     .update({ is_private: isPrivate })
     .eq("id", currentChannel.id)
+    .select("id,name,created_by,is_private,sort_order,created_at")
     .select("id,name,created_by,is_private,created_at")
     .single();
   if (q.error) throw q.error;
@@ -953,6 +961,30 @@ async function initializeChatAfterAuth() {
   }
 }
 
+async function moveChannelInOrder(channelId, direction, channels) {
+  await requireAdmin();
+  const index = channels.findIndex(ch => ch.id === channelId);
+  const swapIndex = index + direction;
+  if (index < 0 || swapIndex < 0 || swapIndex >= channels.length) return;
+
+  const current = channels[index];
+  const other = channels[swapIndex];
+  const currentOrder = current.sort_order ?? index * 10;
+  const otherOrder = other.sort_order ?? swapIndex * 10;
+
+  const first = await sb.from("channels").update({ sort_order: otherOrder }).eq("id", current.id);
+  if (first.error) throw first.error;
+  const second = await sb.from("channels").update({ sort_order: currentOrder }).eq("id", other.id);
+  if (second.error) throw second.error;
+
+  await loadRooms();
+  toast(`Moved #${current.name} ${direction < 0 ? "up" : "down"}`, "ok");
+}
+
+async function loadRooms() {
+  const q = await sb.from("channels")
+    .select("id,name,created_by,is_private,sort_order,created_at")
+    .order("sort_order", { ascending: true, nullsFirst: false })
 async function loadRooms() {
   const q = await sb.from("channels")
     .select("id,name,created_by,is_private,created_at")
@@ -964,6 +996,10 @@ async function loadRooms() {
   }
 
   const channels = q.data || [];
+  const isAdmin = myProfile?.role === "admin";
+  const box = $("roomList");
+  box.innerHTML = channels.length ? channels.map((ch, index) => {
+    const manageable = isAdmin || ch.created_by === me?.id;
   const box = $("roomList");
   box.innerHTML = channels.length ? channels.map(ch => {
     const manageable = myProfile?.role === "admin" || ch.created_by === me?.id;
@@ -972,6 +1008,11 @@ async function loadRooms() {
         <div>
           <div><b>${ch.is_private ? '<span class="lock">🔒</span>' : ''}#${esc(ch.name)}</b></div>
           <div class="muted">${ch.is_private ? "Private" : "Public"}${manageable ? " • manageable" : ""}</div>
+        </div>
+        <div class="room-actions">
+          ${isAdmin ? `<button class="ghost" data-move-channel="${esc(ch.id)}" data-dir="-1" ${index === 0 ? "disabled" : ""}>↑</button>` : ""}
+          ${isAdmin ? `<button class="ghost" data-move-channel="${esc(ch.id)}" data-dir="1" ${index === channels.length - 1 ? "disabled" : ""}>↓</button>` : ""}
+          <button class="ghost" data-open-channel="${esc(ch.id)}">Open</button>
         </div>
         <div><button class="ghost" data-open-channel="${esc(ch.id)}">Open</button></div>
       </div>
@@ -986,6 +1027,17 @@ async function loadRooms() {
       $("roomInput").value = selected.name;
       await joinRoom();
       toast(`Joined #${selected.name}`, "ok");
+    };
+  });
+
+  box.querySelectorAll("[data-move-channel]").forEach(btn => {
+    btn.onclick = async () => {
+      try {
+        await moveChannelInOrder(btn.getAttribute("data-move-channel"), Number(btn.getAttribute("data-dir")), channels);
+      } catch (e) {
+        toast(errText("move channel", e), "err", 4500);
+        debugLog("rooms.move", e);
+      }
     };
   });
 }
