@@ -65,6 +65,7 @@
     .avatar{width:22px;height:22px;border-radius:50%;object-fit:cover;border:1px solid #4b67a5;vertical-align:middle;margin-right:6px}
     .body{word-break:break-word}
     .body img{max-width:100%}
+    .iframe-msg{max-width:100%;max-height:360px;border:1px solid #3f578c;border-radius:8px;margin-top:8px;background:#07101f}
     .img,.video{max-width:260px;max-height:260px;border-radius:8px;border:1px solid #3f578c;margin-top:8px}
     .audio{width:min(100%,320px);margin-top:8px}
     .actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
@@ -186,6 +187,7 @@
           <button class="ghost" data-md="[title](https://example.com)">Link</button>
           <button class="ghost" data-md="\(x^2+y^2=z^2\)">LaTeX</button>
           <button class="ghost" data-md="\[\int_0^1 x^2\,dx\]">Block LaTeX</button>
+          <button class="ghost" data-md='!iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" width="560" height="315"!'>Iframe</button>
         </div>
         <textarea id="msgText" placeholder="Write message with markdown/latex..."></textarea>
         <div class="row">
@@ -325,9 +327,34 @@ function fmt(ts) {
   catch { return ts; }
 }
 
+function iframeEmbedHTML(rawAttrs = "") {
+  const attrs = {};
+  rawAttrs.replace(/(src|width|height)="([^"]*)"/gi, (_, key, value) => {
+    attrs[key.toLowerCase()] = value.trim();
+    return "";
+  });
+
+  let src = attrs.src || "https://www.youtube.com/embed/dQw4w9WgXcQ";
+  try {
+    const url = new URL(src, location.href);
+    if (!["http:", "https:"].includes(url.protocol)) throw new Error("bad protocol");
+    src = url.href;
+  } catch {
+    src = "https://www.youtube.com/embed/dQw4w9WgXcQ";
+  }
+
+  const width = Math.min(Math.max(parseInt(attrs.width || "560", 10) || 560, 200), 640);
+  const height = Math.min(Math.max(parseInt(attrs.height || "315", 10) || 315, 120), 360);
+  return `<iframe class="iframe-msg" src="${esc(src)}" width="${width}" height="${height}" loading="lazy" allowfullscreen referrerpolicy="no-referrer"></iframe>`;
+}
+
 function parseRich(text = "") {
-  const md = marked.parse(text, { breaks: true, gfm: true });
-  return DOMPurify.sanitize(md, { ADD_TAGS: ["u"] });
+  const withIframes = String(text).replace(/!iframe\s*([^!]*)!/gi, (_, attrs) => iframeEmbedHTML(attrs));
+  const md = marked.parse(withIframes, { breaks: true, gfm: true });
+  return DOMPurify.sanitize(md, {
+    ADD_TAGS: ["u", "iframe"],
+    ADD_ATTR: ["src", "width", "height", "loading", "allowfullscreen", "referrerpolicy", "class"]
+  });
 }
 
 function renderMathIn(el) {
@@ -731,17 +758,19 @@ function messageHTML(m) {
   const canDelete = (me && m.user_id === me.id) || isAdmin;
   const canEdit = (me && m.user_id === me.id) || isAdmin;
   const avatar = p.avatar_url ? `<img class="avatar" src="${esc(p.avatar_url)}">` : "";
+  const rich = parseRich(m.text || "");
+  const img = m.image_url ? attachmentHTML(m.image_url) : "";
   const rich = m.deleted ? `<i>[deleted]</i>` : parseRich(m.text || "");
   const img = (!m.deleted && m.image_url) ? attachmentHTML(m.image_url) : "";
   const dot = isAdmin ? `<div class="admin-dot" data-dot="${m.id}">\u2026</div>` : "";
 
-  return `<div class="msg ${m.deleted ? "deleted" : ""}" id="m-${m.id}">
+  return `<div class="msg" id="m-${m.id}">
     ${dot}
     <div class="meta"><span>${avatar}<b>${esc(p.display_name || "user")}</b> @${esc(p.username || "unknown")}</span><span>${fmt(m.created_at)}</span></div>
     <div class="body">${rich}</div>${img}
     <div class="actions">
       ${canDelete ? `<button class="ghost" data-del="${m.id}">Delete</button>` : ""}
-      ${canEdit && !m.deleted ? `<button class="ghost" data-edit-msg="${m.id}">Edit</button>` : ""}
+      ${canEdit ? `<button class="ghost" data-edit-msg="${m.id}">Edit</button>` : ""}
     </div>
   </div>`;
 }
@@ -780,8 +809,10 @@ function wireMessageActions(map) {
 }
 
 async function softDelete(id) {
-  const q = await sb.from("messages").update({ deleted: true, text: null, image_url: null }).eq("id", id);
+  const q = await sb.from("messages").delete().eq("id", id);
   if (q.error) throw q.error;
+  const old = document.getElementById(`m-${id}`);
+  if (old) old.remove();
   toast("Message deleted");
 }
 
@@ -796,6 +827,7 @@ async function loadMessages() {
   const q = await sb.from("messages")
     .select("id,room,user_id,text,image_url,deleted,created_at")
     .eq("room", room)
+    .eq("deleted", false)
     .order("created_at", { ascending: true })
     .limit(400);
 
@@ -841,6 +873,7 @@ async function joinRoom() {
       filter: `room=eq.${room}`
     }, async (payload) => {
       const m = payload.new;
+      if (m.deleted) return;
       if (!profileMap.has(m.user_id)) {
         const p = await sb.from("profiles")
           .select("id,username,display_name,avatar_url,role")
@@ -868,6 +901,10 @@ async function joinRoom() {
     }, async (payload) => {
       const m = payload.new;
       const old = document.getElementById(`m-${m.id}`);
+      if (m.deleted) {
+        if (old) old.remove();
+        return;
+      }
       if (old) {
         old.outerHTML = messageHTML(m);
         const ne = document.getElementById(`m-${m.id}`);
@@ -877,6 +914,17 @@ async function joinRoom() {
       const single = new Map();
       single.set(m.id, m);
       wireMessageActions(single);
+    })
+    .on("postgres_changes", {
+      event: "DELETE",
+      schema: "public",
+      table: "messages",
+      filter: `room=eq.${room}`
+    }, async (payload) => {
+      const deletedId = payload.old?.id;
+      if (!deletedId) return;
+      const old = document.getElementById(`m-${deletedId}`);
+      if (old) old.remove();
     })
     .subscribe();
 }
