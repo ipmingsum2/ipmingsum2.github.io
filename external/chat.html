@@ -57,7 +57,8 @@
     .avatar{width:22px;height:22px;border-radius:50%;object-fit:cover;border:1px solid #4b67a5;vertical-align:middle;margin-right:6px}
     .body{word-break:break-word}
     .body img{max-width:100%}
-    .img{max-width:260px;max-height:260px;border-radius:8px;border:1px solid #3f578c;margin-top:8px}
+    .img,.video{max-width:260px;max-height:260px;border-radius:8px;border:1px solid #3f578c;margin-top:8px}
+    .audio{width:min(100%,320px);margin-top:8px}
     .actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
     .actions button{font-size:12px;padding:6px 9px}
     .admin-dot{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:8px;background:#2a426f;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;cursor:pointer}
@@ -82,6 +83,14 @@
     .toolbar{display:flex;gap:6px;flex-wrap:wrap}
     .toolbar button{padding:6px 8px;font-size:12px}
     .debug{max-height:160px;overflow:auto;border:1px dashed #3a507f;border-radius:10px;padding:8px;background:#0f1931;font-size:12px;white-space:pre-wrap}
+    .settings-card{margin-top:8px;border:1px solid #355083;border-radius:12px;padding:10px;background:#101b33}
+    .switch{position:relative;display:inline-block;width:52px;height:30px}
+    .switch input{opacity:0;width:0;height:0}
+    .slider{position:absolute;cursor:pointer;inset:0;background:#435371;border-radius:999px;transition:.25s}
+    .slider:before{position:absolute;content:"";height:24px;width:24px;left:3px;bottom:3px;background:white;border-radius:50%;transition:.25s;box-shadow:0 2px 8px rgba(0,0,0,.35)}
+    .switch input:checked + .slider{background:#68a8ff}
+    .switch input:checked + .slider:before{transform:translateX(22px)}
+    .lock{color:#ffd06a;margin-right:4px}
   </style>
 </head>
 <body>
@@ -114,6 +123,7 @@
         <span id="roleChip" class="chip">user</span>
         <input id="roomInput" value="lobby" style="max-width:180px">
         <button id="btnJoin" class="ghost">Join Room</button>
+        <button id="btnShowChannelSettings" class="ghost hidden">Channel Settings</button>
         <button id="btnLogout" class="danger">Logout</button>
       </div>
 
@@ -124,6 +134,29 @@
           <div class="muted">Rooms</div>
           <div id="roomList" class="list"></div>
         </div>
+      </div>
+
+      <div id="channelSettings" class="settings-card hidden">
+        <div class="row" style="justify-content:space-between">
+          <div>
+            <b>Channel settings</b>
+            <div id="channelSettingsInfo" class="muted"></div>
+          </div>
+          <label class="switch" title="Private channel">
+            <input id="channelPrivateToggle" type="checkbox">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <input id="channelRenameInput" placeholder="Rename channel">
+          <button id="btnRenameChannel" class="ghost">Rename</button>
+          <button id="btnDeleteChannel" class="danger">Delete Channel</button>
+        </div>
+        <div id="privateMemberControls" class="row hidden" style="margin-top:8px">
+          <input id="privateMemberUsername" placeholder="Add username to private channel">
+          <button id="btnAddPrivateMember" class="ghost">Add User</button>
+        </div>
+        <div id="channelSettingsMsg" class="muted" style="margin-top:6px"></div>
       </div>
 
       <div class="chat" id="chat" style="margin-top:10px"></div>
@@ -141,8 +174,8 @@
         </div>
         <textarea id="msgText" placeholder="Write message with markdown/latex..."></textarea>
         <div class="row">
-          <input id="msgFile" type="file" accept="image/*" hidden>
-          <button id="btnPickMsg" class="ghost" type="button">Attach Image</button>
+          <input id="msgFile" type="file" accept="image/*,audio/*,video/*,.mp3,.wav,.ogg,.oga,.m4a,.aac,.flac,.opus,.weba,.mp4,.webm,.mov,.m4v,.avi,.mkv,.ogv,.3gp,.3g2" hidden>
+          <button id="btnPickMsg" class="ghost" type="button">Attach Media</button>
           <span id="msgFileName" class="fname">No file chosen</span>
           <button id="btnSend">Send</button>
         </div>
@@ -192,6 +225,19 @@
             </div>
             <div id="adminMsg" class="muted"></div>
 
+            <div id="rootAdminTools" class="hidden" style="margin-top:10px;border-top:1px solid #2a3d67;padding-top:10px">
+              <h4 style="margin:0 0 6px">Root-only Admin Manager</h4>
+              <div class="muted">Only @root / root@local.chat can see this.</div>
+              <div class="row" style="margin-top:8px">
+                <input id="adminRoleUsername" placeholder="Username to admin/unadmin">
+              </div>
+              <div class="row">
+                <button id="btnGiveAdmin" class="ghost">Give Admin</button>
+                <button id="btnRemoveAdmin" class="danger">Remove Admin</button>
+              </div>
+              <div id="rootAdminMsg" class="muted"></div>
+            </div>
+
             <h4 style="margin:10px 0 6px">Message Filters</h4>
             <div class="row">
               <input id="filterInput" placeholder="blocked word/phrase">
@@ -220,7 +266,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_tFvlhmTEDV3SOSVp0JvVzg_KHXFiDNb";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = id => document.getElementById(id);
 
-let me = null, myProfile = null, room = "lobby", channel = null;
+let me = null, myProfile = null, room = "lobby", channel = null, currentChannel = null;
 let profileMap = new Map(), filters = [];
 
 function toast(msg, type = "ok", ms = 3200) {
@@ -286,6 +332,8 @@ function showAuth() {
   $("authCard").classList.remove("hidden");
   $("appCard").classList.add("hidden");
   $("status").textContent = "Not logged in";
+  currentChannel = null;
+  $("channelSettings").classList.add("hidden");
   if (channel) {
     sb.removeChannel(channel);
     channel = null;
@@ -306,6 +354,7 @@ function showApp() {
   $("adminOnly").classList.toggle("hidden", !isAdmin);
   $("adminNotAllowed").classList.toggle("hidden", isAdmin);
   $("annComposer").classList.toggle("hidden", !isAdmin);
+  $("rootAdminTools").classList.toggle("hidden", !isRootOwner());
 }
 
 async function requireAuthedUser() {
@@ -331,19 +380,197 @@ async function ensureProfileAfterLogin(user, uh = "", dh = "") {
   return ins.data;
 }
 
-async function uploadImage(file) {
+async function uploadFile(file, allowedKinds = ["image", "audio", "video"]) {
   const authUser = await requireAuthedUser();
-  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const kind = (file.type || "").split("/")[0];
+  const ext = (file.name.split(".").pop() || kind || "file").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 12) || "file";
+  const extKind = mediaKindFromExtension(ext);
+  if (!allowedKinds.includes(kind) && !allowedKinds.includes(extKind)) {
+    throw new Error(`Unsupported file type: ${file.type || file.name}`);
+  }
   const path = `${authUser.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-  const up = await sb.storage.from("chat-media").upload(path, file, { upsert: false });
+  const up = await sb.storage.from("chat-media").upload(path, file, {
+    upsert: false,
+    contentType: file.type || "application/octet-stream"
+  });
   if (up.error) throw up.error;
   return sb.storage.from("chat-media").getPublicUrl(path).data.publicUrl;
+}
+
+async function uploadImage(file) {
+  return uploadFile(file, ["image"]);
+}
+
+async function uploadMedia(file) {
+  return uploadFile(file, ["image", "audio", "video"]);
+}
+
+function mediaKindFromExtension(ext = "") {
+  if (["mp3", "wav", "ogg", "oga", "m4a", "aac", "flac", "opus", "weba"].includes(ext)) return "audio";
+  if (["mp4", "webm", "mov", "m4v", "avi", "mkv", "ogv", "3gp", "3g2"].includes(ext)) return "video";
+  return "image";
+}
+
+function mediaKindFromUrl(url = "") {
+  const clean = String(url).split("?")[0].toLowerCase();
+  return mediaKindFromExtension(clean.split(".").pop() || "");
+}
+
+function attachmentHTML(url) {
+  if (!url) return "";
+  const safeUrl = esc(url);
+  const kind = mediaKindFromUrl(url);
+  if (kind === "audio") return `<audio class="audio" controls preload="metadata" src="${safeUrl}"></audio>`;
+  if (kind === "video") return `<video class="video" controls preload="metadata" src="${safeUrl}"></video>`;
+  return `<img class="img" src="${safeUrl}">`;
 }
 
 async function loadProfileMap() {
   const q = await sb.from("profiles").select("id,username,display_name,avatar_url,role");
   if (q.error) throw q.error;
   profileMap = new Map((q.data || []).map(p => [p.id, p]));
+}
+
+function channelSlug(name = "lobby") {
+  const slug = String(name || "lobby")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48);
+  return slug || "lobby";
+}
+
+function canManageChannel(ch = currentChannel) {
+  return !!(ch && (myProfile?.role === "admin" || ch.created_by === me?.id));
+}
+
+async function getChannelMemberIds(channelId) {
+  const q = await sb.from("channel_members").select("user_id").eq("channel_id", channelId);
+  if (q.error) throw q.error;
+  return new Set((q.data || []).map(row => row.user_id));
+}
+
+async function canEnterChannel(ch) {
+  if (!ch?.is_private) return true;
+  if (myProfile?.role === "admin" || ch.created_by === me?.id) return true;
+  const members = await getChannelMemberIds(ch.id);
+  return members.has(me?.id);
+}
+
+async function ensureChannelByInput(inputName) {
+  const requestedName = (inputName || "lobby").trim().slice(0, 64) || "lobby";
+  const requestedSlug = channelSlug(requestedName);
+
+  let q = await sb.from("channels")
+    .select("id,name,created_by,is_private,created_at")
+    .eq("id", requestedSlug)
+    .maybeSingle();
+  if (q.error) throw q.error;
+  if (q.data) return q.data;
+
+  q = await sb.from("channels")
+    .select("id,name,created_by,is_private,created_at")
+    .ilike("name", requestedName)
+    .limit(1)
+    .maybeSingle();
+  if (q.error) throw q.error;
+  if (q.data) return q.data;
+
+  const ins = await sb.from("channels")
+    .insert({ id: requestedSlug, name: requestedName, created_by: me.id, is_private: false })
+    .select("id,name,created_by,is_private,created_at")
+    .single();
+  if (ins.error) {
+    if (ins.error.code === "23505") throw new Error("This channel is private or already exists.");
+    throw ins.error;
+  }
+  return ins.data;
+}
+
+function updateChannelSettingsUI() {
+  const settings = $("channelSettings");
+  if (!currentChannel) {
+    settings.classList.add("hidden");
+    return;
+  }
+
+  const canManage = canManageChannel();
+  $("btnShowChannelSettings").classList.toggle("hidden", !canManage);
+  settings.classList.toggle("hidden", !canManage);
+  $("channelSettingsInfo").textContent = `${currentChannel.is_private ? "Private" : "Public"} channel: #${currentChannel.name}`;
+  $("channelRenameInput").value = currentChannel.name;
+  $("channelPrivateToggle").checked = !!currentChannel.is_private;
+  $("privateMemberControls").classList.toggle("hidden", !currentChannel.is_private);
+  $("channelSettingsMsg").textContent = canManage ? "Admins and channel creators can rename, delete, and manage privacy." : "";
+}
+
+async function renameCurrentChannel() {
+  await requireAuthedUser();
+  if (!canManageChannel()) throw new Error("Only admins or the channel creator can rename this channel");
+  const nextName = $("channelRenameInput").value.trim().slice(0, 64);
+  if (!nextName) throw new Error("Channel name required");
+
+  const q = await sb.from("channels")
+    .update({ name: nextName })
+    .eq("id", currentChannel.id)
+    .select("id,name,created_by,is_private,created_at")
+    .single();
+  if (q.error) throw q.error;
+  currentChannel = q.data;
+  $("roomInput").value = currentChannel.name;
+  updateChannelSettingsUI();
+  await loadRooms();
+}
+
+async function deleteCurrentChannel() {
+  await requireAuthedUser();
+  if (!canManageChannel()) throw new Error("Only admins or the channel creator can delete this channel");
+  if (!confirm(`Delete #${currentChannel.name}? This also deletes messages in the channel.`)) return;
+
+  const channelId = currentChannel.id;
+  const msgDelete = await sb.from("messages").delete().eq("room", channelId);
+  if (msgDelete.error) throw msgDelete.error;
+  const memberDelete = await sb.from("channel_members").delete().eq("channel_id", channelId);
+  if (memberDelete.error) throw memberDelete.error;
+  const channelDelete = await sb.from("channels").delete().eq("id", channelId);
+  if (channelDelete.error) throw channelDelete.error;
+
+  toast("Channel deleted", "ok");
+  currentChannel = null;
+  $("roomInput").value = "lobby";
+  await joinRoom();
+  await loadRooms();
+}
+
+async function setCurrentChannelPrivate(isPrivate) {
+  await requireAuthedUser();
+  if (!canManageChannel()) throw new Error("Only admins or the channel creator can change privacy");
+  const q = await sb.from("channels")
+    .update({ is_private: isPrivate })
+    .eq("id", currentChannel.id)
+    .select("id,name,created_by,is_private,created_at")
+    .single();
+  if (q.error) throw q.error;
+  currentChannel = q.data;
+  updateChannelSettingsUI();
+  await loadRooms();
+}
+
+async function addPrivateMemberToCurrentChannel() {
+  await requireAuthedUser();
+  if (!canManageChannel()) throw new Error("Only admins or the channel creator can add users");
+  if (!currentChannel?.is_private) throw new Error("Make the channel private first");
+  const username = $("privateMemberUsername").value.trim();
+  const userId = await getUserIdByUsername(username);
+  const q = await sb.from("channel_members").insert({
+    channel_id: currentChannel.id,
+    user_id: userId,
+    added_by: me.id
+  });
+  if (q.error && q.error.code !== "23505") throw q.error;
+  $("privateMemberUsername").value = "";
+  toast(`Added @${username} to #${currentChannel.name}`, "ok");
 }
 
 function addAdminMenu(x, y, msg){
@@ -421,7 +648,7 @@ function messageHTML(m) {
   const canEdit = (me && m.user_id === me.id) || isAdmin;
   const avatar = p.avatar_url ? `<img class="avatar" src="${esc(p.avatar_url)}">` : "";
   const rich = m.deleted ? `<i>[deleted]</i>` : parseRich(m.text || "");
-  const img = (!m.deleted && m.image_url) ? `<img class="img" src="${esc(m.image_url)}">` : "";
+  const img = (!m.deleted && m.image_url) ? attachmentHTML(m.image_url) : "";
   const dot = isAdmin ? `<div class="admin-dot" data-dot="${m.id}">\u2026</div>` : "";
 
   return `<div class="msg ${m.deleted ? "deleted" : ""}" id="m-${m.id}">
@@ -505,7 +732,18 @@ async function loadMessages() {
 }
 
 async function joinRoom() {
-  room = ($("roomInput").value.trim() || "lobby").slice(0, 64);
+  const requestedRoom = ($("roomInput").value.trim() || "lobby").slice(0, 64);
+  const ch = await ensureChannelByInput(requestedRoom);
+  const allowed = await canEnterChannel(ch);
+  if (!allowed) {
+    toast("This channel is private.", "err", 4500);
+    return;
+  }
+
+  currentChannel = ch;
+  room = ch.id;
+  $("roomInput").value = ch.name;
+  updateChannelSettingsUI();
   await loadMessages();
   loadRooms();
 
@@ -560,44 +798,38 @@ async function joinRoom() {
 }
 
 async function loadRooms() {
-  const q = await sb.from("messages")
-    .select("room, created_at")
-    .order("created_at", { ascending: false })
-    .limit(2000);
+  const q = await sb.from("channels")
+    .select("id,name,created_by,is_private,created_at")
+    .order("name", { ascending: true });
 
   if (q.error) {
     debugLog("rooms.load", q.error);
     return;
   }
 
-  const map = new Map();
-  for (const r of (q.data || [])) {
-    if (!r.room) continue;
-    if (!map.has(r.room)) map.set(r.room, { room: r.room, last: r.created_at, count: 0 });
-    map.get(r.room).count++;
-  }
-
-  const rooms = [...map.values()].sort((a, b) => new Date(b.last) - new Date(a.last));
-
+  const channels = q.data || [];
   const box = $("roomList");
-  box.innerHTML = rooms.length ? rooms.map(r => `
-    <div class="list-item">
-      <div>
-        <div><b>#${esc(r.room)}</b></div>
-        <div class="muted">${r.count} msgs \u2022 last ${fmt(r.last)}</div>
+  box.innerHTML = channels.length ? channels.map(ch => {
+    const manageable = myProfile?.role === "admin" || ch.created_by === me?.id;
+    return `
+      <div class="list-item">
+        <div>
+          <div><b>${ch.is_private ? '<span class="lock">🔒</span>' : ''}#${esc(ch.name)}</b></div>
+          <div class="muted">${ch.is_private ? "Private" : "Public"}${manageable ? " • manageable" : ""}</div>
+        </div>
+        <div><button class="ghost" data-open-channel="${esc(ch.id)}">Open</button></div>
       </div>
-      <div>
-        <button class="ghost" data-open-room="${esc(r.room)}">Open</button>
-      </div>
-    </div>
-  `).join("") : `<div class="muted">No rooms yet.</div>`;
+    `;
+  }).join("") : `<div class="muted">No rooms yet.</div>`;
 
-  box.querySelectorAll("[data-open-room]").forEach(btn => {
+  box.querySelectorAll("[data-open-channel]").forEach(btn => {
     btn.onclick = async () => {
-      const rm = btn.getAttribute("data-open-room");
-      $("roomInput").value = rm;
+      const channelId = btn.getAttribute("data-open-channel");
+      const selected = channels.find(ch => ch.id === channelId);
+      if (!selected) return;
+      $("roomInput").value = selected.name;
       await joinRoom();
-      toast(`Joined #${rm}`, "ok");
+      toast(`Joined #${selected.name}`, "ok");
     };
   });
 }
@@ -805,16 +1037,42 @@ async function requireAdmin() {
   if (myProfile?.role !== "admin") throw new Error("Admin only");
 }
 
-async function getUserIdByUsername(username){
+function isRootOwner() {
+  return me?.email === "root@local.chat" && myProfile?.username === "root";
+}
+
+async function requireRootOwner() {
+  if (!isRootOwner()) throw new Error("Root account only");
+}
+
+async function getUserProfileByUsername(username){
   const q = await sb.from("profiles")
-    .select("id, username")
+    .select("id, username, display_name, role")
     .ilike("username", username.trim())
     .limit(1)
     .maybeSingle();
 
   if(q.error) throw q.error;
   if(!q.data) throw new Error("User not found");
-  return q.data.id;
+  return q.data;
+}
+
+async function getUserIdByUsername(username){
+  const profile = await getUserProfileByUsername(username);
+  return profile.id;
+}
+
+async function setUserAdminRole(username, makeAdmin) {
+  await requireRootOwner();
+  const target = await getUserProfileByUsername(username);
+  if (target.username === "root" && !makeAdmin) throw new Error("Cannot remove admin from @root");
+
+  const q = await sb.from("profiles")
+    .update({ role: makeAdmin ? "admin" : "user" })
+    .eq("id", target.id);
+
+  if (q.error) throw q.error;
+  return target;
 }
 
 async function adminBanUser(userId){
@@ -976,7 +1234,58 @@ $("btnLogout").onclick = async () => {
   toast("Logged out");
 };
 
-$("btnJoin").onclick = joinRoom;
+$("btnJoin").onclick = async () => {
+  try {
+    await joinRoom();
+  } catch (e) {
+    toast(errText("join channel", e), "err", 4500);
+    debugLog("channel.join", e);
+  }
+};
+
+$("btnShowChannelSettings").onclick = () => {
+  updateChannelSettingsUI();
+  $("channelSettings").scrollIntoView({ behavior: "smooth", block: "nearest" });
+};
+
+$("btnRenameChannel").onclick = async () => {
+  try {
+    await renameCurrentChannel();
+    toast("Channel renamed", "ok");
+  } catch (e) {
+    $("channelSettingsMsg").textContent = errText("rename channel", e);
+    debugLog("channel.rename", e);
+  }
+};
+
+$("btnDeleteChannel").onclick = async () => {
+  try {
+    await deleteCurrentChannel();
+  } catch (e) {
+    $("channelSettingsMsg").textContent = errText("delete channel", e);
+    debugLog("channel.delete", e);
+  }
+};
+
+$("channelPrivateToggle").onchange = async () => {
+  try {
+    await setCurrentChannelPrivate($("channelPrivateToggle").checked);
+    toast($("channelPrivateToggle").checked ? "Channel is private" : "Channel is public", "ok");
+  } catch (e) {
+    $("channelPrivateToggle").checked = !!currentChannel?.is_private;
+    $("channelSettingsMsg").textContent = errText("channel privacy", e);
+    debugLog("channel.privacy", e);
+  }
+};
+
+$("btnAddPrivateMember").onclick = async () => {
+  try {
+    await addPrivateMemberToCurrentChannel();
+  } catch (e) {
+    $("channelSettingsMsg").textContent = errText("add private user", e);
+    debugLog("channel.member", e);
+  }
+};
 
 $("btnSaveProfile").onclick = async () => {
   try {
@@ -1018,11 +1327,17 @@ $("btnSend").onclick = async () => {
 		}
     if (!text && !file) return toast("Write text or attach image", "warn");
 
+    if (currentChannel && !(await canEnterChannel(currentChannel))) {
+      toast("This channel is private.", "err", 4500);
+      await loadRooms();
+      return;
+    }
+
     const hit = getMatchedFilter(text);
     if (hit) return toast(`Blocked by filter: "${hit.pattern}"`, "err", 4500);
 
     let image_url = null;
-    if (file) image_url = await uploadImage(file);
+    if (file) image_url = await uploadMedia(file);
 
     const ins = await sb.from("messages").insert({ room, user_id: authUser.id, text: text || null, image_url });
     if (ins.error) throw ins.error;
@@ -1098,6 +1413,30 @@ $("btnUnban").onclick = async ()=>{
     toast("User unbanned");
   }catch(e){ setAdminMsg(errText("unban user", e), true); }
 };
+
+$("btnGiveAdmin").onclick = async () => {
+  try {
+    const uname = $("adminRoleUsername").value.trim();
+    const target = await setUserAdminRole(uname, true);
+    $("rootAdminMsg").textContent = `Gave admin to @${target.username}`;
+    toast(`@${target.username} is now admin`, "ok");
+  } catch (e) {
+    $("rootAdminMsg").textContent = errText("give admin", e);
+    debugLog("root.giveAdmin", e);
+  }
+};
+
+$("btnRemoveAdmin").onclick = async () => {
+  try {
+    const uname = $("adminRoleUsername").value.trim();
+    const target = await setUserAdminRole(uname, false);
+    $("rootAdminMsg").textContent = `Removed admin from @${target.username}`;
+    toast(`@${target.username} is no longer admin`, "ok");
+  } catch (e) {
+    $("rootAdminMsg").textContent = errText("remove admin", e);
+    debugLog("root.removeAdmin", e);
+  }
+};
 /* remember to lick and sub */
 function subscribeSideChannels() {
   sb.channel("ann-live")
@@ -1106,6 +1445,14 @@ function subscribeSideChannels() {
 
   sb.channel("filters-live")
     .on("postgres_changes", { event: "*", schema: "public", table: "message_filters" }, () => loadFilters())
+    .subscribe();
+
+  sb.channel("channels-live")
+    .on("postgres_changes", { event: "*", schema: "public", table: "channels" }, () => loadRooms())
+    .subscribe();
+
+  sb.channel("channel-members-live")
+    .on("postgres_changes", { event: "*", schema: "public", table: "channel_members" }, () => loadRooms())
     .subscribe();
 
   if (me?.id) {
