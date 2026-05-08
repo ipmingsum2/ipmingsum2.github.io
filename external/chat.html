@@ -282,7 +282,7 @@
 <script>
 const SUPABASE_URL = "https://lflkpziiwnoamvtrbcil.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_tFvlhmTEDV3SOSVp0JvVzg_KHXFiDNb";
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = id => document.getElementById(id);
 
 let me = null, myProfile = null, room = "lobby", channel = null, currentChannel = null;
