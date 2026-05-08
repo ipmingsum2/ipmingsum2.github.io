@@ -160,6 +160,13 @@
           <button id="btnRenameChannel" class="ghost">Rename</button>
           <button id="btnDeleteChannel" class="danger">Delete Channel</button>
         </div>
+        <div id="privateMemberControls" class="hidden" style="margin-top:8px">
+          <div class="row">
+            <input id="privateMemberUsername" placeholder="Add username to private channel">
+            <button id="btnAddPrivateMember" class="ghost">Add User</button>
+          </div>
+          <div class="muted" style="margin-top:8px">Private members</div>
+          <div id="privateMemberList" class="list" style="margin-top:6px"></div>
         <div id="privateMemberControls" class="row hidden" style="margin-top:8px">
           <input id="privateMemberUsername" placeholder="Add username to private channel">
           <button id="btnAddPrivateMember" class="ghost">Add User</button>
@@ -497,6 +504,11 @@ function updateChannelSettingsUI() {
   $("channelPrivateToggle").checked = !!currentChannel.is_private;
   $("privateMemberControls").classList.toggle("hidden", !currentChannel.is_private);
   $("channelSettingsMsg").textContent = canManage ? "Admins and channel creators can rename, delete, and manage privacy." : "";
+  if (canManage && currentChannel.is_private) {
+    loadChannelMembers().catch(e => debugLog("channel.members.load", e));
+  } else {
+    $("privateMemberList").innerHTML = "";
+  }
 }
 
 async function renameCurrentChannel() {
@@ -565,6 +577,70 @@ async function addPrivateMemberToCurrentChannel() {
   if (q.error && q.error.code !== "23505") throw q.error;
   $("privateMemberUsername").value = "";
   toast(`Added @${username} to #${currentChannel.name}`, "ok");
+  await loadChannelMembers();
+}
+
+async function loadChannelMembers() {
+  if (!currentChannel?.is_private || !canManageChannel()) {
+    $("privateMemberList").innerHTML = "";
+    return;
+  }
+
+  const q = await sb.from("channel_members")
+    .select("user_id,created_at")
+    .eq("channel_id", currentChannel.id)
+    .order("created_at", { ascending: true });
+  if (q.error) throw q.error;
+
+  const rows = q.data || [];
+  const ids = rows.map(row => row.user_id);
+  let profilesById = new Map();
+  if (ids.length) {
+    const profiles = await sb.from("profiles")
+      .select("id,username,display_name")
+      .in("id", ids);
+    if (profiles.error) throw profiles.error;
+    profilesById = new Map((profiles.data || []).map(profile => [profile.id, profile]));
+  }
+
+  const list = $("privateMemberList");
+  list.innerHTML = rows.length ? rows.map(row => {
+    const profile = profilesById.get(row.user_id) || {};
+    const username = profile.username || row.user_id;
+    const label = profile.display_name ? `${esc(profile.display_name)} @${esc(username)}` : `@${esc(username)}`;
+    return `
+      <div class="list-item">
+        <div>
+          <div><b>${label}</b></div>
+          <div class="muted">Added ${fmt(row.created_at)}</div>
+        </div>
+        <button class="danger" data-remove-channel-member="${esc(row.user_id)}">Remove</button>
+      </div>
+    `;
+  }).join("") : `<div class="muted">No extra users added yet.</div>`;
+
+  list.querySelectorAll("[data-remove-channel-member]").forEach(btn => {
+    btn.onclick = async () => {
+      try {
+        await removePrivateMemberFromCurrentChannel(btn.getAttribute("data-remove-channel-member"));
+      } catch (e) {
+        $("channelSettingsMsg").textContent = errText("remove private user", e);
+        debugLog("channel.member.remove", e);
+      }
+    };
+  });
+}
+
+async function removePrivateMemberFromCurrentChannel(userId) {
+  await requireAuthedUser();
+  if (!canManageChannel()) throw new Error("Only admins or the channel creator can remove users");
+  const q = await sb.from("channel_members")
+    .delete()
+    .eq("channel_id", currentChannel.id)
+    .eq("user_id", userId);
+  if (q.error) throw q.error;
+  toast("Removed user from private channel", "ok");
+  await loadChannelMembers();
 }
 
 function addAdminMenu(x, y, msg){
@@ -1238,6 +1314,7 @@ $("btnDeleteChannel").onclick = async () => {
 $("channelPrivateToggle").onchange = async () => {
   try {
     await setCurrentChannelPrivate($("channelPrivateToggle").checked);
+    if (currentChannel?.is_private) await loadChannelMembers();
     toast($("channelPrivateToggle").checked ? "Channel is private" : "Channel is public", "ok");
   } catch (e) {
     $("channelPrivateToggle").checked = !!currentChannel?.is_private;
@@ -1396,6 +1473,12 @@ function subscribeSideChannels() {
     .subscribe();
 
   sb.channel("channel-members-live")
+    .on("postgres_changes", { event: "*", schema: "public", table: "channel_members" }, () => {
+      loadRooms();
+      if (currentChannel?.is_private && canManageChannel()) {
+        loadChannelMembers().catch(e => debugLog("channel.members.live", e));
+      }
+    })
     .on("postgres_changes", { event: "*", schema: "public", table: "channel_members" }, () => loadRooms())
     .subscribe();
 
