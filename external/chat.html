@@ -1,4 +1,5 @@
 <!doctype html>
+
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -20,6 +21,13 @@
       50% { background-position: 100% 50%; }
       100% { background-position: 0% 50%; }
     }
+	.default-rainbow {
+		background: linear-gradient(to right, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8b00ff); 
+		background-size: 200% auto;
+		-webkit-background-clip: text; 
+		-webkit-text-fill-color: transparent;
+		animation: rainbow 3s linear infinite; 
+	}
     .animated-rainbow {
       background: linear-gradient(to left, #f00, #ff2b00, #f50, #ff8000, #fa0, #ffd500, #ff0, #d4ff00, #af0, #80ff00, #5f0, #2bff00, #0f0, #00ff2a, #0f5, #00ff80, #0fa, #00ffd5, #0ff, #00d5ff, #0af, #0080ff, #05f, #002aff, #00f, #2b00ff, #50f, #8000ff, #a0f, #d400ff, #f0f, #ff00d4, #f0a, #ff0080, #f05, #ff002b, #f00);
       animation: rainbow-move-left-right 5s linear infinite alternate;
@@ -517,6 +525,8 @@ async function deleteCurrentChannel() {
   const channelId = currentChannel.id;
   const msgDelete = await sb.from("messages").delete().eq("room", channelId);
   if (msgDelete.error) throw msgDelete.error;
+  const memberDelete = await sb.from("channel_members").delete().eq("channel_id", channelId);
+  if (memberDelete.error) throw memberDelete.error;
   const channelDelete = await sb.from("channels").delete().eq("id", channelId);
   if (channelDelete.error) throw channelDelete.error;
 
