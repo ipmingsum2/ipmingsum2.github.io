@@ -163,6 +163,25 @@
           <button id="btnRenameChannel" class="ghost">Rename</button>
           <button id="btnDeleteChannel" class="danger">Delete Channel</button>
         </div>
+        <div id="privateMemberControls" class="row hidden" style="margin-top:8px">
+          <input id="privateMemberUsername" placeholder="Add username to private channel">
+          <button id="btnAddPrivateMember" class="ghost">Add User</button>
+        </div>
+        <div id="channelLockControls" style="margin-top:8px">
+          <div class="row" style="justify-content:space-between">
+            <div>
+              <b>Lock channel</b>
+              <div class="muted">Locked channels are read-only except for admins, channel creator, and bypass users.</div>
+            </div>
+            <label class="switch" title="Lock channel">
+              <input id="channelLockToggle" type="checkbox">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="row" style="margin-top:8px">
+            <input id="lockBypassUsername" placeholder="Add username who can talk while locked">
+            <button id="btnAddLockBypass" class="ghost">Add Lock Bypass</button>
+          </div>
         <div id="privateMemberControls" class="hidden" style="margin-top:8px">
           <div class="row">
             <input id="privateMemberUsername" placeholder="Add username to private channel">
@@ -530,6 +549,9 @@ async function ensureChannelByInput(inputName) {
 
   let q = await sb.from("channels")
     .select(channelColumns)
+    .select("id,name,created_by,is_private,is_locked,sort_order,created_at")
+    .select("id,name,created_by,is_private,sort_order,created_at")
+    .select("id,name,created_by,is_private,created_at")
     .eq("id", requestedSlug)
     .maybeSingle();
   if (q.error) throw q.error;
@@ -537,6 +559,9 @@ async function ensureChannelByInput(inputName) {
 
   q = await sb.from("channels")
     .select(channelColumns)
+    .select("id,name,created_by,is_private,is_locked,sort_order,created_at")
+    .select("id,name,created_by,is_private,sort_order,created_at")
+    .select("id,name,created_by,is_private,created_at")
     .ilike("name", requestedName)
     .limit(1)
     .maybeSingle();
@@ -544,6 +569,10 @@ async function ensureChannelByInput(inputName) {
   if (q.data) return q.data;
 
   const ins = await sb.from("channels")
+    .insert({ id: requestedSlug, name: requestedName, created_by: me.id, is_private: false, is_locked: false, sort_order: Date.now() })
+    .select("id,name,created_by,is_private,is_locked,sort_order,created_at")
+    .insert({ id: requestedSlug, name: requestedName, created_by: me.id, is_private: false, sort_order: Date.now() })
+    .select("id,name,created_by,is_private,sort_order,created_at")
     .insert({ id: requestedSlug, name: requestedName, created_by: me.id, is_private: false })
     .select(channelColumns)
     .single();
@@ -564,6 +593,12 @@ function updateChannelSettingsUI() {
   const canManage = canManageChannel();
   $("btnShowChannelSettings").classList.toggle("hidden", !canManage);
   settings.classList.toggle("hidden", !canManage);
+  $("channelSettingsInfo").textContent = `${currentChannel.is_private ? "Private" : "Public"}${currentChannel.is_locked ? " • Locked" : ""} channel: #${currentChannel.name}`;
+  $("channelRenameInput").value = currentChannel.name;
+  $("channelPrivateToggle").checked = !!currentChannel.is_private;
+  $("channelLockToggle").checked = !!currentChannel.is_locked;
+  $("privateMemberControls").classList.toggle("hidden", !currentChannel.is_private);
+  $("channelSettingsMsg").textContent = canManage ? "Admins and channel creators can rename, delete, manage privacy, and lock/unlock chat." : "";
   $("channelSettingsInfo").textContent = `${currentChannel.is_private ? "Private" : "Public"} channel: #${currentChannel.name}`;
   $("channelRenameInput").value = currentChannel.name;
   $("channelPrivateToggle").checked = !!currentChannel.is_private;
@@ -585,6 +620,8 @@ async function renameCurrentChannel() {
   const q = await sb.from("channels")
     .update({ name: nextName })
     .eq("id", currentChannel.id)
+    .select("id,name,created_by,is_private,is_locked,sort_order,created_at")
+    .select("id,name,created_by,is_private,sort_order,created_at")
     .select("id,name,created_by,is_private,created_at")
     .single();
   if (q.error) throw q.error;
@@ -620,6 +657,8 @@ async function setCurrentChannelPrivate(isPrivate) {
   const q = await sb.from("channels")
     .update({ is_private: isPrivate })
     .eq("id", currentChannel.id)
+    .select("id,name,created_by,is_private,is_locked,sort_order,created_at")
+    .select("id,name,created_by,is_private,sort_order,created_at")
     .select("id,name,created_by,is_private,created_at")
     .single();
   if (q.error) throw q.error;
@@ -642,6 +681,49 @@ async function addPrivateMemberToCurrentChannel() {
   if (q.error && q.error.code !== "23505") throw q.error;
   $("privateMemberUsername").value = "";
   toast(`Added @${username} to #${currentChannel.name}`, "ok");
+}
+
+async function getChannelLockBypassIds(channelId) {
+  const q = await sb.from("channel_lock_bypass").select("user_id").eq("channel_id", channelId);
+  if (q.error) throw q.error;
+  return new Set((q.data || []).map(row => row.user_id));
+}
+
+async function canTalkInChannel(ch) {
+  if (!ch?.is_locked) return true;
+  if (myProfile?.role === "admin" || ch.created_by === me?.id) return true;
+  const bypassUsers = await getChannelLockBypassIds(ch.id);
+  return bypassUsers.has(me?.id);
+}
+
+async function setCurrentChannelLocked(isLocked) {
+  await requireAuthedUser();
+  if (!canManageChannel()) throw new Error("Only admins or the channel creator can lock this channel");
+  const q = await sb.from("channels")
+    .update({ is_locked: isLocked })
+    .eq("id", currentChannel.id)
+    .select("id,name,created_by,is_private,is_locked,sort_order,created_at")
+    .single();
+  if (q.error) throw q.error;
+  currentChannel = q.data;
+  updateChannelSettingsUI();
+  await loadRooms();
+}
+
+async function addLockBypassToCurrentChannel() {
+  await requireAuthedUser();
+  if (!canManageChannel()) throw new Error("Only admins or the channel creator can add lock bypass users");
+  if (!currentChannel?.is_locked) throw new Error("Lock the channel first");
+  const username = $("lockBypassUsername").value.trim();
+  const userId = await getUserIdByUsername(username);
+  const q = await sb.from("channel_lock_bypass").insert({
+    channel_id: currentChannel.id,
+    user_id: userId,
+    added_by: me.id
+  });
+  if (q.error && q.error.code !== "23505") throw q.error;
+  $("lockBypassUsername").value = "";
+  toast(`@${username} can talk while #${currentChannel.name} is locked`, "ok");
   await loadChannelMembers();
 }
 
@@ -987,6 +1069,9 @@ async function moveChannelInOrder(channelId, direction, channels) {
 async function loadRooms() {
   const q = await sb.from("channels")
     .select("id,name,created_by,is_private,created_at")
+    .select("id,name,created_by,is_private,is_locked,sort_order,created_at")
+    .select("id,name,created_by,is_private,sort_order,created_at")
+    .order("sort_order", { ascending: true, nullsFirst: false })
     .order("name", { ascending: true });
 
   if (q.error) {
@@ -998,10 +1083,15 @@ async function loadRooms() {
   const box = $("roomList");
   box.innerHTML = channels.length ? channels.map(ch => {
     const manageable = myProfile?.role === "admin" || ch.created_by === me?.id;
+  const isAdmin = myProfile?.role === "admin";
+  const box = $("roomList");
+  box.innerHTML = channels.length ? channels.map((ch, index) => {
+    const manageable = isAdmin || ch.created_by === me?.id;
     return `
       <div class="list-item">
         <div>
           <div><b>${ch.is_private ? '<span class="lock">🔒</span>' : ''}#${esc(ch.name)}</b></div>
+          <div class="muted">${ch.is_private ? "Private" : "Public"}${ch.is_locked ? " • Locked" : ""}${manageable ? " • manageable" : ""}</div>
           <div class="muted">${ch.is_private ? "Private" : "Public"}${manageable ? " • manageable" : ""}</div>
         </div>
         <div class="room-actions">
@@ -1465,6 +1555,26 @@ $("channelPrivateToggle").onchange = async () => {
   }
 };
 
+$("channelLockToggle").onchange = async () => {
+  try {
+    await setCurrentChannelLocked($("channelLockToggle").checked);
+    toast($("channelLockToggle").checked ? "Channel is locked" : "Channel is unlocked", "ok");
+  } catch (e) {
+    $("channelLockToggle").checked = !!currentChannel?.is_locked;
+    $("channelSettingsMsg").textContent = errText("channel lock", e);
+    debugLog("channel.lock", e);
+  }
+};
+
+$("btnAddLockBypass").onclick = async () => {
+  try {
+    await addLockBypassToCurrentChannel();
+  } catch (e) {
+    $("channelSettingsMsg").textContent = errText("add lock bypass user", e);
+    debugLog("channel.lockBypass", e);
+  }
+};
+
 $("btnAddPrivateMember").onclick = async () => {
   try {
     await addPrivateMemberToCurrentChannel();
@@ -1516,6 +1626,12 @@ $("btnSend").onclick = async () => {
 
     if (currentChannel && !(await canEnterChannel(currentChannel))) {
       toast("This channel is private.", "err", 4500);
+      await loadRooms();
+      return;
+    }
+
+    if (currentChannel && !(await canTalkInChannel(currentChannel))) {
+      toast("This channel is locked. Only admins, the creator, and bypass users can talk.", "warn", 5000);
       await loadRooms();
       return;
     }
@@ -1639,6 +1755,13 @@ function subscribeSideChannels() {
     .subscribe();
 
   sb.channel("channel-members-live")
+    .on("postgres_changes", { event: "*", schema: "public", table: "channel_members" }, () => loadRooms())
+    .subscribe();
+
+  sb.channel("channel-lock-bypass-live")
+    .on("postgres_changes", { event: "*", schema: "public", table: "channel_lock_bypass" }, () => loadRooms())
+    .subscribe();
+
     .on("postgres_changes", { event: "*", schema: "public", table: "channel_members" }, () => {
       loadRooms();
       if (currentChannel?.is_private && canManageChannel()) {
