@@ -929,6 +929,30 @@ async function joinRoom() {
     .subscribe();
 }
 
+async function initializeChatAfterAuth() {
+  try {
+    await loadFilters();
+  } catch (e) {
+    debugLog("init.loadFilters", e);
+    toast("Login worked, but filters failed to load.", "warn", 4500);
+  }
+
+  try {
+    await loadAnnouncements();
+  } catch (e) {
+    debugLog("init.loadAnnouncements", e);
+    toast("Login worked, but announcements failed to load.", "warn", 4500);
+  }
+
+  try {
+    await joinRoom();
+    await loadRooms();
+  } catch (e) {
+    debugLog("init.channels", e);
+    toast("Login worked, but channels failed. Run the channel SQL or check Supabase policies.", "warn", 7000);
+  }
+}
+
 async function loadRooms() {
   const q = await sb.from("channels")
     .select("id,name,created_by,is_private,created_at")
@@ -1348,10 +1372,7 @@ $("btnLogin").onclick = async () => {
     localStorage.removeItem("pending_display");
 
     showApp();
-    await loadFilters();
-    await loadAnnouncements();
-    await joinRoom();
-    await loadRooms();
+    await initializeChatAfterAuth();
     toast("Login success");
   } catch (e) {
     setAuthMsg(errText("login", e), true);
@@ -1622,10 +1643,7 @@ function subscribeSideChannels() {
     myProfile = await ensureProfileAfterLogin(me);
     showApp();
     subscribeSideChannels();
-    await loadFilters();
-    await loadAnnouncements();
-    await joinRoom();
-    await loadRooms();
+    await initializeChatAfterAuth();
   } catch (e) {
     debugLog("init", e);
     showAuth();
