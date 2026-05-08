@@ -24,6 +24,7 @@
 	.default-rainbow {
 		background: linear-gradient(to right, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8b00ff); 
 		background-size: 200% auto;
+        background-clip: text; 
 		-webkit-background-clip: text; 
 		-webkit-text-fill-color: transparent;
 		animation: rainbow 3s linear infinite; 
@@ -437,15 +438,6 @@ function fallbackProfileForUser(user, uh = "", dh = "") {
     .slice(0, 24) || fallbackUsername;
   const display_name = (dh || username || userEmail || "User").slice(0, 48);
   return { id: userId, username, display_name, avatar_url: null, role: "user" };
-  const emailName = (user?.email || "").split("@")[0];
-  const idSuffix = String(user?.id || Date.now()).replace(/[^a-z0-9]/gi, "").slice(0, 8);
-  const username = (uh || emailName || `user${idSuffix}`)
-    .toLowerCase()
-    .replace(/[^a-z0-9_-]+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .slice(0, 24) || `user${idSuffix}`;
-  const display_name = (dh || username || user?.email || "User").slice(0, 48);
-  return { id: user?.id, username, display_name, avatar_url: null, role: "user" };
 }
 
 async function ensureProfileAfterLogin(user, uh = "", dh = "") {
@@ -1126,7 +1118,7 @@ async function loadRooms() {
       toast(`Joined #${selected.name}`, "ok");
     };
   });
-}
+},
 
 /* announcements */
 async function loadAnnouncements() {
@@ -1215,7 +1207,7 @@ async function loadAnnouncements() {
       };
     });
   }
-}
+},
 
 async function editAnnouncement(id, currentTitle, currentBody) {
   const title = prompt("Edit title:", currentTitle || "");
@@ -1229,7 +1221,7 @@ async function editAnnouncement(id, currentTitle, currentBody) {
     .eq("id", id);
 
   if (q.error) throw q.error;
-}
+},
 
 async function togglePinAnnouncement(a) {
   const nextPinned = !a.is_pinned;
@@ -1241,7 +1233,7 @@ async function togglePinAnnouncement(a) {
     .eq("id", a.id);
 
   if (q.error) throw q.error;
-}
+},
 
 async function editMessage(msgId, oldText) {
   const next = prompt("Edit message:", oldText || "");
@@ -1258,7 +1250,7 @@ async function editMessage(msgId, oldText) {
     .eq("id", msgId);
 
   if (q.error) throw q.error;
-}
+},
 
 async function publishAnnouncement() {
   const title = $("annTitle").value.trim();
@@ -1273,7 +1265,7 @@ async function publishAnnouncement() {
   $("annBody").value = "";
   toast("Announcement published");
   await loadAnnouncements();
-}
+},
 
 /* filters */
 async function loadFilters() {
@@ -1281,7 +1273,7 @@ async function loadFilters() {
   if (q.error) throw q.error;
   filters = q.data || [];
   renderFilterList();
-}
+},
 
 function renderFilterList() {
   const box = $("filterList");
@@ -1312,7 +1304,7 @@ function renderFilterList() {
     if (q.error) return toast(errText("delete filter", q.error), "err");
     await loadFilters();
   });
-}
+},
 
 async function addFilter() {
   const pattern = $("filterInput").value.trim();
@@ -1324,20 +1316,20 @@ async function addFilter() {
   $("filterInput").value = "";
   await loadFilters();
   toast("Filter added");
-}
+},
 
 /* admin */
 async function requireAdmin() {
   if (myProfile?.role !== "admin") throw new Error("Admin only");
-}
+},
 
 function isRootOwner() {
   return me?.email === "root@local.chat" && myProfile?.username === "root";
-}
+},
 
 async function requireRootOwner() {
   if (!isRootOwner()) throw new Error("Root account only");
-}
+},
 
 async function getUserProfileByUsername(username){
   const q = await sb.from("profiles")
@@ -1349,12 +1341,12 @@ async function getUserProfileByUsername(username){
   if(q.error) throw q.error;
   if(!q.data) throw new Error("User not found");
   return q.data;
-}
+},
 
 async function getUserIdByUsername(username){
   const profile = await getUserProfileByUsername(username);
   return profile.id;
-}
+},
 
 async function setUserAdminRole(username, makeAdmin) {
   await requireRootOwner();
@@ -1367,7 +1359,7 @@ async function setUserAdminRole(username, makeAdmin) {
 
   if (q.error) throw q.error;
   return target;
-}
+},
 
 async function adminBanUser(userId){
   await requireAdmin();
@@ -1378,7 +1370,7 @@ async function adminBanUser(userId){
     created_by: me.id
   });
   if(q.error) throw q.error;
-}
+},
 
 async function adminMuteUser(userId, seconds=60){
   await requireAdmin();
@@ -1391,19 +1383,19 @@ async function adminMuteUser(userId, seconds=60){
     updated_by: me.id
   });
   if(q.error) throw q.error;
-}
+},
 
 async function adminUnmuteUser(userId){
   await requireAdmin();
   const q = await sb.from("user_mutes").delete().eq("user_id", userId);
   if(q.error) throw q.error;
-}
+},
 
 async function adminUnbanUser(userId){
   await requireAdmin();
   const q = await sb.from("user_bans").delete().eq("user_id", userId);
   if(q.error) throw q.error;
-}
+},
 
 /* bans edit: added replication */
 async function checkBan(userId){
@@ -1426,7 +1418,7 @@ async function checkBan(userId){
     myProfile = null;
     showAuth();
   }
-}
+},
 
 /* ui wiring */
 $("btnPickAvatar").onclick = () => $("avatarFile").click();
@@ -1776,7 +1768,6 @@ function subscribeSideChannels() {
   sb.channel("channel-lock-bypass-live")
     .on("postgres_changes", { event: "*", schema: "public", table: "channel_lock_bypass" }, () => loadRooms())
     .subscribe();
-
     .on("postgres_changes", { event: "*", schema: "public", table: "channel_members" }, () => {
       loadRooms();
       if (currentChannel?.is_private && canManageChannel()) {
