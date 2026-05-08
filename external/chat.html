@@ -521,8 +521,10 @@ async function canEnterChannel(ch) {
 async function ensureChannelByInput(inputName) {
   const requestedName = (inputName || "lobby").trim().slice(0, 64) || "lobby";
   const requestedSlug = channelSlug(requestedName);
+  const channelColumns = "id,name,created_by,is_private,created_at";
 
   let q = await sb.from("channels")
+    .select(channelColumns)
     .select("id,name,created_by,is_private,is_locked,sort_order,created_at")
     .select("id,name,created_by,is_private,sort_order,created_at")
     .select("id,name,created_by,is_private,created_at")
@@ -532,6 +534,7 @@ async function ensureChannelByInput(inputName) {
   if (q.data) return q.data;
 
   q = await sb.from("channels")
+    .select(channelColumns)
     .select("id,name,created_by,is_private,is_locked,sort_order,created_at")
     .select("id,name,created_by,is_private,sort_order,created_at")
     .select("id,name,created_by,is_private,created_at")
@@ -547,7 +550,7 @@ async function ensureChannelByInput(inputName) {
     .insert({ id: requestedSlug, name: requestedName, created_by: me.id, is_private: false, sort_order: Date.now() })
     .select("id,name,created_by,is_private,sort_order,created_at")
     .insert({ id: requestedSlug, name: requestedName, created_by: me.id, is_private: false })
-    .select("id,name,created_by,is_private,created_at")
+    .select(channelColumns)
     .single();
   if (ins.error) {
     if (ins.error.code === "23505") throw new Error("This channel is private or already exists.");
@@ -837,8 +840,6 @@ function messageHTML(m) {
   const canDelete = (me && m.user_id === me.id) || isAdmin;
   const canEdit = (me && m.user_id === me.id) || isAdmin;
   const avatar = p.avatar_url ? `<img class="avatar" src="${esc(p.avatar_url)}">` : "";
-  const rich = parseRich(m.text || "");
-  const img = m.image_url ? attachmentHTML(m.image_url) : "";
   const rich = m.deleted ? `<i>[deleted]</i>` : parseRich(m.text || "");
   const img = (!m.deleted && m.image_url) ? attachmentHTML(m.image_url) : "";
   const dot = isAdmin ? `<div class="admin-dot" data-dot="${m.id}">\u2026</div>` : "";
@@ -1038,22 +1039,12 @@ async function moveChannelInOrder(channelId, direction, channels) {
   const swapIndex = index + direction;
   if (index < 0 || swapIndex < 0 || swapIndex >= channels.length) return;
 
-  const current = channels[index];
-  const other = channels[swapIndex];
-  const currentOrder = current.sort_order ?? index * 10;
-  const otherOrder = other.sort_order ?? swapIndex * 10;
-
-  const first = await sb.from("channels").update({ sort_order: otherOrder }).eq("id", current.id);
-  if (first.error) throw first.error;
-  const second = await sb.from("channels").update({ sort_order: currentOrder }).eq("id", other.id);
-  if (second.error) throw second.error;
-
-  await loadRooms();
-  toast(`Moved #${current.name} ${direction < 0 ? "up" : "down"}`, "ok");
+  toast("Channel ordering is not available on this chat database.", "warn", 4500);
 }
 
 async function loadRooms() {
   const q = await sb.from("channels")
+    .select("id,name,created_by,is_private,created_at")
     .select("id,name,created_by,is_private,is_locked,sort_order,created_at")
     .select("id,name,created_by,is_private,sort_order,created_at")
     .order("sort_order", { ascending: true, nullsFirst: false })
@@ -1065,6 +1056,9 @@ async function loadRooms() {
   }
 
   const channels = q.data || [];
+  const box = $("roomList");
+  box.innerHTML = channels.length ? channels.map(ch => {
+    const manageable = myProfile?.role === "admin" || ch.created_by === me?.id;
   const isAdmin = myProfile?.role === "admin";
   const box = $("roomList");
   box.innerHTML = channels.length ? channels.map((ch, index) => {
@@ -1077,8 +1071,6 @@ async function loadRooms() {
           <div class="muted">${ch.is_private ? "Private" : "Public"}${manageable ? " • manageable" : ""}</div>
         </div>
         <div class="room-actions">
-          ${isAdmin ? `<button class="ghost" data-move-channel="${esc(ch.id)}" data-dir="-1" ${index === 0 ? "disabled" : ""}>↑</button>` : ""}
-          ${isAdmin ? `<button class="ghost" data-move-channel="${esc(ch.id)}" data-dir="1" ${index === channels.length - 1 ? "disabled" : ""}>↓</button>` : ""}
           <button class="ghost" data-open-channel="${esc(ch.id)}">Open</button>
         </div>
       </div>
@@ -1093,17 +1085,6 @@ async function loadRooms() {
       $("roomInput").value = selected.name;
       await joinRoom();
       toast(`Joined #${selected.name}`, "ok");
-    };
-  });
-
-  box.querySelectorAll("[data-move-channel]").forEach(btn => {
-    btn.onclick = async () => {
-      try {
-        await moveChannelInOrder(btn.getAttribute("data-move-channel"), Number(btn.getAttribute("data-dir")), channels);
-      } catch (e) {
-        toast(errText("move channel", e), "err", 4500);
-        debugLog("rooms.move", e);
-      }
     };
   });
 }
