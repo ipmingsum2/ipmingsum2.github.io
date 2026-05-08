@@ -170,9 +170,6 @@
           </div>
           <div class="muted" style="margin-top:8px">Private members</div>
           <div id="privateMemberList" class="list" style="margin-top:6px"></div>
-        <div id="privateMemberControls" class="row hidden" style="margin-top:8px">
-          <input id="privateMemberUsername" placeholder="Add username to private channel">
-          <button id="btnAddPrivateMember" class="ghost">Add User</button>
         </div>
         <div id="channelSettingsMsg" class="muted" style="margin-top:6px"></div>
       </div>
@@ -407,21 +404,45 @@ async function requireAuthedUser() {
   return gu.data.user;
 }
 
-async function ensureProfileAfterLogin(user, uh = "", dh = "") {
-  const one = await sb.from("profiles").select("*").eq("id", user.id).maybeSingle();
-  if (one.error) throw one.error;
-  if (one.data) return one.data;
+function fallbackProfileForUser(user, uh = "", dh = "") {
+  const emailName = (user?.email || "").split("@")[0];
+  const idSuffix = String(user?.id || Date.now()).replace(/[^a-z0-9]/gi, "").slice(0, 8);
+  const username = (uh || emailName || `user${idSuffix}`)
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 24) || `user${idSuffix}`;
+  const display_name = (dh || username || user?.email || "User").slice(0, 48);
+  return { id: user?.id, username, display_name, avatar_url: null, role: "user" };
+}
 
-  const username = (uh || user.email.split("@")[0] || ("u" + Date.now())).slice(0, 24);
-  const display_name = (dh || username).slice(0, 48);
+async function ensureProfileAfterLogin(user, uh = "", dh = "") {
+  const fallbackProfile = fallbackProfileForUser(user, uh, dh);
+
+  const one = await sb.from("profiles").select("*").eq("id", user.id).maybeSingle();
+  if (one.error) {
+    debugLog("profile.load", one.error);
+    toast("Login worked, but profile loading failed. Using a temporary profile.", "warn", 5500);
+    return fallbackProfile;
+  }
+  if (one.data) return { ...fallbackProfile, ...one.data };
 
   const ins = await sb.from("profiles")
-    .insert({ id: user.id, username, display_name, role: "user" })
+    .insert({
+      id: user.id,
+      username: fallbackProfile.username,
+      display_name: fallbackProfile.display_name,
+      role: fallbackProfile.role
+    })
     .select("*")
     .single();
 
-  if (ins.error) throw ins.error;
-  return ins.data;
+  if (ins.error) {
+    debugLog("profile.create", ins.error);
+    toast("Login worked, but profile creation failed. Using a temporary profile.", "warn", 5500);
+    return fallbackProfile;
+  }
+  return { ...fallbackProfile, ...ins.data };
 }
 
 async function uploadFile(file, allowedKinds = ["image", "audio", "video"]) {
@@ -505,18 +526,17 @@ async function canEnterChannel(ch) {
 async function ensureChannelByInput(inputName) {
   const requestedName = (inputName || "lobby").trim().slice(0, 64) || "lobby";
   const requestedSlug = channelSlug(requestedName);
+  const channelColumns = "id,name,created_by,is_private,created_at";
 
   let q = await sb.from("channels")
-    .select("id,name,created_by,is_private,sort_order,created_at")
-    .select("id,name,created_by,is_private,created_at")
+    .select(channelColumns)
     .eq("id", requestedSlug)
     .maybeSingle();
   if (q.error) throw q.error;
   if (q.data) return q.data;
 
   q = await sb.from("channels")
-    .select("id,name,created_by,is_private,sort_order,created_at")
-    .select("id,name,created_by,is_private,created_at")
+    .select(channelColumns)
     .ilike("name", requestedName)
     .limit(1)
     .maybeSingle();
@@ -524,10 +544,8 @@ async function ensureChannelByInput(inputName) {
   if (q.data) return q.data;
 
   const ins = await sb.from("channels")
-    .insert({ id: requestedSlug, name: requestedName, created_by: me.id, is_private: false, sort_order: Date.now() })
-    .select("id,name,created_by,is_private,sort_order,created_at")
     .insert({ id: requestedSlug, name: requestedName, created_by: me.id, is_private: false })
-    .select("id,name,created_by,is_private,created_at")
+    .select(channelColumns)
     .single();
   if (ins.error) {
     if (ins.error.code === "23505") throw new Error("This channel is private or already exists.");
@@ -567,7 +585,6 @@ async function renameCurrentChannel() {
   const q = await sb.from("channels")
     .update({ name: nextName })
     .eq("id", currentChannel.id)
-    .select("id,name,created_by,is_private,sort_order,created_at")
     .select("id,name,created_by,is_private,created_at")
     .single();
   if (q.error) throw q.error;
@@ -603,7 +620,6 @@ async function setCurrentChannelPrivate(isPrivate) {
   const q = await sb.from("channels")
     .update({ is_private: isPrivate })
     .eq("id", currentChannel.id)
-    .select("id,name,created_by,is_private,sort_order,created_at")
     .select("id,name,created_by,is_private,created_at")
     .single();
   if (q.error) throw q.error;
@@ -766,8 +782,6 @@ function messageHTML(m) {
   const canDelete = (me && m.user_id === me.id) || isAdmin;
   const canEdit = (me && m.user_id === me.id) || isAdmin;
   const avatar = p.avatar_url ? `<img class="avatar" src="${esc(p.avatar_url)}">` : "";
-  const rich = parseRich(m.text || "");
-  const img = m.image_url ? attachmentHTML(m.image_url) : "";
   const rich = m.deleted ? `<i>[deleted]</i>` : parseRich(m.text || "");
   const img = (!m.deleted && m.image_url) ? attachmentHTML(m.image_url) : "";
   const dot = isAdmin ? `<div class="admin-dot" data-dot="${m.id}">\u2026</div>` : "";
@@ -967,24 +981,9 @@ async function moveChannelInOrder(channelId, direction, channels) {
   const swapIndex = index + direction;
   if (index < 0 || swapIndex < 0 || swapIndex >= channels.length) return;
 
-  const current = channels[index];
-  const other = channels[swapIndex];
-  const currentOrder = current.sort_order ?? index * 10;
-  const otherOrder = other.sort_order ?? swapIndex * 10;
-
-  const first = await sb.from("channels").update({ sort_order: otherOrder }).eq("id", current.id);
-  if (first.error) throw first.error;
-  const second = await sb.from("channels").update({ sort_order: currentOrder }).eq("id", other.id);
-  if (second.error) throw second.error;
-
-  await loadRooms();
-  toast(`Moved #${current.name} ${direction < 0 ? "up" : "down"}`, "ok");
+  toast("Channel ordering is not available on this chat database.", "warn", 4500);
 }
 
-async function loadRooms() {
-  const q = await sb.from("channels")
-    .select("id,name,created_by,is_private,sort_order,created_at")
-    .order("sort_order", { ascending: true, nullsFirst: false })
 async function loadRooms() {
   const q = await sb.from("channels")
     .select("id,name,created_by,is_private,created_at")
@@ -996,10 +995,6 @@ async function loadRooms() {
   }
 
   const channels = q.data || [];
-  const isAdmin = myProfile?.role === "admin";
-  const box = $("roomList");
-  box.innerHTML = channels.length ? channels.map((ch, index) => {
-    const manageable = isAdmin || ch.created_by === me?.id;
   const box = $("roomList");
   box.innerHTML = channels.length ? channels.map(ch => {
     const manageable = myProfile?.role === "admin" || ch.created_by === me?.id;
@@ -1010,11 +1005,8 @@ async function loadRooms() {
           <div class="muted">${ch.is_private ? "Private" : "Public"}${manageable ? " • manageable" : ""}</div>
         </div>
         <div class="room-actions">
-          ${isAdmin ? `<button class="ghost" data-move-channel="${esc(ch.id)}" data-dir="-1" ${index === 0 ? "disabled" : ""}>↑</button>` : ""}
-          ${isAdmin ? `<button class="ghost" data-move-channel="${esc(ch.id)}" data-dir="1" ${index === channels.length - 1 ? "disabled" : ""}>↓</button>` : ""}
           <button class="ghost" data-open-channel="${esc(ch.id)}">Open</button>
         </div>
-        <div><button class="ghost" data-open-channel="${esc(ch.id)}">Open</button></div>
       </div>
     `;
   }).join("") : `<div class="muted">No rooms yet.</div>`;
@@ -1027,17 +1019,6 @@ async function loadRooms() {
       $("roomInput").value = selected.name;
       await joinRoom();
       toast(`Joined #${selected.name}`, "ok");
-    };
-  });
-
-  box.querySelectorAll("[data-move-channel]").forEach(btn => {
-    btn.onclick = async () => {
-      try {
-        await moveChannelInOrder(btn.getAttribute("data-move-channel"), Number(btn.getAttribute("data-dir")), channels);
-      } catch (e) {
-        toast(errText("move channel", e), "err", 4500);
-        debugLog("rooms.move", e);
-      }
     };
   });
 }
