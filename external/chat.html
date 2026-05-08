@@ -170,9 +170,6 @@
           </div>
           <div class="muted" style="margin-top:8px">Private members</div>
           <div id="privateMemberList" class="list" style="margin-top:6px"></div>
-        <div id="privateMemberControls" class="row hidden" style="margin-top:8px">
-          <input id="privateMemberUsername" placeholder="Add username to private channel">
-          <button id="btnAddPrivateMember" class="ghost">Add User</button>
         </div>
         <div id="channelSettingsMsg" class="muted" style="margin-top:6px"></div>
       </div>
@@ -766,8 +763,6 @@ function messageHTML(m) {
   const canDelete = (me && m.user_id === me.id) || isAdmin;
   const canEdit = (me && m.user_id === me.id) || isAdmin;
   const avatar = p.avatar_url ? `<img class="avatar" src="${esc(p.avatar_url)}">` : "";
-  const rich = parseRich(m.text || "");
-  const img = m.image_url ? attachmentHTML(m.image_url) : "";
   const rich = m.deleted ? `<i>[deleted]</i>` : parseRich(m.text || "");
   const img = (!m.deleted && m.image_url) ? attachmentHTML(m.image_url) : "";
   const dot = isAdmin ? `<div class="admin-dot" data-dot="${m.id}">\u2026</div>` : "";
@@ -985,9 +980,6 @@ async function loadRooms() {
   const q = await sb.from("channels")
     .select("id,name,created_by,is_private,sort_order,created_at")
     .order("sort_order", { ascending: true, nullsFirst: false })
-async function loadRooms() {
-  const q = await sb.from("channels")
-    .select("id,name,created_by,is_private,created_at")
     .order("name", { ascending: true });
 
   if (q.error) {
@@ -1000,9 +992,6 @@ async function loadRooms() {
   const box = $("roomList");
   box.innerHTML = channels.length ? channels.map((ch, index) => {
     const manageable = isAdmin || ch.created_by === me?.id;
-  const box = $("roomList");
-  box.innerHTML = channels.length ? channels.map(ch => {
-    const manageable = myProfile?.role === "admin" || ch.created_by === me?.id;
     return `
       <div class="list-item">
         <div>
@@ -1014,7 +1003,6 @@ async function loadRooms() {
           ${isAdmin ? `<button class="ghost" data-move-channel="${esc(ch.id)}" data-dir="1" ${index === channels.length - 1 ? "disabled" : ""}>↓</button>` : ""}
           <button class="ghost" data-open-channel="${esc(ch.id)}">Open</button>
         </div>
-        <div><button class="ghost" data-open-channel="${esc(ch.id)}">Open</button></div>
       </div>
     `;
   }).join("") : `<div class="muted">No rooms yet.</div>`;
