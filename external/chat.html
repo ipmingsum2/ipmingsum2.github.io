@@ -1769,14 +1769,13 @@ function subscribeSideChannels() {
 
   sb.channel("channel-lock-bypass-live")
     .on("postgres_changes", { event: "*", schema: "public", table: "channel_lock_bypass" }, () => loadRooms())
-    .subscribe();
+    .subscribe()
     .on("postgres_changes", { event: "*", schema: "public", table: "channel_members" }, () => {
-      loadRooms();
-      if (currentChannel?.is_private && canManageChannel()) {
-        loadChannelMembers().catch(e => debugLog("channel.members.live", e));
-      }
+        loadRooms()
+        if (currentChannel?.is_private && canManageChannel()) {
+         loadChannelMembers().catch(e => debugLog("channel.members.live", e));
+        }
     })
-    .on("postgres_changes", { event: "*", schema: "public", table: "channel_members" }, () => loadRooms())
     .subscribe();
 
   if (me?.id) {
