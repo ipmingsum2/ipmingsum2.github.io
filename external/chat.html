@@ -1,3 +1,4 @@
+
 <!doctype html>
 
 <html lang="en">
@@ -371,10 +372,24 @@ function iframeEmbedHTML(rawAttrs = "") {
 function parseRich(text = "") {
   const withIframes = String(text).replace(/!iframe\s*([^!]*)!/gi, (_, attrs) => iframeEmbedHTML(attrs));
   const md = marked.parse(withIframes, { breaks: true, gfm: true });
-  return DOMPurify.sanitize(md, {
+  const clean = DOMPurify.sanitize(md, {
     ADD_TAGS: ["u", "iframe"],
     ADD_ATTR: ["src", "width", "height", "loading", "allowfullscreen", "referrerpolicy", "class"]
   });
+
+  const template = document.createElement("template");
+  template.innerHTML = clean;
+  template.content.querySelectorAll("iframe").forEach(frame => {
+    try {
+      const src = frame.getAttribute("src") || "";
+      const url = new URL(src);
+      if (!["http:", "https:"].includes(url.protocol)) throw new Error("bad protocol");
+      frame.setAttribute("src", url.href);
+    } catch {
+      frame.remove();
+    }
+  });
+  return template.innerHTML;
 }
 
 function renderMathIn(el) {
@@ -1087,9 +1102,6 @@ async function loadRooms() {
   }
 
   const channels = q.data || [];
-  const box = $("roomList");
-  box.innerHTML = channels.length ? channels.map(ch => {
-    const manageable = myProfile?.role === "admin" || ch.created_by === me?.id;
   const isAdmin = myProfile?.role === "admin";
   const box = $("roomList");
   box.innerHTML = channels.length ? channels.map((ch, index) => {
@@ -1118,7 +1130,7 @@ async function loadRooms() {
       toast(`Joined #${selected.name}`, "ok");
     };
   });
-},
+}
 
 /* announcements */
 async function loadAnnouncements() {
@@ -1207,7 +1219,7 @@ async function loadAnnouncements() {
       };
     });
   }
-},
+}
 
 async function editAnnouncement(id, currentTitle, currentBody) {
   const title = prompt("Edit title:", currentTitle || "");
@@ -1221,7 +1233,7 @@ async function editAnnouncement(id, currentTitle, currentBody) {
     .eq("id", id);
 
   if (q.error) throw q.error;
-},
+}
 
 async function togglePinAnnouncement(a) {
   const nextPinned = !a.is_pinned;
@@ -1233,7 +1245,7 @@ async function togglePinAnnouncement(a) {
     .eq("id", a.id);
 
   if (q.error) throw q.error;
-},
+}
 
 async function editMessage(msgId, oldText) {
   const next = prompt("Edit message:", oldText || "");
@@ -1250,7 +1262,7 @@ async function editMessage(msgId, oldText) {
     .eq("id", msgId);
 
   if (q.error) throw q.error;
-},
+}
 
 async function publishAnnouncement() {
   const title = $("annTitle").value.trim();
@@ -1265,7 +1277,7 @@ async function publishAnnouncement() {
   $("annBody").value = "";
   toast("Announcement published");
   await loadAnnouncements();
-},
+}
 
 /* filters */
 async function loadFilters() {
@@ -1273,7 +1285,7 @@ async function loadFilters() {
   if (q.error) throw q.error;
   filters = q.data || [];
   renderFilterList();
-},
+}
 
 function renderFilterList() {
   const box = $("filterList");
@@ -1304,7 +1316,7 @@ function renderFilterList() {
     if (q.error) return toast(errText("delete filter", q.error), "err");
     await loadFilters();
   });
-},
+}
 
 async function addFilter() {
   const pattern = $("filterInput").value.trim();
@@ -1316,20 +1328,20 @@ async function addFilter() {
   $("filterInput").value = "";
   await loadFilters();
   toast("Filter added");
-},
+}
 
 /* admin */
 async function requireAdmin() {
   if (myProfile?.role !== "admin") throw new Error("Admin only");
-},
+}
 
 function isRootOwner() {
   return me?.email === "root@local.chat" && myProfile?.username === "root";
-},
+}
 
 async function requireRootOwner() {
   if (!isRootOwner()) throw new Error("Root account only");
-},
+}
 
 async function getUserProfileByUsername(username){
   const q = await sb.from("profiles")
@@ -1341,12 +1353,12 @@ async function getUserProfileByUsername(username){
   if(q.error) throw q.error;
   if(!q.data) throw new Error("User not found");
   return q.data;
-},
+}
 
 async function getUserIdByUsername(username){
   const profile = await getUserProfileByUsername(username);
   return profile.id;
-},
+}
 
 async function setUserAdminRole(username, makeAdmin) {
   await requireRootOwner();
@@ -1359,7 +1371,7 @@ async function setUserAdminRole(username, makeAdmin) {
 
   if (q.error) throw q.error;
   return target;
-},
+}
 
 async function adminBanUser(userId){
   await requireAdmin();
@@ -1370,7 +1382,7 @@ async function adminBanUser(userId){
     created_by: me.id
   });
   if(q.error) throw q.error;
-},
+}
 
 async function adminMuteUser(userId, seconds=60){
   await requireAdmin();
@@ -1383,19 +1395,19 @@ async function adminMuteUser(userId, seconds=60){
     updated_by: me.id
   });
   if(q.error) throw q.error;
-},
+}
 
 async function adminUnmuteUser(userId){
   await requireAdmin();
   const q = await sb.from("user_mutes").delete().eq("user_id", userId);
   if(q.error) throw q.error;
-},
+}
 
 async function adminUnbanUser(userId){
   await requireAdmin();
   const q = await sb.from("user_bans").delete().eq("user_id", userId);
   if(q.error) throw q.error;
-},
+}
 
 /* bans edit: added replication */
 async function checkBan(userId){
@@ -1418,16 +1430,16 @@ async function checkBan(userId){
     myProfile = null;
     showAuth();
   }
-},
+}
 
 /* ui wiring */
 document.getElementById("btnPickAvatar").onclick = () => {
   document.getElementById("avatarFile").click();
-},
-$("btnPickMsg").onclick = () => $("msgFile").click(),
+};
+$("btnPickMsg").onclick = () => $("msgFile").click();
 
-$("avatarFile").onchange = () => $("avatarFileName").textContent = $("avatarFile").files?.[0]?.name || "No file chosen",
-$("msgFile").onchange = () => $("msgFileName").textContent = $("msgFile").files?.[0]?.name || "No file chosen",
+$("avatarFile").onchange = () => $("avatarFileName").textContent = $("avatarFile").files?.[0]?.name || "No file chosen";
+$("msgFile").onchange = () => $("msgFileName").textContent = $("msgFile").files?.[0]?.name || "No file chosen";
 
 document.querySelectorAll("[data-md]").forEach(btn => btn.onclick = () => {
   const s = btn.getAttribute("data-md");
@@ -1437,16 +1449,16 @@ document.querySelectorAll("[data-md]").forEach(btn => btn.onclick = () => {
   const v = ta.value;
   ta.value = v.slice(0, a) + s + v.slice(b);
   ta.focus();
-}),
+});
 
 document.querySelectorAll(".tabbtn").forEach(btn => btn.onclick = () => {
   document.querySelectorAll(".tabbtn").forEach(x => x.classList.remove("active"));
   document.querySelectorAll(".tabpane").forEach(x => x.classList.remove("active"));
   btn.classList.add("active");
   $("tab-" + btn.getAttribute("data-tab")).classList.add("active");
-}),
+});
 
-$("btnClearDebug").onclick = () => $("debug").textContent = "",
+$("btnClearDebug").onclick = () => $("debug").textContent = "";
 
 $("btnRegister").onclick = async () => {
   setAuthMsg("");
@@ -1467,7 +1479,7 @@ $("btnRegister").onclick = async () => {
     setAuthMsg(errText("register", e), true);
     debugLog("register", e);
   }
-},
+};
 
 $("btnLogin").onclick = async () => {
   setAuthMsg("");
@@ -1513,14 +1525,14 @@ $("btnLogin").onclick = async () => {
     setAuthMsg(errText("login", e), true);
     debugLog("login", e);
   }
-},
+};
 $("btnLogout").onclick = async () => {
   await sb.auth.signOut();
   me = null;
   myProfile = null;
   showAuth();
   toast("Logged out");
-},
+};
 
 $("btnJoin").onclick = async () => {
   try {
@@ -1529,12 +1541,12 @@ $("btnJoin").onclick = async () => {
     toast(errText("join channel", e), "err", 4500);
     debugLog("channel.join", e);
   }
-},
+};
 
 $("btnShowChannelSettings").onclick = () => {
   updateChannelSettingsUI();
   $("channelSettings").scrollIntoView({ behavior: "smooth", block: "nearest" });
-},
+};
 
 $("btnRenameChannel").onclick = async () => {
   try {
@@ -1544,7 +1556,7 @@ $("btnRenameChannel").onclick = async () => {
     $("channelSettingsMsg").textContent = errText("rename channel", e);
     debugLog("channel.rename", e);
   }
-},
+};
 
 $("btnDeleteChannel").onclick = async () => {
   try {
@@ -1553,7 +1565,7 @@ $("btnDeleteChannel").onclick = async () => {
     $("channelSettingsMsg").textContent = errText("delete channel", e);
     debugLog("channel.delete", e);
   }
-},
+};
 
 $("channelPrivateToggle").onchange = async () => {
   try {
@@ -1565,7 +1577,7 @@ $("channelPrivateToggle").onchange = async () => {
     $("channelSettingsMsg").textContent = errText("channel privacy", e);
     debugLog("channel.privacy", e);
   }
-},
+};
 
 $("channelLockToggle").onchange = async () => {
   try {
@@ -1576,7 +1588,7 @@ $("channelLockToggle").onchange = async () => {
     $("channelSettingsMsg").textContent = errText("channel lock", e);
     debugLog("channel.lock", e);
   }
-},
+};
 
 $("btnAddLockBypass").onclick = async () => {
   try {
@@ -1585,7 +1597,7 @@ $("btnAddLockBypass").onclick = async () => {
     $("channelSettingsMsg").textContent = errText("add lock bypass user", e);
     debugLog("channel.lockBypass", e);
   }
-},
+};
 
 $("btnAddPrivateMember").onclick = async () => {
   try {
@@ -1594,7 +1606,7 @@ $("btnAddPrivateMember").onclick = async () => {
     $("channelSettingsMsg").textContent = errText("add private user", e);
     debugLog("channel.member", e);
   }
-},
+};
 
 $("btnSaveProfile").onclick = async () => {
   try {
@@ -1618,7 +1630,7 @@ $("btnSaveProfile").onclick = async () => {
     toast(errText("profile", e), "err", 4500);
     debugLog("profile", e);
   }
-},
+};
 
 $("btnSend").onclick = async () => {
   try {
@@ -1664,7 +1676,7 @@ $("btnSend").onclick = async () => {
     toast(errText("send", e), "err", 5000);
     debugLog("send", e);
   }
-},
+};
 
 $("btnPublishAnn").onclick = async () => {
   try {
@@ -1673,7 +1685,7 @@ $("btnPublishAnn").onclick = async () => {
   } catch (e) {
     toast(errText("publish ann", e), "err", 4500);
   }
-},
+};
 
 $("btnAddFilter").onclick = async () => {
   try {
@@ -1682,7 +1694,7 @@ $("btnAddFilter").onclick = async () => {
   } catch (e) {
     toast(errText("add filter", e), "err", 4500);
   }
-},
+};
 
 $("btnMute").onclick = async ()=>{
   try{
@@ -1694,7 +1706,7 @@ $("btnMute").onclick = async ()=>{
     setAdminMsg(`Muted @${uname} for ${sec}s`);
     toast("User muted");
   }catch(e){ setAdminMsg(errText("mute user", e), true); }
-},
+};
 
 $("btnUnmute").onclick = async ()=>{
   try{
@@ -1705,7 +1717,7 @@ $("btnUnmute").onclick = async ()=>{
     setAdminMsg(`Unmuted @${uname}`);
     toast("User unmuted");
   }catch(e){ setAdminMsg(errText("unmute user", e), true); }
-},
+};
 
 $("btnBan").onclick = async ()=>{
   try{
@@ -1716,7 +1728,7 @@ $("btnBan").onclick = async ()=>{
     setAdminMsg(`Banned @${uname}`);
     toast("User banned");
   }catch(e){ setAdminMsg(errText("ban user", e), true); }
-},
+};
 
 $("btnUnban").onclick = async ()=>{
   try{
@@ -1727,7 +1739,7 @@ $("btnUnban").onclick = async ()=>{
     setAdminMsg(`Unbanned @${uname}`);
     toast("User unbanned");
   }catch(e){ setAdminMsg(errText("unban user", e), true); }
-},
+};
 
 $("btnGiveAdmin").onclick = async () => {
   try {
@@ -1739,7 +1751,7 @@ $("btnGiveAdmin").onclick = async () => {
     $("rootAdminMsg").textContent = errText("give admin", e);
     debugLog("root.giveAdmin", e);
   }
-},
+}
 
 $("btnRemoveAdmin").onclick = async () => {
   try {
@@ -1751,7 +1763,7 @@ $("btnRemoveAdmin").onclick = async () => {
     $("rootAdminMsg").textContent = errText("remove admin", e);
     debugLog("root.removeAdmin", e);
   }
-},
+};
 /* remember to lick and sub */
 function subscribeSideChannels() {
   sb.channel("ann-live")
@@ -1772,12 +1784,11 @@ function subscribeSideChannels() {
 
   sb.channel("channel-lock-bypass-live")
     .on("postgres_changes", { event: "*", schema: "public", table: "channel_lock_bypass" }, () => loadRooms())
-    .subscribe()
     .on("postgres_changes", { event: "*", schema: "public", table: "channel_members" }, () => {
-        loadRooms()
-        if (currentChannel?.is_private && canManageChannel()) {
-         loadChannelMembers().catch(e => debugLog("channel.members.live", e));
-        }
+      loadRooms();
+      if (currentChannel?.is_private && canManageChannel()) {
+        loadChannelMembers().catch(e => debugLog("channel.members.live", e));
+      }
     })
     .subscribe();
 
