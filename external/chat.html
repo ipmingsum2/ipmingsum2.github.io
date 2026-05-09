@@ -1,4 +1,5 @@
 
+
 <!doctype html>
 
 <html lang="en">
@@ -58,8 +59,8 @@
     .titlebar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
     .chip{display:inline-block;font-size:11px;padding:3px 8px;border-radius:999px;background:var(--chip)}
     .chip.admin{background:#5f4115;color:#ffdca0}
-    .layout{display:grid;grid-template-columns:1fr;gap:10px}
-    @media(min-width:980px){.layout{grid-template-columns:2fr 1fr}}
+    .layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,1fr);gap:10px}
+    @media(max-width:760px){.layout{grid-template-columns:1fr}}
     .chat{height:56vh;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:10px;background:#0d172c;display:flex;flex-direction:column;gap:8px}
     .msg{border:1px solid #2b406a;background:#17274a;border-radius:10px;padding:8px;position:relative}
     .msg.deleted{opacity:.65;background:#2a3248}
@@ -575,7 +576,6 @@ async function ensureChannelByInput(inputName) {
     .select(channelColumns)
     .select("id,name,created_by,is_private,is_locked,sort_order,created_at")
     .select("id,name,created_by,is_private,sort_order,created_at")
-    .select("id,name,created_by,is_private,created_at")
     .eq("id", requestedSlug)
     .maybeSingle();
   if (q.error) throw q.error;
@@ -584,7 +584,6 @@ async function ensureChannelByInput(inputName) {
   q = await sb.from("channels")
     .select(channelColumns)
     .select("id,name,created_by,is_private,is_locked,sort_order,created_at")
-    .select("id,name,created_by,is_private,sort_order,created_at")
     .select("id,name,created_by,is_private,created_at")
     .ilike("name", requestedName)
     .limit(1)
@@ -617,7 +616,7 @@ function updateChannelSettingsUI() {
   const canManage = canManageChannel();
   $("btnShowChannelSettings").classList.toggle("hidden", !canManage);
   settings.classList.toggle("hidden", !canManage);
-  $("channelSettingsInfo").textContent = `${currentChannel.is_private ? "Private" : "Public"}${currentChannel.is_locked ? " • Locked" : ""} channel: #${currentChannel.name}`;
+  $("channelSettingsInfo").textContent = `${currentChannel.is_private ? "Private" : "Public"}${currentChannel.is_locked ? " Locked" : ""} channel: #${currentChannel.name}`;
   $("channelRenameInput").value = currentChannel.name;
   $("channelPrivateToggle").checked = !!currentChannel.is_private;
   $("channelLockToggle").checked = !!currentChannel.is_locked;
@@ -888,8 +887,6 @@ function messageHTML(m) {
   const canDelete = (me && m.user_id === me.id) || isAdmin;
   const canEdit = (me && m.user_id === me.id) || isAdmin;
   const avatar = p.avatar_url ? `<img class="avatar" src="${esc(p.avatar_url)}">` : "";
-  const rich = parseRich(m.text || "");
-  const img = m.image_url ? attachmentHTML(m.image_url) : "";
   const rich = m.deleted ? `<i>[deleted]</i>` : parseRich(m.text || "");
   const img = (!m.deleted && m.image_url) ? attachmentHTML(m.image_url) : "";
   const dot = isAdmin ? `<div class="admin-dot" data-dot="${m.id}">\u2026</div>` : "";
@@ -1094,13 +1091,8 @@ async function moveChannelInOrder(channelId, direction, channels) {
 
 async function loadRooms() {
   const q = await sb.from("channels")
-    .select("id,name,created_by,is_private,created_at")
     .select("id,name,created_by,is_private,is_locked,sort_order,created_at")
-    .select("id,name,created_by,is_private,sort_order,created_at")
     .order("sort_order", { ascending: true, nullsFirst: false })
-async function loadRooms() {
-  const q = await sb.from("channels")
-    .select("id,name,created_by,is_private,created_at")
     .order("name", { ascending: true });
 
   if (q.error) {
@@ -1111,22 +1103,17 @@ async function loadRooms() {
   const channels = q.data || [];
   const isAdmin = myProfile?.role === "admin";
   const box = $("roomList");
-  box.innerHTML = channels.length ? channels.map((ch, index) => {
-    const manageable = isAdmin || ch.created_by === me?.id;
-  const box = $("roomList");
   box.innerHTML = channels.length ? channels.map(ch => {
-    const manageable = myProfile?.role === "admin" || ch.created_by === me?.id;
+    const manageable = isAdmin || ch.created_by === me?.id;
     return `
       <div class="list-item">
         <div>
-          <div><b>${ch.is_private ? '<span class="lock">🔒</span>' : ''}#${esc(ch.name)}</b></div>
-          <div class="muted">${ch.is_private ? "Private" : "Public"}${ch.is_locked ? " • Locked" : ""}${manageable ? " • manageable" : ""}</div>
-          <div class="muted">${ch.is_private ? "Private" : "Public"}${manageable ? " • manageable" : ""}</div>
+          <div><b>${ch.is_private ? '<span class="lock">Private</span>' : ''}#${esc(ch.name)}</b></div>
+          <div class="muted">${ch.is_private ? "Private" : "Public"}${ch.is_locked ? " Locked" : ""}${manageable ? " manageable" : ""}</div>
         </div>
         <div class="room-actions">
           <button class="ghost" data-open-channel="${esc(ch.id)}">Open</button>
         </div>
-        <div><button class="ghost" data-open-channel="${esc(ch.id)}">Open</button></div>
       </div>
     `;
   }).join("") : `<div class="muted">No rooms yet.</div>`;
