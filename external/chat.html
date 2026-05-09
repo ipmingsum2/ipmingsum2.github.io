@@ -1504,7 +1504,10 @@ $("btnLogin").onclick = async () => {
     localStorage.removeItem("pending_display");
 
     showApp();
-    await initializeChatAfterAuth();
+    await loadFilters();
+    await loadAnnouncements();
+    await joinRoom();
+    await loadRooms();
     toast("Login success");
   } catch (e) {
     setAuthMsg(errText("login", e), true);
@@ -1806,7 +1809,10 @@ function subscribeSideChannels() {
     myProfile = await ensureProfileAfterLogin(me);
     showApp();
     subscribeSideChannels();
-    await initializeChatAfterAuth();
+    await loadFilters();
+    await loadAnnouncements();
+    await joinRoom();
+    await loadRooms();
   } catch (e) {
     debugLog("init", e);
     showAuth();
