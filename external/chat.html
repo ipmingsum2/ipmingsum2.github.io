@@ -1,14 +1,11 @@
-
-
 <!doctype html>
-
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>CHATBOX</title>
-<!-- remove below when error is fixed -->
-	<meta http-equiv="refresh" content="0;url=https://ipmingsum2.github.io/500.html" />
+  <!-- uncomment below if some errors occur -->
+  <!-- <meta http-equiv="refresh" content="0;url=https://ipmingsum2.github.io/500.html" /> -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
@@ -43,8 +40,8 @@
       0% {background-position: 0 0    }
       100% {background-position: -500px 0}
   }
-    body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui}
-    .app{max-width:1200px;margin:0 auto;padding:12px}
+    body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui;overflow-x:auto}
+    .app{width:max(100%,760px);max-width:1200px;margin:0 auto;padding:12px}
     .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px}
     .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
     .col{display:flex;flex-direction:column;gap:8px}
@@ -60,8 +57,7 @@
     .titlebar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
     .chip{display:inline-block;font-size:11px;padding:3px 8px;border-radius:999px;background:var(--chip)}
     .chip.admin{background:#5f4115;color:#ffdca0}
-    .layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,1fr);gap:10px}
-    @media(max-width:760px){.layout{grid-template-columns:1fr}}
+    .layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(240px,320px);gap:10px}
     .chat{height:56vh;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:10px;background:#0d172c;display:flex;flex-direction:column;gap:8px}
     .msg{border:1px solid #2b406a;background:#17274a;border-radius:10px;padding:8px;position:relative}
     .msg.deleted{opacity:.65;background:#2a3248}
@@ -167,10 +163,6 @@
           <button id="btnRenameChannel" class="ghost">Rename</button>
           <button id="btnDeleteChannel" class="danger">Delete Channel</button>
         </div>
-        <div id="privateMemberControls" class="row hidden" style="margin-top:8px">
-          <input id="privateMemberUsername" placeholder="Add username to private channel">
-          <button id="btnAddPrivateMember" class="ghost">Add User</button>
-        </div>
         <div id="channelLockControls" style="margin-top:8px">
           <div class="row" style="justify-content:space-between">
             <div>
@@ -186,6 +178,7 @@
             <input id="lockBypassUsername" placeholder="Add username who can talk while locked">
             <button id="btnAddLockBypass" class="ghost">Add Lock Bypass</button>
           </div>
+        </div>
         <div id="privateMemberControls" class="hidden" style="margin-top:8px">
           <div class="row">
             <input id="privateMemberUsername" placeholder="Add username to private channel">
@@ -193,9 +186,6 @@
           </div>
           <div class="muted" style="margin-top:8px">Private members</div>
           <div id="privateMemberList" class="list" style="margin-top:6px"></div>
-        <div id="privateMemberControls" class="row hidden" style="margin-top:8px">
-          <input id="privateMemberUsername" placeholder="Add username to private channel">
-          <button id="btnAddPrivateMember" class="ghost">Add User</button>
         </div>
         <div id="channelSettingsMsg" class="muted" style="margin-top:6px"></div>
       </div>
@@ -352,6 +342,21 @@ function fmt(ts) {
   catch { return ts; }
 }
 
+function normalizeIframeSrc(src) {
+  const url = new URL(src, location.href);
+  if (!["http:", "https:"].includes(url.protocol)) throw new Error("bad protocol");
+  if (url.hostname === "youtu.be") {
+    return `https://www.youtube.com/embed/${encodeURIComponent(url.pathname.slice(1))}`;
+  }
+  if (url.hostname.endsWith("youtube.com") && url.pathname === "/watch" && url.searchParams.has("v")) {
+    return `https://www.youtube.com/embed/${encodeURIComponent(url.searchParams.get("v"))}`;
+  }
+  if (url.hostname.endsWith("youtube.com") && url.pathname.startsWith("/shorts/")) {
+    return `https://www.youtube.com/embed/${encodeURIComponent(url.pathname.split("/")[2] || "")}`;
+  }
+  return url.href;
+}
+
 function iframeEmbedHTML(rawAttrs = "") {
   const attrs = {};
   rawAttrs.replace(/(src|width|height)="([^"]*)"/gi, (_, key, value) => {
@@ -361,16 +366,14 @@ function iframeEmbedHTML(rawAttrs = "") {
 
   let src = attrs.src || "https://www.youtube.com/embed/dQw4w9WgXcQ";
   try {
-    const url = new URL(src, location.href);
-    if (!["http:", "https:"].includes(url.protocol)) throw new Error("bad protocol");
-    src = url.href;
+    src = normalizeIframeSrc(src);
   } catch {
     src = "https://www.youtube.com/embed/dQw4w9WgXcQ";
   }
 
   const width = Math.min(Math.max(parseInt(attrs.width || "560", 10) || 560, 200), 640);
   const height = Math.min(Math.max(parseInt(attrs.height || "315", 10) || 315, 120), 360);
-  return `<iframe class="iframe-msg" src="${esc(src)}" width="${width}" height="${height}" loading="lazy" allowfullscreen referrerpolicy="no-referrer"></iframe>`;
+  return `<iframe class="iframe-msg" src="${esc(src)}" width="${width}" height="${height}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
 }
 
 function parseRich(text = "") {
@@ -378,17 +381,16 @@ function parseRich(text = "") {
   const md = marked.parse(withIframes, { breaks: true, gfm: true });
   const clean = DOMPurify.sanitize(md, {
     ADD_TAGS: ["u", "iframe"],
-    ADD_ATTR: ["src", "width", "height", "loading", "allowfullscreen", "referrerpolicy", "class"]
+    ADD_ATTR: ["src", "width", "height", "loading", "allow", "allowfullscreen", "referrerpolicy", "class"]
   });
 
   const template = document.createElement("template");
   template.innerHTML = clean;
   template.content.querySelectorAll("iframe").forEach(frame => {
     try {
-      const src = frame.getAttribute("src") || "";
-      const url = new URL(src);
-      if (!["http:", "https:"].includes(url.protocol)) throw new Error("bad protocol");
-      frame.setAttribute("src", url.href);
+      const src = normalizeIframeSrc(frame.getAttribute("src") || "");
+      frame.setAttribute("src", src);
+      frame.setAttribute("referrerpolicy", "strict-origin-when-cross-origin");
     } catch {
       frame.remove();
     }
@@ -537,7 +539,11 @@ function attachmentHTML(url) {
 
 async function loadProfileMap() {
   const q = await sb.from("profiles").select("id,username,display_name,avatar_url,role");
-  if (q.error) throw q.error;
+  if (q.error) {
+    debugLog("profiles.load", q.error);
+    profileMap = new Map();
+    return;
+  }
   profileMap = new Map((q.data || []).map(p => [p.id, p]));
 }
 
@@ -571,38 +577,44 @@ async function canEnterChannel(ch) {
 async function ensureChannelByInput(inputName) {
   const requestedName = (inputName || "lobby").trim().slice(0, 64) || "lobby";
   const requestedSlug = channelSlug(requestedName);
-  const channelColumns = "id,name,created_by,is_private,created_at";
+  const channelColumns = "id,name,created_by,is_private,is_locked,sort_order,created_at";
+  const fallbackChannel = () => ({
+    id: requestedSlug,
+    name: requestedName,
+    created_by: null,
+    is_private: false,
+    is_locked: false,
+    sort_order: null
+  });
 
   let q = await sb.from("channels")
     .select(channelColumns)
-    .select("id,name,created_by,is_private,is_locked,sort_order,created_at")
-    .select("id,name,created_by,is_private,sort_order,created_at")
     .eq("id", requestedSlug)
     .maybeSingle();
-  if (q.error) throw q.error;
+  if (q.error) {
+    debugLog("channel.lookup.id", q.error);
+    return fallbackChannel();
+  }
   if (q.data) return q.data;
 
   q = await sb.from("channels")
     .select(channelColumns)
-    .select("id,name,created_by,is_private,is_locked,sort_order,created_at")
-    .select("id,name,created_by,is_private,created_at")
     .ilike("name", requestedName)
     .limit(1)
     .maybeSingle();
-  if (q.error) throw q.error;
+  if (q.error) {
+    debugLog("channel.lookup.name", q.error);
+    return fallbackChannel();
+  }
   if (q.data) return q.data;
 
   const ins = await sb.from("channels")
     .insert({ id: requestedSlug, name: requestedName, created_by: me.id, is_private: false, is_locked: false, sort_order: Date.now() })
-    .select("id,name,created_by,is_private,is_locked,sort_order,created_at")
-    .insert({ id: requestedSlug, name: requestedName, created_by: me.id, is_private: false, sort_order: Date.now() })
-    .select("id,name,created_by,is_private,sort_order,created_at")
-    .insert({ id: requestedSlug, name: requestedName, created_by: me.id, is_private: false })
     .select(channelColumns)
     .single();
   if (ins.error) {
-    if (ins.error.code === "23505") throw new Error("This channel is private or already exists.");
-    throw ins.error;
+    debugLog("channel.create", ins.error);
+    return fallbackChannel();
   }
   return ins.data;
 }
@@ -953,16 +965,19 @@ async function loadMessages() {
   await loadProfileMap();
 
   const q = await sb.from("messages")
-    .select("id,room,user_id,text,image_url,deleted,created_at")
+    .select("id,room,user_id,text,image_url,created_at")
     .eq("room", room)
-    .eq("deleted", false)
     .order("created_at", { ascending: true })
     .limit(400);
 
-  if (q.error) throw q.error;
-
   const chat = $("chat");
   chat.innerHTML = "";
+
+  if (q.error) {
+    debugLog("messages.load", q.error);
+    chat.innerHTML = `<div class="msg"><div class="body">Could not load messages: ${esc(q.error.message || "permission denied")}</div></div>`;
+    throw q.error;
+  }
 
   const map = new Map();
   (q.data || []).forEach(m => {
@@ -980,6 +995,7 @@ async function joinRoom() {
   const ch = await ensureChannelByInput(requestedRoom);
   const allowed = await canEnterChannel(ch);
   if (!allowed) {
+    $("chat").innerHTML = `<div class="msg"><div class="body">This channel is private.</div></div>`;
     toast("This channel is private.", "err", 4500);
     return;
   }
@@ -1110,7 +1126,7 @@ async function loadRooms() {
       <div class="list-item">
         <div>
           <div><b>${ch.is_private ? '<span class="lock">Private</span>' : ''}#${esc(ch.name)}</b></div>
-          <div class="muted">${ch.is_private ? "Private" : "Public"}${ch.is_locked ? " Locked" : ""}${manageable ? " manageable" : ""}</div>
+          <div class="muted">${[ch.is_private ? "Private" : "Public", ...(manageable ? ["Manageable"] : []), ...(ch.is_locked ? ["Locked"] : [])].join(" &middot; ")}</div>
         </div>
         <div class="room-actions">
           <button class="ghost" data-open-channel="${esc(ch.id)}">Open</button>
@@ -1281,9 +1297,14 @@ async function publishAnnouncement() {
 /* filters */
 async function loadFilters() {
   const q = await sb.from("message_filters").select("*").order("created_at", { ascending: false });
-  if (q.error) throw q.error;
+  if (q.error) {
+    debugLog("filters.load", q.error);
+    filters = [];
+    if (myProfile?.role === "admin") renderFilterList();
+    return;
+  }
   filters = q.data || [];
-  renderFilterList();
+  if (myProfile?.role === "admin") renderFilterList();
 }
 
 function renderFilterList() {
@@ -1515,10 +1536,12 @@ $("btnLogin").onclick = async () => {
     localStorage.removeItem("pending_display");
 
     showApp();
-    await loadFilters();
-    await loadAnnouncements();
-    await joinRoom();
-    await loadRooms();
+    try {
+      subscribeSideChannels();
+    } catch (subErr) {
+      debugLog("sideChannels.subscribe", subErr);
+    }
+    await initializeChatAfterAuth();
     toast("Login success");
   } catch (e) {
     setAuthMsg(errText("login", e), true);
@@ -1818,11 +1841,12 @@ function subscribeSideChannels() {
     me = s.data.session.user;
     myProfile = await ensureProfileAfterLogin(me);
     showApp();
-    subscribeSideChannels();
-    await loadFilters();
-    await loadAnnouncements();
-    await joinRoom();
-    await loadRooms();
+    try {
+      subscribeSideChannels();
+    } catch (subErr) {
+      debugLog("sideChannels.subscribe", subErr);
+    }
+    await initializeChatAfterAuth();
   } catch (e) {
     debugLog("init", e);
     showAuth();
