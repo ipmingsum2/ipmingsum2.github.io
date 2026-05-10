@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Google Fluid Background</title>
+  <style>
+    :root {
+      --background-color: #05070c;
+      --panel: rgba(8, 13, 24, 0.86);
+      --panel-strong: rgba(8, 13, 24, 0.96);
+      --line: rgba(255, 255, 255, 0.16);
+      --text: #f8fafc;
+      --muted: #a6b3c8;
+      --blue: #4285f4;
+      --red: #ea4335;
+      --yellow: #fbbc05;
+      --green: #34a853;
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      overscroll-behavior: none;
+      background: var(--background-color);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      touch-action: none;
+    }
+
+    canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      width: 100vw;
+      height: 100vh;
+      display: block;
+      background: var(--background-color);
+      cursor: crosshair;
+      filter: saturate(1.45) contrast(1.08);
+    }
+
+    .settings-toggle,
+    .settings-panel {
+      position: fixed;
+      z-index: 3;
+      pointer-events: auto;
+    }
+
+    .settings-toggle {
+      top: max(14px, env(safe-area-inset-top));
+      right: max(14px, env(safe-area-inset-right));
+      width: 48px;
+      height: 48px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      color: var(--text);
+      background: var(--panel-strong);
+      box-shadow: 0 16px 42px rgba(0, 0, 0, 0.38);
+      cursor: pointer;
+      font-size: 1.35rem;
+      backdrop-filter: blur(18px) saturate(1.35);
+      -webkit-backdrop-filter: blur(18px) saturate(1.35);
+    }
+
+    .settings-panel {
+      top: max(74px, calc(env(safe-area-inset-top) + 74px));
+      right: max(14px, env(safe-area-inset-right));
+      width: min(360px, calc(100vw - 28px));
+      max-height: min(650px, calc(100svh - 96px));
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: var(--panel);
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+      backdrop-filter: blur(20px) saturate(1.45);
+      -webkit-backdrop-filter: blur(20px) saturate(1.45);
+      transform-origin: top right;
+      transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s ease;
+    }
+
+    .settings-panel.hidden {
+      opacity: 0;
+      transform: scale(0.96) translateY(-8px);
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .settings-header {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      padding: 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      background: var(--panel-strong);
+    }
+
+    .settings-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0;
+      font-size: 1rem;
+      letter-spacing: -0.02em;
+    }
+
+    .settings-title::before {
+      content: "";
+      width: 14px;
+      height: 14px;
+      border-radius: 999px;
+      background: conic-gradient(from 0deg, var(--blue), var(--red), var(--yellow), var(--green), var(--blue));
+      box-shadow: 0 0 22px rgba(66, 133, 244, 0.88);
+    }
+
+    .settings-body {
+      display: grid;
+      gap: 14px;
+      padding: 14px;
+    }
+
+    label,
+    .field {
+      display: grid;
+      gap: 7px;
+    }
+
+    .label-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: #dbe6ff;
+      font-size: 0.86rem;
+      font-weight: 800;
+    }
+
+    .value {
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+    }
+
+    input,
+    select,
+    button {
+      font: inherit;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--blue);
+    }
+
+    input[type="color"] {
+      width: 100%;
+      height: 44px;
+      padding: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.09);
+      cursor: pointer;
+    }
+
+    select,
+    button {
+      min-height: 42px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 14px;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.09);
+    }
+
+    select {
+      width: 100%;
+      padding: 8px 10px;
+      background-color: rgba(3, 7, 18, 0.78);
+    }
+
+    button {
+      padding: 9px 12px;
+      cursor: pointer;
+      font-weight: 850;
+      transition: transform 0.16s ease, background 0.16s ease;
+    }
+
+    button:hover { transform: translateY(-1px); background: rgba(255, 255, 255, 0.14); }
+    button:active { transform: translateY(0); }
+
+    .button-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 9px;
+    }
+
+    .primary {
+      border: none;
+      color: #06111f;
+      background: linear-gradient(135deg, #8ab4f8, #34a853, #fbbc05);
+    }
+
+    .danger {
+      border: none;
+      color: #170b08;
+      background: linear-gradient(135deg, rgba(234, 67, 53, 0.96), rgba(251, 188, 5, 0.96));
+    }
+
+    .hint {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.45;
+    }
+
+    @media (max-width: 720px) {
+      canvas { cursor: none; }
+      .settings-toggle {
+        width: 46px;
+        height: 46px;
+      }
+      .settings-panel {
+        left: max(14px, env(safe-area-inset-left));
+        right: max(14px, env(safe-area-inset-right));
+        width: auto;
+        max-height: min(70svh, calc(100svh - 90px));
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="fluid" aria-label="Colorful fluid background that follows mouse or touch movement"></canvas>
+
+  <button class="settings-toggle" id="settingsToggle" type="button" aria-label="Open fluid background settings" aria-expanded="false">⚙</button>
+
+  <aside class="settings-panel hidden" id="settingsPanel" aria-label="Fluid background settings">
+    <div class="settings-header">
+      <h1 class="settings-title">Fluid background settings</h1>
+    </div>
+    <div class="settings-body">
+      <label>
+        <span class="label-row"><span>Background color</span><span class="value" id="bgValue">#05070c</span></span>
+        <input id="backgroundColor" type="color" value="#05070c" />
+      </label>
+      <label>
+        <span class="label-row"><span>Fluid colors</span></span>
+        <select id="colorMode">
+          <option value="google">Google colors</option>
+          <option value="rainbow">Rainbow</option>
+          <option value="neon">Neon candy</option>
+          <option value="custom">Your color</option>
+        </select>
+      </label>
+      <label>
+        <span class="label-row"><span>Your fluid color</span><span class="value" id="fluidValue">#00d4ff</span></span>
+        <input id="fluidColor" type="color" value="#00d4ff" />
+      </label>
+      <label>
+        <span class="label-row"><span>Particles</span><span class="value" id="particleValue">1300</span></span>
+        <input id="particles" type="range" min="300" max="2400" step="50" value="1300" />
+      </label>
+      <label>
+        <span class="label-row"><span>Follow strength</span><span class="value" id="forceValue">1.65</span></span>
+        <input id="force" type="range" min="0.35" max="4" step="0.05" value="1.65" />
+      </label>
+      <label>
+        <span class="label-row"><span>Trail length</span><span class="value" id="trailValue">0.105</span></span>
+        <input id="trail" type="range" min="0.025" max="0.28" step="0.005" value="0.105" />
+      </label>
+      <label>
+        <span class="label-row"><span>Fluid size</span><span class="value" id="sizeValue">28</span></span>
+        <input id="size" type="range" min="8" max="62" step="1" value="28" />
+      </label>
+      <div class="button-grid">
+        <button id="burst" class="primary" type="button">Color Burst</button>
+        <button id="clear" class="danger" type="button">Clear</button>
+      </div>
+      <p class="hint">This is only a background. Move your mouse or swipe anywhere on mobile to make the colorful fluid follow your touch.</p>
+    </div>
+  </aside>
+
+  <script>
+    const canvas = document.getElementById('fluid');
+    const ctx = canvas.getContext('2d', { alpha: false });
+    const controls = {
+      backgroundColor: document.getElementById('backgroundColor'),
+      colorMode: document.getElementById('colorMode'),
+      fluidColor: document.getElementById('fluidColor'),
+      particles: document.getElementById('particles'),
+      force: document.getElementById('force'),
+      trail: document.getElementById('trail'),
+      size: document.getElementById('size')
+    };
+    const labels = {
+      bgValue: document.getElementById('bgValue'),
+      fluidValue: document.getElementById('fluidValue'),
+      particleValue: document.getElementById('particleValue'),
+      forceValue: document.getElementById('forceValue'),
+      trailValue: document.getElementById('trailValue'),
+      sizeValue: document.getElementById('sizeValue')
+    };
+    const palettes = {
+      google: ['#4285f4', '#ea4335', '#fbbc05', '#34a853', '#8ab4f8'],
+      rainbow: ['#ff1744', '#ff9100', '#ffea00', '#00e676', '#00b0ff', '#651fff', '#d500f9'],
+      neon: ['#00f5ff', '#ff00e5', '#a3ff12', '#fffb00', '#ff3d71']
+    };
+    let width = 0;
+    let height = 0;
+    let dpr = 1;
+    let particles = [];
+    let lastTime = performance.now();
+    let colorShift = 0;
+    let backgroundRgb = hexToRgb(controls.backgroundColor.value);
+    const pointer = {
+      x: 0,
+      y: 0,
+      px: 0,
+      py: 0,
+      vx: 0,
+      vy: 0,
+      active: false
+    };
+
+    function numeric(name) {
+      return Number(controls[name].value);
+    }
+
+    function hexToRgb(hex) {
+      const clean = hex.replace('#', '');
+      const value = Number.parseInt(clean, 16);
+      return {
+        r: (value >> 16) & 255,
+        g: (value >> 8) & 255,
+        b: value & 255
+      };
+    }
+
+    function hexWithAlpha(hex, alpha) {
+      const rgb = hexToRgb(hex);
+      return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+    }
+
+    function palette() {
+      if (controls.colorMode.value === 'custom') {
+        const color = controls.fluidColor.value;
+        return [color, lighten(color, 45), lighten(color, -35), rotateColor(color)];
+      }
+      return palettes[controls.colorMode.value];
+    }
+
+    function lighten(hex, amount) {
+      const rgb = hexToRgb(hex);
+      const shift = channel => Math.max(0, Math.min(255, channel + amount));
+      return `#${[shift(rgb.r), shift(rgb.g), shift(rgb.b)].map(channel => channel.toString(16).padStart(2, '0')).join('')}`;
+    }
+
+    function rotateColor(hex) {
+      const rgb = hexToRgb(hex);
+      return `#${[rgb.g, rgb.b, rgb.r].map(channel => channel.toString(16).padStart(2, '0')).join('')}`;
+    }
+
+    function syncLabels() {
+      labels.bgValue.textContent = controls.backgroundColor.value;
+      labels.fluidValue.textContent = controls.fluidColor.value;
+      labels.particleValue.textContent = controls.particles.value;
+      labels.forceValue.textContent = numeric('force').toFixed(2);
+      labels.trailValue.textContent = numeric('trail').toFixed(3);
+      labels.sizeValue.textContent = controls.size.value;
+      document.documentElement.style.setProperty('--background-color', controls.backgroundColor.value);
+      backgroundRgb = hexToRgb(controls.backgroundColor.value);
+    }
+
+    function resize() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      pointer.x = pointer.px = width * 0.5;
+      pointer.y = pointer.py = height * 0.5;
+      fillBackground(1);
+      rebuildParticles();
+    }
+
+    function fillBackground(alpha) {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = `rgba(${backgroundRgb.r}, ${backgroundRgb.g}, ${backgroundRgb.b}, ${alpha})`;
+      ctx.fillRect(0, 0, width, height);
+    }
+
+    function makeParticle(index) {
+      const angle = Math.random() * Math.PI * 2;
+      const distance = Math.sqrt(Math.random()) * Math.min(width, height) * 0.28;
+      return {
+        x: pointer.x + Math.cos(angle) * distance,
+        y: pointer.y + Math.sin(angle) * distance,
+        vx: (Math.random() - 0.5) * 2.4,
+        vy: (Math.random() - 0.5) * 2.4,
+        mass: 0.6 + Math.random() * 1.8,
+        wobble: Math.random() * Math.PI * 2,
+        colorIndex: index % 7
+      };
+    }
+
+    function rebuildParticles() {
+      const target = numeric('particles');
+      if (particles.length > target) {
+        particles.length = target;
+      }
+      while (particles.length < target) {
+        particles.push(makeParticle(particles.length));
+      }
+    }
+
+    function fluidColor(index) {
+      const colors = palette();
+      return colors[(index + Math.floor(colorShift)) % colors.length];
+    }
+
+    function inject(x, y, strength = 1, burst = false) {
+      const count = burst ? Math.min(360, Math.floor(particles.length * 0.22)) : Math.min(120, Math.floor(particles.length * 0.075));
+      for (let i = 0; i < count; i += 1) {
+        const p = particles[(Math.random() * particles.length) | 0];
+        const angle = Math.random() * Math.PI * 2;
+        const distance = Math.random() * (burst ? 115 : 54);
+        p.x = x + Math.cos(angle) * distance;
+        p.y = y + Math.sin(angle) * distance;
+        p.vx += Math.cos(angle) * strength * (burst ? 10 : 4.8) + pointer.vx * 0.12;
+        p.vy += Math.sin(angle) * strength * (burst ? 10 : 4.8) + pointer.vy * 0.12;
+        p.colorIndex = (i + Math.floor(colorShift)) % palette().length;
+      }
+    }
+
+    function updatePointer(clientX, clientY) {
+      pointer.px = pointer.x;
+      pointer.py = pointer.y;
+      pointer.x = clientX;
+      pointer.y = clientY;
+      pointer.vx = pointer.x - pointer.px;
+      pointer.vy = pointer.y - pointer.py;
+      pointer.active = true;
+      inject(pointer.x, pointer.y, Math.max(0.55, Math.hypot(pointer.vx, pointer.vy) / 16), false);
+    }
+
+    function handlePointer(event) {
+      event.preventDefault();
+      const point = event.touches ? event.touches[0] : event;
+      if (!point) return;
+      updatePointer(point.clientX, point.clientY);
+    }
+
+    window.addEventListener('pointermove', handlePointer, { passive: false });
+    window.addEventListener('pointerdown', event => {
+      handlePointer(event);
+      inject(pointer.x, pointer.y, 2.2, true);
+    }, { passive: false });
+    window.addEventListener('pointerup', () => { pointer.active = false; });
+    window.addEventListener('pointercancel', () => { pointer.active = false; });
+    window.addEventListener('touchmove', handlePointer, { passive: false });
+    window.addEventListener('touchstart', handlePointer, { passive: false });
+    window.addEventListener('touchend', () => { pointer.active = false; });
+    window.addEventListener('resize', resize);
+
+    function step(time) {
+      const dt = Math.min(34, time - lastTime) / 16.6667;
+      lastTime = time;
+      colorShift += 0.018 * dt;
+      fillBackground(numeric('trail'));
+
+      const force = numeric('force');
+      const baseSize = numeric('size');
+      const speed = Math.hypot(pointer.vx, pointer.vy);
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.shadowBlur = baseSize * 2.15;
+
+      for (let i = 0; i < particles.length; i += 1) {
+        const p = particles[i];
+        const dx = pointer.x - p.x;
+        const dy = pointer.y - p.y;
+        const distanceSquared = dx * dx + dy * dy + 110;
+        const distance = Math.sqrt(distanceSquared);
+        const follow = (force * 1850 * p.mass) / distanceSquared;
+        const swirl = Math.sin(time * 0.0014 + p.wobble + distance * 0.01) * force * 0.48;
+
+        p.vx += (dx / distance) * follow + (-dy / distance) * swirl;
+        p.vy += (dy / distance) * follow + (dx / distance) * swirl;
+        p.vx *= 0.966;
+        p.vy *= 0.966;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+
+        if (p.x < -90) p.x = width + 80;
+        if (p.x > width + 90) p.x = -80;
+        if (p.y < -90) p.y = height + 80;
+        if (p.y > height + 90) p.y = -80;
+
+        const size = baseSize * (0.34 + p.mass * 0.36) * (1 + Math.min(speed, 95) / 210);
+        const color = fluidColor(p.colorIndex);
+        const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, size);
+        gradient.addColorStop(0, hexWithAlpha(color, 0.95));
+        gradient.addColorStop(0.42, hexWithAlpha(color, 0.5));
+        gradient.addColorStop(1, hexWithAlpha(color, 0));
+        ctx.shadowColor = color;
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+      requestAnimationFrame(step);
+    }
+
+    Object.values(controls).forEach(control => {
+      control.addEventListener('input', () => {
+        syncLabels();
+        if (control === controls.particles) rebuildParticles();
+        if (control === controls.backgroundColor) fillBackground(1);
+      });
+    });
+
+    document.getElementById('settingsToggle').addEventListener('click', event => {
+      const panel = document.getElementById('settingsPanel');
+      const isHidden = panel.classList.toggle('hidden');
+      event.currentTarget.setAttribute('aria-expanded', String(!isHidden));
+    });
+    document.getElementById('burst').addEventListener('click', () => inject(pointer.x, pointer.y, 2.7, true));
+    document.getElementById('clear').addEventListener('click', () => {
+      particles = [];
+      rebuildParticles();
+      fillBackground(1);
+    });
+
+    syncLabels();
+    resize();
+    inject(width * 0.5, height * 0.5, 2.4, true);
+    requestAnimationFrame(step);
+  </script>
+</body>
+</html>
