@@ -8,6 +8,8 @@ Play games that I made!
 
 [!button Cues and Hues](/game/c-and-h.html)
 
+[!button Google Fluid](/game/google-fluid.html)
+
 ## External
 
 Useful things!
