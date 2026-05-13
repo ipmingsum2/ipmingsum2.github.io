@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>CHATBOX</title>
   <!-- uncomment below if some errors occur -->
-   <meta http-equiv="refresh" content="0;url=https://ipmingsum2.github.io/500.html" />
+  <!-- <meta http-equiv="refresh" content="0;url=https://ipmingsum2.github.io/500.html" /> -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
@@ -324,15 +324,7 @@ function esc(s = "") {
   }[m]));
 }
 
-function isChannelPolicyRecursionError(e) {
-  const msg = String(e?.message || e?.details || e?.hint || "").toLowerCase();
-  return msg.includes("infinite recursion") && msg.includes("channel_members");
-}
-
 function errText(ctx, e) {
-  if (isChannelPolicyRecursionError(e)) {
-    return `${ctx}: Supabase RLS is recursively reading channel_members. Run external/supabase-chat-rls.sql in the Supabase SQL editor to replace the channel policies.`;
-  }
   return `${ctx}: ${e?.message || JSON.stringify(e)}`;
 }
 
@@ -869,9 +861,8 @@ function addAdminMenu(x, y, msg){
 
       if(act === "mute"){
         const sec = Number(prompt("Mute seconds?", "60") || 60);
-        const reason = prompt("Mute reason?", "No reason provided") || "No reason provided";
-        await adminMuteUser(msg.user_id, sec, reason);
-        toast(`Muted @${username} for ${sec}s. Reason: ${reason}`, "ok");
+        await adminMuteUser(msg.user_id, sec);
+        toast(`Muted @${username} for ${sec}s`, "ok");
       }
 
       if(act === "unmute"){
@@ -880,9 +871,8 @@ function addAdminMenu(x, y, msg){
       }
 
       if(act === "ban"){
-        const reason = prompt("Ban reason?", "No reason provided") || "No reason provided";
-        await adminBanUser(msg.user_id, reason);
-        toast(`Banned @${username}. Reason: ${reason}`, "ok");
+        await adminBanUser(msg.user_id);
+        toast(`Banned @${username}`, "ok");
       }
 
       if(act === "unban"){
@@ -1405,37 +1395,24 @@ async function setUserAdminRole(username, makeAdmin) {
   return target;
 }
 
-async function setUserAdminRole(username, makeAdmin) {
-  await requireRootOwner();
-  const target = await getUserProfileByUsername(username);
-  if (target.username === "root" && !makeAdmin) throw new Error("Cannot remove admin from @root");
-
-  const q = await sb.from("profiles")
-    .update({ role: makeAdmin ? "admin" : "user" })
-    .eq("id", target.id);
-
-  if (q.error) throw q.error;
-  return target;
-}
-
-async function adminBanUser(userId, reason = "No reason provided"){
+async function adminBanUser(userId){
   await requireAdmin();
   const q = await sb.from("user_bans").upsert({
     user_id: userId,
-    reason: reason || "No reason provided",
+    reason: "instant admin ban",
     created_at: new Date().toISOString(),
     created_by: me.id
   });
   if(q.error) throw q.error;
 }
 
-async function adminMuteUser(userId, seconds=60, reason = "No reason provided"){
+async function adminMuteUser(userId, seconds=60){
   await requireAdmin();
   const muted_until = new Date(Date.now() + Math.max(1, seconds)*1000).toISOString();
   const q = await sb.from("user_mutes").upsert({
     user_id: userId,
     muted_until,
-    reason: reason || "No reason provided",
+    reason: "admin mute",
     updated_at: new Date().toISOString(),
     updated_by: me.id
   });
@@ -1469,7 +1446,7 @@ async function checkBan(userId){
   if(!userId) return false;
 
   const q = await sb.from("user_bans")
-    .select("user_id, reason")
+    .select("user_id")
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -1479,7 +1456,7 @@ async function checkBan(userId){
   }
 
   if(q.data){
-    toast(`Your account has been banned. Reason: ${q.data.reason || "No reason provided"}`, "err", 6000);
+    toast("Your account has been banned.", "err", 4500);
     await sb.auth.signOut();
     me = null;
     myProfile = null;
@@ -1735,10 +1712,7 @@ $("btnSend").onclick = async () => {
     if (file) image_url = await uploadMedia(file);
 
     const ins = await sb.from("messages").insert({ room, user_id: authUser.id, text: text || null, image_url });
-    if (ins.error) {
-      if (ins.error.code === "42501") throw new Error("Sending is blocked by Supabase RLS. Run/update the channel-aware messages SQL policies.");
-      throw ins.error;
-    }
+    if (ins.error) throw ins.error;
 
     $("msgText").value = "";
     $("msgFile").value = "";
@@ -1773,10 +1747,9 @@ $("btnMute").onclick = async ()=>{
     const uname = $("targetUsername").value.trim();
     const uid = await getUserIdByUsername(uname);
     const sec = Number($("muteSec").value || 60);
-    const reason = prompt("Mute reason?", "No reason provided") || "No reason provided";
-    await adminMuteUser(uid, sec, reason);
-    setAdminMsg(`Muted @${uname} for ${sec}s. Reason: ${reason}`);
-    toast(`User muted. Reason: ${reason}`);
+    await adminMuteUser(uid, sec);
+    setAdminMsg(`Muted @${uname} for ${sec}s`);
+    toast("User muted");
   }catch(e){ setAdminMsg(errText("mute user", e), true); }
 };
 
@@ -1796,10 +1769,9 @@ $("btnBan").onclick = async ()=>{
     await requireAdmin();
     const uname = $("targetUsername").value.trim();
     const uid = await getUserIdByUsername(uname);
-    const reason = prompt("Ban reason?", "No reason provided") || "No reason provided";
-    await adminBanUser(uid, reason);
-    setAdminMsg(`Banned @${uname}. Reason: ${reason}`);
-    toast(`User banned. Reason: ${reason}`);
+    await adminBanUser(uid);
+    setAdminMsg(`Banned @${uname}`);
+    toast("User banned");
   }catch(e){ setAdminMsg(errText("ban user", e), true); }
 };
 
