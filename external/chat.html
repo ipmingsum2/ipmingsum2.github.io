@@ -324,7 +324,15 @@ function esc(s = "") {
   }[m]));
 }
 
+function isChannelPolicyRecursionError(e) {
+  const msg = String(e?.message || e?.details || e?.hint || "").toLowerCase();
+  return msg.includes("infinite recursion") && msg.includes("channel_members");
+}
+
 function errText(ctx, e) {
+  if (isChannelPolicyRecursionError(e)) {
+    return `${ctx}: Supabase RLS is recursively reading channel_members. Run external/supabase-chat-rls.sql in the Supabase SQL editor to replace the channel policies.`;
+  }
   return `${ctx}: ${e?.message || JSON.stringify(e)}`;
 }
 
