@@ -292,10 +292,11 @@
 <div id="toastWrap" class="toast-wrap"></div>
 <div id="menuHost"></div>
 
+
 <script>
 const SUPABASE_URL = "https://lflkpziiwnoamvtrbcil.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_tFvlhmTEDV3SOSVp0JvVzg_KHXFiDNb";
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = id => document.getElementById(id);
 
 let me = null, myProfile = null, room = "lobby", channel = null, currentChannel = null;
@@ -967,6 +968,7 @@ async function loadMessages() {
   const q = await sb.from("messages")
     .select("id,room,user_id,text,image_url,created_at")
     .eq("room", room)
+    .eq("deleted", false)
     .order("created_at", { ascending: true })
     .limit(400);
 
@@ -1429,9 +1431,19 @@ async function adminUnbanUser(userId){
   if(q.error) throw q.error;
 }
 
-/* bans edit: added replication */
+/* live account moderation */
+function muteUntilText(mutedUntil) {
+  const until = new Date(mutedUntil);
+  const remainingMs = until.getTime() - Date.now();
+  if (remainingMs <= 0) return "now";
+  const totalSeconds = Math.ceil(remainingMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${until.toLocaleString()} (${minutes}m ${seconds}s left)`;
+}
+
 async function checkBan(userId){
-  if(!userId) return;
+  if(!userId) return false;
 
   const q = await sb.from("user_bans")
     .select("user_id")
@@ -1440,7 +1452,7 @@ async function checkBan(userId){
 
   if(q.error){
     debugLog("checkBan.error", q.error);
-    return;
+    return false;
   }
 
   if(q.data){
@@ -1449,7 +1461,31 @@ async function checkBan(userId){
     me = null;
     myProfile = null;
     showAuth();
+    return true;
   }
+
+  return false;
+}
+
+async function checkMute(userId){
+  if(!userId) return false;
+
+  const q = await sb.from("user_mutes")
+    .select("muted_until")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if(q.error){
+    debugLog("checkMute.error", q.error);
+    return false;
+  }
+
+  if(q.data && new Date(q.data.muted_until).getTime() > Date.now()){
+    toast(`Your account is muted until ${muteUntilText(q.data.muted_until)}`, "warn", 6500);
+    return true;
+  }
+
+  return false;
 }
 
 /* ui wiring */
@@ -1511,20 +1547,8 @@ $("btnLogin").onclick = async () => {
 
     me = r.data.user;
 
-    // check account ban AFTER login (now we have me.id)
-    const ban = await sb.from("user_bans")
-      .select("user_id")
-      .eq("user_id", me.id)
-      .maybeSingle();
-
-    if (ban.data) {
-      await sb.auth.signOut();
-      me = null;
-      myProfile = null;
-      showAuth();
-      toast("Your account is banned.", "err", 4500);
-      return;
-    }
+    if (await checkBan(me.id)) return;
+    await checkMute(me.id);
 
     myProfile = await ensureProfileAfterLogin(
       me,
@@ -1659,15 +1683,14 @@ $("btnSend").onclick = async () => {
     const authUser = await requireAuthedUser();
     const text = $("msgText").value.trim();
     const file = $("msgFile").files?.[0];
-		const mute = await sb.from("user_mutes")
-  		.select("muted_until")
-  		.eq("user_id", authUser.id)
-  		.maybeSingle();
-		if (mute.data && new Date(mute.data.muted_until).getTime() > Date.now()) {
-  		const mutedUntil = new Date(mute.data.muted_until).toLocaleString();
-  		toast(`Your account is muted. You are muted until ${mutedUntil}`,"warn",4500);
-  		return;
-		}
+    const mute = await sb.from("user_mutes")
+      .select("muted_until")
+      .eq("user_id", authUser.id)
+      .maybeSingle();
+    if (mute.data && new Date(mute.data.muted_until).getTime() > Date.now()) {
+      toast(`Your account is muted until ${muteUntilText(mute.data.muted_until)}`, "warn", 6500);
+      return;
+    }
     if (!text && !file) return toast("Write text or attach image", "warn");
 
     if (currentChannel && !(await canEnterChannel(currentChannel))) {
@@ -1827,6 +1850,19 @@ function subscribeSideChannels() {
         () => checkBan(me.id)
       )
       .subscribe();
+
+    sb.channel("user-mutes-live")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "user_mutes",
+          filter: `user_id=eq.${me.id}`
+        },
+        () => checkMute(me.id)
+      )
+      .subscribe();
   }
 }
 
@@ -1839,6 +1875,8 @@ function subscribeSideChannels() {
 
   try {
     me = s.data.session.user;
+    if (await checkBan(me.id)) return;
+    await checkMute(me.id);
     myProfile = await ensureProfileAfterLogin(me);
     showApp();
     try {
