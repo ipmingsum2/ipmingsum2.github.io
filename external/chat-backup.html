@@ -310,8 +310,21 @@ function toast(msg, type = "ok", ms = 3200) {
   setTimeout(() => d.remove(), ms);
 }
 
+function debugValue(obj) {
+  if (typeof obj === "string") return obj;
+  if (obj instanceof Error) {
+    return JSON.stringify({
+      name: obj.name,
+      message: obj.message,
+      stack: obj.stack
+    });
+  }
+  const json = JSON.stringify(obj);
+  return json === undefined ? String(obj) : json;
+}
+
 function debugLog(label, obj) {
-  $("debug").textContent = `[${new Date().toLocaleTimeString()}] ${label}: ${typeof obj === "string" ? obj : JSON.stringify(obj)}\n` + $("debug").textContent;
+  $("debug").textContent = `[${new Date().toLocaleTimeString()}] ${label}: ${debugValue(obj)}\n` + $("debug").textContent;
 }
 
 function esc(s = "") {
