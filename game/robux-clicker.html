@@ -597,7 +597,7 @@
 
     <div id="adminControls" class="admin-controls">
       <div class="admin-money-grid">
-        <input id="adminAmountNumber" class="admin-input" type="number" min="0" step="any" placeholder="Amount (e.g. 1.5)" value="1" />
+        <input id="adminAmountNumber" class="admin-input" type="number" min="0" step="any" placeholder="Robux amount (e.g. 1.5)" value="1" />
         <div id="adminUnitPicker" class="admin-unit-picker">
           <button id="adminUnitBtn" class="admin-select-btn" type="button">Select unit</button>
           <div id="adminUnitMenu" class="admin-unit-menu">
@@ -609,9 +609,26 @@
         </div>
       </div>
       <div class="admin-actions">
-        <button class="admin-btn good" id="adminSetMoney">Set</button>
-        <button class="admin-btn warn" id="adminAddMoney">Add</button>
-        <button class="admin-btn bad" id="adminRemoveMoney">Remove</button>
+        <button class="admin-btn good" id="adminSetMoney">Set Robux</button>
+        <button class="admin-btn warn" id="adminAddMoney">Add Robux</button>
+        <button class="admin-btn bad" id="adminRemoveMoney">Remove Robux</button>
+      </div>
+      <div class="admin-money-grid">
+        <input id="adminGemAmountNumber" class="admin-input" type="number" min="0" step="any" placeholder="Gem amount (e.g. 1.5)" value="1" />
+        <div id="adminGemUnitPicker" class="admin-unit-picker">
+          <button id="adminGemUnitBtn" class="admin-select-btn" type="button">Select gem unit</button>
+          <div id="adminGemUnitMenu" class="admin-unit-menu">
+            <div class="admin-unit-search-wrap">
+              <input id="adminGemUnitSearch" class="admin-unit-search" type="text" placeholder="Search gem unit (K, M, million, centillion...)" />
+            </div>
+            <div id="adminGemUnitList" class="admin-unit-list"></div>
+          </div>
+        </div>
+      </div>
+      <div class="admin-actions">
+        <button class="admin-btn good" id="adminSetGems">Set Gems</button>
+        <button class="admin-btn warn" id="adminAddGems">Add Gems</button>
+        <button class="admin-btn bad" id="adminRemoveGems">Remove Gems</button>
       </div>
     </div>
   </section>
@@ -753,15 +770,25 @@
     const adminSetMoney = document.getElementById("adminSetMoney");
     const adminAddMoney = document.getElementById("adminAddMoney");
     const adminRemoveMoney = document.getElementById("adminRemoveMoney");
+    const adminGemAmountNumber = document.getElementById("adminGemAmountNumber");
+    const adminSetGems = document.getElementById("adminSetGems");
+    const adminAddGems = document.getElementById("adminAddGems");
+    const adminRemoveGems = document.getElementById("adminRemoveGems");
 
     const adminUnitPicker = document.getElementById("adminUnitPicker");
     const adminUnitBtn = document.getElementById("adminUnitBtn");
     const adminUnitMenu = document.getElementById("adminUnitMenu");
     const adminUnitSearch = document.getElementById("adminUnitSearch");
     const adminUnitList = document.getElementById("adminUnitList");
+    const adminGemUnitPicker = document.getElementById("adminGemUnitPicker");
+    const adminGemUnitBtn = document.getElementById("adminGemUnitBtn");
+    const adminGemUnitMenu = document.getElementById("adminGemUnitMenu");
+    const adminGemUnitSearch = document.getElementById("adminGemUnitSearch");
+    const adminGemUnitList = document.getElementById("adminGemUnitList");
 
     let adminUnitOptions = [];
     let selectedAdminExp = 6;
+    let selectedAdminGemExp = 0;
     let showPointsExact = false;
     let showGemsExact = false;
 
@@ -1598,13 +1625,23 @@
       });
 
       selectAdminUnit(6);
+      selectAdminGemUnit(0);
       renderAdminUnitList("");
+      renderAdminGemUnitList("");
     }
 
     function selectAdminUnit(exp) {
       selectedAdminExp = exp;
       adminUnitBtn.textContent = adminLabelForExp(exp);
       adminUnitList.querySelectorAll(".admin-unit-option").forEach(btn => {
+        btn.classList.toggle("active", Number(btn.dataset.exp) === exp);
+      });
+    }
+
+    function selectAdminGemUnit(exp) {
+      selectedAdminGemExp = exp;
+      adminGemUnitBtn.textContent = adminLabelForExp(exp);
+      adminGemUnitList.querySelectorAll(".admin-unit-option").forEach(btn => {
         btn.classList.toggle("active", Number(btn.dataset.exp) === exp);
       });
     }
@@ -1636,9 +1673,36 @@
       }
     }
 
-    function getAdminMoneyValue() {
-      const base = Number(adminAmountNumber.value);
-      const exp = Number(selectedAdminExp);
+    function renderAdminGemUnitList(search = "") {
+      const q = String(search || "").trim().toLowerCase();
+      const filtered = q ? adminUnitOptions.filter(o => o.keywords.includes(q)) : adminUnitOptions;
+
+      adminGemUnitList.innerHTML = "";
+      if (!filtered.length) {
+        const empty = document.createElement("div");
+        empty.className = "admin-unit-empty";
+        empty.textContent = "No matching unit.";
+        adminGemUnitList.appendChild(empty);
+        return;
+      }
+
+      for (const opt of filtered) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "admin-unit-option" + (opt.exp === selectedAdminGemExp ? " active" : "");
+        btn.dataset.exp = String(opt.exp);
+        btn.textContent = opt.label;
+        btn.addEventListener("click", () => {
+          selectAdminGemUnit(opt.exp);
+          adminGemUnitMenu.classList.remove("show");
+        });
+        adminGemUnitList.appendChild(btn);
+      }
+    }
+
+    function getAdminValue(amountInput, selectedExp) {
+      const base = Number(amountInput.value);
+      const exp = Number(selectedExp);
 
       if (!Number.isFinite(base) || base < 0) return { ok: false, value: 0, reason: "Enter a valid non-negative number." };
       if (!Number.isFinite(exp) || exp < 0) return { ok: false, value: 0, reason: "Invalid unit." };
@@ -1650,13 +1714,23 @@
       return { ok: true, value, exact };
     }
 
+    function getAdminMoneyValue() {
+      return getAdminValue(adminAmountNumber, selectedAdminExp);
+    }
+
+    function getAdminGemValue() {
+      return getAdminValue(adminGemAmountNumber, selectedAdminGemExp);
+    }
+
     adminLauncher.addEventListener("click", () => {
       adminPanel.classList.toggle("show");
       adminUnitMenu.classList.remove("show");
+      adminGemUnitMenu.classList.remove("show");
     });
     adminClose.addEventListener("click", () => {
       adminPanel.classList.remove("show");
       adminUnitMenu.classList.remove("show");
+      adminGemUnitMenu.classList.remove("show");
     });
 
     adminLoginBtn.addEventListener("click", () => {
@@ -1683,11 +1757,24 @@
       }
     });
 
+    adminGemUnitBtn.addEventListener("click", () => {
+      const show = !adminGemUnitMenu.classList.contains("show");
+      adminGemUnitMenu.classList.toggle("show", show);
+      if (show) {
+        adminGemUnitSearch.value = "";
+        renderAdminGemUnitList("");
+        setTimeout(() => adminGemUnitSearch.focus(), 0);
+      }
+    });
+
     adminUnitSearch.addEventListener("input", () => renderAdminUnitList(adminUnitSearch.value));
+    adminGemUnitSearch.addEventListener("input", () => renderAdminGemUnitList(adminGemUnitSearch.value));
 
     document.addEventListener("click", (e) => {
       const insidePicker = adminUnitPicker.contains(e.target);
+      const insideGemPicker = adminGemUnitPicker.contains(e.target);
       if (!insidePicker) adminUnitMenu.classList.remove("show");
+      if (!insideGemPicker) adminGemUnitMenu.classList.remove("show");
     });
 
     adminSetMoney.addEventListener("click", () => {
@@ -1735,6 +1822,68 @@
       updateShopAffordabilityLive();
       saveGame();
       adminStatus.textContent = `Removed ${fmt(res.value)} Robux.`;
+    });
+
+    adminSetGems.addEventListener("click", () => {
+      if (!adminAuthed) return;
+      const res = getAdminGemValue();
+      if (!res.ok) { adminStatus.textContent = res.reason; return; }
+
+      state.gems = res.value;
+      state.gemsExact = (res.value === Infinity) ? (res.exact || "overflow") : null;
+      recalcGlobalMultiplier();
+      renderStats();
+      renderAchievements();
+      updateShopAffordabilityLive();
+      saveGame();
+      adminStatus.textContent = `Set Gems to ${fmt(state.gems)}${state.gems === Infinity && state.gemsExact ? ` (${state.gemsExact})` : ""}.`;
+    });
+
+    adminAddGems.addEventListener("click", () => {
+      if (!adminAuthed) return;
+      const res = getAdminGemValue();
+      if (!res.ok) { adminStatus.textContent = res.reason; return; }
+
+      if (state.gems === Infinity) {
+        if (res.exact) state.gemsExact = addSci(state.gemsExact, res.exact) || state.gemsExact || res.exact;
+      } else if (res.value === Infinity) {
+        state.gems = Infinity;
+        state.gemsExact = res.exact || state.gemsExact || "overflow";
+      } else {
+        state.gems += res.value;
+        if (!Number.isFinite(state.gems)) {
+          state.gems = Infinity;
+          state.gemsExact = state.gemsExact || res.exact || "overflow (>1e308)";
+        }
+      }
+
+      recalcGlobalMultiplier();
+      renderStats();
+      renderAchievements();
+      updateShopAffordabilityLive();
+      saveGame();
+      adminStatus.textContent = `Added ${fmt(res.value)} Gems${res.value === Infinity && res.exact ? ` (${res.exact})` : ""}.`;
+    });
+
+    adminRemoveGems.addEventListener("click", () => {
+      if (!adminAuthed) return;
+      const res = getAdminGemValue();
+      if (!res.ok) { adminStatus.textContent = res.reason; return; }
+
+      if (res.value === Infinity) {
+        state.gems = 0;
+        state.gemsExact = null;
+      } else if (state.gems !== Infinity) {
+        state.gems = Math.max(0, state.gems - res.value);
+        if (state.gems === 0) state.gemsExact = null;
+      }
+
+      recalcGlobalMultiplier();
+      renderStats();
+      renderAchievements();
+      updateShopAffordabilityLive();
+      saveGame();
+      adminStatus.textContent = `Removed ${fmt(res.value)} Gems.`;
     });
 
     let uiUpdateTimer = 0;
