@@ -477,6 +477,26 @@ function showApp() {
   $("rootAdminTools").classList.toggle("hidden", !isRootOwner());
 }
 
+window.sendInviteEmail = async function sendInviteEmail(email) {
+  await requireAuthedUser();
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  if (!validEmail(normalizedEmail)) throw new Error("Enter a valid email address");
+
+  const { data, error } = await sb.functions.invoke("invite-user", {
+    body: {
+      email: normalizedEmail,
+      invited_by: me?.id || null,
+      redirect_to: `${location.origin}${location.pathname}`
+    }
+  });
+
+  if (error) {
+    throw new Error(error.message || "Supabase invite function failed");
+  }
+
+  return data;
+};
+
 async function requireAuthedUser() {
   const gu = await sb.auth.getUser();
   if (!gu.data.user) throw new Error("Session expired");
