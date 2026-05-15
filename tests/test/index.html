@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark">
-    <meta name="turbo-cache-control" content="no-cache" data-turbo-track="reload" data-track-token="4.5.3.832164407672">
+    <meta name="turbo-cache-control" content="no-cache" data-turbo-track="reload" data-track-token="4.5.3.832164572716">
 
     <!-- See retype.com -->
     <meta name="generator" content="Retype 4.5.3">
@@ -37,12 +37,12 @@
 
     <script data-cfasync="false">(function(){var cl=document.documentElement.classList,ls=localStorage.getItem("retype_scheme"),hd=cl.contains("dark"),hl=cl.contains("light"),wm=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches;if(ls==="dark"||(!ls&&wm&&!hd&&!hl)){cl.remove("light");cl.add("dark")}else if(ls==="light"||(!ls&&!wm&&!hd&&!hl)){cl.remove("dark");cl.add("light")}})();</script>
 
-    <link href="../../resources/css/retype.css?v=4.5.3.832164407672" rel="stylesheet">
+    <link href="../../resources/css/retype.css?v=4.5.3.832164572716" rel="stylesheet">
 
-    <script data-cfasync="false" src="../../resources/js/config.js?v=4.5.3.832164407672" data-turbo-eval="false" defer></script>
+    <script data-cfasync="false" src="../../resources/js/config.js?v=4.5.3.832164572716" data-turbo-eval="false" defer></script>
     <script data-cfasync="false" src="../../resources/js/retype.js?v=4.5.3" data-turbo-eval="false" defer></script>
-    <script id="lunr-js" data-cfasync="false" src="../../resources/js/lunr.js?v=4.5.3.832164407672" data-turbo-eval="false" defer></script>
-    <script id="prism-js" data-cfasync="false" src="../../resources/js/prism.js?v=4.5.3.832164407672" defer></script>
+    <script id="lunr-js" data-cfasync="false" src="../../resources/js/lunr.js?v=4.5.3.832164572716" data-turbo-eval="false" defer></script>
+    <script id="prism-js" data-cfasync="false" src="../../resources/js/prism.js?v=4.5.3.832164572716" defer></script>
     <link href="../../resources/css/katex.css?v=4.5.3" rel="stylesheet">
     <script id="katex-js" data-cfasync="false" src="../../resources/js/katex.js?v=4.5.3" defer></script>
 </head>
@@ -295,49 +295,15 @@ console.log(test);</code></pre>
     </div>
 </div>
 <p>Graham&#x27;s Number:</p>
-<div class="math"><pre translate="no">% Source - https://tex.stackexchange.com/a/665804
-% Posted by egreg
-% Retrieved 2026-05-15, License - CC BY-SA 4.0
-
-\documentclass{article}
-\usepackage{mathtools}
-
-\makeatletter
-\newcommand{\cdotfill}{%
-  \leavevmode
-  \cleaders\hb@xt@.44em{\hss\textperiodcentered\hss}\hfill
-  \kern\z@
-}
-\makeatother
-
-\newcommand{\uparrows}[1]{% #1 is a length
-  \mathrel{\underbrace{\makebox[#1][s]{$\uparrow\uparrow$\cdotfill$\uparrow$}}}%
-}
-
-\begin{document}
-
-\[
-\left.
-\setlength{\arraycolsep}{0pt}
-\renewcommand{\arraystretch}{1.2}
-\begin{array}{rc}
-G={}
-&amp; 3 \uparrows{7em} 3 \\
-&amp; 3 \uparrows{6em} 3 \\
-&amp; \underbrace{\makebox[5em]{\vdots}} \\
-&amp; 3 \uparrows{4em} 3\\
-&amp; 3 \uparrow\uparrow\uparrow\uparrow 3
-\end{array}
-\right\}
-64\text{ layers}
-\]
-
-\end{document}
-</pre></div>
+<div class="math"><pre translate="no">G = g_{64}, \text{ where } 
+\begin{cases} 
+g_1 = 3 \uparrow\uparrow\uparrow\uparrow 3 \\
+g_n = 3 \uparrow^{g_{n-1}} 3 &amp; \text{for } n \geq 2 
+\end{cases}</pre></div>
 
                 <div id="retype-tags" class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 mt-6 mb-6 clear-both">
                 
-                    <time id="retype-last-updated" class="text-sm whitespace-nowrap text-base-text-muted ml-auto" datetime="2026-05-15T20:46:30" title="2026-05-15" data-absolute-label="Last updated on 2026-05-15" data-absolute-label-html="Last updated on 2026-05-15" data-relative-template="Last updated {0}" data-relative-template-html="Last updated RETYPETEMPLATELASTUPDATEDVALUETOKEN">
+                    <time id="retype-last-updated" class="text-sm whitespace-nowrap text-base-text-muted ml-auto" datetime="2026-05-15T20:49:11" title="2026-05-15" data-absolute-label="Last updated on 2026-05-15" data-absolute-label-html="Last updated on 2026-05-15" data-relative-template="Last updated {0}" data-relative-template-html="Last updated RETYPETEMPLATELASTUPDATEDVALUETOKEN">
                         Last updated on 2026-05-15
                     </time>
                 </div>
