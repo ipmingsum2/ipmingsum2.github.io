@@ -44,9 +44,43 @@ This is why this page is useless!
 Graham's Number:
 
 $$
-\begin{aligned}
-g_1 &= 3 \uparrow\uparrow\uparrow\uparrow 3 = 3 \uparrow^4 3 \\
-g_n &= 3 \uparrow^{g_{n-1}} 3 \\
-G &= g_{64}
-\end{aligned}
+% Source - https://tex.stackexchange.com/a/665804
+% Posted by egreg
+% Retrieved 2026-05-15, License - CC BY-SA 4.0
+
+\documentclass{article}
+\usepackage{mathtools}
+
+\makeatletter
+\newcommand{\cdotfill}{%
+  \leavevmode
+  \cleaders\hb@xt@.44em{\hss\textperiodcentered\hss}\hfill
+  \kern\z@
+}
+\makeatother
+
+\newcommand{\uparrows}[1]{% #1 is a length
+  \mathrel{\underbrace{\makebox[#1][s]{$\uparrow\uparrow$\cdotfill$\uparrow$}}}%
+}
+
+\begin{document}
+
+\[
+\left.
+\setlength{\arraycolsep}{0pt}
+\renewcommand{\arraystretch}{1.2}
+\begin{array}{rc}
+G={}
+& 3 \uparrows{7em} 3 \\
+& 3 \uparrows{6em} 3 \\
+& \underbrace{\makebox[5em]{\vdots}} \\
+& 3 \uparrows{4em} 3\\
+& 3 \uparrow\uparrow\uparrow\uparrow 3
+\end{array}
+\right\}
+64\text{ layers}
+\]
+
+\end{document}
+
 $$
