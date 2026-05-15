@@ -227,16 +227,6 @@
       </div>
 
       <div class="card">
-        <h3 style="margin-top:0">Invite User</h3>
-        <div class="muted">Enter an email to send a Supabase invite. Available to everyone logged in.</div>
-        <div class="row" style="margin-top:8px">
-          <input id="inviteEmail" type="email" placeholder="friend@example.com">
-          <button id="btnSendInvite" class="ghost">Send Invite</button>
-        </div>
-        <div id="inviteMsg" class="muted" style="margin-top:6px"></div>
-      </div>
-
-      <div class="card">
         <div class="tabs">
           <button class="tabbtn active" data-tab="ann">Announcements</button>
           <button class="tabbtn" data-tab="admin">Admin</button>
@@ -369,11 +359,6 @@ function setAdminMsg(msg, err = false) {
   $("adminMsg").style.color = err ? "var(--danger)" : "var(--muted)";
 }
 
-function setInviteMsg(msg, err = false) {
-  $("inviteMsg").textContent = msg;
-  $("inviteMsg").style.color = err ? "var(--danger)" : "var(--muted)";
-}
-
 function fmt(ts) {
   try { return new Date(ts).toLocaleString(); }
   catch { return ts; }
@@ -476,26 +461,6 @@ function showApp() {
   $("annComposer").classList.toggle("hidden", !isAdmin);
   $("rootAdminTools").classList.toggle("hidden", !isRootOwner());
 }
-
-window.sendInviteEmail = async function sendInviteEmail(email) {
-  await requireAuthedUser();
-  const normalizedEmail = String(email || "").trim().toLowerCase();
-  if (!validEmail(normalizedEmail)) throw new Error("Enter a valid email address");
-
-  const { data, error } = await sb.functions.invoke("invite-user", {
-    body: {
-      email: normalizedEmail,
-      invited_by: me?.id || null,
-      redirect_to: `${location.origin}${location.pathname}`
-    }
-  });
-
-  if (error) {
-    throw new Error(error.message || "Supabase invite function failed");
-  }
-
-  return data;
-};
 
 async function requireAuthedUser() {
   const gu = await sb.auth.getUser();
@@ -1746,22 +1711,6 @@ $("btnSaveProfile").onclick = async () => {
   } catch (e) {
     toast(errText("profile", e), "err", 4500);
     debugLog("profile", e);
-  }
-};
-
-$("btnSendInvite").onclick = async () => {
-  const email = $("inviteEmail").value.trim();
-  setInviteMsg("");
-  try {
-    await sendInviteEmail(email);
-    $("inviteEmail").value = "";
-    setInviteMsg(`Invite sent to ${email}`);
-    toast("Invite sent", "ok");
-  } catch (e) {
-    const msg = errText("invite", e);
-    setInviteMsg(msg, true);
-    toast(msg, "err", 6000);
-    debugLog("invite", e);
   }
 };
 

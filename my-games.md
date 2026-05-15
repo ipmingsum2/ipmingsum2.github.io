@@ -17,6 +17,10 @@ Play games that I made!
 
 [!button Cues and Hues](/game/c-and-h.html)
 
+[!button Google Fluid](/game/google-fluid.html)
+
+[!button Robux Clicker](/game/robux-clicker.html)
+
 ## External
 
 Useful things!
