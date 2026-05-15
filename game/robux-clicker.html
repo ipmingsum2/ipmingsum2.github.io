@@ -1601,8 +1601,8 @@
     });
 
     function decodeChars(list) { return list.map(c => String.fromCharCode(c)).join(""); }
-    const ADMIN_USER = decodeChars([65,108,118,105,110]); // Alvin
-    const ADMIN_PASS = decodeChars([80,64,115,115,119,48,114,100]); // P@ssw0rd
+    const ADMIN_USER = decodeChars([65,108,118,105,110]); 
+    const ADMIN_PASS = decodeChars([80,64,115,115,119,48,114,100]);
     let adminAuthed = false;
 
     function adminLabelForExp(exp) {
@@ -1744,6 +1744,12 @@
         adminLoginBtn.textContent = "Authenticated";
       } else {
         adminStatus.textContent = "Access denied.";
+        adminUser.disabled = true;
+        adminPass.disabled = true;
+        adminUser.placeholder = "LOCKDOWN";
+        adminPass.placeholder = "LOCKDOWN";
+        adminLoginBtn.disabled = true;
+        adminLoginBtn.textContent = "Wrong attempt lol.";
       }
     });
 
