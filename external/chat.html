@@ -13,7 +13,15 @@
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
   <script type="text/javascript">
-  if (window.top !== window.self) {
+function inIframe () {
+    try {
+        return window.self !== window.top;
+    } catch (e) {
+        return true;
+    }
+}
+const iframed = inIframe()
+  if (iframed === true) {
     // you better not embed my site bud
     window.location.href = "https://www.youtube.com/embed/dQw4w9WgXcQ";
   }
