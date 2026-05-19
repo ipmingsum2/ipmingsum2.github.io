@@ -12,6 +12,8 @@ Play games that I made!
 
 [!button Robux Clicker](/game/robux-clicker.html)
 
+[!button Old Maid](/game/old-maid.html)
+
 ## External
 
 Useful things!
