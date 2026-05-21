@@ -1,11 +1,17 @@
 <!doctype html>
+<!-- 
+		This is the backup file for CHATBOX incase anything doesn't work. Paste new refreshed, verified working
+		JavaScript and CSS in their folder (backup one) once an update has been established (if it works)
+    This version is REALLY important, so do not make unverified changes to it.
+-->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>CHATBOX</title>
-  <!-- uncomment below if some errors occur -->
-  <!-- <meta http-equiv="refresh" content="0;url=https://ipmingsum2.github.io/500.html" /> -->
+  <!-- Below is the auto-redirect to the latest version (only uncomment when something doesn't work) -->
+  <meta http-equiv="refresh" content="0;url=https://ipmingsum2.github.io/external/chat.html" />
+  
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
@@ -14,7 +20,7 @@
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
   <script type="text/javascript" src="/external/js/noembed.js"></script>
 
-	<link rel="stylesheet" href="/external/css/chat.css">
+	<link rel="stylesheet" href="/external/css/chat-backup.css"> <!-- Requires to be backup -->
 </head>
 <body>
 <div class="app">
@@ -176,8 +182,6 @@
               <button id="btnUnmute" class="ghost">Unmute</button>
               <button id="btnBan" class="danger">Ban</button>
               <button id="btnUnban" class="ghost">Unban</button>
-              <button id="btnIpBanUser" class="danger">IP Ban User</button>
-              <button id="btnIpUnbanUser" class="ghost">IP Unban User</button>
             </div>
             <div id="adminMsg" class="muted"></div>
 
@@ -216,6 +220,11 @@
 <div id="toastWrap" class="toast-wrap"></div>
 <div id="menuHost"></div>
 
-<script type="text/javascript" src="/external/js/chat.js"></script>
+<script type="text/javascript" src="/external/js/chat.js"></script> <!-- Requires to be backup -->
 </body>
 </html>
+<!--
+	-------------------------------
+  				END OF BACKUP
+  -------------------------------
+-->
