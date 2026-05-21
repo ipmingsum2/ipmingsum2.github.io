@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Old Maid By Alvin</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root{
+      --bg:#0b1220; --bg2:#111b2f; --panel:#111827; --line:#334155;
+      --text:#e5e7eb; --muted:#94a3b8; --pri:#2563eb; --pri2:#1d4ed8;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:radial-gradient(circle at 10% -20%, #1e3a8a 0%, transparent 35%),
+      radial-gradient(circle at 90% -10%, #0ea5e9 0%, transparent 30%),linear-gradient(160deg,var(--bg),var(--bg2));
+      min-height:100vh;padding:1rem;display:flex;justify-content:center
+    }
+    .app{width:100%;max-width:1150px;display:grid;gap:1rem}
+    .panel{background:rgba(17,24,39,.92);border:1px solid var(--line);border-radius:1rem;padding:1rem}
+    h1{margin:0;font-size:1.25rem}
+    h2{margin:.1rem 0 .6rem;font-size:1.05rem}
+    .row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
+    .grid{display:grid;gap:.8rem;grid-template-columns:1fr}
+    @media(min-width:900px){.grid.two{grid-template-columns:1fr 1fr}}
+    label{font-size:.86rem;color:var(--muted);font-weight:700;display:block}
+    input,button{
+      background:#0f172a;border:1px solid #475569;color:#e2e8f0;font-weight:700;
+      border-radius:.6rem;padding:.5rem .65rem
+    }
+    button{cursor:pointer}
+    button.primary{background:linear-gradient(180deg,var(--pri),var(--pri2));border-color:#1e40af}
+    button:disabled{opacity:.55;cursor:not-allowed}
+    .muted{color:var(--muted);font-size:.85rem}
+    .box{border:1px solid #3b475c;border-radius:.85rem;padding:.75rem;background:rgba(15,23,42,.75)}
+    .pill{border:1px solid #4b5563;border-radius:999px;padding:.2rem .55rem;font-size:.78rem;font-weight:800}
+    .pill.host{border-color:#1d4ed8;color:#bfdbfe}
+    .pill.queue{border-color:#92400e;color:#fde68a}
+    .status{font-weight:800}
+    .ok{color:#86efac}.bad{color:#fca5a5}.warn{color:#fcd34d}
+    .players{display:grid;gap:.7rem}
+    .player{border:1px solid #3b475c;border-radius:.8rem;padding:.65rem;background:rgba(15,23,42,.8)}
+    .player.current{border-color:#60a5fa;box-shadow:0 0 0 1px rgba(96,165,250,.35)}
+    .player.target{border-color:#f59e0b;box-shadow:0 0 0 1px rgba(245,158,11,.35)}
+    .head{display:flex;justify-content:space-between;gap:.5rem;align-items:center;flex-wrap:wrap;margin-bottom:.45rem}
+    .hand{display:flex;gap:.35rem;flex-wrap:wrap;min-height:4.2rem;align-items:center}
+    .card{
+      width:3rem;height:4.2rem;border-radius:.5rem;border:2px solid #cbd5e1;flex:0 0 auto;
+      display:flex;align-items:center;justify-content:center;flex-direction:column;font-weight:900
+    }
+    .face{background:#f8fafc;color:#111827}
+    .back{background:linear-gradient(135deg,#334155,#0f172a);border-color:#64748b;color:#dbeafe}
+    .pickable{cursor:pointer}
+    .pickable:hover{transform:translateY(-2px);border-color:#93c5fd}
+    .red{color:#dc2626}.black{color:#111827}.joker{color:#7c3aed;font-size:.72rem}
+    .log{max-height:210px;overflow:auto;border:1px solid #334155;border-radius:.7rem;padding:.55rem;background:#0f172a}
+    .log p{margin:.15rem 0}
+    .hidden{display:none}
+    .code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em}
+
+    .custom-select{position:relative;min-width:7.5rem}
+    .select-trigger{
+      width:100%;display:flex;align-items:center;justify-content:space-between;gap:.45rem;
+      background:#0f172a;border:1px solid #475569;border-radius:.6rem;padding:.5rem .65rem;
+      color:#e2e8f0;font-weight:700
+    }
+    .select-trigger:disabled{opacity:.55;cursor:not-allowed}
+    .chev{font-size:.78rem;transition:transform .14s ease}
+    .custom-select.open .chev{transform:rotate(180deg)}
+    .select-menu{
+      position:absolute;top:calc(100% + .35rem);left:0;right:0;z-index:20;
+      border:1px solid #475569;border-radius:.6rem;background:#0f172a;padding:.28rem;
+      display:grid;gap:.2rem;box-shadow:0 10px 24px rgba(2,6,23,.45)
+    }
+    .select-menu[hidden]{display:none !important}
+    .select-option{
+      background:transparent;border:1px solid transparent;border-radius:.48rem;
+      text-align:left;padding:.43rem .52rem;color:#e2e8f0;font-weight:700
+    }
+    .select-option:hover{background:#1e293b;border-color:#334155}
+    .select-option.active{background:#1e3a8a;border-color:#2563eb;color:#dbeafe}
+
+    .chat-list{
+      border:1px solid #334155;border-radius:.7rem;background:#0f172a;
+      min-height:160px;max-height:260px;overflow:auto;padding:.5rem
+    }
+    .chat-item{margin:.25rem 0;line-height:1.35}
+    .chat-name{font-weight:800;color:#bfdbfe}
+    .chat-time{font-size:.75rem;color:#94a3b8;margin-left:.35rem}
+    .chat-input-row{display:flex;gap:.45rem;margin-top:.5rem}
+    .chat-input-row input{flex:1;min-width:0}
+  </style>
+</head>
+<body>
+<div class="app">
+  <section class="panel">
+    <div class="row" style="justify-content:space-between">
+      <h1>🃏 Old Maid - By Alvin</h1>
+      <div class="row muted">
+        <span>Your ID:</span><span id="myId" class="code"></span>
+      </div>
+    </div>
+    <div id="connectMsg" class="muted" style="margin-top:.4rem">Connecting...</div>
+  </section>
+
+  <section class="panel grid two">
+    <div class="box">
+      <h2>Quick Play (AI)</h2>
+      <div class="row">
+        <label for="quickAiTrigger">AI Players</label>
+        <div class="custom-select" id="quickAiSelect">
+          <button id="quickAiTrigger" class="select-trigger" type="button" aria-expanded="false">
+            <span class="select-label">1 AI</span><span class="chev">▼</span>
+          </button>
+          <div class="select-menu" hidden>
+            <button type="button" class="select-option active" data-value="1">1 AI</button>
+            <button type="button" class="select-option" data-value="2">2 AIs</button>
+            <button type="button" class="select-option" data-value="3">3 AIs</button>
+            <button type="button" class="select-option" data-value="4">4 AIs</button>
+            <button type="button" class="select-option" data-value="5">5 AIs</button>
+            <button type="button" class="select-option" data-value="6">6 AIs</button>
+            <button type="button" class="select-option" data-value="7">7 AIs</button>
+            <button type="button" class="select-option" data-value="8">8 AIs</button>
+            <button type="button" class="select-option" data-value="9">9 AIs</button>
+          </div>
+        </div>
+        <button id="quickStart" class="primary">Start Quick Game</button>
+      </div>
+      <p class="muted" style="margin:.5rem 0 0">Instant local game. No room needed.</p>
+    </div>
+
+    <div class="box">
+      <h2>Rooms</h2>
+      <div class="grid two">
+        <div>
+          <label>Display Name</label>
+          <input id="displayName" maxlength="24" placeholder="Your name"/>
+
+          <label style="margin-top:.45rem">Room Name (create)</label>
+          <input id="createRoomName" maxlength="40" placeholder="My Room"/>
+
+          <label style="margin-top:.45rem">Seats</label>
+          <div class="custom-select" id="createSeatsSelect">
+            <button class="select-trigger" type="button" aria-expanded="false">
+              <span class="select-label">4</span><span class="chev">▼</span>
+            </button>
+            <div class="select-menu" hidden>
+              <button type="button" class="select-option" data-value="2">2</button>
+              <button type="button" class="select-option" data-value="3">3</button>
+              <button type="button" class="select-option active" data-value="4">4</button>
+              <button type="button" class="select-option" data-value="5">5</button>
+              <button type="button" class="select-option" data-value="6">6</button>
+            </div>
+          </div>
+
+          <button id="createRoomBtn" class="primary" style="margin-top:.5rem">Create Room</button>
+        </div>
+        <div>
+          <label>Join by Room Code</label>
+          <input id="joinCode" maxlength="8" placeholder="AB12CD" style="text-transform:uppercase"/>
+          <button id="joinBtn" style="margin-top:.5rem">Join Room</button>
+          <p class="muted" style="margin-top:.5rem">
+            First joined players get seats. Extra players are queued.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="roomPanel" class="panel hidden">
+    <div class="head">
+      <div class="row">
+        <strong id="roomNameView">Room</strong>
+        <span id="roomCodeView" class="pill code"></span>
+        <span id="roomStatusView" class="pill"></span>
+      </div>
+      <div class="row">
+        <button id="leaveRoomBtn">Leave Room</button>
+        <button id="startRoomGameBtn" class="primary">Start Game (Host)</button>
+      </div>
+    </div>
+
+    <div class="grid two">
+      <div class="box">
+        <h2>Room Settings (Host only)</h2>
+        <label>Room Name</label>
+        <input id="roomNameInput" maxlength="40"/>
+
+        <label style="margin-top:.45rem">Seats</label>
+        <div class="custom-select" id="roomSeatsSelect">
+          <button class="select-trigger" type="button" aria-expanded="false">
+            <span class="select-label">4</span><span class="chev">▼</span>
+          </button>
+          <div class="select-menu" hidden>
+            <button type="button" class="select-option" data-value="2">2</button>
+            <button type="button" class="select-option" data-value="3">3</button>
+            <button type="button" class="select-option active" data-value="4">4</button>
+            <button type="button" class="select-option" data-value="5">5</button>
+            <button type="button" class="select-option" data-value="6">6</button>
+          </div>
+        </div>
+
+        <button id="saveRoomSettingsBtn" style="margin-top:.5rem">Save</button>
+        <p class="muted" style="margin-top:.5rem">
+          On start: if seated humans &lt; seats, remaining seats become AI.
+        </p>
+      </div>
+
+      <div class="box">
+        <h2>Seating + Queue</h2>
+        <div id="seatInfo" class="muted"></div>
+        <div id="membersView" class="grid" style="margin-top:.5rem"></div>
+      </div>
+    </div>
+
+    <div class="box" style="margin-top:.8rem">
+      <h2>Room Chat</h2>
+      <div id="chatList" class="chat-list"></div>
+      <div class="chat-input-row">
+        <input id="chatInput" maxlength="220" placeholder="Type a message to this room..."/>
+        <button id="sendChatBtn">Send</button>
+      </div>
+      <div class="muted" style="margin-top:.35rem">Only messages from this room are shown here.</div>
+    </div>
+  </section>
+
+  <section class="panel" id="gamePanel">
+    <div class="head">
+      <div id="gameStatus" class="status">No game yet. Start Quick Play or join a room.</div>
+      <div id="resultBadge" class="pill hidden"></div>
+    </div>
+    <div id="playersWrap" class="players"></div>
+    <div class="box" style="margin-top:.7rem">
+      <div class="head"><strong>Game Log</strong><span class="muted">Latest first</span></div>
+      <div id="log" class="log"></div>
+    </div>
+  </section>
+</div>
+
+<script>
+/* =========================
+   CONFIG IN JAVASCRIPT
+========================= */
+const SUPABASE_URL = "https://cekqzjdmgnniwfmkkbaa.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_KmeT4_bqR7Ij7XSvBcIfuw_DinIF4sJ";
+
+/* =========================
+   BASIC STATE + DOM
+========================= */
+const myUserId = crypto.randomUUID();
+document.getElementById("myId").textContent = myUserId.slice(0, 8);
+
+const dom = {
+  connectMsg: document.getElementById("connectMsg"),
+  quickStart: document.getElementById("quickStart"),
+  displayName: document.getElementById("displayName"),
+  createRoomName: document.getElementById("createRoomName"),
+  createRoomBtn: document.getElementById("createRoomBtn"),
+  joinCode: document.getElementById("joinCode"),
+  joinBtn: document.getElementById("joinBtn"),
+
+  roomPanel: document.getElementById("roomPanel"),
+  roomNameView: document.getElementById("roomNameView"),
+  roomCodeView: document.getElementById("roomCodeView"),
+  roomStatusView: document.getElementById("roomStatusView"),
+  leaveRoomBtn: document.getElementById("leaveRoomBtn"),
+  startRoomGameBtn: document.getElementById("startRoomGameBtn"),
+  roomNameInput: document.getElementById("roomNameInput"),
+  saveRoomSettingsBtn: document.getElementById("saveRoomSettingsBtn"),
+  seatInfo: document.getElementById("seatInfo"),
+  membersView: document.getElementById("membersView"),
+
+  chatList: document.getElementById("chatList"),
+  chatInput: document.getElementById("chatInput"),
+  sendChatBtn: document.getElementById("sendChatBtn"),
+
+  gameStatus: document.getElementById("gameStatus"),
+  resultBadge: document.getElementById("resultBadge"),
+  playersWrap: document.getElementById("playersWrap"),
+  log: document.getElementById("log")
+};
+
+let supa = null;
+let roomChannel = null;
+let syncing = false;
+let pendingSync = false;
+let aiDriveLock = false;
+
+const app = {
+  mode: null, // quick | room
+  quick: { gs: null },
+  room: { room: null, members: [], chat: [] },
+  ui: {
+    quickAi: 1,
+    createSeats: 4,
+    roomSeats: 4
+  }
+};
+
+dom.displayName.value = "Player-" + myUserId.slice(0,4);
+dom.createRoomName.value = "My Special Room";
+
+/* =========================
+   CUSTOM SELECTS
+========================= */
+function initCustomSelect(rootId, initialValue, onChange){
+  const root = document.getElementById(rootId);
+  const trigger = root.querySelector(".select-trigger");
+  const label = root.querySelector(".select-label");
+  const menu = root.querySelector(".select-menu");
+  const options = Array.from(root.querySelectorAll(".select-option"));
+
+  function setValue(v){
+    const val = String(v);
+    root.dataset.value = val;
+    options.forEach(opt=>{
+      const active = opt.dataset.value === val;
+      opt.classList.toggle("active", active);
+    });
+    const activeOpt = options.find(o=>o.dataset.value===val);
+    if(activeOpt) label.textContent = activeOpt.textContent.trim();
+    onChange(val);
+  }
+
+  function isDisabled(){ return trigger.disabled; }
+
+  function open(){
+    if(isDisabled()) return;
+    closeAllCustomSelects(root);
+    root.classList.add("open");
+    menu.hidden = false;
+    trigger.setAttribute("aria-expanded", "true");
+  }
+  function close(){
+    root.classList.remove("open");
+    menu.hidden = true;
+    trigger.setAttribute("aria-expanded", "false");
+  }
+  function toggle(e){
+    e.stopPropagation();
+    if(isDisabled()) return;
+    if(menu.hidden) open(); else close();
+  }
+
+  trigger.addEventListener("click", toggle);
+  options.forEach(opt=>{
+    opt.addEventListener("click",(e)=>{
+      e.stopPropagation();
+      if(isDisabled()) return;
+      setValue(opt.dataset.value);
+      close();
+    });
+  });
+
+  root._setValue = setValue;
+  root._setDisabled = (disabled)=>{ trigger.disabled = !!disabled; if(disabled) close(); };
+  root._close = close;
+
+  setValue(initialValue);
+  close();
+  return root;
+}
+
+function closeAllCustomSelects(exceptRoot=null){
+  document.querySelectorAll(".custom-select").forEach(cs=>{
+    if(cs !== exceptRoot && cs._close) cs._close();
+  });
+}
+
+document.addEventListener("click", (e)=>{
+  const inside = e.target.closest(".custom-select");
+  if(!inside) closeAllCustomSelects();
+});
+document.addEventListener("keydown",(e)=>{
+  if(e.key === "Escape") closeAllCustomSelects();
+});
+
+const quickAiSelect = initCustomSelect("quickAiSelect", 1, (v)=>{ app.ui.quickAi = parseInt(v,10)||1; });
+const createSeatsSelect = initCustomSelect("createSeatsSelect", 4, (v)=>{ app.ui.createSeats = parseInt(v,10)||4; });
+const roomSeatsSelect = initCustomSelect("roomSeatsSelect", 4, (v)=>{ app.ui.roomSeats = parseInt(v,10)||4; });
+
+/* =========================
+   GAME ENGINE
+========================= */
+const suits = [
+  { symbol: "♠", color: "black" },
+  { symbol: "♥", color: "red" },
+  { symbol: "♦", color: "red" },
+  { symbol: "♣", color: "black" }
+];
+const ranks = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
+
+function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
+function createDeck(){
+  const deck=[]; let id=1;
+  for(const r of ranks){ for(const s of suits){ deck.push({id:id++,rank:r,suit:s.symbol,color:s.color,joker:false}); } }
+  deck.push({id:id++,rank:"JOKER",suit:"",color:"joker",joker:true});
+  return shuffle(deck);
+}
+function removePairs(hand){
+  const count={}; for(const c of hand){ if(!c.joker) count[c.rank]=(count[c.rank]||0)+1; }
+  const keepOdd={}, removed=[];
+  for(const rk of Object.keys(count)){ const p=Math.floor(count[rk]/2); for(let i=0;i<p;i++) removed.push(rk); keepOdd[rk]=count[rk]%2; }
+  const next=[];
+  for(const c of hand){ if(c.joker) next.push(c); else if((keepOdd[c.rank]||0)>0){ next.push(c); keepOdd[c.rank]--; } }
+  hand.length=0; hand.push(...next); return removed;
+}
+function nextActiveFrom(players, idx){
+  const n=players.length;
+  for(let s=1;s<=n;s++){ const j=(idx+s)%n; if(players[j].hand.length>0) return j; }
+  return -1;
+}
+function turnTarget(gs){
+  if(gs.gameOver) return -1;
+  const p=gs.players[gs.current];
+  if(!p || p.hand.length===0) return -1;
+  return nextActiveFrom(gs.players, gs.current);
+}
+function drawCard(gs, fromIdx, cardIdx, toIdx){
+  const from=gs.players[fromIdx], to=gs.players[toIdx];
+  if(!from||!to||cardIdx<0||cardIdx>=from.hand.length) return null;
+  const [card]=from.hand.splice(cardIdx,1); to.hand.push(card);
+  const removed=removePairs(to.hand); return {card, removed};
+}
+function checkGameOver(gs){
+  gs.players.forEach(p=>p.out=(p.hand.length===0));
+  const active=gs.players.filter(p=>p.hand.length>0);
+  if(active.length>1) return false;
+  gs.gameOver=true;
+  if(active.length===1){ gs.result={loserName:active[0].name}; gs.logs.unshift(active[0].name + " is left with Joker and loses."); }
+  else { gs.result={loserName:null}; gs.logs.unshift("No cards left. Draw."); }
+  return true;
+}
+function advanceTurn(gs){
+  const nxt=nextActiveFrom(gs.players, gs.current);
+  gs.current = nxt<0 ? 0 : nxt;
+}
+function cardText(c){ return c.joker ? "Joker" : (c.rank + c.suit); }
+
+function makeGameFromHumans(humans, seats){
+  const players = humans.map(h=>({ user_id:h.user_id||null, name:h.display_name||h.name, isHuman:true, hand:[], out:false }));
+  while(players.length < seats){
+    players.push({ user_id:null, name:`AI ${players.length-humans.length+1}`, isHuman:false, hand:[], out:false });
+  }
+  const deck=createDeck();
+  for(let i=0;i<deck.length;i++) players[i%players.length].hand.push(deck[i]);
+
+  const logs=[];
+  players.forEach(p=>{ const rm=removePairs(p.hand); if(rm.length) logs.unshift(`${p.name} starting pairs removed: ${rm.join(", ")}`); });
+
+  const gs = { players, current:0, gameOver:false, result:null, logs };
+  if(players[0].hand.length===0){ const nxt=nextActiveFrom(players,0); gs.current=nxt<0?0:nxt; }
+  checkGameOver(gs);
+  return gs;
+}
+function aiStep(gs){
+  if(gs.gameOver) return;
+  const p=gs.players[gs.current];
+  if(!p || p.isHuman || p.hand.length===0){ advanceTurn(gs); return; }
+  const t=turnTarget(gs); if(t<0){ checkGameOver(gs); return; }
+  const pick=Math.floor(Math.random()*gs.players[t].hand.length);
+  const r=drawCard(gs,t,pick,gs.current);
+  if(r){ gs.logs.unshift(`${p.name} drew a card from ${gs.players[t].name}.`); if(r.removed.length) gs.logs.unshift(`${p.name} made pair(s): ${r.removed.join(", ")}`); }
+  if(!checkGameOver(gs)) advanceTurn(gs);
+}
+
+/* =========================
+   QUICK PLAY
+========================= */
+function startQuickGame(){
+  const aiCount = Math.max(1, Math.min(9, app.ui.quickAi || 1));
+  const seats = 1 + aiCount;
+  const humans = [{ user_id:myUserId, display_name:"You" }];
+  const gs = makeGameFromHumans(humans, seats);
+  gs.logs.unshift(`Quick game started with ${aiCount} AI.`);
+  app.mode = "quick";
+  app.quick.gs = gs;
+  renderGame();
+  if(!gs.gameOver && !gs.players[gs.current].isHuman) setTimeout(loopQuickAI, 650);
+}
+function loopQuickAI(){
+  if(app.mode!=="quick" || !app.quick.gs || app.quick.gs.gameOver) return;
+  const gs=app.quick.gs;
+  if(gs.players[gs.current].isHuman){ renderGame(); return; }
+  aiStep(gs); renderGame();
+  if(!gs.gameOver && !gs.players[gs.current].isHuman) setTimeout(loopQuickAI, 650);
+}
+function quickHumanDraw(targetIdx, cardIdx){
+  const gs=app.quick.gs; if(!gs || gs.gameOver) return;
+  const current=gs.players[gs.current];
+  if(!current.isHuman) return;
+  const expected=turnTarget(gs); if(expected!==targetIdx) return;
+  const r=drawCard(gs,targetIdx,cardIdx,gs.current); if(!r) return;
+  gs.logs.unshift(`You drew ${cardText(r.card)} from ${gs.players[targetIdx].name}.`);
+  if(r.removed.length) gs.logs.unshift(`You made pair(s): ${r.removed.join(", ")}`);
+  if(!checkGameOver(gs)) advanceTurn(gs);
+  renderGame();
+  if(!gs.gameOver && !gs.players[gs.current].isHuman) setTimeout(loopQuickAI, 650);
+}
+
+/* =========================
+   ROOM MODE (SUPABASE + REALTIME)
+========================= */
+function setMsg(text, cls="muted"){ dom.connectMsg.className=cls; dom.connectMsg.textContent=text; }
+function displayName(){ const n=(dom.displayName.value||"").trim(); return n || ("Player-"+myUserId.slice(0,4)); }
+function codeGen(){ const chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let s=""; for(let i=0;i<6;i++) s+=chars[Math.floor(Math.random()*chars.length)]; return s; }
+function isHost(){ return app.room.room && app.room.room.host_user_id===myUserId; }
+function getSeatedQueue(room, members){
+  const sorted=[...members].sort((a,b)=>new Date(a.joined_at)-new Date(b.joined_at));
+  return { seated:sorted.slice(0, room.max_players), queue:sorted.slice(room.max_players) };
+}
+
+async function connectSupabase(){
+  try{
+    if(!SUPABASE_URL.includes("supabase.co") || SUPABASE_ANON_KEY==="YOUR_SUPABASE_ANON_KEY"){
+      setMsg("Failed to initalize online play.", "warn");
+      return;
+    }
+    supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const [r1, r2, r3] = await Promise.all([
+      supa.from("rooms").select("id").limit(1),
+      supa.from("room_members").select("id").limit(1),
+      supa.from("room_messages").select("id").limit(1)
+    ]);
+    if(r1.error) throw r1.error;
+    if(r2.error) throw r2.error;
+    if(r3.error) throw r3.error;
+
+    setMsg("Online mode connected ✅", "ok");
+  }catch(e){
+    setMsg("Online mode connect failed: " + e.message, "bad");
+  }
+}
+
+async function createRoom(){
+  if(!supa) return setMsg("Online mode not connected", "warn");
+  const name=(dom.createRoomName.value||"My Room").trim();
+  const seats=app.ui.createSeats || 4;
+  let code=codeGen();
+
+  for(let i=0;i<5;i++){
+    const { data } = await supa.from("rooms").select("id").eq("code", code).maybeSingle();
+    if(!data) break;
+    code=codeGen();
+  }
+
+  const { data: room, error } = await supa.from("rooms").insert({
+    code, name, host_user_id: myUserId, max_players: seats, status:"lobby", version:0
+  }).select("*").single();
+  if(error) return setMsg("Create room failed: " + error.message, "bad");
+
+  const { error: mErr } = await supa.from("room_members").insert({
+    room_id: room.id, user_id: myUserId, display_name: displayName()
+  });
+  if(mErr) return setMsg("Join created room failed: " + mErr.message, "bad");
+
+  await joinRoomByCode(code);
+}
+
+async function joinRoomByCode(codeRaw){
+  if(!supa) return setMsg("Online mode not connected", "warn");
+  const code=(codeRaw || dom.joinCode.value).trim().toUpperCase();
+  if(!code) return setMsg("Enter room code", "warn");
+
+  const { data: room, error } = await supa.from("rooms").select("*").eq("code", code).maybeSingle();
+  if(error || !room) return setMsg("Room not found", "bad");
+
+  const { data: mine } = await supa.from("room_members")
+    .select("*").eq("room_id", room.id).eq("user_id", myUserId).maybeSingle();
+
+  if(!mine){
+    const { error: e2 } = await supa.from("room_members").insert({
+      room_id: room.id, user_id: myUserId, display_name: displayName()
+    });
+    if(e2) return setMsg("Join failed: " + e2.message, "bad");
+  } else {
+    await supa.from("room_members").update({ display_name: displayName() }).eq("id", mine.id);
+  }
+
+  app.room.room = room;
+  app.mode = "room";
+  dom.roomPanel.classList.remove("hidden");
+
+  await subscribeRoomRealtime(room.id);
+  await syncRoom();
+  setMsg("Joined room " + code, "ok");
+}
+
+async function leaveRoom(){
+  if(!supa || !app.room.room) return;
+  const roomId = app.room.room.id;
+
+  await supa.from("room_members").delete().eq("room_id", roomId).eq("user_id", myUserId);
+  await unsubscribeRoomRealtime();
+
+  app.room.room=null; app.room.members=[]; app.room.chat=[];
+  dom.chatList.innerHTML = "";
+  dom.chatInput.value = "";
+  dom.roomPanel.classList.add("hidden");
+  if(app.mode==="room"){ app.mode=null; }
+  renderGame();
+  setMsg("Left room", "muted");
+}
+
+async function saveRoomSettings(){
+  if(!app.room.room || !isHost() || app.room.room.status!=="lobby") return;
+  const name=(dom.roomNameInput.value||"My Special Room").trim();
+  const seats=Math.max(2,Math.min(6, app.ui.roomSeats || 4));
+
+  const { error } = await supa.from("rooms").update({ name, max_players:seats }).eq("id", app.room.room.id);
+  if(error) return setMsg("Save failed: "+error.message, "bad");
+}
+
+async function startRoomGame(){
+  if(!app.room.room || !isHost() || app.room.room.status!=="lobby") return;
+  const room=app.room.room;
+  const { seated } = getSeatedQueue(room, app.room.members);
+  const humans = seated.map(m=>({ user_id:m.user_id, display_name:m.display_name }));
+  const gs = makeGameFromHumans(humans, room.max_players);
+  gs.logs.unshift(`Room game started. Seats=${room.max_players}, Humans=${humans.length}, AI Fill=${room.max_players-humans.length}.`);
+
+  const { error } = await supa.from("rooms")
+    .update({ status:"playing", game_state:gs, version:(room.version||0)+1 })
+    .eq("id", room.id).eq("version", room.version||0);
+
+  if(error) return setMsg("Start failed (retry): " + error.message, "bad");
+}
+
+async function sendRoomChat(){
+  if(!supa || !app.room.room) return;
+  const text = (dom.chatInput.value || "").trim();
+  if(!text) return;
+
+  const { error } = await supa.from("room_messages").insert({
+    room_id: app.room.room.id,
+    user_id: myUserId,
+    display_name: displayName(),
+    message: text
+  });
+  if(error){
+    setMsg("Chat send failed: " + error.message, "bad");
+    return;
+  }
+  dom.chatInput.value = "";
+}
+
+async function mutateRoomGame(mutator){
+  if(!app.room.room) return;
+  const { data: room, error } = await supa.from("rooms").select("*").eq("id", app.room.room.id).single();
+  if(error || !room || room.status!=="playing" || !room.game_state) return;
+
+  const gs = room.game_state;
+  const changed = mutator(gs, room);
+  if(!changed) return;
+
+  await supa.from("rooms").update({
+    game_state:gs,
+    status: gs.gameOver ? "finished" : "playing",
+    version:(room.version||0)+1
+  }).eq("id", room.id).eq("version", room.version||0);
+}
+
+async function roomHumanDraw(targetIdx, cardIdx){
+  await mutateRoomGame((gs)=>{
+    if(gs.gameOver) return false;
+    const cur=gs.players[gs.current];
+    if(!cur || cur.user_id!==myUserId) return false;
+    const exp=turnTarget(gs); if(exp!==targetIdx) return false;
+    const r=drawCard(gs,targetIdx,cardIdx,gs.current); if(!r) return false;
+    gs.logs.unshift(`${cur.name} drew ${cardText(r.card)} from ${gs.players[targetIdx].name}.`);
+    if(r.removed.length) gs.logs.unshift(`${cur.name} made pair(s): ${r.removed.join(", ")}`);
+    if(!checkGameOver(gs)) advanceTurn(gs);
+    return true;
+  });
+}
+
+async function maybeHostDriveAi(){
+  if(aiDriveLock) return;
+  if(!app.room.room || !isHost()) return;
+  if(app.room.room.status!=="playing" || !app.room.room.game_state) return;
+
+  const gs = app.room.room.game_state;
+  if(gs.gameOver) return;
+  const cur = gs.players[gs.current];
+  if(!cur || cur.isHuman) return;
+
+  aiDriveLock = true;
+  try{
+    await mutateRoomGame((x)=>{
+      if(x.gameOver) return false;
+      const active = x.players[x.current];
+      if(!active || active.isHuman) return false;
+      aiStep(x);
+      return true;
+    });
+  } finally {
+    aiDriveLock = false;
+  }
+}
+
+async function subscribeRoomRealtime(roomId){
+  await unsubscribeRoomRealtime();
+
+  roomChannel = supa
+    .channel("room-" + roomId + "-" + myUserId.slice(0,6))
+    .on("postgres_changes", {
+      event: "*",
+      schema: "public",
+      table: "rooms",
+      filter: "id=eq." + roomId
+    }, () => {
+      requestSync();
+    })
+    .on("postgres_changes", {
+      event: "*",
+      schema: "public",
+      table: "room_members",
+      filter: "room_id=eq." + roomId
+    }, () => {
+      requestSync();
+    })
+    .on("postgres_changes", {
+      event: "*",
+      schema: "public",
+      table: "room_messages",
+      filter: "room_id=eq." + roomId
+    }, () => {
+      requestSync();
+    })
+    .subscribe((status) => {
+      if(status === "SUBSCRIBED"){
+        setMsg("Online mode connected ✅", "ok");
+      }
+    });
+}
+
+async function unsubscribeRoomRealtime(){
+  if(roomChannel && supa){
+    try{ await supa.removeChannel(roomChannel); }catch(_e){}
+  }
+  roomChannel = null;
+}
+
+function requestSync(){
+  if(syncing){
+    pendingSync = true;
+    return;
+  }
+  syncRoom();
+}
+
+async function syncRoom(){
+  if(!supa || !app.room.room) return;
+  syncing = true;
+
+  try{
+    const rid=app.room.room.id;
+    const [{ data: room, error: re }, { data: members, error: me }, { data: chat, error: ce }] = await Promise.all([
+      supa.from("rooms").select("*").eq("id", rid).maybeSingle(),
+      supa.from("room_members").select("*").eq("room_id", rid),
+      supa.from("room_messages").select("*").eq("room_id", rid).order("created_at", { ascending: true }).limit(120)
+    ]);
+
+    if(re || !room){
+      setMsg("Room unavailable", "bad");
+      await leaveRoom();
+      return;
+    }
+    if(me){ setMsg("Member sync error: " + me.message, "bad"); return; }
+    if(ce){ setMsg("Chat sync error: " + ce.message, "bad"); return; }
+
+    app.room.room = room;
+    app.room.members = members || [];
+    app.room.chat = chat || [];
+    app.ui.roomSeats = room.max_players;
+
+    renderRoomPanel();
+    renderChat();
+    renderGame();
+    await maybeHostDriveAi();
+  } finally {
+    syncing = false;
+    if(pendingSync){
+      pendingSync = false;
+      requestSync();
+    }
+  }
+}
+
+function renderRoomPanel(){
+  const room=app.room.room; if(!room) return;
+
+  dom.roomNameView.textContent = room.name;
+  dom.roomCodeView.textContent = room.code;
+  dom.roomStatusView.textContent = room.status.toUpperCase();
+
+  dom.roomNameInput.value = room.name;
+  roomSeatsSelect._setValue(String(room.max_players));
+
+  const hostEditable = isHost() && room.status==="lobby";
+  dom.roomNameInput.disabled = !hostEditable;
+  roomSeatsSelect._setDisabled(!hostEditable);
+  dom.saveRoomSettingsBtn.disabled = !hostEditable;
+  dom.startRoomGameBtn.disabled = !hostEditable;
+
+  const { seated, queue } = getSeatedQueue(room, app.room.members);
+  dom.seatInfo.textContent = `Seats: ${room.max_players}, Seated humans: ${seated.length}, Queue: ${queue.length}`;
+
+  const html=[];
+  seated.forEach((m,i)=>{
+    const tags=[];
+    if(m.user_id===room.host_user_id) tags.push(`<span class="pill host">Host</span>`);
+    if(m.user_id===myUserId) tags.push(`<span class="pill">You</span>`);
+    html.push(`<div class="row"><span>#${i+1} ${esc(m.display_name)}</span>${tags.join("")}</div>`);
+  });
+  queue.forEach((m,i)=>{
+    const tags=[`<span class="pill queue">Queue</span>`];
+    if(m.user_id===myUserId) tags.push(`<span class="pill">You</span>`);
+    html.push(`<div class="row"><span>Q${i+1} ${esc(m.display_name)}</span>${tags.join("")}</div>`);
+  });
+  dom.membersView.innerHTML = html.join("") || `<div class="muted">No members</div>`;
+}
+
+function renderChat(){
+  if(!app.room.room){
+    dom.chatList.innerHTML = "";
+    return;
+  }
+  const msgs = app.room.chat || [];
+  dom.chatList.innerHTML = msgs.map(m=>{
+    const time = new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    return `<div class="chat-item"><span class="chat-name">${esc(m.display_name)}</span><span class="chat-time">${esc(time)}</span><div>${esc(m.message)}</div></div>`;
+  }).join("") || `<div class="muted">No messages yet.</div>`;
+  dom.chatList.scrollTop = dom.chatList.scrollHeight;
+}
+
+/* =========================
+   SHARED GAME RENDER
+========================= */
+function currentGS(){
+  if(app.mode==="quick") return app.quick.gs;
+  if(app.mode==="room" && app.room.room && app.room.room.game_state) return app.room.room.game_state;
+  return null;
+}
+function myTurnIn(gs){
+  const cur=gs.players[gs.current];
+  if(app.mode==="quick") return !!cur?.isHuman;
+  return cur?.user_id===myUserId;
+}
+function isMyPlayer(p){
+  if(app.mode==="quick") return p.isHuman;
+  return p.user_id===myUserId;
+}
+function onPick(targetIdx, cardIdx){
+  if(app.mode==="quick") return quickHumanDraw(targetIdx, cardIdx);
+  if(app.mode==="room") return roomHumanDraw(targetIdx, cardIdx);
+}
+
+function renderGame(){
+  const gs=currentGS();
+  dom.playersWrap.innerHTML="";
+  dom.log.innerHTML="";
+  dom.resultBadge.classList.add("hidden");
+
+  if(!gs){
+    dom.gameStatus.textContent = "No game yet. Start Quick Play or join a room.";
+    return;
+  }
+
+  if(gs.gameOver){
+    dom.gameStatus.textContent = "Game Over";
+    dom.resultBadge.classList.remove("hidden");
+    const me = gs.players.find(p=>isMyPlayer(p));
+    const loser = gs.result?.loserName;
+    if(me && loser) dom.resultBadge.textContent = (me.name===loser) ? "You Lose" : "You Win";
+    else dom.resultBadge.textContent = loser ? (loser+" loses") : "Draw";
+  } else {
+    const cur=gs.players[gs.current], t=turnTarget(gs), tp=(t>=0?gs.players[t]:null);
+    if(myTurnIn(gs)) dom.gameStatus.textContent = tp ? `Your turn: draw from ${tp.name}` : "Your turn";
+    else dom.gameStatus.textContent = tp ? `${cur.name}'s turn (from ${tp.name})` : `${cur.name}'s turn`;
+  }
+
+  const tIdx=turnTarget(gs);
+  gs.players.forEach((p,idx)=>{
+    const box=document.createElement("div");
+    box.className="player";
+    if(!gs.gameOver && idx===gs.current) box.classList.add("current");
+    if(!gs.gameOver && idx===tIdx) box.classList.add("target");
+
+    const top=document.createElement("div");
+    top.className="head";
+    top.innerHTML = `
+      <strong>${esc(p.name)}</strong>
+      <div class="row">
+        <span class="pill">${p.isHuman ? "Human" : "AI"}</span>
+        <span class="pill">Cards: ${p.hand.length}</span>
+        ${p.out ? `<span class="pill">Out</span>` : ""}
+        ${isMyPlayer(p) ? `<span class="pill host">You</span>` : ""}
+      </div>
+    `;
+
+    const hand=document.createElement("div");
+    hand.className="hand";
+
+    if(p.hand.length===0){
+      hand.innerHTML = `<span class="muted">No cards</span>`;
+    } else if(isMyPlayer(p)){
+      const sorted=[...p.hand].sort((a,b)=>{ if(a.joker) return 1; if(b.joker) return -1; return ranks.indexOf(a.rank)-ranks.indexOf(b.rank); });
+      sorted.forEach(c=>{
+        const d=document.createElement("div");
+        d.className="card face";
+        if(c.joker) d.innerHTML=`<div class="joker">JOKER</div>`;
+        else d.innerHTML=`<div class="${c.color}">${c.rank}</div><div class="${c.color}">${c.suit}</div>`;
+        hand.appendChild(d);
+      });
+    } else {
+      const canPick = !gs.gameOver && myTurnIn(gs) && idx===tIdx;
+      p.hand.forEach((_,ci)=>{
+        const b=document.createElement("button");
+        b.className="card back"; b.textContent="?";
+        if(canPick){ b.classList.add("pickable"); b.addEventListener("click",()=>onPick(idx,ci)); }
+        else b.disabled=true;
+        hand.appendChild(b);
+      });
+    }
+
+    box.appendChild(top); box.appendChild(hand); dom.playersWrap.appendChild(box);
+  });
+
+  dom.log.innerHTML = (gs.logs||[]).slice(0,30).map(x=>`<p>• ${esc(x)}</p>`).join("");
+}
+
+function esc(s){
+  return String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
+}
+
+/* =========================
+   EVENTS
+========================= */
+dom.quickStart.addEventListener("click", startQuickGame);
+dom.createRoomBtn.addEventListener("click", createRoom);
+dom.joinBtn.addEventListener("click", ()=>joinRoomByCode());
+dom.leaveRoomBtn.addEventListener("click", leaveRoom);
+dom.saveRoomSettingsBtn.addEventListener("click", saveRoomSettings);
+dom.startRoomGameBtn.addEventListener("click", startRoomGame);
+dom.sendChatBtn.addEventListener("click", sendRoomChat);
+dom.chatInput.addEventListener("keydown",(e)=>{
+  if(e.key === "Enter"){
+    e.preventDefault();
+    sendRoomChat();
+  }
+});
+dom.joinCode.addEventListener("input", ()=> dom.joinCode.value = dom.joinCode.value.toUpperCase().replace(/[^A-Z0-9]/g,""));
+
+/* init */
+connectSupabase();
+renderGame();
+if (gs != null && gs.log != null && gs.log.unshift != null) {
+  gs.logs.unshift(`Running Old Maid V2.1.3 by Alvin.`);
+}
+</script>
+</body>
+</html>

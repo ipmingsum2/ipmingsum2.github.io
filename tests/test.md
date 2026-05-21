@@ -40,3 +40,13 @@ This is why this page is useless!
 [!button Button](https://www.youtube.com/watch?v=dQw4w9WgXcQ&autoplay=1)
 ```
 |||
+
+Graham's Number:
+
+$$
+G = g_{64}, \text{ where } 
+\begin{cases} 
+g_1 = 3 \uparrow\uparrow\uparrow\uparrow 3 \\
+g_n = 3 \uparrow^{g_{n-1}} 3 & \text{for } n \geq 2 
+\end{cases}
+$$
