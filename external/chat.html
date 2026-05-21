@@ -12,77 +12,8 @@
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
 
-  <style>
-    :root{--bg:#0b1220;--panel:#141d32;--line:#2a3c63;--txt:#edf3ff;--muted:#a8b5d2;--primary:#68a8ff;--ok:#59ca8e;--warn:#ffd06a;--danger:#ff7171;--chip:#223a65}
-    *{box-sizing:border-box}
-    @keyframes rainbow {
-      0% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
-    }
-    .animated-rainbow {
-      background: linear-gradient(to left, #f00, #ff2b00, #f50, #ff8000, #fa0, #ffd500, #ff0, #d4ff00, #af0, #80ff00, #5f0, #2bff00, #0f0, #00ff2a, #0f5, #00ff80, #0fa, #00ffd5, #0ff, #00d5ff, #0af, #0080ff, #05f, #002aff, #00f, #2b00ff, #50f, #8000ff, #a0f, #d400ff, #f0f, #ff00d4, #f0a, #ff0080, #f05, #ff002b, #f00);
-      animation: rainbow-move-left-right 5s linear infinite alternate;
-      -webkit-background-clip: text;
-      background-clip: text;
-     -webkit-text-fill-color: transparent;
-  }
-  @keyframes rainbow-move-left-right {
-      0% {background-position: 0 0    }
-      100% {background-position: -500px 0}
-  }
-    body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui}
-    .app{max-width:1200px;margin:0 auto;padding:12px}
-    .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px}
-    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    .col{display:flex;flex-direction:column;gap:8px}
-    input,textarea,button{border-radius:10px;font-size:14px;padding:10px 12px;border:1px solid #355083;background:#0e182d;color:var(--txt)}
-    input,textarea{flex:1;min-width:140px}
-    textarea{min-height:70px;resize:vertical}
-    button{border:none;cursor:pointer;background:var(--primary);color:#081428;font-weight:700}
-    button.ghost{background:#24406d;color:#e2ecff}
-    button.warn{background:var(--warn);color:#3c2f00}
-    button.danger{background:var(--danger);color:#300909}
-    .hidden{display:none!important}
-    .muted{font-size:12px;color:var(--muted)}
-    .titlebar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-    .chip{display:inline-block;font-size:11px;padding:3px 8px;border-radius:999px;background:var(--chip)}
-    .chip.admin{background:#5f4115;color:#ffdca0}
-    .layout{display:grid;grid-template-columns:1fr;gap:10px}
-    @media(min-width:980px){.layout{grid-template-columns:2fr 1fr}}
-    .chat{height:56vh;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:10px;background:#0d172c;display:flex;flex-direction:column;gap:8px}
-    .msg{border:1px solid #2b406a;background:#17274a;border-radius:10px;padding:8px;position:relative}
-    .msg.deleted{opacity:.65;background:#2a3248}
-    .meta{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:#cad5f1;margin-bottom:6px}
-    .avatar{width:22px;height:22px;border-radius:50%;object-fit:cover;border:1px solid #4b67a5;vertical-align:middle;margin-right:6px}
-    .body{word-break:break-word}
-    .body img{max-width:100%}
-    .img{max-width:260px;max-height:260px;border-radius:8px;border:1px solid #3f578c;margin-top:8px}
-    .actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-    .actions button{font-size:12px;padding:6px 9px}
-    .admin-dot{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:8px;background:#2a426f;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;cursor:pointer}
-    .menu{position:fixed;z-index:10002;background:#182749;border:1px solid #365287;border-radius:10px;padding:6px;min-width:170px;box-shadow:0 10px 24px rgba(0,0,0,.35)}
-    .menu button{width:100%;text-align:left;background:transparent;color:#e8f0ff;padding:8px;border-radius:8px}
-    .menu button:hover{background:#2a416d}
-    .file-ui{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-    .fname{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--muted)}
-    .toast-wrap{position:fixed;right:12px;bottom:12px;z-index:9999;display:flex;flex-direction:column;gap:8px}
-    .toast{min-width:220px;max-width:350px;border-radius:10px;padding:10px 12px;border:1px solid #466193;background:#162746;color:#ecf3ff}
-    .toast.ok{background:#123125;border-color:#2f7d52}
-    .toast.err{background:#3b1919;border-color:#8f4141}
-    .toast.warn{background:#3f3216;border-color:#8b6d32}
-    .tabs{display:flex;gap:6px;flex-wrap:wrap}
-    .tabbtn{background:#223a65;color:#dce9ff}
-    .tabbtn.active{background:#68a8ff;color:#0a1630}
-    .tabpane{display:none}
-    .tabpane.active{display:block}
-    .list{max-height:180px;overflow:auto;border:1px solid #355083;border-radius:10px;padding:8px}
-    .list-item{display:flex;justify-content:space-between;gap:8px;padding:6px;border-bottom:1px solid #2a3d67}
-    .list-item:last-child{border-bottom:none}
-    .toolbar{display:flex;gap:6px;flex-wrap:wrap}
-    .toolbar button{padding:6px 8px;font-size:12px}
-    .debug{max-height:160px;overflow:auto;border:1px dashed #3a507f;border-radius:10px;padding:8px;background:#0f1931;font-size:12px;white-space:pre-wrap}
-  </style>
+    <link rel="stylesheet" href="./css/chat.css">
+
 </head>
 <body>
 <div class="app">
@@ -114,6 +45,7 @@
         <span id="roleChip" class="chip">user</span>
         <input id="roomInput" value="lobby" style="max-width:180px">
         <button id="btnJoin" class="ghost">Join Room</button>
+        <button id="btnShowChannelSettings" class="ghost hidden">Channel Settings</button>
         <button id="btnLogout" class="danger">Logout</button>
       </div>
 
@@ -124,6 +56,45 @@
           <div class="muted">Rooms</div>
           <div id="roomList" class="list"></div>
         </div>
+      </div>
+
+      <div id="channelSettings" class="settings-card hidden">
+        <div class="row" style="justify-content:space-between">
+          <div>
+            <b>Channel settings</b>
+            <div id="channelSettingsInfo" class="muted"></div>
+          </div>
+          <label class="switch" title="Private channel">
+            <input id="channelPrivateToggle" type="checkbox">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <input id="channelRenameInput" placeholder="Rename channel">
+          <button id="btnRenameChannel" class="ghost">Rename</button>
+          <button id="btnDeleteChannel" class="danger">Delete Channel</button>
+        </div>
+        <div id="privateMemberControls" class="row hidden" style="margin-top:8px">
+          <input id="privateMemberUsername" placeholder="Add username to private channel">
+          <button id="btnAddPrivateMember" class="ghost">Add User</button>
+        </div>
+        <div id="channelLockControls" style="margin-top:8px">
+          <div class="row" style="justify-content:space-between">
+            <div>
+              <b>Lock channel</b>
+              <div class="muted">Locked channels are read-only except for admins, channel creator, and bypass users.</div>
+            </div>
+            <label class="switch" title="Lock channel">
+              <input id="channelLockToggle" type="checkbox">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="row" style="margin-top:8px">
+            <input id="lockBypassUsername" placeholder="Add username who can talk while locked">
+            <button id="btnAddLockBypass" class="ghost">Add Lock Bypass</button>
+          </div>
+        </div>
+        <div id="channelSettingsMsg" class="muted" style="margin-top:6px"></div>
       </div>
 
       <div class="chat" id="chat" style="margin-top:10px"></div>
@@ -138,11 +109,12 @@
           <button class="ghost" data-md="[title](https://example.com)">Link</button>
           <button class="ghost" data-md="\(x^2+y^2=z^2\)">LaTeX</button>
           <button class="ghost" data-md="\[\int_0^1 x^2\,dx\]">Block LaTeX</button>
+          <button class="ghost" data-md='!iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" width="560" height="315"!'>Iframe</button>
         </div>
         <textarea id="msgText" placeholder="Write message with markdown/latex..."></textarea>
         <div class="row">
-          <input id="msgFile" type="file" accept="image/*" hidden>
-          <button id="btnPickMsg" class="ghost" type="button">Attach Image</button>
+          <input id="msgFile" type="file" accept="image/*,audio/*,video/*,.mp3,.wav,.ogg,.oga,.m4a,.aac,.flac,.opus,.weba,.mp4,.webm,.mov,.m4v,.avi,.mkv,.ogv,.3gp,.3g2" hidden>
+          <button id="btnPickMsg" class="ghost" type="button">Attach Media</button>
           <span id="msgFileName" class="fname">No file chosen</span>
           <button id="btnSend">Send</button>
         </div>
@@ -159,6 +131,16 @@
           <span id="avatarFileName" class="fname">No file chosen</span>
         </div>
         <button id="btnSaveProfile" class="ghost">Save Profile</button>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top:0">Invite User</h3>
+        <div class="muted">Enter an email to send a Supabase invite. Available to everyone logged in.</div>
+        <div class="row" style="margin-top:8px">
+          <input id="inviteEmail" type="email" placeholder="friend@example.com">
+          <button id="btnSendInvite" class="ghost">Send Invite</button>
+        </div>
+        <div id="inviteMsg" class="muted" style="margin-top:6px"></div>
       </div>
 
       <div class="card">
@@ -192,6 +174,19 @@
             </div>
             <div id="adminMsg" class="muted"></div>
 
+            <div id="rootAdminTools" class="hidden" style="margin-top:10px;border-top:1px solid #2a3d67;padding-top:10px">
+              <h4 style="margin:0 0 6px">Root-only Admin Manager</h4>
+              <div class="muted">Only @root / root@local.chat can see this.</div>
+              <div class="row" style="margin-top:8px">
+                <input id="adminRoleUsername" placeholder="Username to admin/unadmin">
+              </div>
+              <div class="row">
+                <button id="btnGiveAdmin" class="ghost">Give Admin</button>
+                <button id="btnRemoveAdmin" class="danger">Remove Admin</button>
+              </div>
+              <div id="rootAdminMsg" class="muted"></div>
+            </div>
+
             <h4 style="margin:10px 0 6px">Message Filters</h4>
             <div class="row">
               <input id="filterInput" placeholder="blocked word/phrase">
@@ -214,938 +209,8 @@
 <div id="toastWrap" class="toast-wrap"></div>
 <div id="menuHost"></div>
 
-<script>
-const SUPABASE_URL = "https://lflkpziiwnoamvtrbcil.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_tFvlhmTEDV3SOSVp0JvVzg_KHXFiDNb";
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-const $ = id => document.getElementById(id);
 
-let me = null, myProfile = null, room = "lobby", channel = null;
-let profileMap = new Map(), filters = [];
+<script src="./js/chat.js"></script>
 
-function toast(msg, type = "ok", ms = 3200) {
-  const d = document.createElement("div");
-  d.className = `toast ${type}`;
-  d.textContent = msg;
-  $("toastWrap").appendChild(d);
-  setTimeout(() => d.remove(), ms);
-}
-
-function debugLog(label, obj) {
-  $("debug").textContent = `[${new Date().toLocaleTimeString()}] ${label}: ${typeof obj === "string" ? obj : JSON.stringify(obj)}\n` + $("debug").textContent;
-}
-
-function esc(s = "") {
-  return String(s).replace(/[&<>"']/g, m => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;"
-  }[m]));
-}
-
-function errText(ctx, e) {
-  return `${ctx}: ${e?.message || JSON.stringify(e)}`;
-}
-
-function setAuthMsg(msg, err = false) {
-  $("authMsg").textContent = msg;
-  $("authMsg").style.color = err ? "var(--danger)" : "var(--muted)";
-}
-
-function setAdminMsg(msg, err = false) {
-  $("adminMsg").textContent = msg;
-  $("adminMsg").style.color = err ? "var(--danger)" : "var(--muted)";
-}
-
-function fmt(ts) {
-  try { return new Date(ts).toLocaleString(); }
-  catch { return ts; }
-}
-
-function parseRich(text = "") {
-  const md = marked.parse(text, { breaks: true, gfm: true });
-  return DOMPurify.sanitize(md, { ADD_TAGS: ["u"] });
-}
-
-function renderMathIn(el) {
-  if (!window.renderMathInElement || !el) return;
-  renderMathInElement(el, {
-    delimiters: [
-      { left: "\\[", right: "\\]", display: true },
-      { left: "\\(", right: "\\)", display: false },
-      { left: "$$", right: "$$", display: true },
-      { left: "$", right: "$", display: false }
-    ],
-    throwOnError: false
-  });
-}
-
-function showAuth() {
-  $("authCard").classList.remove("hidden");
-  $("appCard").classList.add("hidden");
-  $("status").textContent = "Not logged in";
-  if (channel) {
-    sb.removeChannel(channel);
-    channel = null;
-  }
-}
-
-function showApp() {
-  $("authCard").classList.add("hidden");
-  $("appCard").classList.remove("hidden");
-  $("status").textContent = `Logged in: ${myProfile?.display_name || me?.email || "user"}`;
-  $("meInfo").innerHTML = `You: <b>${esc(myProfile?.display_name || "")}</b> @${esc(myProfile?.username || "")} (${esc(myProfile?.role || "user")})`;
-
-  const rc = $("roleChip");
-  rc.textContent = myProfile?.role || "user";
-  rc.className = "chip" + (myProfile?.role === "admin" ? " admin" : "");
-
-  const isAdmin = myProfile?.role === "admin";
-  $("adminOnly").classList.toggle("hidden", !isAdmin);
-  $("adminNotAllowed").classList.toggle("hidden", isAdmin);
-  $("annComposer").classList.toggle("hidden", !isAdmin);
-}
-
-async function requireAuthedUser() {
-  const gu = await sb.auth.getUser();
-  if (!gu.data.user) throw new Error("Session expired");
-  return gu.data.user;
-}
-
-async function ensureProfileAfterLogin(user, uh = "", dh = "") {
-  const one = await sb.from("profiles").select("*").eq("id", user.id).maybeSingle();
-  if (one.error) throw one.error;
-  if (one.data) return one.data;
-
-  const username = (uh || user.email.split("@")[0] || ("u" + Date.now())).slice(0, 24);
-  const display_name = (dh || username).slice(0, 48);
-
-  const ins = await sb.from("profiles")
-    .insert({ id: user.id, username, display_name, role: "user" })
-    .select("*")
-    .single();
-
-  if (ins.error) throw ins.error;
-  return ins.data;
-}
-
-async function uploadImage(file) {
-  const authUser = await requireAuthedUser();
-  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-  const path = `${authUser.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-  const up = await sb.storage.from("chat-media").upload(path, file, { upsert: false });
-  if (up.error) throw up.error;
-  return sb.storage.from("chat-media").getPublicUrl(path).data.publicUrl;
-}
-
-async function loadProfileMap() {
-  const q = await sb.from("profiles").select("id,username,display_name,avatar_url,role");
-  if (q.error) throw q.error;
-  profileMap = new Map((q.data || []).map(p => [p.id, p]));
-}
-
-function addAdminMenu(x, y, msg){
-  const host = $("menuHost");
-  host.innerHTML = "";
-
-  const p = profileMap.get(msg.user_id) || {};
-  const username = p.username || "unknown";
-
-  const m = document.createElement("div");
-  m.className = "menu";
-  m.style.left = x + "px";
-  m.style.top = y + "px";
-
-  m.innerHTML = `
-    <button data-act="copyuser">Copy username (@${esc(username)})</button>
-    <button data-act="mute">Mute user</button>
-    <button data-act="unmute">Unmute user</button>
-    <button data-act="ban">Ban user</button>
-    <button data-act="unban">Unban user</button>
-    <button data-act="delete">Delete message</button>
-  `;
-  host.appendChild(m);
-
-  m.onclick = async (e) => {
-    const act = e.target.getAttribute("data-act");
-    if(!act) return;
-
-    try{
-      if(act === "copyuser"){
-        await navigator.clipboard.writeText(username);
-        toast("Username copied", "ok");
-      }
-
-      if(act === "mute"){
-        const sec = Number(prompt("Mute seconds?", "60") || 60);
-        await adminMuteUser(msg.user_id, sec);
-        toast(`Muted @${username} for ${sec}s`, "ok");
-      }
-
-      if(act === "unmute"){
-        await adminUnmuteUser(msg.user_id);
-        toast(`Unmuted @${username}`, "ok");
-      }
-
-      if(act === "ban"){
-        await adminBanUser(msg.user_id);
-        toast(`Banned @${username}`, "ok");
-      }
-
-      if(act === "unban"){
-        await adminUnbanUser(msg.user_id);
-        toast(`Unbanned @${username}`, "ok");
-      }
-
-      if(act === "delete"){
-        await softDelete(msg.id);
-      }
-    }catch(err){
-      toast(err.message || String(err), "err", 4500);
-      debugLog("admin.menu.error", err);
-    }
-
-    host.innerHTML = "";
-  };
-
-  setTimeout(() => {
-    document.addEventListener("click", () => host.innerHTML = "", { once:true });
-  }, 0);
-}
-function messageHTML(m) {
-  const p = profileMap.get(m.user_id) || {};
-  const isAdmin = myProfile?.role === "admin";
-  const canDelete = (me && m.user_id === me.id) || isAdmin;
-  const canEdit = (me && m.user_id === me.id) || isAdmin;
-  const avatar = p.avatar_url ? `<img class="avatar" src="${esc(p.avatar_url)}">` : "";
-  const rich = m.deleted ? `<i>[deleted]</i>` : parseRich(m.text || "");
-  const img = (!m.deleted && m.image_url) ? `<img class="img" src="${esc(m.image_url)}">` : "";
-  const dot = isAdmin ? `<div class="admin-dot" data-dot="${m.id}">\u2026</div>` : "";
-
-  return `<div class="msg ${m.deleted ? "deleted" : ""}" id="m-${m.id}">
-    ${dot}
-    <div class="meta"><span>${avatar}<b>${esc(p.display_name || "user")}</b> @${esc(p.username || "unknown")}</span><span>${fmt(m.created_at)}</span></div>
-    <div class="body">${rich}</div>${img}
-    <div class="actions">
-      ${canDelete ? `<button class="ghost" data-del="${m.id}">Delete</button>` : ""}
-      ${canEdit && !m.deleted ? `<button class="ghost" data-edit-msg="${m.id}">Edit</button>` : ""}
-    </div>
-  </div>`;
-}
-
-function wireMessageActions(map) {
-  document.querySelectorAll("[data-del]").forEach(btn => {
-    btn.onclick = async () => {
-      try {
-        await softDelete(btn.getAttribute("data-del"));
-      } catch (e) {
-        toast(errText("delete", e), "err");
-      }
-    };
-  });
-
-  document.querySelectorAll("[data-dot]").forEach(dot => {
-    dot.onclick = (ev) => {
-      const msg = map.get(dot.getAttribute("data-dot"));
-      addAdminMenu(ev.clientX, ev.clientY, msg);
-    };
-  });
-
-  document.querySelectorAll("[data-edit-msg]").forEach(btn => {
-    btn.onclick = async () => {
-      const id = btn.getAttribute("data-edit-msg");
-      const m = map.get(id);
-      try {
-        await editMessage(id, m?.text || "");
-        toast("Message edited", "ok");
-      } catch (e) {
-        toast(errText("edit message", e), "err", 4500);
-        debugLog("msg.edit", e);
-      }
-    };
-  });
-}
-
-async function softDelete(id) {
-  const q = await sb.from("messages").update({ deleted: true, text: null, image_url: null }).eq("id", id);
-  if (q.error) throw q.error;
-  toast("Message deleted");
-}
-
-function getMatchedFilter(text) {
-  const lc = (text || "").toLowerCase();
-  return filters.find(f => f.enabled && lc.includes(f.pattern.toLowerCase()));
-}
-
-async function loadMessages() {
-  await loadProfileMap();
-
-  const q = await sb.from("messages")
-    .select("id,room,user_id,text,image_url,deleted,created_at")
-    .eq("room", room)
-    .order("created_at", { ascending: true })
-    .limit(400);
-
-  if (q.error) throw q.error;
-
-  const chat = $("chat");
-  chat.innerHTML = "";
-
-  const map = new Map();
-  (q.data || []).forEach(m => {
-    map.set(m.id, m);
-    chat.insertAdjacentHTML("beforeend", messageHTML(m));
-  });
-
-  chat.querySelectorAll(".body").forEach(renderMathIn);
-  wireMessageActions(map);
-  chat.scrollTop = chat.scrollHeight;
-}
-
-async function joinRoom() {
-  room = ($("roomInput").value.trim() || "lobby").slice(0, 64);
-  await loadMessages();
-  loadRooms();
-
-  if (channel) await sb.removeChannel(channel);
-
-  channel = sb.channel(`room-${room}-${Date.now()}`)
-    .on("postgres_changes", {
-      event: "INSERT",
-      schema: "public",
-      table: "messages",
-      filter: `room=eq.${room}`
-    }, async (payload) => {
-      const m = payload.new;
-      if (!profileMap.has(m.user_id)) {
-        const p = await sb.from("profiles")
-          .select("id,username,display_name,avatar_url,role")
-          .eq("id", m.user_id)
-          .maybeSingle();
-        if (p.data) profileMap.set(m.user_id, p.data);
-      }
-
-      const chat = $("chat");
-      chat.insertAdjacentHTML("beforeend", messageHTML(m));
-      const el = document.getElementById(`m-${m.id}`);
-      if (el) renderMathIn(el.querySelector(".body"));
-
-      const single = new Map();
-      single.set(m.id, m);
-      wireMessageActions(single);
-
-      chat.scrollTop = chat.scrollHeight;
-    })
-    .on("postgres_changes", {
-      event: "UPDATE",
-      schema: "public",
-      table: "messages",
-      filter: `room=eq.${room}`
-    }, async (payload) => {
-      const m = payload.new;
-      const old = document.getElementById(`m-${m.id}`);
-      if (old) {
-        old.outerHTML = messageHTML(m);
-        const ne = document.getElementById(`m-${m.id}`);
-        if (ne) renderMathIn(ne.querySelector(".body"));
-      }
-
-      const single = new Map();
-      single.set(m.id, m);
-      wireMessageActions(single);
-    })
-    .subscribe();
-}
-
-async function loadRooms() {
-  const q = await sb.from("messages")
-    .select("room, created_at")
-    .order("created_at", { ascending: false })
-    .limit(2000);
-
-  if (q.error) {
-    debugLog("rooms.load", q.error);
-    return;
-  }
-
-  const map = new Map();
-  for (const r of (q.data || [])) {
-    if (!r.room) continue;
-    if (!map.has(r.room)) map.set(r.room, { room: r.room, last: r.created_at, count: 0 });
-    map.get(r.room).count++;
-  }
-
-  const rooms = [...map.values()].sort((a, b) => new Date(b.last) - new Date(a.last));
-
-  const box = $("roomList");
-  box.innerHTML = rooms.length ? rooms.map(r => `
-    <div class="list-item">
-      <div>
-        <div><b>#${esc(r.room)}</b></div>
-        <div class="muted">${r.count} msgs \u2022 last ${fmt(r.last)}</div>
-      </div>
-      <div>
-        <button class="ghost" data-open-room="${esc(r.room)}">Open</button>
-      </div>
-    </div>
-  `).join("") : `<div class="muted">No rooms yet.</div>`;
-
-  box.querySelectorAll("[data-open-room]").forEach(btn => {
-    btn.onclick = async () => {
-      const rm = btn.getAttribute("data-open-room");
-      $("roomInput").value = rm;
-      await joinRoom();
-      toast(`Joined #${rm}`, "ok");
-    };
-  });
-}
-
-/* announcements */
-async function loadAnnouncements() {
-  const q = await sb.from("announcements")
-    .select("*")
-    .order("is_pinned", { ascending: false })
-    .order("pinned_at", { ascending: false, nullsFirst: false })
-    .order("created_at", { ascending: false })
-    .limit(100);
-
-  if (q.error) {
-    debugLog("ann.load", q.error);
-    return;
-  }
-
-  const isAdmin = myProfile?.role === "admin";
-  const rows = q.data || [];
-
-  $("annList").innerHTML = rows.map(a => `
-    <div class="list-item" style="${a.is_pinned ? "border-left:4px solid #ffd06a;padding-left:8px" : ""}">
-      <div style="flex:1">
-        <div>
-          ${a.is_pinned ? "\u{1F4CC} " : ""}<b>${esc(a.title)}</b>
-        </div>
-        <div class="muted">${esc(a.body)}</div>
-        <div class="muted">
-          ${fmt(a.created_at)}
-          ${a.pinned_at ? ` \u2022 pinned ${fmt(a.pinned_at)}` : ""}
-        </div>
-      </div>
-      ${isAdmin ? `
-        <div class="row">
-          <button class="ghost" data-edit-ann="${a.id}">Edit</button>
-          <button class="warn" data-pin-ann="${a.id}">${a.is_pinned ? "Unpin" : "Pin"}</button>
-          <button class="danger" data-del-ann="${a.id}">Delete</button>
-        </div>
-      ` : ""}
-    </div>
-  `).join("") || `<div class="muted">No announcements yet.</div>`;
-
-  if (isAdmin) {
-    const map = new Map(rows.map(a => [a.id, a]));
-
-    document.querySelectorAll("[data-edit-ann]").forEach(btn => {
-      btn.onclick = async () => {
-        const id = btn.getAttribute("data-edit-ann");
-        const a = map.get(id);
-        try {
-          await editAnnouncement(id, a?.title || "", a?.body || "");
-          toast("Announcement updated", "ok");
-          await loadAnnouncements();
-        } catch (e) {
-          toast(errText("edit announcement", e), "err", 4500);
-          debugLog("ann.edit", e);
-        }
-      };
-    });
-
-    document.querySelectorAll("[data-pin-ann]").forEach(btn => {
-      btn.onclick = async () => {
-        const id = btn.getAttribute("data-pin-ann");
-        const a = map.get(id);
-        try {
-          await togglePinAnnouncement(a);
-          toast(a?.is_pinned ? "Announcement unpinned" : "Announcement pinned", "ok");
-          await loadAnnouncements();
-        } catch (e) {
-          toast(errText("pin announcement", e), "err", 4500);
-          debugLog("ann.pin", e);
-        }
-      };
-    });
-
-    document.querySelectorAll("[data-del-ann]").forEach(btn => {
-      btn.onclick = async () => {
-        const id = btn.getAttribute("data-del-ann");
-        try {
-          const qd = await sb.from("announcements").delete().eq("id", id);
-          if (qd.error) throw qd.error;
-          toast("Announcement deleted", "ok");
-          await loadAnnouncements();
-        } catch (e) {
-          toast(errText("delete announcement", e), "err", 4500);
-          debugLog("ann.delete", e);
-        }
-      };
-    });
-  }
-}
-
-async function editAnnouncement(id, currentTitle, currentBody) {
-  const title = prompt("Edit title:", currentTitle || "");
-  if (title === null) return;
-
-  const body = prompt("Edit body:", currentBody || "");
-  if (body === null) return;
-
-  const q = await sb.from("announcements")
-    .update({ title: title.trim(), body: body.trim() })
-    .eq("id", id);
-
-  if (q.error) throw q.error;
-}
-
-async function togglePinAnnouncement(a) {
-  const nextPinned = !a.is_pinned;
-  const q = await sb.from("announcements")
-    .update({
-      is_pinned: nextPinned,
-      pinned_at: nextPinned ? new Date().toISOString() : null
-    })
-    .eq("id", a.id);
-
-  if (q.error) throw q.error;
-}
-
-async function editMessage(msgId, oldText) {
-  const next = prompt("Edit message:", oldText || "");
-  if (next === null) return;
-
-  const cleaned = next.trim();
-  if (!cleaned) return toast("Message cannot be empty", "warn");
-
-  const q = await sb.from("messages")
-    .update({
-      text: cleaned,
-      edited_at: new Date().toISOString()
-    })
-    .eq("id", msgId);
-
-  if (q.error) throw q.error;
-}
-
-async function publishAnnouncement() {
-  const title = $("annTitle").value.trim();
-  const body = $("annBody").value.trim();
-
-  if (!title || !body) return toast("Need title and body", "warn");
-
-  const q = await sb.from("announcements").insert({ title, body, created_by: me.id });
-  if (q.error) throw q.error;
-
-  $("annTitle").value = "";
-  $("annBody").value = "";
-  toast("Announcement published");
-  await loadAnnouncements();
-}
-
-/* filters */
-async function loadFilters() {
-  const q = await sb.from("message_filters").select("*").order("created_at", { ascending: false });
-  if (q.error) throw q.error;
-  filters = q.data || [];
-  renderFilterList();
-}
-
-function renderFilterList() {
-  const box = $("filterList");
-  box.innerHTML = filters.map(f => `
-    <div class="list-item">
-      <div>
-        <b>${esc(f.pattern)}</b> <span class="muted">${f.enabled ? "enabled" : "disabled"}</span>
-      </div>
-      <div class="row">
-        <button class="ghost" data-toggle="${f.id}">${f.enabled ? "Disable" : "Enable"}</button>
-        <button class="danger" data-del-filter="${f.id}">Delete</button>
-      </div>
-    </div>
-  `).join("") || `<div class="muted">No filters.</div>`;
-
-  box.querySelectorAll("[data-toggle]").forEach(btn => btn.onclick = async () => {
-    const id = btn.getAttribute("data-toggle");
-    const f = filters.find(x => x.id === id);
-    if (!f) return;
-    const q = await sb.from("message_filters").update({ enabled: !f.enabled }).eq("id", id);
-    if (q.error) return toast(errText("toggle filter", q.error), "err");
-    await loadFilters();
-  });
-
-  box.querySelectorAll("[data-del-filter]").forEach(btn => btn.onclick = async () => {
-    const id = btn.getAttribute("data-del-filter");
-    const q = await sb.from("message_filters").delete().eq("id", id);
-    if (q.error) return toast(errText("delete filter", q.error), "err");
-    await loadFilters();
-  });
-}
-
-async function addFilter() {
-  const pattern = $("filterInput").value.trim();
-  if (!pattern) return toast("Filter text required", "warn");
-
-  const q = await sb.from("message_filters").insert({ pattern, enabled: true, created_by: me.id });
-  if (q.error) throw q.error;
-
-  $("filterInput").value = "";
-  await loadFilters();
-  toast("Filter added");
-}
-
-/* admin */
-async function requireAdmin() {
-  if (myProfile?.role !== "admin") throw new Error("Admin only");
-}
-
-async function getUserIdByUsername(username){
-  const q = await sb.from("profiles")
-    .select("id, username")
-    .ilike("username", username.trim())
-    .limit(1)
-    .maybeSingle();
-
-  if(q.error) throw q.error;
-  if(!q.data) throw new Error("User not found");
-  return q.data.id;
-}
-
-async function adminBanUser(userId){
-  await requireAdmin();
-  const q = await sb.from("user_bans").upsert({
-    user_id: userId,
-    reason: "instant admin ban",
-    created_at: new Date().toISOString(),
-    created_by: me.id
-  });
-  if(q.error) throw q.error;
-}
-
-async function adminMuteUser(userId, seconds=60){
-  await requireAdmin();
-  const muted_until = new Date(Date.now() + Math.max(1, seconds)*1000).toISOString();
-  const q = await sb.from("user_mutes").upsert({
-    user_id: userId,
-    muted_until,
-    reason: "admin mute",
-    updated_at: new Date().toISOString(),
-    updated_by: me.id
-  });
-  if(q.error) throw q.error;
-}
-
-async function adminUnmuteUser(userId){
-  await requireAdmin();
-  const q = await sb.from("user_mutes").delete().eq("user_id", userId);
-  if(q.error) throw q.error;
-}
-
-async function adminUnbanUser(userId){
-  await requireAdmin();
-  const q = await sb.from("user_bans").delete().eq("user_id", userId);
-  if(q.error) throw q.error;
-}
-
-/* bans edit: added replication */
-async function checkBan(userId){
-  if(!userId) return;
-
-  const q = await sb.from("user_bans")
-    .select("user_id")
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if(q.error){
-    debugLog("checkBan.error", q.error);
-    return;
-  }
-
-  if(q.data){
-    toast("Your account has been banned.", "err", 4500);
-    await sb.auth.signOut();
-    me = null;
-    myProfile = null;
-    showAuth();
-  }
-}
-
-/* ui wiring */
-$("btnPickAvatar").onclick = () => $("avatarFile").click();
-$("btnPickMsg").onclick = () => $("msgFile").click();
-
-$("avatarFile").onchange = () => $("avatarFileName").textContent = $("avatarFile").files?.[0]?.name || "No file chosen";
-$("msgFile").onchange = () => $("msgFileName").textContent = $("msgFile").files?.[0]?.name || "No file chosen";
-
-document.querySelectorAll("[data-md]").forEach(btn => btn.onclick = () => {
-  const s = btn.getAttribute("data-md");
-  const ta = $("msgText");
-  const a = ta.selectionStart;
-  const b = ta.selectionEnd;
-  const v = ta.value;
-  ta.value = v.slice(0, a) + s + v.slice(b);
-  ta.focus();
-});
-
-document.querySelectorAll(".tabbtn").forEach(btn => btn.onclick = () => {
-  document.querySelectorAll(".tabbtn").forEach(x => x.classList.remove("active"));
-  document.querySelectorAll(".tabpane").forEach(x => x.classList.remove("active"));
-  btn.classList.add("active");
-  $("tab-" + btn.getAttribute("data-tab")).classList.add("active");
-});
-
-$("btnClearDebug").onclick = () => $("debug").textContent = "";
-
-$("btnRegister").onclick = async () => {
-  setAuthMsg("");
-  try {
-    const email = $("email").value.trim();
-    const password = $("password").value;
-    if (!email || !password) return setAuthMsg("Email/password required", true);
-
-    const r = await sb.auth.signUp({ email, password });
-    if (r.error) throw r.error;
-
-    localStorage.setItem("pending_username", $("regUsername").value.trim());
-    localStorage.setItem("pending_display", $("regDisplay").value.trim());
-
-    setAuthMsg("Registered. Login now (confirm email if required).");
-    toast("Account created");
-  } catch (e) {
-    setAuthMsg(errText("register", e), true);
-    debugLog("register", e);
-  }
-};
-
-$("btnLogin").onclick = async () => {
-  setAuthMsg("");
-  try {
-    const email = $("email").value.trim();
-    const password = $("password").value;
-    const r = await sb.auth.signInWithPassword({ email, password });
-    if (r.error) throw r.error;
-
-    me = r.data.user;
-
-    // check account ban AFTER login (now we have me.id)
-    const ban = await sb.from("user_bans")
-      .select("user_id")
-      .eq("user_id", me.id)
-      .maybeSingle();
-
-    if (ban.data) {
-      await sb.auth.signOut();
-      me = null;
-      myProfile = null;
-      showAuth();
-      toast("Your account is banned.", "err", 4500);
-      return;
-    }
-
-    myProfile = await ensureProfileAfterLogin(
-      me,
-      localStorage.getItem("pending_username") || "",
-      localStorage.getItem("pending_display") || ""
-    );
-
-    localStorage.removeItem("pending_username");
-    localStorage.removeItem("pending_display");
-
-    showApp();
-    await loadFilters();
-    await loadAnnouncements();
-    await joinRoom();
-    await loadRooms();
-    toast("Login success");
-  } catch (e) {
-    setAuthMsg(errText("login", e), true);
-    debugLog("login", e);
-  }
-};
-$("btnLogout").onclick = async () => {
-  await sb.auth.signOut();
-  me = null;
-  myProfile = null;
-  showAuth();
-  toast("Logged out");
-};
-
-$("btnJoin").onclick = joinRoom;
-
-$("btnSaveProfile").onclick = async () => {
-  try {
-    const authUser = await requireAuthedUser();
-    let display_name = ($("newDisplay").value.trim() || myProfile.display_name).slice(0, 48);
-    let avatar_url = myProfile.avatar_url || null;
-
-    const f = $("avatarFile").files?.[0];
-    if (f) avatar_url = await uploadImage(f);
-
-    const q = await sb.from("profiles").update({ display_name, avatar_url }).eq("id", authUser.id);
-    if (q.error) throw q.error;
-
-    myProfile.display_name = display_name;
-    myProfile.avatar_url = avatar_url;
-
-    showApp();
-    await loadMessages();
-    toast("Profile updated");
-  } catch (e) {
-    toast(errText("profile", e), "err", 4500);
-    debugLog("profile", e);
-  }
-};
-
-$("btnSend").onclick = async () => {
-  try {
-    const authUser = await requireAuthedUser();
-    const text = $("msgText").value.trim();
-    const file = $("msgFile").files?.[0];
-		const mute = await sb.from("user_mutes")
-  		.select("muted_until")
-  		.eq("user_id", authUser.id)
-  		.maybeSingle();
-		if (mute.data && new Date(mute.data.muted_until).getTime() > Date.now()) {
-  		const mutedUntil = new Date(mute.data.muted_until).toLocaleString();
-  		toast(`Your account is muted. You are muted until ${mutedUntil}`,"warn",4500);
-  		return;
-		}
-    if (!text && !file) return toast("Write text or attach image", "warn");
-
-    const hit = getMatchedFilter(text);
-    if (hit) return toast(`Blocked by filter: "${hit.pattern}"`, "err", 4500);
-
-    let image_url = null;
-    if (file) image_url = await uploadImage(file);
-
-    const ins = await sb.from("messages").insert({ room, user_id: authUser.id, text: text || null, image_url });
-    if (ins.error) throw ins.error;
-
-    $("msgText").value = "";
-    $("msgFile").value = "";
-    $("msgFileName").textContent = "No file chosen";
-  } catch (e) {
-    toast(errText("send", e), "err", 5000);
-    debugLog("send", e);
-  }
-};
-
-$("btnPublishAnn").onclick = async () => {
-  try {
-    await requireAdmin();
-    await publishAnnouncement();
-  } catch (e) {
-    toast(errText("publish ann", e), "err", 4500);
-  }
-};
-
-$("btnAddFilter").onclick = async () => {
-  try {
-    await requireAdmin();
-    await addFilter();
-  } catch (e) {
-    toast(errText("add filter", e), "err", 4500);
-  }
-};
-
-$("btnMute").onclick = async ()=>{
-  try{
-    await requireAdmin();
-    const uname = $("targetUsername").value.trim();
-    const uid = await getUserIdByUsername(uname);
-    const sec = Number($("muteSec").value || 60);
-    await adminMuteUser(uid, sec);
-    setAdminMsg(`Muted @${uname} for ${sec}s`);
-    toast("User muted");
-  }catch(e){ setAdminMsg(errText("mute user", e), true); }
-};
-
-$("btnUnmute").onclick = async ()=>{
-  try{
-    await requireAdmin();
-    const uname = $("targetUsername").value.trim();
-    const uid = await getUserIdByUsername(uname);
-    await adminUnmuteUser(uid);
-    setAdminMsg(`Unmuted @${uname}`);
-    toast("User unmuted");
-  }catch(e){ setAdminMsg(errText("unmute user", e), true); }
-};
-
-$("btnBan").onclick = async ()=>{
-  try{
-    await requireAdmin();
-    const uname = $("targetUsername").value.trim();
-    const uid = await getUserIdByUsername(uname);
-    await adminBanUser(uid);
-    setAdminMsg(`Banned @${uname}`);
-    toast("User banned");
-  }catch(e){ setAdminMsg(errText("ban user", e), true); }
-};
-
-$("btnUnban").onclick = async ()=>{
-  try{
-    await requireAdmin();
-    const uname = $("targetUsername").value.trim();
-    const uid = await getUserIdByUsername(uname);
-    await adminUnbanUser(uid);
-    setAdminMsg(`Unbanned @${uname}`);
-    toast("User unbanned");
-  }catch(e){ setAdminMsg(errText("unban user", e), true); }
-};
-/* remember to lick and sub */
-function subscribeSideChannels() {
-  sb.channel("ann-live")
-    .on("postgres_changes", { event: "*", schema: "public", table: "announcements" }, () => loadAnnouncements())
-    .subscribe();
-
-  sb.channel("filters-live")
-    .on("postgres_changes", { event: "*", schema: "public", table: "message_filters" }, () => loadFilters())
-    .subscribe();
-
-  if (me?.id) {
-    sb.channel("user-bans-live")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "user_bans",
-          filter: `user_id=eq.${me.id}`
-        },
-        () => checkBan(me.id)
-      )
-      .subscribe();
-  }
-}
-
-(async () => {
-  const s = await sb.auth.getSession();
-  if (!s.data.session?.user) {
-    showAuth();
-    return;
-  }
-
-  try {
-    me = s.data.session.user;
-    myProfile = await ensureProfileAfterLogin(me);
-    showApp();
-    subscribeSideChannels();
-    await loadFilters();
-    await loadAnnouncements();
-    await joinRoom();
-    await loadRooms();
-  } catch (e) {
-    debugLog("init", e);
-    showAuth();
-    toast(errText("init", e), "err", 5000);
-  }
-})();
-</script>
 </body>
 </html>
