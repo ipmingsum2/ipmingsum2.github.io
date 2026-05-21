@@ -136,7 +136,78 @@
       </ul>
     </aside>
   </main>
+	<noscript>
+    <style>
+  /* Hide everything outside <noscript> */
+  body > :not(noscript) {
+    display: none !important;
+  }
 
+  html, body {
+    margin: 0;
+    padding: 0;
+    min-height: 100%;
+    background: #0b1120;
+    color: #e5e7eb;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  .ns-wrap {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    box-sizing: border-box;
+  }
+
+  .ns-card {
+    width: 100%;
+    max-width: 42rem;
+    background: #111827;
+    border: 1px solid #374151;
+    border-radius: 12px;
+    padding: 1.25rem;
+    box-sizing: border-box;
+  }
+
+  .ns-title {
+    margin: 0 0 0.75rem 0;
+    font-size: 1.4rem;
+    line-height: 1.25;
+    color: #f9fafb;
+  }
+
+  .ns-text {
+    margin: 0;
+    color: #cbd5e1;
+    line-height: 1.6;
+  }
+
+  code {
+    color: #93c5fd;
+  }
+
+  @media (max-width: 480px) {
+    .ns-card {
+      padding: 1rem;
+      border-radius: 10px;
+    }
+    .ns-title {
+      font-size: 1.2rem;
+    }
+  }
+</style>
+
+<main class="ns-wrap" role="main" aria-live="polite">
+  <section class="ns-card">
+    <h1 class="ns-title">JavaScript is disabled</h1>
+    <p class="ns-text">
+      JavaScript is disabled currently. Please enable JavaScript to view this page.
+    </p>
+  </section>
+</main>
+  </noscript>
   <script>
     (function () {
       const params = new URLSearchParams(window.location.search);
