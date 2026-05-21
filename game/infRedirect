@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<head>
+<title>InfRedirect</title>
+</head>
+<body>
+<script type="text/javascript">
+window.onload = function() {
+    window.open("https://ipmingsum2.github.io/game/infredirect.html", "_blank");
+};
+</script>
+</body>
