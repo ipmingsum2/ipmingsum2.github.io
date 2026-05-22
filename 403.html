@@ -304,9 +304,11 @@
         window.location.href = 'https://ipmingsum2.github.io/500.html';
       }
 
-      if (window.location.search || window.location.hash) {
-        window.history.replaceState({}, document.title, window.location.pathname);
-      }
+      // 1. Get the URL path and the hash fragment
+const newUrl = window.location.pathname + window.location.hash;
+
+// 2. Update the address bar without reloading
+window.history.replaceState({}, document.title, newUrl);
     })();
   </script>
 </body>
