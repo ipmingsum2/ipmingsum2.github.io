@@ -294,6 +294,10 @@
         restrictionTypeEl.textContent = 'Admin Only';
         reasonEl.textContent = 'Restricted to admins.';
         messageEl.textContent = 'Something you just accessed is available to administrators only.';
+      } else if (type === 'vpn') {
+        restrictionTypeEl.textContent = 'VPN Detected';
+        reasonEl.textContent = 'Using a VPN.';
+        messageEl.textContent = 'For security reasons, using a VPN is not allowed. Please don't use a VPN. Once done, go back to the site you just accessed.';
       } else {
         restrictionTypeEl.textContent = 'Unknown';
         reasonEl.textContent = 'Unknown type.';
