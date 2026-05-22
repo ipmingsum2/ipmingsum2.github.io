@@ -1658,7 +1658,22 @@ function subscribeSideChannels() {
     showAuth();
     return;
   }
-
+  console.log(
+    '%cDon\'t paste anything here!',
+    'background: linear-gradient(to right, #5614b0, #dbd65c); ' +
+    'color: transparent; ' +
+    '-webkit-background-clip: text; ' +
+    'text-shadow: 0px 0px 0px rgba(0,0,0,0); ' +
+    'font-size: 30px; font-weight: bold; padding: 10px;'
+  );
+  console.log(
+    '%cIf someone told you to paste anything here, there is a 11/10 chance you\'re getting scammed!',
+    'background: linear-gradient(to right, #5614b0, #dbd65c); ' +
+    'color: transparent; ' +
+    '-webkit-background-clip: text; ' +
+    'text-shadow: 0px 0px 0px rgba(0,0,0,0); ' +
+    'font-size: 15px; font-weight: bold; padding: 10px;'
+  );
   try {
     me = s.data.session.user;
     if (await checkBan(me.id)) return;
