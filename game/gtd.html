@@ -3,19 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Guess the Drawing - Dark Realtime</title>
+  <title>Guess the Drawing</title>
+  <!-- load tailwind the best thing ever -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script type="module">
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-    // ================= CONFIG =================
+    // i need some milk
     const SUPABASE_URL = "https://yasyvumldynwfjixcafk.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_F1tj2PYJ79Z2s5h2F_679w_8kAwRNN6";
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
     const LOSER_VIDEO_URL = "https://github.com/ipmingsum2/dobble/raw/refs/heads/main/Rick%20Astley%20-%20Never%20Gonna%20Give%20You%20Up%20(Official%20Video)%20(4K%20Remaster).mp4";
 
-    // Preset words
     const WORD_BANK = [
       "apple","banana","orange","grape","watermelon","strawberry","pineapple","peach","pear","cherry",
       "car","bus","train","airplane","helicopter","boat","bicycle","motorcycle","scooter","submarine",
@@ -29,24 +28,11 @@
       "pizza","burger","sandwich","taco","sushi","noodles","salad","cake","donut","cookie",
       "robot","alien","astronaut","rocket","planet","satellite","comet","meteor","spaceship","galaxy",
       "doctor","nurse","teacher","chef","farmer","firefighter","police","pilot","artist","musician",
-      "guitar","piano","drum","violin","trumpet","flute","saxophone","harp","microphone stand","stage",
-      "soccer","basketball","baseball","tennis","golf","volleyball","hockey","boxing","swimming","running",
-      "clock","watch","calendar","map","compass","key","lock","door","window","ladder",
-      "chair","table","sofa","bed","lamp","mirror","toilet","shower","fridge","oven",
-      "hat","shirt","pants","shoes","sock","jacket","dress","skirt","gloves","scarf",
-      "tree","flower","grass","leaf","seed","mushroom","cactus","bamboo","palm","vine",
-      "dragon","unicorn","wizard","knight","pirate","ninja","ghost","vampire","zombie","witch",
-      "treasure","crown","sword","shield","bow","arrow","hammer","wrench","screwdriver","drill",
-      "traffic light","stop sign","crosswalk","road","highway","tunnel","garage","gas station","parking lot","map pin",
-      "ice cream","popcorn","pancake","waffle","hotdog","fries","omelet","steak","soup","dumpling",
-      "kangaroo","koala","panda","sloth","fox","wolf","deer","moose","camel","hippo",
-      "snail","butterfly","bee","ant","spider","ladybug","dragonfly","grasshopper","worm","beetle",
-      "campfire","tent","backpacker","canoe","fishing rod","binoculars","compass rose","sleeping bag","mountain bike","skateboard",
-      "snowman","sled","igloo","ski","snowboard","mittens","umbrella","raincoat","kite","balloon",
-      "chess","dice","puzzle","playing cards","joystick","arcade","domino","board game","marble","yo-yo"
+      "guitar","piano","drum","violin","trumpet","flute","saxophone","harp","stage",
+      "soccer","basketball","baseball","tennis","golf","volleyball","hockey","boxing","swimming","running"
     ];
 
-    // ================= STATE =================
+    // def state
     const state = {
       roomId: "",
       userId: "u_" + crypto.randomUUID(),
@@ -62,6 +48,7 @@
       timerInt: null,
       endingRound: false,
       hostFixing: false,
+      drawerFixing: false,
 
       loserModalShownKey: "",
       loserModalPendingKey: "",
@@ -84,24 +71,21 @@
       lastSendTs: 0
     };
 
-    // ================= DOM =================
+    // dom thingys ig
     const setupPanel = document.getElementById("setupPanel");
     const gamePanel = document.getElementById("gamePanel");
     const statusEl = document.getElementById("status");
 
-    // Create room
     const createNameInput = document.getElementById("createNameInput");
     const createGuessInput = document.getElementById("createGuessInput");
     const createWordsInput = document.getElementById("createWordsInput");
     const createRoomBtn = document.getElementById("createRoomBtn");
     const createdCodeEl = document.getElementById("createdCode");
 
-    // Join room
     const joinCodeInput = document.getElementById("joinCodeInput");
     const joinNameInput = document.getElementById("joinNameInput");
     const joinRoomBtn = document.getElementById("joinRoomBtn");
 
-    // Game header
     const roomCodeDisplay = document.getElementById("roomCodeDisplay");
     const hostDisplay = document.getElementById("hostDisplay");
     const roundEl = document.getElementById("round");
@@ -111,28 +95,25 @@
     const wordEl = document.getElementById("wordDisplay");
     const leaveRoomBtn = document.getElementById("leaveRoomBtn");
 
-    // Host controls
     const hostControls = document.getElementById("hostControls");
     const hostOnlyNote = document.getElementById("hostOnlyNote");
     const hostGuessInput = document.getElementById("hostGuessInput");
     const hostWordsInput = document.getElementById("hostWordsInput");
     const saveSettingsBtn = document.getElementById("saveSettingsBtn");
+    const startRoomBtn = document.getElementById("startRoomBtn");
     const startRoundBtn = document.getElementById("startRoundBtn");
     const restartMatchBtn = document.getElementById("restartMatchBtn");
 
-    // Players/chat
     const playersEl = document.getElementById("playersList");
     const chatList = document.getElementById("chatList");
     const chatInput = document.getElementById("chatInput");
     const chatBtn = document.getElementById("chatBtn");
 
-    // Word modal
     const modal = document.getElementById("wordChoiceModal");
     const choice1 = document.getElementById("choice1");
     const choice2 = document.getElementById("choice2");
     const choice3 = document.getElementById("choice3");
 
-    // Loser modal
     const loserVideoModal = document.getElementById("loserVideoModal");
     const loserVideo = document.getElementById("loserVideo");
     const loserTitle = document.getElementById("loserTitle");
@@ -140,7 +121,6 @@
     const closeLoserBtn = document.getElementById("closeLoserBtn");
     const playLoserBtn = document.getElementById("playLoserBtn");
 
-    // Drawing
     const canvas = document.getElementById("board");
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
     const toolSel = document.getElementById("tool");
@@ -150,13 +130,18 @@
     const sizeInput = document.getElementById("sizeInput");
     const clearBtn = document.getElementById("clearBtn");
 
-    // ================= HELPERS =================
+    // some helper functions and uhh
     const norm = (s) => (s || "").toLowerCase().trim().replace(/\s+/g, " ");
     const nowIso = () => new Date().toISOString();
     const isDrawer = () => state.game?.drawer_id === state.userId;
     const isHost = () => state.game?.host_id === state.userId;
     const maskWord = (w) => (w || "").split("").map(ch => (ch === " " ? " " : "_")).join(" ");
     const setStatus = (s) => statusEl.textContent = s;
+
+    function safeTs(v) {
+      const t = new Date(v || 0).getTime();
+      return Number.isFinite(t) ? t : 0;
+    }
 
     function parseCustomWords(text) {
       return [...new Set(
@@ -208,23 +193,26 @@
       return genRoomCode();
     }
 
+    function sortByOldest(a, b) {
+      const ta = safeTs(a.joined_at);
+      const tb = safeTs(b.joined_at);
+      if (ta !== tb) return ta - tb;
+      return (a.user_id || "").localeCompare(b.user_id || "");
+    }
+
     function oldestPlayer(players) {
-      return [...players].sort((a, b) => {
-        const ta = new Date(a.joined_at).getTime();
-        const tb = new Date(b.joined_at).getTime();
-        if (ta !== tb) return ta - tb;
-        return a.user_id.localeCompare(b.user_id);
-      })[0];
+      return [...players].sort(sortByOldest)[0];
+    }
+
+    function orderedPlayers(players) {
+      return [...players].sort(sortByOldest);
     }
 
     function computeLoser(players) {
       if (!players?.length) return null;
       return [...players].sort((a, b) => {
-        if (a.score !== b.score) return a.score - b.score;
-        const ta = new Date(a.joined_at).getTime();
-        const tb = new Date(b.joined_at).getTime();
-        if (ta !== tb) return ta - tb;
-        return a.user_id.localeCompare(b.user_id);
+        if ((a.score || 0) !== (b.score || 0)) return (a.score || 0) - (b.score || 0);
+        return sortByOldest(a, b);
       })[0];
     }
 
@@ -236,6 +224,11 @@
         if (me?.has_guessed) return false;
       }
       return true;
+    }
+
+    function phaseLabel(p) {
+      if (p === "room_setup") return "room setup";
+      return p || "lobby";
     }
 
     // ================= LOSER VIDEO =================
@@ -265,7 +258,7 @@
     }
 
     function openLoserVideoModal(loserName) {
-      loserTitle.textContent = `😈 ${loserName}, punishment video time.`;
+      loserTitle.textContent = `😈 ${loserName}, time for rick astley to beat u up.`; // hehe
       loserVideoModal.classList.remove("hidden");
       loserVideo.src = LOSER_VIDEO_URL;
       loserVideo.currentTime = 0;
@@ -280,7 +273,6 @@
 
       playLoserBtn.classList.add("hidden");
       loserVideo.play().catch(() => {
-        // Autoplay may be blocked
         playLoserBtn.classList.remove("hidden");
       });
     }
@@ -299,19 +291,16 @@
         const loser = computeLoser(state.players);
         if (!loser) return;
 
-        // Mark handled for this match-end phase, regardless of whether current user is loser
         state.loserModalShownKey = key;
-
-        if (loser.user_id === state.userId) {
-          openLoserVideoModal(loser.name || "Loser");
-        }
+        if (loser.user_id === state.userId) openLoserVideoModal(loser.name || "Loser");
         renderPlayers();
       } finally {
         state.loserModalPendingKey = "";
       }
     }
 
-    // ================= DRAW CORE =================
+    // drawing core funcs
+    // this is so hard that i almost gave up
     function fitCanvas() {
       const r = canvas.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
@@ -476,20 +465,15 @@
       await state.drawChannel.send({ type: "broadcast", event: "draw", payload });
     }
 
-    // ================= HOST FAILOVER =================
+    // host & drawer failover.
     async function maybeReassignHostIfMissing() {
       if (!state.game || !state.roomId || state.hostFixing) return;
       const hostPresent = state.players.some(p => p.user_id === state.game.host_id);
-
-      // Valid host still present
       if (hostPresent) return;
       if (state.players.length === 0) return;
 
-      // Deterministic: oldest remaining player becomes host
       const newHost = oldestPlayer(state.players);
       if (!newHost) return;
-
-      // Only that exact player performs the update
       if (newHost.user_id !== state.userId) return;
 
       state.hostFixing = true;
@@ -510,7 +494,47 @@
       }
     }
 
-    // ================= GAME DATA =================
+    async function maybeFixDrawerIfMissing() {
+      if (!state.game || !state.roomId || state.drawerFixing) return;
+      const phase = state.game.phase;
+      if (!(phase === "choosing" || phase === "drawing")) return;
+      if (!state.players.length) return;
+
+      const drawerPresent = !!state.players.find(p => p.user_id === state.game.drawer_id);
+      const needOptions = phase === "choosing" && (!Array.isArray(state.game.options) || state.game.options.length < 3);
+
+      if (drawerPresent && !needOptions) return;
+      if (!isHost()) return;
+
+      state.drawerFixing = true;
+      try {
+        const players = orderedPlayers(state.players);
+        const idx = Math.max(0, ((state.game.round_no || 1) - 1) % players.length);
+        const fallbackDrawer = players[idx] || players[0];
+        if (!fallbackDrawer) return;
+
+        const patch = { updated_at: nowIso() };
+        if (!drawerPresent) patch.drawer_id = fallbackDrawer.user_id;
+        if (needOptions) patch.options = random3Words();
+
+        await supabase.from("game_state")
+          .update(patch)
+          .eq("room_id", state.roomId);
+
+        if (!drawerPresent) {
+          await supabase.from("chat_messages").insert({
+            room_id: state.roomId,
+            name: "System",
+            content: `Drawer fixed: ${fallbackDrawer.name}`,
+            is_system: true
+          });
+        }
+      } finally {
+        state.drawerFixing = false;
+      }
+    }
+
+    // data of gam
     async function ensurePlayerOnly() {
       await supabase.from("players").upsert({
         room_id: state.roomId,
@@ -539,9 +563,10 @@
         name
       });
 
+      // NEW: room_setup phase must be started by host before match
       await supabase.from("game_state").insert({
         room_id: code,
-        phase: "lobby",
+        phase: "room_setup",
         round_no: 0,
         drawer_id: null,
         word: null,
@@ -575,7 +600,7 @@
       if (!g) {
         await supabase.from("game_state").insert({
           room_id: code,
-          phase: "lobby",
+          phase: "room_setup",
           round_no: 0,
           duration_sec: 90,
           host_id: state.userId,
@@ -623,6 +648,7 @@
       state.liveDrawnStrokeIds = new Set();
       state.endingRound = false;
       state.hostFixing = false;
+      state.drawerFixing = false;
       state.loserModalPendingKey = "";
       state.loserModalShownKey = "";
 
@@ -636,18 +662,14 @@
       const roomId = state.roomId;
       const myUserId = state.userId;
       const myName = state.name || "Player";
-
-      // Snapshot if I was host at the time of leaving
       const wasHost = state.game?.host_id === myUserId;
 
       try {
-        // Remove self
         await supabase.from("players")
           .delete()
           .eq("room_id", roomId)
           .eq("user_id", myUserId);
 
-        // If I was host, hand over to oldest remaining player
         if (wasHost) {
           const { data: remaining } = await supabase.from("players")
             .select("*")
@@ -676,7 +698,6 @@
           is_system: true
         });
       } catch {
-        // ignore best-effort leave errors
       } finally {
         resetLocalRoomState();
         if (!silent) setStatus("Left room.");
@@ -701,8 +722,9 @@
         if (a) applyAction(a, false);
       }
       redrawFromActions();
-      renderAll();
       await maybeReassignHostIfMissing();
+      await maybeFixDrawerIfMissing();
+      renderAll();
       await maybeShowLoserVideo();
     }
 
@@ -720,13 +742,30 @@
       await persistAction(clearAction);
     }
 
+    async function startRoom() {
+      if (!isHost() || !state.game) return;
+      if (state.game.phase !== "room_setup") return;
+
+      await supabase.from("game_state").update({
+        phase: "lobby",
+        updated_at: nowIso()
+      }).eq("room_id", state.roomId);
+
+      await supabase.from("chat_messages").insert({
+        room_id: state.roomId,
+        name: "System",
+        content: "Room started. Waiting for host to start the match.",
+        is_system: true
+      });
+    }
+
     async function startNextRound() {
       if (!isHost()) return;
       if (!state.game) return;
-      if (state.game.phase === "drawing" || state.game.phase === "choosing") return;
+      if (!(state.game.phase === "lobby" || state.game.phase === "ended")) return;
       if (state.game.phase === "match_ended") return;
 
-      const players = [...state.players].sort((a, b) => new Date(a.joined_at) - new Date(b.joined_at));
+      const players = orderedPlayers(state.players);
       if (players.length < 2) return setStatus("Need at least 2 players.");
 
       const roundNo = (state.game.round_no || 0) + 1;
@@ -737,7 +776,7 @@
       await supabase.from("game_state").update({
         phase: "choosing",
         round_no: roundNo,
-        drawer_id: drawer.user_id,
+        drawer_id: drawer?.user_id || null,
         word: null,
         options,
         started_at: null,
@@ -749,7 +788,7 @@
       await supabase.from("chat_messages").insert({
         room_id: state.roomId,
         name: "System",
-        content: `Round ${roundNo} started. ${drawer.name} is choosing a word.`,
+        content: `Round ${roundNo} started. ${drawer?.name || "Drawer"} is choosing a word.`,
         is_system: true
       });
     }
@@ -773,8 +812,8 @@
 
     async function announceTop3() {
       const { data: latest } = await supabase.from("players").select("*").eq("room_id", state.roomId);
-      const top = [...(latest || [])].sort((a, b) => b.score - a.score).slice(0, 3);
-      const line = top.map((p, i) => `${i + 1}) ${p.name} - ${p.score}`).join(" | ");
+      const top = [...(latest || [])].sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 3);
+      const line = top.map((p, i) => `${i + 1}) ${p.name} - ${p.score || 0}`).join(" | ");
       await supabase.from("chat_messages").insert({
         room_id: state.roomId,
         name: "System",
@@ -795,7 +834,7 @@
         const drawer = state.players.find(p => p.user_id === drawerId);
         if (drawer) {
           await supabase.from("players").update({
-            score: drawer.score + drawerBonus
+            score: (drawer.score || 0) + drawerBonus
           }).eq("room_id", state.roomId).eq("user_id", drawerId);
         }
 
@@ -821,7 +860,7 @@
             await supabase.from("chat_messages").insert({
               room_id: state.roomId,
               name: "System",
-              content: `💀 Lowest score: ${loser.name} (${loser.score})`,
+              content: `💀 Lowest score: ${loser.name} (${loser.score || 0})`,
               is_system: true
             });
           }
@@ -878,7 +917,7 @@
       });
     }
 
-    // ================= CHAT =================
+    // chattttt
     function addChatLine(name, content, isSystem) {
       const row = document.createElement("div");
       row.className = "text-sm";
@@ -897,7 +936,6 @@
     async function sendChat() {
       const text = chatInput.value.trim();
       if (!text || !state.game) return;
-
       if (!canUserChat()) {
         chatInput.value = "";
         return;
@@ -941,7 +979,7 @@
       chatInput.value = "";
     }
 
-    // ================= RENDER =================
+    // rendering
     function updateTimer() {
       if (!state.game || state.game.phase !== "drawing" || !state.game.started_at) {
         timerEl.textContent = "--";
@@ -956,7 +994,7 @@
 
     function renderPlayers() {
       playersEl.innerHTML = "";
-      const sorted = [...state.players].sort((a, b) => b.score - a.score);
+      const sorted = [...state.players].sort((a, b) => (b.score || 0) - (a.score || 0));
       for (const p of sorted) {
         const tag =
           state.game?.drawer_id === p.user_id ? "Drawer" :
@@ -969,7 +1007,7 @@
             <span class="font-medium text-slate-100">${p.name}</span>
             <span class="text-xs px-2 py-0.5 rounded bg-slate-700 text-slate-200">${tag}</span>
           </div>
-          <span class="font-semibold text-slate-100">${p.score}</span>
+          <span class="font-semibold text-slate-100">${p.score || 0}</span>
         `;
         playersEl.appendChild(li);
       }
@@ -996,7 +1034,7 @@
     function renderHeader() {
       roomCodeDisplay.textContent = state.roomId || "-";
       roundEl.textContent = String(state.game?.round_no || 0);
-      phaseEl.textContent = state.game?.phase || "lobby";
+      phaseEl.textContent = phaseLabel(state.game?.phase);
 
       const hostPlayer = state.players.find(p => p.user_id === state.game?.host_id);
       hostDisplay.textContent = hostPlayer ? hostPlayer.name : "-";
@@ -1015,24 +1053,32 @@
       const canDraw = isDrawer() && state.game?.phase === "drawing";
       [toolSel, color1, color2, gradientToggle, sizeInput, clearBtn].forEach(el => el.disabled = !canDraw);
 
-      // Host controls
       const amHost = isHost();
       hostControls.classList.toggle("hidden", !amHost);
       hostOnlyNote.classList.toggle("hidden", amHost);
 
+      if (!amHost && state.game?.phase === "room_setup") {
+        hostOnlyNote.textContent = "Waiting for host to start room...";
+      } else if (!amHost) {
+        hostOnlyNote.textContent = "Only host can change settings/start/restart.";
+      }
+
       if (amHost) {
-        if (document.activeElement !== hostGuessInput) {
-          hostGuessInput.value = String(state.game?.duration_sec || 90);
-        }
+        if (document.activeElement !== hostGuessInput) hostGuessInput.value = String(state.game?.duration_sec || 90);
         if (document.activeElement !== hostWordsInput) {
           hostWordsInput.value = (Array.isArray(state.game?.custom_words) ? state.game.custom_words : []).join(", ");
         }
       }
 
-      const canStart = amHost &&
+      const canStartRoom = amHost && state.game?.phase === "room_setup";
+      startRoomBtn.disabled = !canStartRoom;
+      startRoomBtn.classList.toggle("hidden", state.game?.phase !== "room_setup");
+
+      const canStartRound = amHost &&
         state.players.length >= 2 &&
         (state.game?.phase === "lobby" || state.game?.phase === "ended");
-      startRoundBtn.disabled = !canStart;
+      startRoundBtn.disabled = !canStartRound;
+      startRoundBtn.classList.toggle("hidden", state.game?.phase === "room_setup");
       startRoundBtn.textContent = (state.game?.round_no || 0) === 0 ? "Start Match" : "Start Next Round";
 
       restartMatchBtn.disabled = !(amHost && state.game?.phase === "match_ended");
@@ -1059,19 +1105,21 @@
       updateTimer();
     }
 
-    // ================= REALTIME =================
+    // lick and sub
     function subscribeDB() {
       state.dbChannel = supabase.channel("room-db-" + state.roomId)
         .on("postgres_changes", { event: "*", schema: "public", table: "players", filter: `room_id=eq.${state.roomId}` }, async () => {
           const { data } = await supabase.from("players").select("*").eq("room_id", state.roomId).order("joined_at");
           state.players = data || [];
           await maybeReassignHostIfMissing();
+          await maybeFixDrawerIfMissing();
           renderAll();
         })
         .on("postgres_changes", { event: "*", schema: "public", table: "game_state", filter: `room_id=eq.${state.roomId}` }, async () => {
           const { data } = await supabase.from("game_state").select("*").eq("room_id", state.roomId).single();
           state.game = data;
           await maybeReassignHostIfMissing();
+          await maybeFixDrawerIfMissing();
           renderAll();
           await maybeShowLoserVideo();
         })
@@ -1105,7 +1153,7 @@
       state.drawChannel.subscribe();
     }
 
-    // ================= DRAW INPUT =================
+    // input listenerz
     toolSel.addEventListener("change", () => state.tool = toolSel.value);
     color1.addEventListener("input", () => state.color = color1.value);
     color2.addEventListener("input", () => state.color2 = color2.value);
@@ -1244,11 +1292,12 @@
       }
     });
 
-    // ================= EVENTS =================
+    // some eventz?
     createRoomBtn.addEventListener("click", createRoomFlow);
     joinRoomBtn.addEventListener("click", joinRoomFlow);
 
     saveSettingsBtn.addEventListener("click", saveHostSettings);
+    startRoomBtn.addEventListener("click", startRoom);
     startRoundBtn.addEventListener("click", startNextRound);
     restartMatchBtn.addEventListener("click", restartMatch);
 
@@ -1268,30 +1317,27 @@
       try {
         await loserVideo.play();
         playLoserBtn.classList.add("hidden");
-      } catch {
-        // ignore
-      }
+      } catch {}
     });
 
     window.addEventListener("resize", fitCanvas);
 
-    // Best effort auto-leave on tab close/navigation
     window.addEventListener("pagehide", () => {
       if (!state.roomId) return;
       leaveRoomFlow(true);
     });
+    // PLS WORK
   </script>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen">
   <div class="max-w-7xl mx-auto p-3 sm:p-4">
-    <h1 class="text-xl sm:text-2xl font-bold mb-3">Guess the Drawing (Dark Realtime)</h1>
+    <h1 class="text-xl sm:text-2xl font-bold mb-3">Guess the Drawing</h1>
 
     <!-- Setup Panel -->
     <div id="setupPanel" class="bg-slate-900 border border-slate-800 rounded-xl shadow p-4">
       <p class="text-sm mb-3 text-slate-400">Create a room or join with a room code.</p>
 
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <!-- Create -->
         <div class="border border-slate-800 rounded-lg p-3 bg-slate-900">
           <h2 class="font-semibold mb-2">Create Room (Host)</h2>
           <div class="space-y-2">
@@ -1309,7 +1355,6 @@
           </div>
         </div>
 
-        <!-- Join -->
         <div class="border border-slate-800 rounded-lg p-3 bg-slate-900">
           <h2 class="font-semibold mb-2">Join Room</h2>
           <div class="space-y-2">
@@ -1325,7 +1370,6 @@
 
     <!-- Game Panel -->
     <div id="gamePanel" class="hidden mt-4 grid grid-cols-1 lg:grid-cols-4 gap-3">
-      <!-- Canvas -->
       <div class="lg:col-span-3 bg-slate-900 border border-slate-800 rounded-xl shadow p-3">
         <div class="flex flex-wrap items-center gap-2 mb-2">
           <select id="tool" class="border border-slate-700 bg-slate-800 text-slate-100 rounded px-2 py-1 text-sm">
@@ -1349,13 +1393,12 @@
         </div>
       </div>
 
-      <!-- Sidebar -->
       <div class="bg-slate-900 border border-slate-800 rounded-xl shadow p-3 flex flex-col gap-3">
         <div class="text-sm space-y-1 text-slate-300">
           <div>Room: <span id="roomCodeDisplay" class="font-semibold text-slate-100">-</span></div>
           <div>Host: <span id="hostDisplay" class="font-semibold text-slate-100">-</span></div>
           <div>Round: <span id="round" class="font-semibold text-slate-100">0</span></div>
-          <div>Phase: <span id="phase" class="font-semibold text-slate-100">lobby</span></div>
+          <div>Phase: <span id="phase" class="font-semibold text-slate-100">room setup</span></div>
           <div>Timer: <span id="timer" class="font-semibold text-slate-100">--</span></div>
           <div>Drawer: <span id="drawerDisplay" class="font-semibold text-slate-100">-</span></div>
           <div>Word: <span id="wordDisplay" class="font-semibold text-slate-100">-</span></div>
@@ -1376,6 +1419,7 @@
             <textarea id="hostWordsInput" rows="3" class="w-full border border-slate-700 bg-slate-800 rounded px-2 py-1 text-sm text-slate-100"></textarea>
           </div>
           <button id="saveSettingsBtn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white rounded px-3 py-2 text-sm font-semibold">Save Settings</button>
+          <button id="startRoomBtn" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white rounded px-3 py-2 text-sm font-semibold">Start Room</button>
           <button id="startRoundBtn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white rounded px-3 py-2 text-sm font-semibold">Start Match</button>
           <button id="restartMatchBtn" class="hidden w-full bg-amber-600 hover:bg-amber-500 text-white rounded px-3 py-2 text-sm font-semibold">Restart Match</button>
         </div>
