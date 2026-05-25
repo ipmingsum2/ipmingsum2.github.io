@@ -23,10 +23,12 @@ Play games that I made!
 
 [!button Old Maid](/game/old-maid.html)
 
+[!button Guess The Drawing](/game/gtd.html)
+
 ## External
 
 Useful things!
 
-[!button Chat](/external/chat)
+[!button Chat](/external/chat.html)
 
 [!button Chat Source Code](/external/chat-source)
