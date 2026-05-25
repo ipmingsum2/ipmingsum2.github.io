@@ -3,16 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Guess the Drawing</title>
-  <!-- load tailwind the best thing ever -->
+  <title>Guess the Drawing - Dark Realtime</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script type="module">
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-    // i need some milk
+    // ================= CONFIG =================
     const SUPABASE_URL = "https://yasyvumldynwfjixcafk.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_F1tj2PYJ79Z2s5h2F_679w_8kAwRNN6";
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // ⚠️ github.com media may be blocked in sandbox iframe
     const LOSER_VIDEO_URL = "https://github.com/ipmingsum2/dobble/raw/refs/heads/main/Rick%20Astley%20-%20Never%20Gonna%20Give%20You%20Up%20(Official%20Video)%20(4K%20Remaster).mp4";
 
     const WORD_BANK = [
@@ -32,10 +33,14 @@
       "soccer","basketball","baseball","tennis","golf","volleyball","hockey","boxing","swimming","running"
     ];
 
-    // def state
+    const PALETTE = ["#111827","#1f2937","#374151","#6b7280","#ef4444","#f97316","#eab308","#22c55e","#06b6d4","#3b82f6","#8b5cf6","#ec4899","#ffffff"];
+    const SIZES = [2,4,6,8,12,16,24];
+
+    // ================= STATE =================
     const state = {
       roomId: "",
-      userId: "u_" + crypto.randomUUID(),
+      userId: "",
+      session: null,
       name: "",
       players: [],
       game: null,
@@ -60,6 +65,7 @@
       color2: "#3b82f6",
       gradient: false,
       brushSize: 4,
+      colorTarget: "primary",
 
       drawing: false,
       startX: 0,
@@ -71,10 +77,14 @@
       lastSendTs: 0
     };
 
-    // dom thingys ig
+    // ================= DOM =================
     const setupPanel = document.getElementById("setupPanel");
     const gamePanel = document.getElementById("gamePanel");
     const statusEl = document.getElementById("status");
+
+    const authStatus = document.getElementById("authStatus");
+    const googleLoginBtn = document.getElementById("googleLoginBtn");
+    const signOutBtn = document.getElementById("signOutBtn");
 
     const createNameInput = document.getElementById("createNameInput");
     const createGuessInput = document.getElementById("createGuessInput");
@@ -121,16 +131,19 @@
     const closeLoserBtn = document.getElementById("closeLoserBtn");
     const playLoserBtn = document.getElementById("playLoserBtn");
 
-    const canvas = document.getElementById("board");
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
-    const toolSel = document.getElementById("tool");
-    const color1 = document.getElementById("color1");
-    const color2 = document.getElementById("color2");
-    const gradientToggle = document.getElementById("gradientToggle");
-    const sizeInput = document.getElementById("sizeInput");
+    const drawerToolbar = document.getElementById("drawerToolbar");
+    const toolButtonsWrap = document.getElementById("toolButtons");
+    const primaryTargetBtn = document.getElementById("primaryTargetBtn");
+    const secondaryTargetBtn = document.getElementById("secondaryTargetBtn");
+    const swatchesWrap = document.getElementById("swatches");
+    const gradientBtn = document.getElementById("gradientBtn");
+    const sizeButtonsWrap = document.getElementById("sizeButtons");
     const clearBtn = document.getElementById("clearBtn");
 
-    // some helper functions and uhh
+    const canvas = document.getElementById("board");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+    // ================= HELPERS =================
     const norm = (s) => (s || "").toLowerCase().trim().replace(/\s+/g, " ");
     const nowIso = () => new Date().toISOString();
     const isDrawer = () => state.game?.drawer_id === state.userId;
@@ -231,6 +244,176 @@
       return p || "lobby";
     }
 
+    function requireAuth() {
+      if (!state.userId) {
+        setStatus("Sign in with Google first.");
+        return false;
+      }
+      return true;
+    }
+
+    // ================= AUTH =================
+    function deriveProfileName(session) {
+      const user = session?.user;
+      const full = user?.user_metadata?.full_name?.trim();
+      if (full) return full;
+      const name = user?.user_metadata?.name?.trim();
+      if (name) return name;
+      const email = user?.email || "";
+      return email.includes("@") ? email.split("@")[0] : "";
+    }
+
+    function updateAuthUi() {
+      const loggedIn = !!state.userId;
+      const email = state.session?.user?.email || "";
+      const profile = deriveProfileName(state.session);
+
+      authStatus.textContent = loggedIn
+        ? `Signed in: ${email || profile || "Google user"}`
+        : "Not signed in";
+
+      googleLoginBtn.classList.toggle("hidden", loggedIn);
+      signOutBtn.classList.toggle("hidden", !loggedIn);
+
+      createRoomBtn.disabled = !loggedIn;
+      joinRoomBtn.disabled = !loggedIn;
+      createRoomBtn.classList.toggle("opacity-50", !loggedIn);
+      joinRoomBtn.classList.toggle("opacity-50", !loggedIn);
+      createRoomBtn.classList.toggle("cursor-not-allowed", !loggedIn);
+      joinRoomBtn.classList.toggle("cursor-not-allowed", !loggedIn);
+
+      if (loggedIn && profile) {
+        if (!createNameInput.value.trim()) createNameInput.value = profile;
+        if (!joinNameInput.value.trim()) joinNameInput.value = profile;
+      }
+    }
+
+    async function signInWithGoogle() {
+      try {
+        setStatus("Redirecting to Google...");
+        await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: {
+            redirectTo: window.location.href
+          }
+        });
+      } catch (e) {
+        console.error(e);
+        setStatus("Google login failed.");
+      }
+    }
+
+    async function signOutFlow() {
+      try {
+        if (state.roomId) await leaveRoomFlow(true);
+      } catch {}
+      await supabase.auth.signOut();
+      setStatus("Signed out.");
+    }
+
+    async function handleAuthSession(session) {
+      const prevUser = state.userId;
+      state.session = session || null;
+      state.userId = session?.user?.id || "";
+
+      if (!state.userId) {
+        state.name = "";
+        if (prevUser && state.roomId) {
+          await leaveRoomFlow(true);
+        }
+      }
+      updateAuthUi();
+    }
+
+    async function initAuth() {
+      setStatus("Checking auth...");
+      const { data, error } = await supabase.auth.getSession();
+      if (error) {
+        console.error(error);
+        setStatus("Auth check failed.");
+      }
+      await handleAuthSession(data?.session || null);
+
+      supabase.auth.onAuthStateChange(async (_event, session) => {
+        await handleAuthSession(session);
+      });
+
+      if (state.userId) setStatus("Signed in. Ready.");
+      else setStatus("Please sign in with Google.");
+    }
+
+    // ================= CUSTOM DRAW UI =================
+    function makeBtnClass(active = false) {
+      return `px-3 py-1.5 rounded-lg border text-sm font-medium transition ${
+        active
+          ? "bg-cyan-600 border-cyan-500 text-white"
+          : "bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700"
+      }`;
+    }
+
+    function renderToolButtons() {
+      const tools = [
+        ["pen","Pen"],["eraser","Eraser"],["line","Line"],["rect","Rect"],["circle","Circle"],["triangle","Triangle"],["fill","Fill"]
+      ];
+      toolButtonsWrap.innerHTML = "";
+      for (const [value,label] of tools) {
+        const b = document.createElement("button");
+        b.className = makeBtnClass(state.tool === value);
+        b.textContent = label;
+        b.onclick = () => { state.tool = value; renderToolButtons(); };
+        toolButtonsWrap.appendChild(b);
+      }
+    }
+
+    function renderColorTargetButtons() {
+      primaryTargetBtn.className = makeBtnClass(state.colorTarget === "primary");
+      secondaryTargetBtn.className = makeBtnClass(state.colorTarget === "secondary");
+      primaryTargetBtn.textContent = `Primary (${state.color})`;
+      secondaryTargetBtn.textContent = `Secondary (${state.color2})`;
+    }
+
+    function renderSwatches() {
+      swatchesWrap.innerHTML = "";
+      for (const c of PALETTE) {
+        const b = document.createElement("button");
+        const selected = (state.colorTarget === "primary" ? state.color : state.color2) === c;
+        b.className = `w-7 h-7 rounded-full border-2 ${selected ? "border-white" : "border-slate-600"} shadow`;
+        b.style.background = c;
+        b.title = c;
+        b.onclick = () => {
+          if (state.colorTarget === "primary") state.color = c;
+          else state.color2 = c;
+          renderColorTargetButtons();
+          renderSwatches();
+        };
+        swatchesWrap.appendChild(b);
+      }
+    }
+
+    function renderGradientButton() {
+      gradientBtn.className = makeBtnClass(state.gradient);
+      gradientBtn.textContent = state.gradient ? "Gradient: ON" : "Gradient: OFF";
+    }
+
+    function renderSizeButtons() {
+      sizeButtonsWrap.innerHTML = "";
+      for (const s of SIZES) {
+        const b = document.createElement("button");
+        b.className = makeBtnClass(state.brushSize === s);
+        b.innerHTML = `<span class="inline-flex items-center gap-2"><span class="inline-block rounded-full bg-slate-100" style="width:${Math.min(16,s)}px;height:${Math.min(16,s)}px"></span>${s}</span>`;
+        b.onclick = () => { state.brushSize = s; renderSizeButtons(); };
+        sizeButtonsWrap.appendChild(b);
+      }
+    }
+
+    function renderCustomDrawUi() {
+      renderToolButtons();
+      renderColorTargetButtons();
+      renderSwatches();
+      renderGradientButton();
+      renderSizeButtons();
+    }
+
     // ================= LOSER VIDEO =================
     function closeLoserVideoModal() {
       loserVideo.pause();
@@ -245,7 +428,6 @@
     function updateLoserCountdownUI() {
       const remainMs = Math.max(0, state.loserLockUntil - Date.now());
       const remainSec = Math.ceil(remainMs / 1000);
-
       if (remainSec > 0) {
         loserCountdown.textContent = `Close available in ${remainSec}s`;
         closeLoserBtn.disabled = true;
@@ -258,7 +440,7 @@
     }
 
     function openLoserVideoModal(loserName) {
-      loserTitle.textContent = `😈 ${loserName}, time for rick astley to beat u up.`; // hehe
+      loserTitle.textContent = `😈 ${loserName}, punishment video time.`;
       loserVideoModal.classList.remove("hidden");
       loserVideo.src = LOSER_VIDEO_URL;
       loserVideo.currentTime = 0;
@@ -272,9 +454,7 @@
       state.loserTimerInt = setInterval(updateLoserCountdownUI, 250);
 
       playLoserBtn.classList.add("hidden");
-      loserVideo.play().catch(() => {
-        playLoserBtn.classList.remove("hidden");
-      });
+      loserVideo.play().catch(() => playLoserBtn.classList.remove("hidden"));
     }
 
     async function maybeShowLoserVideo() {
@@ -299,8 +479,7 @@
       }
     }
 
-    // drawing core funcs
-    // this is so hard that i almost gave up
+    // ================= DRAW CORE =================
     function fitCanvas() {
       const r = canvas.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
@@ -316,12 +495,7 @@
     function hexToRgba(hex) {
       const h = hex.replace("#", "");
       const v = h.length === 3 ? h.split("").map(c => c + c).join("") : h;
-      return [
-        parseInt(v.slice(0, 2), 16),
-        parseInt(v.slice(2, 4), 16),
-        parseInt(v.slice(4, 6), 16),
-        255
-      ];
+      return [parseInt(v.slice(0, 2), 16), parseInt(v.slice(2, 4), 16), parseInt(v.slice(4, 6), 16), 255];
     }
 
     function floodFill(x, y, fillHex) {
@@ -333,7 +507,7 @@
       const d = img.data;
       const tx = Math.floor(x), ty = Math.floor(y);
       const i0 = (ty * w + tx) * 4;
-      const target = [d[i0], d[i0 + 1], d[i0 + 2], d[i0 + 3]];
+      const target = [d[i0], d[i0+1], d[i0+2], d[i0+3]];
       const fill = hexToRgba(fillHex);
       if (target[0] === fill[0] && target[1] === fill[1] && target[2] === fill[2] && target[3] === 255) return;
 
@@ -342,9 +516,9 @@
         const [cx, cy] = st.pop();
         if (cx < 0 || cy < 0 || cx >= w || cy >= h) continue;
         const i = (cy * w + cx) * 4;
-        if (d[i] === target[0] && d[i + 1] === target[1] && d[i + 2] === target[2] && d[i + 3] === target[3]) {
-          d[i] = fill[0]; d[i + 1] = fill[1]; d[i + 2] = fill[2]; d[i + 3] = 255;
-          st.push([cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]);
+        if (d[i] === target[0] && d[i+1] === target[1] && d[i+2] === target[2] && d[i+3] === target[3]) {
+          d[i] = fill[0]; d[i+1] = fill[1]; d[i+2] = fill[2]; d[i+3] = 255;
+          st.push([cx+1,cy], [cx-1,cy], [cx,cy+1], [cx,cy-1]);
         }
       }
       ctx.putImageData(img, 0, 0);
@@ -399,8 +573,8 @@
       } else if (shape === "rect") {
         ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
       } else if (shape === "circle") {
-        const r = Math.sqrt((x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0));
-        ctx.arc(x0, y0, r, 0, Math.PI * 2);
+        const rr = Math.sqrt((x1-x0)*(x1-x0) + (y1-y0)*(y1-y0));
+        ctx.arc(x0, y0, rr, 0, Math.PI * 2);
         ctx.stroke();
       } else if (shape === "triangle") {
         ctx.moveTo(x0, y0);
@@ -465,16 +639,13 @@
       await state.drawChannel.send({ type: "broadcast", event: "draw", payload });
     }
 
-    // host & drawer failover.
+    // ================= HOST / DRAWER FAILOVER =================
     async function maybeReassignHostIfMissing() {
       if (!state.game || !state.roomId || state.hostFixing) return;
       const hostPresent = state.players.some(p => p.user_id === state.game.host_id);
-      if (hostPresent) return;
-      if (state.players.length === 0) return;
-
+      if (hostPresent || state.players.length === 0) return;
       const newHost = oldestPlayer(state.players);
-      if (!newHost) return;
-      if (newHost.user_id !== state.userId) return;
+      if (!newHost || newHost.user_id !== state.userId) return;
 
       state.hostFixing = true;
       try {
@@ -517,9 +688,7 @@
         if (!drawerPresent) patch.drawer_id = fallbackDrawer.user_id;
         if (needOptions) patch.options = random3Words();
 
-        await supabase.from("game_state")
-          .update(patch)
-          .eq("room_id", state.roomId);
+        await supabase.from("game_state").update(patch).eq("room_id", state.roomId);
 
         if (!drawerPresent) {
           await supabase.from("chat_messages").insert({
@@ -534,7 +703,7 @@
       }
     }
 
-    // data of gam
+    // ================= GAME DATA =================
     async function ensurePlayerOnly() {
       await supabase.from("players").upsert({
         room_id: state.roomId,
@@ -544,72 +713,79 @@
     }
 
     async function createRoomFlow() {
-      const name = createNameInput.value.trim();
-      if (!name) return setStatus("Enter host name.");
+      try {
+        if (!requireAuth()) return;
+        const name = createNameInput.value.trim();
+        if (!name) return setStatus("Enter host name.");
 
-      const duration = Math.max(30, Math.min(300, parseInt(createGuessInput.value || "90", 10)));
-      const customWords = parseCustomWords(createWordsInput.value);
+        const duration = Math.max(30, Math.min(300, parseInt(createGuessInput.value || "90", 10)));
+        const customWords = parseCustomWords(createWordsInput.value);
 
-      setStatus("Creating room...");
-      const code = await generateUniqueRoomCode();
+        setStatus("Creating room...");
+        const code = await generateUniqueRoomCode();
 
-      state.roomId = code;
-      state.name = name;
+        state.roomId = code;
+        state.name = name;
 
-      await supabase.from("rooms").insert({ id: code });
-      await supabase.from("players").insert({
-        room_id: code,
-        user_id: state.userId,
-        name
-      });
+        await supabase.from("rooms").insert({ id: code });
+        await supabase.from("players").insert({ room_id: code, user_id: state.userId, name });
 
-      // NEW: room_setup phase must be started by host before match
-      await supabase.from("game_state").insert({
-        room_id: code,
-        phase: "room_setup",
-        round_no: 0,
-        drawer_id: null,
-        word: null,
-        options: null,
-        started_at: null,
-        duration_sec: duration,
-        host_id: state.userId,
-        custom_words: customWords,
-        updated_at: nowIso()
-      });
-
-      createdCodeEl.textContent = code;
-      await enterRoom();
-    }
-
-    async function joinRoomFlow() {
-      const code = joinCodeInput.value.trim().toUpperCase();
-      const name = joinNameInput.value.trim();
-      if (!code || !name) return setStatus("Enter room code and name.");
-
-      setStatus("Joining room...");
-      const { data: room } = await supabase.from("rooms").select("id").eq("id", code).maybeSingle();
-      if (!room) return setStatus("Room not found.");
-
-      state.roomId = code;
-      state.name = name;
-
-      await ensurePlayerOnly();
-
-      const { data: g } = await supabase.from("game_state").select("*").eq("room_id", code).maybeSingle();
-      if (!g) {
         await supabase.from("game_state").insert({
           room_id: code,
           phase: "room_setup",
           round_no: 0,
-          duration_sec: 90,
+          drawer_id: null,
+          word: null,
+          options: null,
+          started_at: null,
+          duration_sec: duration,
           host_id: state.userId,
-          custom_words: [],
+          custom_words: customWords,
           updated_at: nowIso()
         });
-      }
 
-      await enterRoom();
+        createdCodeEl.textContent = code;
+        await enterRoom();
+      } catch (e) {
+        setStatus("Create failed. Check RLS/policies/grants and table names.");
+        console.error(e);
+      }
+    }
+
+    async function joinRoomFlow() {
+      try {
+        if (!requireAuth()) return;
+        const code = joinCodeInput.value.trim().toUpperCase();
+        const name = joinNameInput.value.trim();
+        if (!code || !name) return setStatus("Enter room code and name.");
+
+        setStatus("Joining room...");
+        const { data: room } = await supabase.from("rooms").select("id").eq("id", code).maybeSingle();
+        if (!room) return setStatus("Room not found.");
+
+        state.roomId = code;
+        state.name = name;
+
+        await ensurePlayerOnly();
+
+        const { data: g } = await supabase.from("game_state").select("*").eq("room_id", code).maybeSingle();
+        if (!g) {
+          await supabase.from("game_state").insert({
+            room_id: code,
+            phase: "room_setup",
+            round_no: 0,
+            duration_sec: 90,
+            host_id: state.userId,
+            custom_words: [],
+            updated_at: nowIso()
+          });
+        }
+
+        await enterRoom();
+      } catch (e) {
+        setStatus("Join failed. Check RLS/policies/grants and room code.");
+        console.error(e);
+      }
     }
 
     async function enterRoom() {
@@ -632,11 +808,7 @@
 
     function resetLocalRoomState() {
       cleanupChannels();
-      if (state.timerInt) {
-        clearInterval(state.timerInt);
-        state.timerInt = null;
-      }
-
+      if (state.timerInt) { clearInterval(state.timerInt); state.timerInt = null; }
       closeLoserVideoModal();
 
       state.roomId = "";
@@ -654,7 +826,7 @@
 
       setupPanel.classList.remove("hidden");
       gamePanel.classList.add("hidden");
-      setStatus("Not connected.");
+      setStatus(state.userId ? "Ready." : "Please sign in with Google.");
     }
 
     async function leaveRoomFlow(silent = false) {
@@ -665,23 +837,13 @@
       const wasHost = state.game?.host_id === myUserId;
 
       try {
-        await supabase.from("players")
-          .delete()
-          .eq("room_id", roomId)
-          .eq("user_id", myUserId);
+        await supabase.from("players").delete().eq("room_id", roomId).eq("user_id", myUserId);
 
         if (wasHost) {
-          const { data: remaining } = await supabase.from("players")
-            .select("*")
-            .eq("room_id", roomId);
-
+          const { data: remaining } = await supabase.from("players").select("*").eq("room_id", roomId);
           const next = oldestPlayer(remaining || []);
           if (next) {
-            await supabase.from("game_state").update({
-              host_id: next.user_id,
-              updated_at: nowIso()
-            }).eq("room_id", roomId);
-
+            await supabase.from("game_state").update({ host_id: next.user_id, updated_at: nowIso() }).eq("room_id", roomId);
             await supabase.from("chat_messages").insert({
               room_id: roomId,
               name: "System",
@@ -692,13 +854,9 @@
         }
 
         await supabase.from("chat_messages").insert({
-          room_id: roomId,
-          name: "System",
-          content: `${myName} left the room.`,
-          is_system: true
+          room_id: roomId, name: "System", content: `${myName} left the room.`, is_system: true
         });
-      } catch {
-      } finally {
+      } catch {} finally {
         resetLocalRoomState();
         if (!silent) setStatus("Left room.");
       }
@@ -743,14 +901,8 @@
     }
 
     async function startRoom() {
-      if (!isHost() || !state.game) return;
-      if (state.game.phase !== "room_setup") return;
-
-      await supabase.from("game_state").update({
-        phase: "lobby",
-        updated_at: nowIso()
-      }).eq("room_id", state.roomId);
-
+      if (!isHost() || !state.game || state.game.phase !== "room_setup") return;
+      await supabase.from("game_state").update({ phase: "lobby", updated_at: nowIso() }).eq("room_id", state.roomId);
       await supabase.from("chat_messages").insert({
         room_id: state.roomId,
         name: "System",
@@ -760,8 +912,7 @@
     }
 
     async function startNextRound() {
-      if (!isHost()) return;
-      if (!state.game) return;
+      if (!isHost() || !state.game) return;
       if (!(state.game.phase === "lobby" || state.game.phase === "ended")) return;
       if (state.game.phase === "match_ended") return;
 
@@ -803,10 +954,7 @@
       }).eq("room_id", state.roomId);
 
       await supabase.from("chat_messages").insert({
-        room_id: state.roomId,
-        name: "System",
-        content: "Drawing started!",
-        is_system: true
+        room_id: state.roomId, name: "System", content: "Drawing started!", is_system: true
       });
     }
 
@@ -815,27 +963,21 @@
       const top = [...(latest || [])].sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 3);
       const line = top.map((p, i) => `${i + 1}) ${p.name} - ${p.score || 0}`).join(" | ");
       await supabase.from("chat_messages").insert({
-        room_id: state.roomId,
-        name: "System",
-        content: `🏆 Match complete! Top 3: ${line || "No players"}`,
-        is_system: true
+        room_id: state.roomId, name: "System", content: `🏆 Match complete! Top 3: ${line || "No players"}`, is_system: true
       });
     }
 
     async function endRound() {
       if (!state.game || state.game.phase !== "drawing" || state.endingRound) return;
       state.endingRound = true;
-
       try {
         const drawerId = state.game.drawer_id;
         const guessedCount = state.players.filter(p => p.user_id !== drawerId && p.has_guessed).length;
         const drawerBonus = guessedCount * 35;
-
         const drawer = state.players.find(p => p.user_id === drawerId);
         if (drawer) {
-          await supabase.from("players").update({
-            score: (drawer.score || 0) + drawerBonus
-          }).eq("room_id", state.roomId).eq("user_id", drawerId);
+          await supabase.from("players").update({ score: (drawer.score || 0) + drawerBonus })
+            .eq("room_id", state.roomId).eq("user_id", drawerId);
         }
 
         const fullCycleDone = (state.game.round_no || 0) >= state.players.length;
@@ -853,7 +995,6 @@
 
         if (fullCycleDone) {
           await announceTop3();
-
           const { data: latest } = await supabase.from("players").select("*").eq("room_id", state.roomId);
           const loser = computeLoser(latest || []);
           if (loser) {
@@ -873,11 +1014,7 @@
     async function restartMatch() {
       if (!isHost() || state.game?.phase !== "match_ended") return;
 
-      await supabase.from("players").update({
-        score: 0,
-        has_guessed: false
-      }).eq("room_id", state.roomId);
-
+      await supabase.from("players").update({ score: 0, has_guessed: false }).eq("room_id", state.roomId);
       await supabase.from("game_state").update({
         phase: "lobby",
         round_no: 0,
@@ -891,10 +1028,7 @@
       await clearBoardForNewRound();
 
       await supabase.from("chat_messages").insert({
-        room_id: state.roomId,
-        name: "System",
-        content: "Match restarted. Scores reset to 0.",
-        is_system: true
+        room_id: state.roomId, name: "System", content: "Match restarted. Scores reset to 0.", is_system: true
       });
     }
 
@@ -917,7 +1051,7 @@
       });
     }
 
-    // chattttt
+    // ================= CHAT =================
     function addChatLine(name, content, isSystem) {
       const row = document.createElement("div");
       row.className = "text-sm";
@@ -936,10 +1070,7 @@
     async function sendChat() {
       const text = chatInput.value.trim();
       if (!text || !state.game) return;
-      if (!canUserChat()) {
-        chatInput.value = "";
-        return;
-      }
+      if (!canUserChat()) { chatInput.value = ""; return; }
 
       const correct = state.game.phase === "drawing" && !isDrawer() && norm(text) === norm(state.game.word || "");
       if (correct) {
@@ -953,19 +1084,14 @@
         }).eq("room_id", state.roomId).eq("user_id", state.userId);
 
         await supabase.from("chat_messages").insert({
-          room_id: state.roomId,
-          name: "System",
-          content: `${state.name} has guessed the word! (+${pts})`,
-          is_system: true
+          room_id: state.roomId, name: "System", content: `${state.name} has guessed the word! (+${pts})`, is_system: true
         });
 
         chatInput.value = "";
 
         const { data: latest } = await supabase.from("players").select("*").eq("room_id", state.roomId);
         const notDrawer = (latest || []).filter(p => p.user_id !== state.game.drawer_id);
-        if (notDrawer.length > 0 && notDrawer.every(p => p.has_guessed)) {
-          await endRound();
-        }
+        if (notDrawer.length > 0 && notDrawer.every(p => p.has_guessed)) await endRound();
         return;
       }
 
@@ -979,11 +1105,10 @@
       chatInput.value = "";
     }
 
-    // rendering
+    // ================= RENDER =================
     function updateTimer() {
       if (!state.game || state.game.phase !== "drawing" || !state.game.started_at) {
-        timerEl.textContent = "--";
-        return;
+        timerEl.textContent = "--"; return;
       }
       const dur = state.game.duration_sec || 90;
       const elapsed = Math.floor((Date.now() - new Date(state.game.started_at).getTime()) / 1000);
@@ -996,10 +1121,7 @@
       playersEl.innerHTML = "";
       const sorted = [...state.players].sort((a, b) => (b.score || 0) - (a.score || 0));
       for (const p of sorted) {
-        const tag =
-          state.game?.drawer_id === p.user_id ? "Drawer" :
-          p.has_guessed ? "Guessed" : "Guessing";
-
+        const tag = state.game?.drawer_id === p.user_id ? "Drawer" : p.has_guessed ? "Guessed" : "Guessing";
         const li = document.createElement("li");
         li.className = "flex items-center justify-between border border-slate-700 rounded px-2 py-1 text-sm bg-slate-800";
         li.innerHTML = `
@@ -1021,11 +1143,9 @@
       chatInput.disabled = !allowed;
       chatBtn.disabled = !allowed;
 
-      if (!state.game || state.game.phase !== "drawing") {
-        chatInput.placeholder = "Type your message...";
-      } else if (isDrawer()) {
-        chatInput.placeholder = "Drawer cannot chat during drawing.";
-      } else {
+      if (!state.game || state.game.phase !== "drawing") chatInput.placeholder = "Type your message...";
+      else if (isDrawer()) chatInput.placeholder = "Drawer cannot chat during drawing.";
+      else {
         const me = state.players.find(p => p.user_id === state.userId);
         chatInput.placeholder = me?.has_guessed ? "You already guessed. Wait for round end." : "Type your guess...";
       }
@@ -1051,14 +1171,14 @@
       }
 
       const canDraw = isDrawer() && state.game?.phase === "drawing";
-      [toolSel, color1, color2, gradientToggle, sizeInput, clearBtn].forEach(el => el.disabled = !canDraw);
+      drawerToolbar.classList.toggle("hidden", !canDraw);
 
       const amHost = isHost();
       hostControls.classList.toggle("hidden", !amHost);
       hostOnlyNote.classList.toggle("hidden", amHost);
 
       if (!amHost && state.game?.phase === "room_setup") {
-        hostOnlyNote.textContent = "Waiting for host to start room...";
+        hostOnlyNote.textContent = "Waiting for host to click Start Room...";
       } else if (!amHost) {
         hostOnlyNote.textContent = "Only host can change settings/start/restart.";
       }
@@ -1072,17 +1192,13 @@
 
       const canStartRoom = amHost && state.game?.phase === "room_setup";
       startRoomBtn.disabled = !canStartRoom;
-      startRoomBtn.classList.toggle("hidden", state.game?.phase !== "room_setup");
+      startRoomBtn.textContent = state.game?.phase === "room_setup" ? "Start Room" : "Room Started";
 
-      const canStartRound = amHost &&
-        state.players.length >= 2 &&
-        (state.game?.phase === "lobby" || state.game?.phase === "ended");
+      const canStartRound = amHost && state.players.length >= 2 && (state.game?.phase === "lobby" || state.game?.phase === "ended");
       startRoundBtn.disabled = !canStartRound;
-      startRoundBtn.classList.toggle("hidden", state.game?.phase === "room_setup");
       startRoundBtn.textContent = (state.game?.round_no || 0) === 0 ? "Start Match" : "Start Next Round";
 
       restartMatchBtn.disabled = !(amHost && state.game?.phase === "match_ended");
-      restartMatchBtn.classList.toggle("hidden", state.game?.phase !== "match_ended");
 
       if (state.game?.phase === "choosing" && isDrawer()) {
         modal.classList.remove("hidden");
@@ -1096,16 +1212,19 @@
       } else {
         modal.classList.add("hidden");
       }
+
+      renderCustomDrawUi();
+      updateTimer();
     }
 
     function renderAll() {
       renderPlayers();
       renderChat();
       renderHeader();
-      updateTimer();
+      updateAuthUi();
     }
 
-    // lick and sub
+    // ================= REALTIME =================
     function subscribeDB() {
       state.dbChannel = supabase.channel("room-db-" + state.roomId)
         .on("postgres_changes", { event: "*", schema: "public", table: "players", filter: `room_id=eq.${state.roomId}` }, async () => {
@@ -1153,12 +1272,23 @@
       state.drawChannel.subscribe();
     }
 
-    // input listenerz
-    toolSel.addEventListener("change", () => state.tool = toolSel.value);
-    color1.addEventListener("input", () => state.color = color1.value);
-    color2.addEventListener("input", () => state.color2 = color2.value);
-    gradientToggle.addEventListener("change", () => state.gradient = gradientToggle.checked);
-    sizeInput.addEventListener("input", () => state.brushSize = parseInt(sizeInput.value, 10));
+    // ================= DRAW INPUT =================
+    primaryTargetBtn.addEventListener("click", () => {
+      state.colorTarget = "primary";
+      renderColorTargetButtons();
+      renderSwatches();
+    });
+
+    secondaryTargetBtn.addEventListener("click", () => {
+      state.colorTarget = "secondary";
+      renderColorTargetButtons();
+      renderSwatches();
+    });
+
+    gradientBtn.addEventListener("click", () => {
+      state.gradient = !state.gradient;
+      renderGradientButton();
+    });
 
     clearBtn.addEventListener("click", async () => {
       if (!(isDrawer() && state.game?.phase === "drawing")) return;
@@ -1173,10 +1303,8 @@
       const { x, y } = getMouse(e);
 
       state.drawing = true;
-      state.startX = x;
-      state.startY = y;
-      state.lastX = x;
-      state.lastY = y;
+      state.startX = x; state.startY = y;
+      state.lastX = x; state.lastY = y;
       state.previewBase = canvas.toDataURL("image/png");
 
       if (state.tool === "fill") {
@@ -1217,14 +1345,12 @@
           color: state.currentStroke.color,
           color2: state.currentStroke.color2,
           gradient: state.currentStroke.gradient,
-          from,
-          to
+          from, to
         };
 
         applySegment(seg);
         state.currentStroke.points.push(to);
-        state.lastX = x;
-        state.lastY = y;
+        state.lastX = x; state.lastY = y;
 
         const t = performance.now();
         if (t - state.lastSendTs > 12) {
@@ -1234,7 +1360,7 @@
         return;
       }
 
-      if (["line", "rect", "circle", "triangle"].includes(state.tool)) {
+      if (["line","rect","circle","triangle"].includes(state.tool)) {
         const img = new Image();
         img.onload = () => {
           const r = canvas.getBoundingClientRect();
@@ -1242,14 +1368,8 @@
           ctx.drawImage(img, 0, 0, r.width, r.height);
           drawShape({
             shape: state.tool,
-            x0: state.startX,
-            y0: state.startY,
-            x1: x,
-            y1: y,
-            color: state.color,
-            color2: state.color2,
-            gradient: state.gradient,
-            size: state.brushSize
+            x0: state.startX, y0: state.startY, x1: x, y1: y,
+            color: state.color, color2: state.color2, gradient: state.gradient, size: state.brushSize
           });
         };
         img.src = state.previewBase;
@@ -1272,19 +1392,13 @@
         return;
       }
 
-      if (["line", "rect", "circle", "triangle"].includes(state.tool)) {
+      if (["line","rect","circle","triangle"].includes(state.tool)) {
         const action = {
           id: crypto.randomUUID(),
           kind: "shape",
           shape: state.tool,
-          x0: state.startX,
-          y0: state.startY,
-          x1: x,
-          y1: y,
-          color: state.color,
-          color2: state.color2,
-          gradient: state.gradient,
-          size: state.brushSize
+          x0: state.startX, y0: state.startY, x1: x, y1: y,
+          color: state.color, color2: state.color2, gradient: state.gradient, size: state.brushSize
         };
         applyAction(action, true);
         await broadcastDraw({ type: "action", action });
@@ -1292,7 +1406,10 @@
       }
     });
 
-    // some eventz?
+    // ================= EVENTS =================
+    googleLoginBtn.addEventListener("click", signInWithGoogle);
+    signOutBtn.addEventListener("click", signOutFlow);
+
     createRoomBtn.addEventListener("click", createRoomFlow);
     joinRoomBtn.addEventListener("click", joinRoomFlow);
 
@@ -1302,9 +1419,7 @@
     restartMatchBtn.addEventListener("click", restartMatch);
 
     chatBtn.addEventListener("click", sendChat);
-    chatInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") sendChat();
-    });
+    chatInput.addEventListener("keydown", (e) => { if (e.key === "Enter") sendChat(); });
 
     leaveRoomBtn.addEventListener("click", () => leaveRoomFlow(false));
 
@@ -1314,24 +1429,32 @@
     });
 
     playLoserBtn.addEventListener("click", async () => {
-      try {
-        await loserVideo.play();
-        playLoserBtn.classList.add("hidden");
-      } catch {}
+      try { await loserVideo.play(); playLoserBtn.classList.add("hidden"); } catch {}
     });
 
     window.addEventListener("resize", fitCanvas);
+    window.addEventListener("pagehide", () => { if (state.roomId) leaveRoomFlow(true); });
 
-    window.addEventListener("pagehide", () => {
-      if (!state.roomId) return;
-      leaveRoomFlow(true);
-    });
-    // PLS WORK
+    renderCustomDrawUi();
+    initAuth();
   </script>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen">
   <div class="max-w-7xl mx-auto p-3 sm:p-4">
-    <h1 class="text-xl sm:text-2xl font-bold mb-3">Guess the Drawing</h1>
+    <h1 class="text-xl sm:text-2xl font-bold mb-3">Guess the Drawing (Dark Realtime)</h1>
+
+    <!-- Auth Bar -->
+    <div class="mb-3 border border-slate-800 rounded-xl p-3 bg-slate-900 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+      <p id="authStatus" class="text-sm text-slate-300">Not signed in</p>
+      <div class="flex items-center gap-2">
+        <button id="googleLoginBtn" class="bg-white text-slate-900 hover:bg-slate-200 rounded px-3 py-2 text-sm font-semibold">
+          Sign in with Google
+        </button>
+        <button id="signOutBtn" class="hidden bg-slate-700 hover:bg-slate-600 text-white rounded px-3 py-2 text-sm font-semibold">
+          Sign Out
+        </button>
+      </div>
+    </div>
 
     <!-- Setup Panel -->
     <div id="setupPanel" class="bg-slate-900 border border-slate-800 rounded-xl shadow p-4">
@@ -1371,24 +1494,36 @@
     <!-- Game Panel -->
     <div id="gamePanel" class="hidden mt-4 grid grid-cols-1 lg:grid-cols-4 gap-3">
       <div class="lg:col-span-3 bg-slate-900 border border-slate-800 rounded-xl shadow p-3">
-        <div class="flex flex-wrap items-center gap-2 mb-2">
-          <select id="tool" class="border border-slate-700 bg-slate-800 text-slate-100 rounded px-2 py-1 text-sm">
-            <option value="pen">Pen</option>
-            <option value="eraser">Eraser</option>
-            <option value="line">Line</option>
-            <option value="rect">Rectangle</option>
-            <option value="circle">Circle</option>
-            <option value="triangle">Triangle</option>
-            <option value="fill">Fill</option>
-          </select>
-          <label class="text-sm text-slate-300">Color <input id="color1" type="color" value="#111827" class="align-middle" /></label>
-          <label class="text-sm text-slate-300">Color 2 <input id="color2" type="color" value="#3b82f6" class="align-middle" /></label>
-          <label class="text-sm text-slate-300 flex items-center gap-1"><input id="gradientToggle" type="checkbox" /> Gradient</label>
-          <label class="text-sm text-slate-300">Size <input id="sizeInput" type="range" min="1" max="30" value="4" class="align-middle" /></label>
-          <button id="clearBtn" class="border border-slate-700 bg-slate-800 hover:bg-slate-700 rounded px-2 py-1 text-sm">Clear</button>
+        <!-- Custom Drawer-only Toolbar -->
+        <div id="drawerToolbar" class="hidden mb-3 border border-slate-800 rounded-lg p-3 bg-slate-950 space-y-3">
+          <div>
+            <p class="text-xs uppercase tracking-wide text-slate-400 mb-2">Tools</p>
+            <div id="toolButtons" class="flex flex-wrap gap-2"></div>
+          </div>
+
+          <div>
+            <p class="text-xs uppercase tracking-wide text-slate-400 mb-2">Colors</p>
+            <div class="flex flex-wrap gap-2 mb-2">
+              <button id="primaryTargetBtn" class="px-3 py-1.5 rounded-lg border text-sm"></button>
+              <button id="secondaryTargetBtn" class="px-3 py-1.5 rounded-lg border text-sm"></button>
+              <button id="gradientBtn" class="px-3 py-1.5 rounded-lg border text-sm"></button>
+            </div>
+            <div id="swatches" class="flex flex-wrap gap-2"></div>
+          </div>
+
+          <div>
+            <p class="text-xs uppercase tracking-wide text-slate-400 mb-2">Brush Size</p>
+            <div id="sizeButtons" class="flex flex-wrap gap-2"></div>
+          </div>
+
+          <div class="pt-1">
+            <button id="clearBtn" class="px-3 py-1.5 rounded-lg border border-rose-500 text-rose-300 bg-rose-950 hover:bg-rose-900 text-sm font-semibold">
+              Clear Board
+            </button>
+          </div>
         </div>
 
-        <div class="w-full h-96 border border-slate-700 rounded bg-white touch-none">
+        <div class="w-full h-96 border border-slate-700 rounded-xl bg-white touch-none overflow-hidden">
           <canvas id="board" class="w-full h-full"></canvas>
         </div>
       </div>
@@ -1421,7 +1556,7 @@
           <button id="saveSettingsBtn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white rounded px-3 py-2 text-sm font-semibold">Save Settings</button>
           <button id="startRoomBtn" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white rounded px-3 py-2 text-sm font-semibold">Start Room</button>
           <button id="startRoundBtn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white rounded px-3 py-2 text-sm font-semibold">Start Match</button>
-          <button id="restartMatchBtn" class="hidden w-full bg-amber-600 hover:bg-amber-500 text-white rounded px-3 py-2 text-sm font-semibold">Restart Match</button>
+          <button id="restartMatchBtn" class="w-full bg-amber-600 hover:bg-amber-500 text-white rounded px-3 py-2 text-sm font-semibold">Restart Match</button>
         </div>
         <p id="hostOnlyNote" class="text-xs text-slate-500">Only host can change settings/start/restart.</p>
 
@@ -1466,12 +1601,8 @@
           <p class="text-slate-300 text-xs mt-1">If autoplay is blocked, tap Play.</p>
         </div>
         <div class="flex items-center gap-2">
-          <button id="playLoserBtn" class="hidden bg-blue-600 hover:bg-blue-500 text-white rounded px-3 py-2 text-sm font-semibold">
-            Tap to Play
-          </button>
-          <button id="closeLoserBtn" class="bg-rose-600 hover:bg-rose-500 text-white rounded px-3 py-2 text-sm font-semibold opacity-50 cursor-not-allowed" disabled>
-            Close
-          </button>
+          <button id="playLoserBtn" class="hidden bg-blue-600 hover:bg-blue-500 text-white rounded px-3 py-2 text-sm font-semibold">Tap to Play</button>
+          <button id="closeLoserBtn" class="bg-rose-600 hover:bg-rose-500 text-white rounded px-3 py-2 text-sm font-semibold opacity-50 cursor-not-allowed" disabled>Close</button>
         </div>
       </div>
     </div>
