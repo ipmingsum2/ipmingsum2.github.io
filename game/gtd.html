@@ -1,0 +1,1436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guess the Drawing - Dark Realtime</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+    // ================= CONFIG =================
+    const SUPABASE_URL = "https://yasyvumldynwfjixcafk.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_F1tj2PYJ79Z2s5h2F_679w_8kAwRNN6";
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const LOSER_VIDEO_URL = "https://github.com/ipmingsum2/dobble/raw/refs/heads/main/Rick%20Astley%20-%20Never%20Gonna%20Give%20You%20Up%20(Official%20Video)%20(4K%20Remaster).mp4";
+
+    // Preset words
+    const WORD_BANK = [
+      "apple","banana","orange","grape","watermelon","strawberry","pineapple","peach","pear","cherry",
+      "car","bus","train","airplane","helicopter","boat","bicycle","motorcycle","scooter","submarine",
+      "house","castle","bridge","tower","skyscraper","farm","barn","lighthouse","school","hospital",
+      "dog","cat","lion","tiger","elephant","giraffe","zebra","monkey","bear","rabbit",
+      "fish","shark","whale","dolphin","octopus","crab","turtle","penguin","eagle","owl",
+      "sun","moon","star","cloud","rain","snow","storm","rainbow","volcano","mountain",
+      "river","lake","ocean","island","forest","desert","beach","waterfall","cave","valley",
+      "book","pencil","eraser","notebook","backpack","ruler","scissors","marker","crayon","paintbrush",
+      "computer","keyboard","mouse","monitor","phone","tablet","camera","headphones","microphone","speaker",
+      "pizza","burger","sandwich","taco","sushi","noodles","salad","cake","donut","cookie",
+      "robot","alien","astronaut","rocket","planet","satellite","comet","meteor","spaceship","galaxy",
+      "doctor","nurse","teacher","chef","farmer","firefighter","police","pilot","artist","musician",
+      "guitar","piano","drum","violin","trumpet","flute","saxophone","harp","microphone stand","stage",
+      "soccer","basketball","baseball","tennis","golf","volleyball","hockey","boxing","swimming","running",
+      "clock","watch","calendar","map","compass","key","lock","door","window","ladder",
+      "chair","table","sofa","bed","lamp","mirror","toilet","shower","fridge","oven",
+      "hat","shirt","pants","shoes","sock","jacket","dress","skirt","gloves","scarf",
+      "tree","flower","grass","leaf","seed","mushroom","cactus","bamboo","palm","vine",
+      "dragon","unicorn","wizard","knight","pirate","ninja","ghost","vampire","zombie","witch",
+      "treasure","crown","sword","shield","bow","arrow","hammer","wrench","screwdriver","drill",
+      "traffic light","stop sign","crosswalk","road","highway","tunnel","garage","gas station","parking lot","map pin",
+      "ice cream","popcorn","pancake","waffle","hotdog","fries","omelet","steak","soup","dumpling",
+      "kangaroo","koala","panda","sloth","fox","wolf","deer","moose","camel","hippo",
+      "snail","butterfly","bee","ant","spider","ladybug","dragonfly","grasshopper","worm","beetle",
+      "campfire","tent","backpacker","canoe","fishing rod","binoculars","compass rose","sleeping bag","mountain bike","skateboard",
+      "snowman","sled","igloo","ski","snowboard","mittens","umbrella","raincoat","kite","balloon",
+      "chess","dice","puzzle","playing cards","joystick","arcade","domino","board game","marble","yo-yo"
+    ];
+
+    // ================= STATE =================
+    const state = {
+      roomId: "",
+      userId: "u_" + crypto.randomUUID(),
+      name: "",
+      players: [],
+      game: null,
+      messages: [],
+      actions: [],
+      seenActionIds: new Set(),
+      liveDrawnStrokeIds: new Set(),
+      dbChannel: null,
+      drawChannel: null,
+      timerInt: null,
+      endingRound: false,
+      hostFixing: false,
+
+      loserModalShownKey: "",
+      loserModalPendingKey: "",
+      loserLockUntil: 0,
+      loserTimerInt: null,
+
+      tool: "pen",
+      color: "#111827",
+      color2: "#3b82f6",
+      gradient: false,
+      brushSize: 4,
+
+      drawing: false,
+      startX: 0,
+      startY: 0,
+      lastX: 0,
+      lastY: 0,
+      previewBase: null,
+      currentStroke: null,
+      lastSendTs: 0
+    };
+
+    // ================= DOM =================
+    const setupPanel = document.getElementById("setupPanel");
+    const gamePanel = document.getElementById("gamePanel");
+    const statusEl = document.getElementById("status");
+
+    // Create room
+    const createNameInput = document.getElementById("createNameInput");
+    const createGuessInput = document.getElementById("createGuessInput");
+    const createWordsInput = document.getElementById("createWordsInput");
+    const createRoomBtn = document.getElementById("createRoomBtn");
+    const createdCodeEl = document.getElementById("createdCode");
+
+    // Join room
+    const joinCodeInput = document.getElementById("joinCodeInput");
+    const joinNameInput = document.getElementById("joinNameInput");
+    const joinRoomBtn = document.getElementById("joinRoomBtn");
+
+    // Game header
+    const roomCodeDisplay = document.getElementById("roomCodeDisplay");
+    const hostDisplay = document.getElementById("hostDisplay");
+    const roundEl = document.getElementById("round");
+    const phaseEl = document.getElementById("phase");
+    const timerEl = document.getElementById("timer");
+    const drawerEl = document.getElementById("drawerDisplay");
+    const wordEl = document.getElementById("wordDisplay");
+    const leaveRoomBtn = document.getElementById("leaveRoomBtn");
+
+    // Host controls
+    const hostControls = document.getElementById("hostControls");
+    const hostOnlyNote = document.getElementById("hostOnlyNote");
+    const hostGuessInput = document.getElementById("hostGuessInput");
+    const hostWordsInput = document.getElementById("hostWordsInput");
+    const saveSettingsBtn = document.getElementById("saveSettingsBtn");
+    const startRoundBtn = document.getElementById("startRoundBtn");
+    const restartMatchBtn = document.getElementById("restartMatchBtn");
+
+    // Players/chat
+    const playersEl = document.getElementById("playersList");
+    const chatList = document.getElementById("chatList");
+    const chatInput = document.getElementById("chatInput");
+    const chatBtn = document.getElementById("chatBtn");
+
+    // Word modal
+    const modal = document.getElementById("wordChoiceModal");
+    const choice1 = document.getElementById("choice1");
+    const choice2 = document.getElementById("choice2");
+    const choice3 = document.getElementById("choice3");
+
+    // Loser modal
+    const loserVideoModal = document.getElementById("loserVideoModal");
+    const loserVideo = document.getElementById("loserVideo");
+    const loserTitle = document.getElementById("loserTitle");
+    const loserCountdown = document.getElementById("loserCountdown");
+    const closeLoserBtn = document.getElementById("closeLoserBtn");
+    const playLoserBtn = document.getElementById("playLoserBtn");
+
+    // Drawing
+    const canvas = document.getElementById("board");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    const toolSel = document.getElementById("tool");
+    const color1 = document.getElementById("color1");
+    const color2 = document.getElementById("color2");
+    const gradientToggle = document.getElementById("gradientToggle");
+    const sizeInput = document.getElementById("sizeInput");
+    const clearBtn = document.getElementById("clearBtn");
+
+    // ================= HELPERS =================
+    const norm = (s) => (s || "").toLowerCase().trim().replace(/\s+/g, " ");
+    const nowIso = () => new Date().toISOString();
+    const isDrawer = () => state.game?.drawer_id === state.userId;
+    const isHost = () => state.game?.host_id === state.userId;
+    const maskWord = (w) => (w || "").split("").map(ch => (ch === " " ? " " : "_")).join(" ");
+    const setStatus = (s) => statusEl.textContent = s;
+
+    function parseCustomWords(text) {
+      return [...new Set(
+        (text || "")
+          .split(/[\n,]+/)
+          .map(w => norm(w))
+          .filter(w => w.length >= 2 && w.length <= 40)
+      )];
+    }
+
+    function getWordPool() {
+      const custom = Array.isArray(state.game?.custom_words) ? state.game.custom_words : [];
+      return [...new Set([...WORD_BANK, ...custom])];
+    }
+
+    function random3Words() {
+      const pool = getWordPool();
+      const out = new Set();
+      while (out.size < 3 && out.size < pool.length) {
+        out.add(pool[Math.floor(Math.random() * pool.length)]);
+      }
+      return [...out];
+    }
+
+    function guessPoints(elapsedSec, durationSec) {
+      const max = 100, min = 20;
+      const t = Math.max(0, Math.min(1, elapsedSec / durationSec));
+      return Math.max(min, Math.round(max * (1 - t)));
+    }
+
+    function getMouse(e) {
+      const r = canvas.getBoundingClientRect();
+      return { x: e.clientX - r.left, y: e.clientY - r.top };
+    }
+
+    function genRoomCode() {
+      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      let s = "";
+      for (let i = 0; i < 6; i++) s += chars[Math.floor(Math.random() * chars.length)];
+      return s;
+    }
+
+    async function generateUniqueRoomCode() {
+      for (let i = 0; i < 20; i++) {
+        const code = genRoomCode();
+        const { data } = await supabase.from("rooms").select("id").eq("id", code).maybeSingle();
+        if (!data) return code;
+      }
+      return genRoomCode();
+    }
+
+    function oldestPlayer(players) {
+      return [...players].sort((a, b) => {
+        const ta = new Date(a.joined_at).getTime();
+        const tb = new Date(b.joined_at).getTime();
+        if (ta !== tb) return ta - tb;
+        return a.user_id.localeCompare(b.user_id);
+      })[0];
+    }
+
+    function computeLoser(players) {
+      if (!players?.length) return null;
+      return [...players].sort((a, b) => {
+        if (a.score !== b.score) return a.score - b.score;
+        const ta = new Date(a.joined_at).getTime();
+        const tb = new Date(b.joined_at).getTime();
+        if (ta !== tb) return ta - tb;
+        return a.user_id.localeCompare(b.user_id);
+      })[0];
+    }
+
+    function canUserChat() {
+      if (!state.game) return true;
+      const me = state.players.find(p => p.user_id === state.userId);
+      if (state.game.phase === "drawing") {
+        if (isDrawer()) return false;
+        if (me?.has_guessed) return false;
+      }
+      return true;
+    }
+
+    // ================= LOSER VIDEO =================
+    function closeLoserVideoModal() {
+      loserVideo.pause();
+      loserVideoModal.classList.add("hidden");
+      playLoserBtn.classList.add("hidden");
+      if (state.loserTimerInt) {
+        clearInterval(state.loserTimerInt);
+        state.loserTimerInt = null;
+      }
+    }
+
+    function updateLoserCountdownUI() {
+      const remainMs = Math.max(0, state.loserLockUntil - Date.now());
+      const remainSec = Math.ceil(remainMs / 1000);
+
+      if (remainSec > 0) {
+        loserCountdown.textContent = `Close available in ${remainSec}s`;
+        closeLoserBtn.disabled = true;
+        closeLoserBtn.classList.add("opacity-50", "cursor-not-allowed");
+      } else {
+        loserCountdown.textContent = "You may close now.";
+        closeLoserBtn.disabled = false;
+        closeLoserBtn.classList.remove("opacity-50", "cursor-not-allowed");
+      }
+    }
+
+    function openLoserVideoModal(loserName) {
+      loserTitle.textContent = `😈 ${loserName}, punishment video time.`;
+      loserVideoModal.classList.remove("hidden");
+      loserVideo.src = LOSER_VIDEO_URL;
+      loserVideo.currentTime = 0;
+      loserVideo.controls = true;
+      loserVideo.playsInline = true;
+
+      state.loserLockUntil = Date.now() + 15000;
+      updateLoserCountdownUI();
+
+      if (state.loserTimerInt) clearInterval(state.loserTimerInt);
+      state.loserTimerInt = setInterval(updateLoserCountdownUI, 250);
+
+      playLoserBtn.classList.add("hidden");
+      loserVideo.play().catch(() => {
+        // Autoplay may be blocked
+        playLoserBtn.classList.remove("hidden");
+      });
+    }
+
+    async function maybeShowLoserVideo() {
+      if (!state.game || state.game.phase !== "match_ended") return;
+      const key = `${state.roomId}:${state.game.round_no}:match_ended`;
+      if (state.loserModalShownKey === key || state.loserModalPendingKey === key) return;
+
+      state.loserModalPendingKey = key;
+      try {
+        const { data: latest } = await supabase.from("players").select("*").eq("room_id", state.roomId);
+        if (latest) state.players = latest;
+
+        if (!state.game || state.game.phase !== "match_ended") return;
+        const loser = computeLoser(state.players);
+        if (!loser) return;
+
+        // Mark handled for this match-end phase, regardless of whether current user is loser
+        state.loserModalShownKey = key;
+
+        if (loser.user_id === state.userId) {
+          openLoserVideoModal(loser.name || "Loser");
+        }
+        renderPlayers();
+      } finally {
+        state.loserModalPendingKey = "";
+      }
+    }
+
+    // ================= DRAW CORE =================
+    function fitCanvas() {
+      const r = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const w = Math.max(320, Math.floor(r.width * dpr));
+      const h = Math.max(240, Math.floor(r.height * dpr));
+      canvas.width = w;
+      canvas.height = h;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(dpr, dpr);
+      redrawFromActions();
+    }
+
+    function hexToRgba(hex) {
+      const h = hex.replace("#", "");
+      const v = h.length === 3 ? h.split("").map(c => c + c).join("") : h;
+      return [
+        parseInt(v.slice(0, 2), 16),
+        parseInt(v.slice(2, 4), 16),
+        parseInt(v.slice(4, 6), 16),
+        255
+      ];
+    }
+
+    function floodFill(x, y, fillHex) {
+      const r = canvas.getBoundingClientRect();
+      const w = Math.floor(r.width), h = Math.floor(r.height);
+      if (x < 0 || y < 0 || x >= w || y >= h) return;
+
+      const img = ctx.getImageData(0, 0, w, h);
+      const d = img.data;
+      const tx = Math.floor(x), ty = Math.floor(y);
+      const i0 = (ty * w + tx) * 4;
+      const target = [d[i0], d[i0 + 1], d[i0 + 2], d[i0 + 3]];
+      const fill = hexToRgba(fillHex);
+      if (target[0] === fill[0] && target[1] === fill[1] && target[2] === fill[2] && target[3] === 255) return;
+
+      const st = [[tx, ty]];
+      while (st.length) {
+        const [cx, cy] = st.pop();
+        if (cx < 0 || cy < 0 || cx >= w || cy >= h) continue;
+        const i = (cy * w + cx) * 4;
+        if (d[i] === target[0] && d[i + 1] === target[1] && d[i + 2] === target[2] && d[i + 3] === target[3]) {
+          d[i] = fill[0]; d[i + 1] = fill[1]; d[i + 2] = fill[2]; d[i + 3] = 255;
+          st.push([cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]);
+        }
+      }
+      ctx.putImageData(img, 0, 0);
+    }
+
+    function applySegment(seg) {
+      const { tool, size, color, color2, gradient, from, to } = seg;
+      ctx.save();
+      if (tool === "eraser") {
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.strokeStyle = "rgba(0,0,0,1)";
+        ctx.lineWidth = size * 2;
+      } else {
+        ctx.globalCompositeOperation = "source-over";
+        if (gradient) {
+          const g = ctx.createLinearGradient(from.x, from.y, to.x, to.y);
+          g.addColorStop(0, color);
+          g.addColorStop(1, color2);
+          ctx.strokeStyle = g;
+        } else {
+          ctx.strokeStyle = color;
+        }
+        ctx.lineWidth = size;
+      }
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      ctx.moveTo(from.x, from.y);
+      ctx.lineTo(to.x, to.y);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawShape(a) {
+      const { shape, x0, y0, x1, y1, color, color2, gradient, size } = a;
+      ctx.save();
+      ctx.globalCompositeOperation = "source-over";
+      if (gradient) {
+        const g = ctx.createLinearGradient(x0, y0, x1, y1);
+        g.addColorStop(0, color);
+        g.addColorStop(1, color2);
+        ctx.strokeStyle = g;
+      } else {
+        ctx.strokeStyle = color;
+      }
+      ctx.lineWidth = size;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      if (shape === "line") {
+        ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+      } else if (shape === "rect") {
+        ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
+      } else if (shape === "circle") {
+        const r = Math.sqrt((x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0));
+        ctx.arc(x0, y0, r, 0, Math.PI * 2);
+        ctx.stroke();
+      } else if (shape === "triangle") {
+        ctx.moveTo(x0, y0);
+        ctx.lineTo(x1, y1);
+        ctx.lineTo(x0 - (x1 - x0), y1);
+        ctx.closePath();
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function applyAction(action, drawNow = true) {
+      if (!action?.id || state.seenActionIds.has(action.id)) return;
+      state.seenActionIds.add(action.id);
+      state.actions.push(action);
+
+      if (!drawNow) return;
+      if (action.kind === "clear") {
+        const r = canvas.getBoundingClientRect();
+        ctx.clearRect(0, 0, r.width, r.height);
+      } else if (action.kind === "fill") {
+        floodFill(action.x, action.y, action.color);
+      } else if (action.kind === "shape") {
+        drawShape(action);
+      } else if (action.kind === "stroke") {
+        if (state.liveDrawnStrokeIds.has(action.id)) return;
+        const pts = action.points || [];
+        for (let i = 1; i < pts.length; i++) {
+          applySegment({
+            tool: action.tool,
+            size: action.size,
+            color: action.color,
+            color2: action.color2,
+            gradient: action.gradient,
+            from: pts[i - 1],
+            to: pts[i]
+          });
+        }
+      }
+    }
+
+    function redrawFromActions() {
+      const r = canvas.getBoundingClientRect();
+      ctx.clearRect(0, 0, r.width, r.height);
+      state.seenActionIds = new Set();
+      const old = [...state.actions];
+      state.actions = [];
+      for (const a of old) applyAction(a, true);
+    }
+
+    async function persistAction(action) {
+      await supabase.from("draw_events").insert({
+        room_id: state.roomId,
+        user_id: state.userId,
+        kind: action.kind,
+        payload: action
+      });
+    }
+
+    async function broadcastDraw(payload) {
+      if (!state.drawChannel) return;
+      await state.drawChannel.send({ type: "broadcast", event: "draw", payload });
+    }
+
+    // ================= HOST FAILOVER =================
+    async function maybeReassignHostIfMissing() {
+      if (!state.game || !state.roomId || state.hostFixing) return;
+      const hostPresent = state.players.some(p => p.user_id === state.game.host_id);
+
+      // Valid host still present
+      if (hostPresent) return;
+      if (state.players.length === 0) return;
+
+      // Deterministic: oldest remaining player becomes host
+      const newHost = oldestPlayer(state.players);
+      if (!newHost) return;
+
+      // Only that exact player performs the update
+      if (newHost.user_id !== state.userId) return;
+
+      state.hostFixing = true;
+      try {
+        await supabase.from("game_state").update({
+          host_id: newHost.user_id,
+          updated_at: nowIso()
+        }).eq("room_id", state.roomId);
+
+        await supabase.from("chat_messages").insert({
+          room_id: state.roomId,
+          name: "System",
+          content: `${newHost.name} is now the host.`,
+          is_system: true
+        });
+      } finally {
+        state.hostFixing = false;
+      }
+    }
+
+    // ================= GAME DATA =================
+    async function ensurePlayerOnly() {
+      await supabase.from("players").upsert({
+        room_id: state.roomId,
+        user_id: state.userId,
+        name: state.name
+      });
+    }
+
+    async function createRoomFlow() {
+      const name = createNameInput.value.trim();
+      if (!name) return setStatus("Enter host name.");
+
+      const duration = Math.max(30, Math.min(300, parseInt(createGuessInput.value || "90", 10)));
+      const customWords = parseCustomWords(createWordsInput.value);
+
+      setStatus("Creating room...");
+      const code = await generateUniqueRoomCode();
+
+      state.roomId = code;
+      state.name = name;
+
+      await supabase.from("rooms").insert({ id: code });
+      await supabase.from("players").insert({
+        room_id: code,
+        user_id: state.userId,
+        name
+      });
+
+      await supabase.from("game_state").insert({
+        room_id: code,
+        phase: "lobby",
+        round_no: 0,
+        drawer_id: null,
+        word: null,
+        options: null,
+        started_at: null,
+        duration_sec: duration,
+        host_id: state.userId,
+        custom_words: customWords,
+        updated_at: nowIso()
+      });
+
+      createdCodeEl.textContent = code;
+      await enterRoom();
+    }
+
+    async function joinRoomFlow() {
+      const code = joinCodeInput.value.trim().toUpperCase();
+      const name = joinNameInput.value.trim();
+      if (!code || !name) return setStatus("Enter room code and name.");
+
+      setStatus("Joining room...");
+      const { data: room } = await supabase.from("rooms").select("id").eq("id", code).maybeSingle();
+      if (!room) return setStatus("Room not found.");
+
+      state.roomId = code;
+      state.name = name;
+
+      await ensurePlayerOnly();
+
+      const { data: g } = await supabase.from("game_state").select("*").eq("room_id", code).maybeSingle();
+      if (!g) {
+        await supabase.from("game_state").insert({
+          room_id: code,
+          phase: "lobby",
+          round_no: 0,
+          duration_sec: 90,
+          host_id: state.userId,
+          custom_words: [],
+          updated_at: nowIso()
+        });
+      }
+
+      await enterRoom();
+    }
+
+    async function enterRoom() {
+      await loadState();
+      subscribeDB();
+      subscribeDrawBroadcast();
+      setupPanel.classList.add("hidden");
+      gamePanel.classList.remove("hidden");
+      setStatus("Connected.");
+      fitCanvas();
+      if (!state.timerInt) state.timerInt = setInterval(updateTimer, 1000);
+    }
+
+    function cleanupChannels() {
+      try { if (state.dbChannel) supabase.removeChannel(state.dbChannel); } catch {}
+      try { if (state.drawChannel) supabase.removeChannel(state.drawChannel); } catch {}
+      state.dbChannel = null;
+      state.drawChannel = null;
+    }
+
+    function resetLocalRoomState() {
+      cleanupChannels();
+      if (state.timerInt) {
+        clearInterval(state.timerInt);
+        state.timerInt = null;
+      }
+
+      closeLoserVideoModal();
+
+      state.roomId = "";
+      state.players = [];
+      state.game = null;
+      state.messages = [];
+      state.actions = [];
+      state.seenActionIds = new Set();
+      state.liveDrawnStrokeIds = new Set();
+      state.endingRound = false;
+      state.hostFixing = false;
+      state.loserModalPendingKey = "";
+      state.loserModalShownKey = "";
+
+      setupPanel.classList.remove("hidden");
+      gamePanel.classList.add("hidden");
+      setStatus("Not connected.");
+    }
+
+    async function leaveRoomFlow(silent = false) {
+      if (!state.roomId) return;
+      const roomId = state.roomId;
+      const myUserId = state.userId;
+      const myName = state.name || "Player";
+
+      // Snapshot if I was host at the time of leaving
+      const wasHost = state.game?.host_id === myUserId;
+
+      try {
+        // Remove self
+        await supabase.from("players")
+          .delete()
+          .eq("room_id", roomId)
+          .eq("user_id", myUserId);
+
+        // If I was host, hand over to oldest remaining player
+        if (wasHost) {
+          const { data: remaining } = await supabase.from("players")
+            .select("*")
+            .eq("room_id", roomId);
+
+          const next = oldestPlayer(remaining || []);
+          if (next) {
+            await supabase.from("game_state").update({
+              host_id: next.user_id,
+              updated_at: nowIso()
+            }).eq("room_id", roomId);
+
+            await supabase.from("chat_messages").insert({
+              room_id: roomId,
+              name: "System",
+              content: `${next.name} is now the host (previous host left).`,
+              is_system: true
+            });
+          }
+        }
+
+        await supabase.from("chat_messages").insert({
+          room_id: roomId,
+          name: "System",
+          content: `${myName} left the room.`,
+          is_system: true
+        });
+      } catch {
+        // ignore best-effort leave errors
+      } finally {
+        resetLocalRoomState();
+        if (!silent) setStatus("Left room.");
+      }
+    }
+
+    async function loadState() {
+      const { data: players } = await supabase.from("players").select("*").eq("room_id", state.roomId).order("joined_at");
+      const { data: game } = await supabase.from("game_state").select("*").eq("room_id", state.roomId).single();
+      const { data: msgs } = await supabase.from("chat_messages").select("*").eq("room_id", state.roomId).order("created_at");
+      const { data: draws } = await supabase.from("draw_events").select("*").eq("room_id", state.roomId).order("created_at");
+
+      state.players = players || [];
+      state.game = game;
+      state.messages = msgs || [];
+      state.actions = [];
+      state.seenActionIds = new Set();
+      state.liveDrawnStrokeIds = new Set();
+
+      for (const d of (draws || [])) {
+        const a = typeof d.payload === "string" ? JSON.parse(d.payload) : d.payload;
+        if (a) applyAction(a, false);
+      }
+      redrawFromActions();
+      renderAll();
+      await maybeReassignHostIfMissing();
+      await maybeShowLoserVideo();
+    }
+
+    async function clearBoardForNewRound() {
+      await supabase.from("draw_events").delete().eq("room_id", state.roomId);
+      state.actions = [];
+      state.seenActionIds = new Set();
+      state.liveDrawnStrokeIds = new Set();
+      const r = canvas.getBoundingClientRect();
+      ctx.clearRect(0, 0, r.width, r.height);
+
+      const clearAction = { id: crypto.randomUUID(), kind: "clear" };
+      applyAction(clearAction, true);
+      await broadcastDraw({ type: "action", action: clearAction });
+      await persistAction(clearAction);
+    }
+
+    async function startNextRound() {
+      if (!isHost()) return;
+      if (!state.game) return;
+      if (state.game.phase === "drawing" || state.game.phase === "choosing") return;
+      if (state.game.phase === "match_ended") return;
+
+      const players = [...state.players].sort((a, b) => new Date(a.joined_at) - new Date(b.joined_at));
+      if (players.length < 2) return setStatus("Need at least 2 players.");
+
+      const roundNo = (state.game.round_no || 0) + 1;
+      const drawer = players[(roundNo - 1) % players.length];
+      const options = random3Words();
+
+      await supabase.from("players").update({ has_guessed: false }).eq("room_id", state.roomId);
+      await supabase.from("game_state").update({
+        phase: "choosing",
+        round_no: roundNo,
+        drawer_id: drawer.user_id,
+        word: null,
+        options,
+        started_at: null,
+        updated_at: nowIso()
+      }).eq("room_id", state.roomId);
+
+      await clearBoardForNewRound();
+
+      await supabase.from("chat_messages").insert({
+        room_id: state.roomId,
+        name: "System",
+        content: `Round ${roundNo} started. ${drawer.name} is choosing a word.`,
+        is_system: true
+      });
+    }
+
+    async function chooseWord(word) {
+      if (!isDrawer() || state.game?.phase !== "choosing") return;
+      await supabase.from("game_state").update({
+        phase: "drawing",
+        word,
+        started_at: nowIso(),
+        updated_at: nowIso()
+      }).eq("room_id", state.roomId);
+
+      await supabase.from("chat_messages").insert({
+        room_id: state.roomId,
+        name: "System",
+        content: "Drawing started!",
+        is_system: true
+      });
+    }
+
+    async function announceTop3() {
+      const { data: latest } = await supabase.from("players").select("*").eq("room_id", state.roomId);
+      const top = [...(latest || [])].sort((a, b) => b.score - a.score).slice(0, 3);
+      const line = top.map((p, i) => `${i + 1}) ${p.name} - ${p.score}`).join(" | ");
+      await supabase.from("chat_messages").insert({
+        room_id: state.roomId,
+        name: "System",
+        content: `🏆 Match complete! Top 3: ${line || "No players"}`,
+        is_system: true
+      });
+    }
+
+    async function endRound() {
+      if (!state.game || state.game.phase !== "drawing" || state.endingRound) return;
+      state.endingRound = true;
+
+      try {
+        const drawerId = state.game.drawer_id;
+        const guessedCount = state.players.filter(p => p.user_id !== drawerId && p.has_guessed).length;
+        const drawerBonus = guessedCount * 35;
+
+        const drawer = state.players.find(p => p.user_id === drawerId);
+        if (drawer) {
+          await supabase.from("players").update({
+            score: drawer.score + drawerBonus
+          }).eq("room_id", state.roomId).eq("user_id", drawerId);
+        }
+
+        const fullCycleDone = (state.game.round_no || 0) >= state.players.length;
+        await supabase.from("game_state").update({
+          phase: fullCycleDone ? "match_ended" : "ended",
+          updated_at: nowIso()
+        }).eq("room_id", state.roomId);
+
+        await supabase.from("chat_messages").insert({
+          room_id: state.roomId,
+          name: "System",
+          content: `Round ended! Word was: "${state.game.word}".`,
+          is_system: true
+        });
+
+        if (fullCycleDone) {
+          await announceTop3();
+
+          const { data: latest } = await supabase.from("players").select("*").eq("room_id", state.roomId);
+          const loser = computeLoser(latest || []);
+          if (loser) {
+            await supabase.from("chat_messages").insert({
+              room_id: state.roomId,
+              name: "System",
+              content: `💀 Lowest score: ${loser.name} (${loser.score})`,
+              is_system: true
+            });
+          }
+        }
+      } finally {
+        state.endingRound = false;
+      }
+    }
+
+    async function restartMatch() {
+      if (!isHost() || state.game?.phase !== "match_ended") return;
+
+      await supabase.from("players").update({
+        score: 0,
+        has_guessed: false
+      }).eq("room_id", state.roomId);
+
+      await supabase.from("game_state").update({
+        phase: "lobby",
+        round_no: 0,
+        drawer_id: null,
+        word: null,
+        options: null,
+        started_at: null,
+        updated_at: nowIso()
+      }).eq("room_id", state.roomId);
+
+      await clearBoardForNewRound();
+
+      await supabase.from("chat_messages").insert({
+        room_id: state.roomId,
+        name: "System",
+        content: "Match restarted. Scores reset to 0.",
+        is_system: true
+      });
+    }
+
+    async function saveHostSettings() {
+      if (!isHost()) return;
+      const duration = Math.max(30, Math.min(300, parseInt(hostGuessInput.value || "90", 10)));
+      const customWords = parseCustomWords(hostWordsInput.value);
+
+      await supabase.from("game_state").update({
+        duration_sec: duration,
+        custom_words: customWords,
+        updated_at: nowIso()
+      }).eq("room_id", state.roomId);
+
+      await supabase.from("chat_messages").insert({
+        room_id: state.roomId,
+        name: "System",
+        content: `Host updated settings (guess time ${duration}s, custom words ${customWords.length}).`,
+        is_system: true
+      });
+    }
+
+    // ================= CHAT =================
+    function addChatLine(name, content, isSystem) {
+      const row = document.createElement("div");
+      row.className = "text-sm";
+      if (isSystem) {
+        row.className += " text-emerald-400 font-semibold";
+        row.textContent = content;
+      } else {
+        row.innerHTML = `<span class="font-semibold text-slate-200"></span><span class="text-slate-300"></span>`;
+        row.children[0].textContent = name + ": ";
+        row.children[1].textContent = content;
+      }
+      chatList.appendChild(row);
+      chatList.scrollTop = chatList.scrollHeight;
+    }
+
+    async function sendChat() {
+      const text = chatInput.value.trim();
+      if (!text || !state.game) return;
+
+      if (!canUserChat()) {
+        chatInput.value = "";
+        return;
+      }
+
+      const correct = state.game.phase === "drawing" && !isDrawer() && norm(text) === norm(state.game.word || "");
+      if (correct) {
+        const me = state.players.find(p => p.user_id === state.userId);
+        const elapsed = Math.max(0, Math.floor((Date.now() - new Date(state.game.started_at).getTime()) / 1000));
+        const pts = guessPoints(elapsed, state.game.duration_sec || 90);
+
+        await supabase.from("players").update({
+          has_guessed: true,
+          score: (me?.score || 0) + pts
+        }).eq("room_id", state.roomId).eq("user_id", state.userId);
+
+        await supabase.from("chat_messages").insert({
+          room_id: state.roomId,
+          name: "System",
+          content: `${state.name} has guessed the word! (+${pts})`,
+          is_system: true
+        });
+
+        chatInput.value = "";
+
+        const { data: latest } = await supabase.from("players").select("*").eq("room_id", state.roomId);
+        const notDrawer = (latest || []).filter(p => p.user_id !== state.game.drawer_id);
+        if (notDrawer.length > 0 && notDrawer.every(p => p.has_guessed)) {
+          await endRound();
+        }
+        return;
+      }
+
+      await supabase.from("chat_messages").insert({
+        room_id: state.roomId,
+        user_id: state.userId,
+        name: state.name,
+        content: text,
+        is_system: false
+      });
+      chatInput.value = "";
+    }
+
+    // ================= RENDER =================
+    function updateTimer() {
+      if (!state.game || state.game.phase !== "drawing" || !state.game.started_at) {
+        timerEl.textContent = "--";
+        return;
+      }
+      const dur = state.game.duration_sec || 90;
+      const elapsed = Math.floor((Date.now() - new Date(state.game.started_at).getTime()) / 1000);
+      const left = Math.max(0, dur - elapsed);
+      timerEl.textContent = left + "s";
+      if (left === 0) endRound();
+    }
+
+    function renderPlayers() {
+      playersEl.innerHTML = "";
+      const sorted = [...state.players].sort((a, b) => b.score - a.score);
+      for (const p of sorted) {
+        const tag =
+          state.game?.drawer_id === p.user_id ? "Drawer" :
+          p.has_guessed ? "Guessed" : "Guessing";
+
+        const li = document.createElement("li");
+        li.className = "flex items-center justify-between border border-slate-700 rounded px-2 py-1 text-sm bg-slate-800";
+        li.innerHTML = `
+          <div class="flex items-center gap-2">
+            <span class="font-medium text-slate-100">${p.name}</span>
+            <span class="text-xs px-2 py-0.5 rounded bg-slate-700 text-slate-200">${tag}</span>
+          </div>
+          <span class="font-semibold text-slate-100">${p.score}</span>
+        `;
+        playersEl.appendChild(li);
+      }
+    }
+
+    function renderChat() {
+      chatList.innerHTML = "";
+      for (const m of state.messages) addChatLine(m.name, m.content, m.is_system);
+
+      const allowed = canUserChat();
+      chatInput.disabled = !allowed;
+      chatBtn.disabled = !allowed;
+
+      if (!state.game || state.game.phase !== "drawing") {
+        chatInput.placeholder = "Type your message...";
+      } else if (isDrawer()) {
+        chatInput.placeholder = "Drawer cannot chat during drawing.";
+      } else {
+        const me = state.players.find(p => p.user_id === state.userId);
+        chatInput.placeholder = me?.has_guessed ? "You already guessed. Wait for round end." : "Type your guess...";
+      }
+    }
+
+    function renderHeader() {
+      roomCodeDisplay.textContent = state.roomId || "-";
+      roundEl.textContent = String(state.game?.round_no || 0);
+      phaseEl.textContent = state.game?.phase || "lobby";
+
+      const hostPlayer = state.players.find(p => p.user_id === state.game?.host_id);
+      hostDisplay.textContent = hostPlayer ? hostPlayer.name : "-";
+
+      const drawer = state.players.find(p => p.user_id === state.game?.drawer_id);
+      drawerEl.textContent = drawer ? drawer.name : "-";
+
+      if (state.game?.phase === "drawing") {
+        wordEl.textContent = isDrawer() ? (state.game.word || "-") : maskWord(state.game.word || "");
+      } else if (state.game?.phase === "choosing") {
+        wordEl.textContent = isDrawer() ? "Choose a word" : "Drawer is choosing...";
+      } else {
+        wordEl.textContent = "-";
+      }
+
+      const canDraw = isDrawer() && state.game?.phase === "drawing";
+      [toolSel, color1, color2, gradientToggle, sizeInput, clearBtn].forEach(el => el.disabled = !canDraw);
+
+      // Host controls
+      const amHost = isHost();
+      hostControls.classList.toggle("hidden", !amHost);
+      hostOnlyNote.classList.toggle("hidden", amHost);
+
+      if (amHost) {
+        if (document.activeElement !== hostGuessInput) {
+          hostGuessInput.value = String(state.game?.duration_sec || 90);
+        }
+        if (document.activeElement !== hostWordsInput) {
+          hostWordsInput.value = (Array.isArray(state.game?.custom_words) ? state.game.custom_words : []).join(", ");
+        }
+      }
+
+      const canStart = amHost &&
+        state.players.length >= 2 &&
+        (state.game?.phase === "lobby" || state.game?.phase === "ended");
+      startRoundBtn.disabled = !canStart;
+      startRoundBtn.textContent = (state.game?.round_no || 0) === 0 ? "Start Match" : "Start Next Round";
+
+      restartMatchBtn.disabled = !(amHost && state.game?.phase === "match_ended");
+      restartMatchBtn.classList.toggle("hidden", state.game?.phase !== "match_ended");
+
+      if (state.game?.phase === "choosing" && isDrawer()) {
+        modal.classList.remove("hidden");
+        const opts = Array.isArray(state.game.options) ? state.game.options : random3Words();
+        choice1.textContent = opts[0] || "word";
+        choice2.textContent = opts[1] || "word";
+        choice3.textContent = opts[2] || "word";
+        choice1.onclick = () => chooseWord(opts[0]);
+        choice2.onclick = () => chooseWord(opts[1]);
+        choice3.onclick = () => chooseWord(opts[2]);
+      } else {
+        modal.classList.add("hidden");
+      }
+    }
+
+    function renderAll() {
+      renderPlayers();
+      renderChat();
+      renderHeader();
+      updateTimer();
+    }
+
+    // ================= REALTIME =================
+    function subscribeDB() {
+      state.dbChannel = supabase.channel("room-db-" + state.roomId)
+        .on("postgres_changes", { event: "*", schema: "public", table: "players", filter: `room_id=eq.${state.roomId}` }, async () => {
+          const { data } = await supabase.from("players").select("*").eq("room_id", state.roomId).order("joined_at");
+          state.players = data || [];
+          await maybeReassignHostIfMissing();
+          renderAll();
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "game_state", filter: `room_id=eq.${state.roomId}` }, async () => {
+          const { data } = await supabase.from("game_state").select("*").eq("room_id", state.roomId).single();
+          state.game = data;
+          await maybeReassignHostIfMissing();
+          renderAll();
+          await maybeShowLoserVideo();
+        })
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_messages", filter: `room_id=eq.${state.roomId}` }, (p) => {
+          state.messages.push(p.new);
+          addChatLine(p.new.name, p.new.content, p.new.is_system);
+          renderChat();
+        })
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "draw_events", filter: `room_id=eq.${state.roomId}` }, (p) => {
+          const a = typeof p.new.payload === "string" ? JSON.parse(p.new.payload) : p.new.payload;
+          if (a) applyAction(a, true);
+        })
+        .subscribe();
+    }
+
+    function subscribeDrawBroadcast() {
+      state.drawChannel = supabase.channel("room-draw-" + state.roomId, {
+        config: { broadcast: { self: false } }
+      });
+
+      state.drawChannel.on("broadcast", { event: "draw" }, ({ payload }) => {
+        if (!payload) return;
+        if (payload.type === "segment") {
+          applySegment(payload.segment);
+          state.liveDrawnStrokeIds.add(payload.strokeId);
+        } else if (payload.type === "action") {
+          if (payload.action) applyAction(payload.action, true);
+        }
+      });
+
+      state.drawChannel.subscribe();
+    }
+
+    // ================= DRAW INPUT =================
+    toolSel.addEventListener("change", () => state.tool = toolSel.value);
+    color1.addEventListener("input", () => state.color = color1.value);
+    color2.addEventListener("input", () => state.color2 = color2.value);
+    gradientToggle.addEventListener("change", () => state.gradient = gradientToggle.checked);
+    sizeInput.addEventListener("input", () => state.brushSize = parseInt(sizeInput.value, 10));
+
+    clearBtn.addEventListener("click", async () => {
+      if (!(isDrawer() && state.game?.phase === "drawing")) return;
+      const action = { id: crypto.randomUUID(), kind: "clear" };
+      applyAction(action, true);
+      await broadcastDraw({ type: "action", action });
+      await persistAction(action);
+    });
+
+    canvas.addEventListener("pointerdown", async (e) => {
+      if (!(isDrawer() && state.game?.phase === "drawing")) return;
+      const { x, y } = getMouse(e);
+
+      state.drawing = true;
+      state.startX = x;
+      state.startY = y;
+      state.lastX = x;
+      state.lastY = y;
+      state.previewBase = canvas.toDataURL("image/png");
+
+      if (state.tool === "fill") {
+        state.drawing = false;
+        const action = { id: crypto.randomUUID(), kind: "fill", x, y, color: state.color };
+        applyAction(action, true);
+        await broadcastDraw({ type: "action", action });
+        await persistAction(action);
+        return;
+      }
+
+      if (state.tool === "pen" || state.tool === "eraser") {
+        state.currentStroke = {
+          id: crypto.randomUUID(),
+          kind: "stroke",
+          tool: state.tool,
+          color: state.color,
+          color2: state.color2,
+          gradient: state.gradient,
+          size: state.brushSize,
+          points: [{ x, y }]
+        };
+      }
+    });
+
+    canvas.addEventListener("pointermove", async (e) => {
+      if (!state.drawing || !(isDrawer() && state.game?.phase === "drawing")) return;
+      const { x, y } = getMouse(e);
+
+      if (state.tool === "pen" || state.tool === "eraser") {
+        const from = { x: state.lastX, y: state.lastY };
+        const to = { x, y };
+        if (Math.hypot(to.x - from.x, to.y - from.y) < 1) return;
+
+        const seg = {
+          tool: state.currentStroke.tool,
+          size: state.currentStroke.size,
+          color: state.currentStroke.color,
+          color2: state.currentStroke.color2,
+          gradient: state.currentStroke.gradient,
+          from,
+          to
+        };
+
+        applySegment(seg);
+        state.currentStroke.points.push(to);
+        state.lastX = x;
+        state.lastY = y;
+
+        const t = performance.now();
+        if (t - state.lastSendTs > 12) {
+          state.lastSendTs = t;
+          broadcastDraw({ type: "segment", strokeId: state.currentStroke.id, segment: seg });
+        }
+        return;
+      }
+
+      if (["line", "rect", "circle", "triangle"].includes(state.tool)) {
+        const img = new Image();
+        img.onload = () => {
+          const r = canvas.getBoundingClientRect();
+          ctx.clearRect(0, 0, r.width, r.height);
+          ctx.drawImage(img, 0, 0, r.width, r.height);
+          drawShape({
+            shape: state.tool,
+            x0: state.startX,
+            y0: state.startY,
+            x1: x,
+            y1: y,
+            color: state.color,
+            color2: state.color2,
+            gradient: state.gradient,
+            size: state.brushSize
+          });
+        };
+        img.src = state.previewBase;
+      }
+    });
+
+    canvas.addEventListener("pointerup", async (e) => {
+      if (!state.drawing || !(isDrawer() && state.game?.phase === "drawing")) return;
+      state.drawing = false;
+      const { x, y } = getMouse(e);
+
+      if (state.tool === "pen" || state.tool === "eraser") {
+        if (state.currentStroke && state.currentStroke.points.length > 1) {
+          const action = state.currentStroke;
+          applyAction(action, false);
+          await broadcastDraw({ type: "action", action });
+          await persistAction(action);
+        }
+        state.currentStroke = null;
+        return;
+      }
+
+      if (["line", "rect", "circle", "triangle"].includes(state.tool)) {
+        const action = {
+          id: crypto.randomUUID(),
+          kind: "shape",
+          shape: state.tool,
+          x0: state.startX,
+          y0: state.startY,
+          x1: x,
+          y1: y,
+          color: state.color,
+          color2: state.color2,
+          gradient: state.gradient,
+          size: state.brushSize
+        };
+        applyAction(action, true);
+        await broadcastDraw({ type: "action", action });
+        await persistAction(action);
+      }
+    });
+
+    // ================= EVENTS =================
+    createRoomBtn.addEventListener("click", createRoomFlow);
+    joinRoomBtn.addEventListener("click", joinRoomFlow);
+
+    saveSettingsBtn.addEventListener("click", saveHostSettings);
+    startRoundBtn.addEventListener("click", startNextRound);
+    restartMatchBtn.addEventListener("click", restartMatch);
+
+    chatBtn.addEventListener("click", sendChat);
+    chatInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") sendChat();
+    });
+
+    leaveRoomBtn.addEventListener("click", () => leaveRoomFlow(false));
+
+    closeLoserBtn.addEventListener("click", () => {
+      if (Date.now() < state.loserLockUntil) return;
+      closeLoserVideoModal();
+    });
+
+    playLoserBtn.addEventListener("click", async () => {
+      try {
+        await loserVideo.play();
+        playLoserBtn.classList.add("hidden");
+      } catch {
+        // ignore
+      }
+    });
+
+    window.addEventListener("resize", fitCanvas);
+
+    // Best effort auto-leave on tab close/navigation
+    window.addEventListener("pagehide", () => {
+      if (!state.roomId) return;
+      leaveRoomFlow(true);
+    });
+  </script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+  <div class="max-w-7xl mx-auto p-3 sm:p-4">
+    <h1 class="text-xl sm:text-2xl font-bold mb-3">Guess the Drawing (Dark Realtime)</h1>
+
+    <!-- Setup Panel -->
+    <div id="setupPanel" class="bg-slate-900 border border-slate-800 rounded-xl shadow p-4">
+      <p class="text-sm mb-3 text-slate-400">Create a room or join with a room code.</p>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- Create -->
+        <div class="border border-slate-800 rounded-lg p-3 bg-slate-900">
+          <h2 class="font-semibold mb-2">Create Room (Host)</h2>
+          <div class="space-y-2">
+            <input id="createNameInput" class="w-full border border-slate-700 bg-slate-800 rounded px-3 py-2 text-slate-100 placeholder-slate-400" placeholder="Your name" />
+            <div>
+              <label class="text-sm text-slate-300">Guess time (seconds)</label>
+              <input id="createGuessInput" type="number" min="30" max="300" value="90" class="w-full border border-slate-700 bg-slate-800 rounded px-3 py-2 text-slate-100" />
+            </div>
+            <div>
+              <label class="text-sm text-slate-300">Custom words (comma or newline separated)</label>
+              <textarea id="createWordsInput" rows="4" class="w-full border border-slate-700 bg-slate-800 rounded px-3 py-2 text-slate-100 placeholder-slate-400" placeholder="dragon fruit, keyboard stand, neon city"></textarea>
+            </div>
+            <button id="createRoomBtn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white rounded px-3 py-2 font-semibold">Create Room</button>
+            <p class="text-sm text-slate-400">Created code: <span id="createdCode" class="font-semibold text-slate-200">-</span></p>
+          </div>
+        </div>
+
+        <!-- Join -->
+        <div class="border border-slate-800 rounded-lg p-3 bg-slate-900">
+          <h2 class="font-semibold mb-2">Join Room</h2>
+          <div class="space-y-2">
+            <input id="joinCodeInput" class="w-full border border-slate-700 bg-slate-800 rounded px-3 py-2 text-slate-100 placeholder-slate-400 uppercase" placeholder="Room code (e.g. AB12CD)" />
+            <input id="joinNameInput" class="w-full border border-slate-700 bg-slate-800 rounded px-3 py-2 text-slate-100 placeholder-slate-400" placeholder="Your name" />
+            <button id="joinRoomBtn" class="w-full bg-blue-600 hover:bg-blue-500 text-white rounded px-3 py-2 font-semibold">Join Room</button>
+          </div>
+        </div>
+      </div>
+
+      <p id="status" class="text-sm mt-3 text-slate-400">Not connected.</p>
+    </div>
+
+    <!-- Game Panel -->
+    <div id="gamePanel" class="hidden mt-4 grid grid-cols-1 lg:grid-cols-4 gap-3">
+      <!-- Canvas -->
+      <div class="lg:col-span-3 bg-slate-900 border border-slate-800 rounded-xl shadow p-3">
+        <div class="flex flex-wrap items-center gap-2 mb-2">
+          <select id="tool" class="border border-slate-700 bg-slate-800 text-slate-100 rounded px-2 py-1 text-sm">
+            <option value="pen">Pen</option>
+            <option value="eraser">Eraser</option>
+            <option value="line">Line</option>
+            <option value="rect">Rectangle</option>
+            <option value="circle">Circle</option>
+            <option value="triangle">Triangle</option>
+            <option value="fill">Fill</option>
+          </select>
+          <label class="text-sm text-slate-300">Color <input id="color1" type="color" value="#111827" class="align-middle" /></label>
+          <label class="text-sm text-slate-300">Color 2 <input id="color2" type="color" value="#3b82f6" class="align-middle" /></label>
+          <label class="text-sm text-slate-300 flex items-center gap-1"><input id="gradientToggle" type="checkbox" /> Gradient</label>
+          <label class="text-sm text-slate-300">Size <input id="sizeInput" type="range" min="1" max="30" value="4" class="align-middle" /></label>
+          <button id="clearBtn" class="border border-slate-700 bg-slate-800 hover:bg-slate-700 rounded px-2 py-1 text-sm">Clear</button>
+        </div>
+
+        <div class="w-full h-96 border border-slate-700 rounded bg-white touch-none">
+          <canvas id="board" class="w-full h-full"></canvas>
+        </div>
+      </div>
+
+      <!-- Sidebar -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl shadow p-3 flex flex-col gap-3">
+        <div class="text-sm space-y-1 text-slate-300">
+          <div>Room: <span id="roomCodeDisplay" class="font-semibold text-slate-100">-</span></div>
+          <div>Host: <span id="hostDisplay" class="font-semibold text-slate-100">-</span></div>
+          <div>Round: <span id="round" class="font-semibold text-slate-100">0</span></div>
+          <div>Phase: <span id="phase" class="font-semibold text-slate-100">lobby</span></div>
+          <div>Timer: <span id="timer" class="font-semibold text-slate-100">--</span></div>
+          <div>Drawer: <span id="drawerDisplay" class="font-semibold text-slate-100">-</span></div>
+          <div>Word: <span id="wordDisplay" class="font-semibold text-slate-100">-</span></div>
+        </div>
+
+        <button id="leaveRoomBtn" class="w-full bg-rose-600 hover:bg-rose-500 text-white rounded px-3 py-2 text-sm font-semibold">
+          Leave Room
+        </button>
+
+        <div id="hostControls" class="hidden border border-slate-800 rounded p-2 bg-slate-900 space-y-2">
+          <h3 class="font-semibold text-slate-100">Host Controls</h3>
+          <div>
+            <label class="text-xs text-slate-400">Guess time (seconds)</label>
+            <input id="hostGuessInput" type="number" min="30" max="300" class="w-full border border-slate-700 bg-slate-800 rounded px-2 py-1 text-sm text-slate-100" />
+          </div>
+          <div>
+            <label class="text-xs text-slate-400">Custom words</label>
+            <textarea id="hostWordsInput" rows="3" class="w-full border border-slate-700 bg-slate-800 rounded px-2 py-1 text-sm text-slate-100"></textarea>
+          </div>
+          <button id="saveSettingsBtn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white rounded px-3 py-2 text-sm font-semibold">Save Settings</button>
+          <button id="startRoundBtn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white rounded px-3 py-2 text-sm font-semibold">Start Match</button>
+          <button id="restartMatchBtn" class="hidden w-full bg-amber-600 hover:bg-amber-500 text-white rounded px-3 py-2 text-sm font-semibold">Restart Match</button>
+        </div>
+        <p id="hostOnlyNote" class="text-xs text-slate-500">Only host can change settings/start/restart.</p>
+
+        <div>
+          <h2 class="font-semibold mb-1 text-slate-100">Players</h2>
+          <ul id="playersList" class="space-y-1"></ul>
+        </div>
+
+        <div class="min-h-0 flex-1 flex flex-col">
+          <h2 class="font-semibold mb-1 text-slate-100">Chat</h2>
+          <div id="chatList" class="border border-slate-700 rounded p-2 h-56 overflow-y-auto bg-slate-950"></div>
+          <div class="mt-2 flex gap-2">
+            <input id="chatInput" class="border border-slate-700 bg-slate-800 text-slate-100 rounded px-2 py-1 flex-1 text-sm placeholder-slate-400" placeholder="Type your message..." />
+            <button id="chatBtn" class="bg-blue-600 hover:bg-blue-500 text-white rounded px-3 py-1 text-sm">Send</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Word Picker Modal -->
+  <div id="wordChoiceModal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-xl shadow-xl p-4 w-full max-w-md">
+      <h3 class="font-bold text-lg mb-2 text-slate-100">Choose a word</h3>
+      <p class="text-sm text-slate-400 mb-3">Pick 1 of 3 words:</p>
+      <div class="grid grid-cols-1 gap-2">
+        <button id="choice1" class="border border-slate-700 bg-slate-800 hover:bg-slate-700 rounded px-3 py-2 text-left text-slate-100"></button>
+        <button id="choice2" class="border border-slate-700 bg-slate-800 hover:bg-slate-700 rounded px-3 py-2 text-left text-slate-100"></button>
+        <button id="choice3" class="border border-slate-700 bg-slate-800 hover:bg-slate-700 rounded px-3 py-2 text-left text-slate-100"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loser Fullscreen Video Modal -->
+  <div id="loserVideoModal" class="hidden fixed inset-0 z-50 bg-black">
+    <video id="loserVideo" class="w-full h-full object-contain bg-black"></video>
+    <div class="absolute inset-x-0 top-0 p-3 sm:p-4 bg-gradient-to-b from-black/80 to-transparent">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div>
+          <h3 id="loserTitle" class="text-white font-bold text-base sm:text-lg">Punishment video</h3>
+          <p id="loserCountdown" class="text-amber-300 text-sm">Close available in 15s</p>
+          <p class="text-slate-300 text-xs mt-1">If autoplay is blocked, tap Play.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="playLoserBtn" class="hidden bg-blue-600 hover:bg-blue-500 text-white rounded px-3 py-2 text-sm font-semibold">
+            Tap to Play
+          </button>
+          <button id="closeLoserBtn" class="bg-rose-600 hover:bg-rose-500 text-white rounded px-3 py-2 text-sm font-semibold opacity-50 cursor-not-allowed" disabled>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
