@@ -312,16 +312,35 @@
       }
     }
 
-    async function signInWithGoogle() {
-      await signInWithProvider("google", "Google");
-    }
 
     async function signInWithDiscord() {
-      await signInWithProvider("discord", "Discord");
+      try {
+        setStatus("Redirecting to Discord...");
+        await supabase.auth.signInWithOAuth({
+          provider: "discord",
+          options: {
+            redirectTo: window.location.href
+            scopes: 'identify email'
+          }
+        });
+      } catch (e) {
+        console.error(e);
+        setStatus("Discord login failed.");
+      }
     }
-
-    async function signInWithGitHub() {
-      await signInWithProvider("github", "GitHub");
+    async function signInWithGithub() {
+      try {
+        setStatus("Redirecting to GitHub...");
+        await supabase.auth.signInWithOAuth({
+          provider: "github",
+          options: {
+            redirectTo: window.location.href
+          }
+        });
+      } catch (e) {
+        console.error(e);
+        setStatus("GitHub login failed.");
+      }
     }
 
     async function signOutFlow() {
@@ -360,7 +379,7 @@
       });
 
       if (state.userId) setStatus("Signed in. Ready.");
-      else setStatus("Please sign in.");
+      else setStatus("Please sign in with Google as we cannot find your userid.");
     }
 
     // ================= CUSTOM DRAW UI =================
@@ -1430,7 +1449,7 @@
     // ================= EVENTS =================
     googleLoginBtn.addEventListener("click", signInWithGoogle);
     discordLoginBtn.addEventListener("click", signInWithDiscord);
-    githubLoginBtn.addEventListener("click", signInWithGitHub);
+    githubLoginBtn.addEventListener("click", signInWithGithub);
     signOutBtn.addEventListener("click", signOutFlow);
 
     createRoomBtn.addEventListener("click", createRoomFlow);
@@ -1476,7 +1495,7 @@
         <button id="discordLoginBtn" class="bg-indigo-600 text-white hover:bg-indigo-500 rounded px-3 py-2 text-sm font-semibold">
           Sign in with Discord
         </button>
-        <button id="githubLoginBtn" class="bg-slate-800 text-white hover:bg-slate-700 rounded px-3 py-2 text-sm font-semibold border border-slate-600">
+        <button id="githubLoginBtn" class="bg-white text-slate-900 hover:bg-slate-200 rounded px-3 py-2 text-sm font-semibold">
           Sign in with GitHub
         </button>
         <button id="signOutBtn" class="hidden bg-slate-700 hover:bg-slate-600 text-white rounded px-3 py-2 text-sm font-semibold">
