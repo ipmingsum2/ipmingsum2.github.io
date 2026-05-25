@@ -276,6 +276,7 @@
 
       googleLoginBtn.classList.toggle("hidden", loggedIn);
       discordLoginBtn.classList.toggle("hidden", loggedIn);
+      githubLoginBtn.classList.toggle("hidden", loggedIn);
       signOutBtn.classList.toggle("hidden", !loggedIn);
 
       createRoomBtn.disabled = !loggedIn;
@@ -373,7 +374,7 @@
       });
 
       if (state.userId) setStatus("Signed in. Ready.");
-      else setStatus("Please sign in with Google.");
+      else setStatus("Please sign in with Google as we cannot find your userid.");
     }
 
     // ================= CUSTOM DRAW UI =================
