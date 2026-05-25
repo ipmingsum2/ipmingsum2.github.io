@@ -84,6 +84,8 @@
 
     const authStatus = document.getElementById("authStatus");
     const googleLoginBtn = document.getElementById("googleLoginBtn");
+    const discordLoginBtn = document.getElementById("discordLoginBtn");
+    const githubLoginBtn = document.getElementById("githubLoginBtn");
     const signOutBtn = document.getElementById("signOutBtn");
 
     const createNameInput = document.getElementById("createNameInput");
@@ -246,7 +248,7 @@
 
     function requireAuth() {
       if (!state.userId) {
-        setStatus("Sign in with Google first.");
+        setStatus("Sign in first.");
         return false;
       }
       return true;
@@ -273,6 +275,8 @@
         : "Not signed in";
 
       googleLoginBtn.classList.toggle("hidden", loggedIn);
+      discordLoginBtn.classList.toggle("hidden", loggedIn);
+      githubLoginBtn.classList.toggle("hidden", loggedIn);
       signOutBtn.classList.toggle("hidden", !loggedIn);
 
       createRoomBtn.disabled = !loggedIn;
@@ -288,19 +292,36 @@
       }
     }
 
-    async function signInWithGoogle() {
+    async function signInWithProvider(provider, label) {
       try {
-        setStatus("Redirecting to Google...");
-        await supabase.auth.signInWithOAuth({
-          provider: "google",
+        setStatus(`Redirecting to ${label}...`);
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider,
           options: {
-            redirectTo: window.location.href
+            redirectTo: `${window.location.origin}${window.location.pathname}`
           }
         });
+
+        if (error) {
+          console.error(error);
+          setStatus(`${label} login failed: ${error.message || "unknown error"}`);
+        }
       } catch (e) {
         console.error(e);
-        setStatus("Google login failed.");
+        setStatus(`${label} login failed.`);
       }
+    }
+
+    async function signInWithGoogle() {
+      await signInWithProvider("google", "Google");
+    }
+
+    async function signInWithDiscord() {
+      await signInWithProvider("discord", "Discord");
+    }
+
+    async function signInWithGitHub() {
+      await signInWithProvider("github", "GitHub");
     }
 
     async function signOutFlow() {
@@ -339,7 +360,7 @@
       });
 
       if (state.userId) setStatus("Signed in. Ready.");
-      else setStatus("Please sign in with Google.");
+      else setStatus("Please sign in.");
     }
 
     // ================= CUSTOM DRAW UI =================
@@ -826,7 +847,7 @@
 
       setupPanel.classList.remove("hidden");
       gamePanel.classList.add("hidden");
-      setStatus(state.userId ? "Ready." : "Please sign in with Google.");
+      setStatus(state.userId ? "Ready." : "Please sign in.");
     }
 
     async function leaveRoomFlow(silent = false) {
@@ -1408,6 +1429,8 @@
 
     // ================= EVENTS =================
     googleLoginBtn.addEventListener("click", signInWithGoogle);
+    discordLoginBtn.addEventListener("click", signInWithDiscord);
+    githubLoginBtn.addEventListener("click", signInWithGitHub);
     signOutBtn.addEventListener("click", signOutFlow);
 
     createRoomBtn.addEventListener("click", createRoomFlow);
@@ -1449,6 +1472,12 @@
       <div class="flex items-center gap-2">
         <button id="googleLoginBtn" class="bg-white text-slate-900 hover:bg-slate-200 rounded px-3 py-2 text-sm font-semibold">
           Sign in with Google
+        </button>
+        <button id="discordLoginBtn" class="bg-indigo-600 text-white hover:bg-indigo-500 rounded px-3 py-2 text-sm font-semibold">
+          Sign in with Discord
+        </button>
+        <button id="githubLoginBtn" class="bg-slate-800 text-white hover:bg-slate-700 rounded px-3 py-2 text-sm font-semibold border border-slate-600">
+          Sign in with GitHub
         </button>
         <button id="signOutBtn" class="hidden bg-slate-700 hover:bg-slate-600 text-white rounded px-3 py-2 text-sm font-semibold">
           Sign Out
