@@ -292,18 +292,23 @@
       }
     }
 
-    async function signInWithGoogle() {
+    async function signInWithProvider(provider, label) {
       try {
-        setStatus("Redirecting to Google...");
-        await supabase.auth.signInWithOAuth({
-          provider: "google",
+        setStatus(`Redirecting to ${label}...`);
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider,
           options: {
-            redirectTo: window.location.href
+            redirectTo: `${window.location.origin}${window.location.pathname}`
           }
         });
+
+        if (error) {
+          console.error(error);
+          setStatus(`${label} login failed: ${error.message || "unknown error"}`);
+        }
       } catch (e) {
         console.error(e);
-        setStatus("Google login failed.");
+        setStatus(`${label} login failed.`);
       }
     }
 
@@ -861,7 +866,7 @@
 
       setupPanel.classList.remove("hidden");
       gamePanel.classList.add("hidden");
-      setStatus(state.userId ? "Ready." : "Please sign in with Google.");
+      setStatus(state.userId ? "Ready." : "Please sign in.");
     }
 
     async function leaveRoomFlow(silent = false) {
