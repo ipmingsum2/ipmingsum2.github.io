@@ -292,56 +292,55 @@
       }
     }
 
-    async function signInWithProvider(provider, label) {
-      try {
-        setStatus(`Redirecting to ${label}...`);
-        const { error } = await supabase.auth.signInWithOAuth({
-          provider,
-          options: {
-            redirectTo: `${window.location.origin}${window.location.pathname}`
-          }
-        });
+    function getRedirectTo() {
+  const url = new URL(window.location.href);
+  url.search = "";
+  url.hash = "";
 
-        if (error) {
-          console.error(error);
-          setStatus(`${label} login failed: ${error.message || "unknown error"}`);
-        }
-      } catch (e) {
-        console.error(e);
-        setStatus(`${label} login failed.`);
-      }
-    }
+  if (url.protocol === "file:") {
+    setStatus("Login needs http/https. Open this page from localhost or a deployed URL.");
+    return null;
+  }
 
+  return url.toString();
+}
 
-    async function signInWithDiscord() {
-      try {
-        setStatus("Redirecting to Discord...");
-        await supabase.auth.signInWithOAuth({
-          provider: "discord",
-          options: {
-            redirectTo: window.location.href
-            scopes: 'identify email'
-          }
-        });
-      } catch (e) {
-        console.error(e);
-        setStatus("Discord login failed.");
-      }
+async function signInWithProvider(provider, label, scopes) {
+  try {
+    const redirectTo = getRedirectTo();
+    if (!redirectTo) return;
+
+    setStatus(`Redirecting to ${label}...`);
+
+    const options = { redirectTo };
+    if (scopes) options.scopes = scopes;
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options
+    });
+
+    if (error) {
+      console.error(error);
+      setStatus(`${label} login failed: ${error.message || "unknown error"}`);
     }
-    async function signInWithGithub() {
-      try {
-        setStatus("Redirecting to GitHub...");
-        await supabase.auth.signInWithOAuth({
-          provider: "github",
-          options: {
-            redirectTo: window.location.href
-          }
-        });
-      } catch (e) {
-        console.error(e);
-        setStatus("GitHub login failed.");
-      }
-    }
+  } catch (e) {
+    console.error(e);
+    setStatus(`${label} login failed.`);
+  }
+}
+
+function signInWithGoogle() {
+  return signInWithProvider("google", "Google");
+}
+
+function signInWithDiscord() {
+  return signInWithProvider("discord", "Discord", "identify email");
+}
+
+function signInWithGithub() {
+  return signInWithProvider("github", "GitHub");
+}
 
     async function signOutFlow() {
       try {
