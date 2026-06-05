@@ -13,7 +13,7 @@
 - [Ad Board Installation](https://ipmingsum2.github.io/adboard/installation.md): Before getting started, insert the latest version of this product from our Discord into your game.
 - [Configuring Your Ad Board](https://ipmingsum2.github.io/adboard/config.md): Need your ads switch faster? Yes, we have that.
 
-## Chat
+## Chat System
 
 - [Chat System Installation](https://ipmingsum2.github.io/chat/installation.md): Before getting started, insert the latest version of this product from our Discord into your game.
 - [Configuring Your Chat](https://ipmingsum2.github.io/chat/config.md): Need to color your chats? You got into the right place.
