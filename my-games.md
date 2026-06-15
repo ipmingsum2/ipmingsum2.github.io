@@ -16,6 +16,8 @@ Play games that I made!
 
 [!button Guess The Drawing](/game/gtd.html)
 
+[!button Dino Game](/game/dino.html)
+
 ## External
 
 Useful things!
