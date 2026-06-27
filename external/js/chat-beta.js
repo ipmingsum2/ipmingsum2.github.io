@@ -1,0 +1,1979 @@
+const SUPABASE_URL = "https://lflkpziiwnoamvtrbcil.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_tFvlhmTEDV3SOSVp0JvVzg_KHXFiDNb";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const $ = id => document.getElementById(id);
+const CHAT_MEDIA_BUCKET = "chat-media";
+const MESSAGE_HISTORY_LIMIT = 120;
+const OLDER_MESSAGE_BATCH_SIZE = 50;
+const CHAT_IMAGE_MAX_EDGE = 1600;
+const CHAT_IMAGE_MAX_BYTES = 900 * 1024;
+const AVATAR_IMAGE_MAX_EDGE = 320;
+const AVATAR_IMAGE_MAX_BYTES = 120 * 1024;
+const MAX_AUDIO_BYTES = 8 * 1024 * 1024;
+const MAX_VIDEO_BYTES = 12 * 1024 * 1024;
+
+let me = null, myProfile = null, room = "lobby", channel = null, currentChannel = null;
+let sideChannels = [], mediaObserver = null;
+let messageMap = new Map(), oldestMessageCreatedAt = null, loadingOlderMessages = false, allOlderMessagesLoaded = false;
+let profileMap = new Map(), filters = [];
+
+function toast(msg, type = "ok", ms = 3200) {
+  const d = document.createElement("div");
+  d.className = `toast ${type}`;
+  d.textContent = msg;
+  $("toastWrap").appendChild(d);
+  setTimeout(() => d.remove(), ms);
+}
+
+function debugValue(obj) {
+  if (typeof obj === "string") return obj;
+  if (obj instanceof Error) {
+    return JSON.stringify({
+      name: obj.name,
+      message: obj.message,
+      stack: obj.stack
+    });
+  }
+  const json = JSON.stringify(obj);
+  return json === undefined ? String(obj) : json;
+}
+
+function debugLog(label, obj) {
+  $("debug").textContent = `[${new Date().toLocaleTimeString()}] ${label}: ${debugValue(obj)}\n` + $("debug").textContent;
+}
+
+function esc(s = "") {
+  return String(s).replace(/[&<>"']/g, m => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[m]));
+}
+
+function isChannelPolicyRecursionError(e) {
+  const msg = String(e?.message || e?.details || e?.hint || "").toLowerCase();
+  return msg.includes("infinite recursion") && msg.includes("channel_members");
+}
+
+function errText(ctx, e) {
+  if (isChannelPolicyRecursionError(e)) {
+    return `${ctx}: Supabase RLS is recursively reading channel_members. Run external/supabase-chat-rls.sql in the Supabase SQL editor to replace the channel policies.`;
+  }
+  return `${ctx}: ${e?.message || JSON.stringify(e)}`;
+}
+
+function setAuthMsg(msg, err = false) {
+  $("authMsg").textContent = msg;
+  $("authMsg").style.color = err ? "var(--danger)" : "var(--muted)";
+}
+
+function setAdminMsg(msg, err = false) {
+  $("adminMsg").textContent = msg;
+  $("adminMsg").style.color = err ? "var(--danger)" : "var(--muted)";
+}
+
+function setInviteMsg(msg, err = false) {
+  $("inviteMsg").textContent = msg;
+  $("inviteMsg").style.color = err ? "var(--danger)" : "var(--muted)";
+}
+
+function fmt(ts) {
+  try { return new Date(ts).toLocaleString(); }
+  catch { return ts; }
+}
+
+function normalizeIframeSrc(src) {
+  const url = new URL(src, location.href);
+  if (!["http:", "https:"].includes(url.protocol)) throw new Error("bad protocol");
+  if (url.hostname === "youtu.be") {
+    return `https://www.youtube.com/embed/${encodeURIComponent(url.pathname.slice(1))}`;
+  }
+  if (url.hostname.endsWith("youtube.com") && url.pathname === "/watch" && url.searchParams.has("v")) {
+    return `https://www.youtube.com/embed/${encodeURIComponent(url.searchParams.get("v"))}`;
+  }
+  if (url.hostname.endsWith("youtube.com") && url.pathname.startsWith("/shorts/")) {
+    return `https://www.youtube.com/embed/${encodeURIComponent(url.pathname.split("/")[2] || "")}`;
+  }
+  return url.href;
+}
+
+function iframeEmbedHTML(rawAttrs = "") {
+  const attrs = {};
+  rawAttrs.replace(/(src|width|height)="([^"]*)"/gi, (_, key, value) => {
+    attrs[key.toLowerCase()] = value.trim();
+    return "";
+  });
+
+  let src = attrs.src || "https://www.youtube.com/embed/dQw4w9WgXcQ";
+  try {
+    src = normalizeIframeSrc(src);
+  } catch {
+    src = "https://www.youtube.com/embed/dQw4w9WgXcQ";
+  }
+
+  const width = Math.min(Math.max(parseInt(attrs.width || "560", 10) || 560, 200), 640);
+  const height = Math.min(Math.max(parseInt(attrs.height || "315", 10) || 315, 120), 360);
+  return `<iframe class="iframe-msg" src="${esc(src)}" width="${width}" height="${height}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
+}
+
+function parseRich(text = "") {
+  const withIframes = String(text).replace(/!iframe\s*([^!]*)!/gi, (_, attrs) => iframeEmbedHTML(attrs));
+  const md = marked.parse(withIframes, { breaks: true, gfm: true });
+  const clean = DOMPurify.sanitize(md, {
+    ADD_TAGS: ["u", "iframe"],
+    ADD_ATTR: ["src", "width", "height", "loading", "allow", "allowfullscreen", "referrerpolicy", "class"]
+  });
+
+  const template = document.createElement("template");
+  template.innerHTML = clean;
+  template.content.querySelectorAll("iframe").forEach(frame => {
+    try {
+      const src = normalizeIframeSrc(frame.getAttribute("src") || "");
+      frame.setAttribute("src", src);
+      frame.setAttribute("referrerpolicy", "strict-origin-when-cross-origin");
+    } catch {
+      frame.remove();
+    }
+  });
+  return template.innerHTML;
+}
+
+function renderMathIn(el) {
+  if (!window.renderMathInElement || !el) return;
+  renderMathInElement(el, {
+    delimiters: [
+      { left: "\\[", right: "\\]", display: true },
+      { left: "\\(", right: "\\)", display: false },
+      { left: "$$", right: "$$", display: true },
+      { left: "$", right: "$", display: false }
+    ],
+    throwOnError: false
+  });
+}
+
+function removeSideChannels() {
+  sideChannels.forEach(ch => sb.removeChannel(ch));
+  sideChannels = [];
+}
+
+function showAuth() {
+  $("authCard").classList.remove("hidden");
+  $("appCard").classList.add("hidden");
+  $("status").textContent = "Not logged in";
+  currentChannel = null;
+  $("channelSettings").classList.add("hidden");
+  removeSideChannels();
+  if (channel) {
+    sb.removeChannel(channel);
+    channel = null;
+  }
+}
+
+function showApp() {
+  $("authCard").classList.add("hidden");
+  $("appCard").classList.remove("hidden");
+  $("status").textContent = `Logged in: ${myProfile?.display_name || me?.email || "user"}`;
+  $("meInfo").innerHTML = `You: <b>${esc(myProfile?.display_name || "")}</b> @${esc(myProfile?.username || "")} (${esc(myProfile?.role || "user")})`;
+
+  const rc = $("roleChip");
+  rc.textContent = myProfile?.role || "user";
+  rc.className = "chip" + (myProfile?.role === "admin" ? " admin" : "");
+
+  const isAdmin = myProfile?.role === "admin";
+  $("adminOnly").classList.toggle("hidden", !isAdmin);
+  $("adminNotAllowed").classList.toggle("hidden", isAdmin);
+  $("annComposer").classList.toggle("hidden", !isAdmin);
+  $("rootAdminTools").classList.toggle("hidden", !isRootOwner());
+}
+
+window.sendInviteEmail = async function sendInviteEmail(email) {
+  await requireAuthedUser();
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  if (!validEmail(normalizedEmail)) throw new Error("Enter a valid email address");
+
+  const { data, error } = await sb.functions.invoke("invite-user", {
+    body: {
+      email: normalizedEmail,
+      invited_by: me?.id || null,
+      redirect_to: `${location.origin}${location.pathname}`
+    }
+  });
+
+  if (error) {
+    throw new Error(error.message || "Supabase invite function failed");
+  }
+
+  return data;
+};
+
+async function requireAuthedUser() {
+  const gu = await sb.auth.getUser();
+  if (!gu.data.user) throw new Error("Session expired");
+  return gu.data.user;
+}
+
+function fallbackProfileForUser(user, uh = "", dh = "") {
+  const userEmail = user && user.email ? user.email : "";
+  const userId = user && user.id ? user.id : Date.now();
+  const emailName = userEmail.split("@")[0];
+  const idSuffix = String(userId).replace(/[^a-z0-9]/gi, "").slice(0, 8);
+  const fallbackUsername = "user" + idSuffix;
+  const username = (uh || emailName || fallbackUsername)
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 24) || fallbackUsername;
+  const display_name = (dh || username || userEmail || "User").slice(0, 48);
+  return { id: userId, username, display_name, avatar_url: null, role: "user" };
+}
+
+async function ensureProfileAfterLogin(user, uh = "", dh = "") {
+  const fallbackProfile = fallbackProfileForUser(user, uh, dh);
+
+  const one = await sb.from("profiles").select("*").eq("id", user.id).maybeSingle();
+  if (one.error) {
+    debugLog("profile.load", one.error);
+    toast("Login worked, but profile loading failed. Using a temporary profile.", "warn", 5500);
+    return fallbackProfile;
+  }
+   if (one.data) return Object.assign({}, fallbackProfile, one.data);
+  if (one.data) return { ...fallbackProfile, ...one.data };
+
+  const ins = await sb.from("profiles")
+    .insert({
+      id: user.id,
+      username: fallbackProfile.username,
+      display_name: fallbackProfile.display_name,
+      role: fallbackProfile.role
+    })
+    .select("*")
+    .single();
+
+  if (ins.error) {
+    debugLog("profile.create", ins.error);
+    toast("Login worked, but profile creation failed. Using a temporary profile.", "warn", 5500);
+    return fallbackProfile;
+  }
+  return Object.assign({}, fallbackProfile, ins.data);
+  return { ...fallbackProfile, ...ins.data };
+}
+
+function mediaKindFromExtension(ext = "") {
+  const clean = String(ext || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (["jpg", "jpeg", "png", "webp", "gif", "avif", "bmp"].includes(clean)) return "image";
+  if (["mp3", "wav", "ogg", "oga", "m4a", "aac", "flac", "opus", "weba"].includes(clean)) return "audio";
+  if (["mp4", "webm", "mov", "m4v", "avi", "mkv", "ogv", "3gp", "3g2"].includes(clean)) return "video";
+  return "";
+}
+
+function mediaKindFromFile(file) {
+  const mimeKind = (file.type || "").split("/")[0];
+  if (["image", "audio", "video"].includes(mimeKind)) return mimeKind;
+  const ext = String(file.name || "").split(".").pop() || "";
+  return mediaKindFromExtension(ext);
+}
+
+function mediaKindFromUrl(url = "") {
+  const clean = String(url).split("?")[0].toLowerCase();
+  return mediaKindFromExtension(clean.split(".").pop() || "");
+}
+
+function loadLazyMediaElement(el) {
+  const src = el?.dataset?.src;
+  if (!src) return;
+  el.src = src;
+  el.removeAttribute("data-src");
+  if (el.tagName === "AUDIO" || el.tagName === "VIDEO") el.load();
+  if (mediaObserver) mediaObserver.unobserve(el);
+}
+
+function watchLazyMedia(root = document) {
+  const items = root.querySelectorAll("[data-src]");
+  if (!items.length) return;
+
+  if (!("IntersectionObserver" in window)) {
+    items.forEach(loadLazyMediaElement);
+    return;
+  }
+
+  if (!mediaObserver) {
+    mediaObserver = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) loadLazyMediaElement(entry.target);
+      });
+    }, {
+      root: $("chat") || null,
+      rootMargin: "700px 0px",
+      threshold: 0.01
+    });
+  }
+
+  items.forEach(el => mediaObserver.observe(el));
+}
+
+function formatBytes(bytes) {
+  if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(bytes >= 10 * 1024 * 1024 ? 0 : 1)} MB`;
+  return `${Math.ceil(bytes / 1024)} KB`;
+}
+
+function uploadExtensionForFile(file, kind) {
+  const ext = String(file.name || "").split(".").pop() || "";
+  const clean = ext.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 12);
+  if (clean) return clean;
+  if (file.type === "image/webp") return "webp";
+  if (file.type === "image/jpeg") return "jpg";
+  if (file.type === "image/png") return "png";
+  if (file.type === "audio/mpeg") return "mp3";
+  if (file.type === "video/mp4") return "mp4";
+  return kind || "file";
+}
+
+function outputNameForImage(name, type) {
+  const base = String(name || "image")
+    .replace(/\.[^/.\\]+$/, "")
+    .replace(/[^a-z0-9_-]+/gi, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48) || "image";
+  const ext = type === "image/jpeg" ? "jpg" : type === "image/png" ? "png" : "webp";
+  return `${base}.${ext}`;
+}
+
+function blobAsFile(blob, name) {
+  if (typeof File === "function") {
+    return new File([blob], name, { type: blob.type, lastModified: Date.now() });
+  }
+  Object.defineProperty(blob, "name", { value: name });
+  return blob;
+}
+
+function canvasToBlob(canvas, type, quality) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("Could not compress image")), type, quality);
+  });
+}
+
+async function decodeImageForCanvas(file) {
+  if ("createImageBitmap" in window) return createImageBitmap(file);
+
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Could not read image"));
+    };
+    img.src = url;
+  });
+}
+
+async function compressImageForUpload(file, {
+  maxEdge = CHAT_IMAGE_MAX_EDGE,
+  maxBytes = CHAT_IMAGE_MAX_BYTES,
+  quality = 0.78,
+  label = "Image"
+} = {}) {
+  if (file.type === "image/gif") {
+    if (file.size > maxBytes) {
+      throw new Error(`${label} GIF is ${formatBytes(file.size)}. Please keep GIFs under ${formatBytes(maxBytes)}.`);
+    }
+    return file;
+  }
+
+  const source = await decodeImageForCanvas(file);
+  const sourceWidth = source.width || source.naturalWidth || 0;
+  const sourceHeight = source.height || source.naturalHeight || 0;
+  if (!sourceWidth || !sourceHeight) throw new Error("Could not read image dimensions");
+
+  let targetWidth = sourceWidth;
+  let targetHeight = sourceHeight;
+  const edgeScale = Math.min(1, maxEdge / Math.max(sourceWidth, sourceHeight));
+  targetWidth = Math.max(1, Math.round(sourceWidth * edgeScale));
+  targetHeight = Math.max(1, Math.round(sourceHeight * edgeScale));
+
+  if (file.size <= maxBytes && edgeScale === 1) {
+    if (source.close) source.close();
+    return file;
+  }
+
+  let bestBlob = null;
+  let currentQuality = quality;
+
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const canvas = document.createElement("canvas");
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    const ctx = canvas.getContext("2d", { alpha: true });
+    ctx.drawImage(source, 0, 0, targetWidth, targetHeight);
+
+    let blob = await canvasToBlob(canvas, "image/webp", currentQuality);
+    if (!blob.type || blob.type === "image/png") {
+      blob = await canvasToBlob(canvas, "image/jpeg", currentQuality);
+    }
+
+    if (!bestBlob || blob.size < bestBlob.size) bestBlob = blob;
+    if (blob.size <= maxBytes) break;
+
+    currentQuality = Math.max(0.52, currentQuality - 0.08);
+    if (currentQuality <= 0.56) {
+      targetWidth = Math.max(1, Math.round(targetWidth * 0.85));
+      targetHeight = Math.max(1, Math.round(targetHeight * 0.85));
+    }
+  }
+
+  if (source.close) source.close();
+
+  if (bestBlob && bestBlob.size <= maxBytes) {
+    return blobAsFile(bestBlob, outputNameForImage(file.name, bestBlob.type));
+  }
+
+  throw new Error(`${label} is still too large after compression. Please choose a smaller image.`);
+}
+
+async function prepareFileForUpload(file, allowedKinds, options = {}) {
+  const kind = mediaKindFromFile(file);
+  if (!kind || !allowedKinds.includes(kind)) {
+    throw new Error(`Unsupported file type: ${file.type || file.name}`);
+  }
+
+  if (kind === "image") return compressImageForUpload(file, options);
+  if (kind === "audio" && file.size > MAX_AUDIO_BYTES) {
+    throw new Error(`Audio is ${formatBytes(file.size)}. Please keep audio under ${formatBytes(MAX_AUDIO_BYTES)}.`);
+  }
+  if (kind === "video" && file.size > MAX_VIDEO_BYTES) {
+    throw new Error(`Video is ${formatBytes(file.size)}. Please keep videos under ${formatBytes(MAX_VIDEO_BYTES)} or share a link.`);
+  }
+  return file;
+}
+
+async function uploadFile(file, allowedKinds = ["image", "audio", "video"], options = {}) {
+  const authUser = await requireAuthedUser();
+  const uploadFile = await prepareFileForUpload(file, allowedKinds, options);
+  const kind = mediaKindFromFile(uploadFile) || mediaKindFromFile(file);
+  const ext = uploadExtensionForFile(uploadFile, kind);
+  const path = `${authUser.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  const up = await sb.storage.from(CHAT_MEDIA_BUCKET).upload(path, uploadFile, {
+    cacheControl: "31536000",
+    upsert: false,
+    contentType: uploadFile.type || "application/octet-stream"
+  });
+  if (up.error) throw up.error;
+  return sb.storage.from(CHAT_MEDIA_BUCKET).getPublicUrl(path).data.publicUrl;
+}
+
+async function uploadImage(file) {
+  return uploadFile(file, ["image"], {
+    maxEdge: AVATAR_IMAGE_MAX_EDGE,
+    maxBytes: AVATAR_IMAGE_MAX_BYTES,
+    quality: 0.72,
+    label: "Avatar image"
+  });
+}
+
+async function uploadMedia(file) {
+  return uploadFile(file, ["image", "audio", "video"], {
+    maxEdge: CHAT_IMAGE_MAX_EDGE,
+    maxBytes: CHAT_IMAGE_MAX_BYTES,
+    quality: 0.78,
+    label: "Chat image"
+  });
+}
+
+function attachmentHTML(url) {
+  if (!url) return "";
+  const safeUrl = esc(url);
+  const kind = mediaKindFromUrl(url);
+  if (kind === "audio") return `<audio class="audio" controls preload="none" data-src="${safeUrl}"></audio>`;
+  if (kind === "video") return `<video class="video" controls preload="none" data-src="${safeUrl}"></video>`;
+  return `<img class="img" data-src="${safeUrl}" loading="lazy" decoding="async" alt="">`;
+}
+
+async function loadProfileMap() {
+  const q = await sb.from("profiles").select("id,username,display_name,avatar_url,role");
+  if (q.error) {
+    debugLog("profiles.load", q.error);
+    profileMap = new Map();
+    return;
+  }
+  profileMap = new Map((q.data || []).map(p => [p.id, p]));
+}
+
+function channelSlug(name = "lobby") {
+  const slug = String(name || "lobby")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48);
+  return slug || "lobby";
+}
+
+function canManageChannel(ch = currentChannel) {
+  return !!(ch && (myProfile?.role === "admin" || ch.created_by === me?.id));
+}
+
+async function getChannelMemberIds(channelId) {
+  const q = await sb.from("channel_members").select("user_id").eq("channel_id", channelId);
+  if (q.error) throw q.error;
+  return new Set((q.data || []).map(row => row.user_id));
+}
+
+async function canEnterChannel(ch) {
+  if (!ch?.is_private) return true;
+  if (myProfile?.role === "admin" || ch.created_by === me?.id) return true;
+  const members = await getChannelMemberIds(ch.id);
+  return members.has(me?.id);
+}
+
+async function ensureChannelByInput(inputName) {
+  const requestedName = (inputName || "lobby").trim().slice(0, 64) || "lobby";
+  const requestedSlug = channelSlug(requestedName);
+  const channelColumns = "id,name,created_by,is_private,is_locked,sort_order,created_at";
+  const fallbackChannel = () => ({
+    id: requestedSlug,
+    name: requestedName,
+    created_by: null,
+    is_private: false,
+    is_locked: false,
+    sort_order: null
+  });
+
+  let q = await sb.from("channels")
+    .select(channelColumns)
+    .eq("id", requestedSlug)
+    .maybeSingle();
+  if (q.error) {
+    debugLog("channel.lookup.id", q.error);
+    return fallbackChannel();
+  }
+  if (q.data) return q.data;
+
+  q = await sb.from("channels")
+    .select(channelColumns)
+    .ilike("name", requestedName)
+    .limit(1)
+    .maybeSingle();
+  if (q.error) {
+    debugLog("channel.lookup.name", q.error);
+    return fallbackChannel();
+  }
+  if (q.data) return q.data;
+
+  const ins = await sb.from("channels")
+    .insert({ id: requestedSlug, name: requestedName, created_by: me.id, is_private: false, is_locked: false, sort_order: Date.now() })
+    .select(channelColumns)
+    .single();
+  if (ins.error) {
+    debugLog("channel.create", ins.error);
+    return fallbackChannel();
+  }
+  return ins.data;
+}
+
+function updateChannelSettingsUI() {
+  const settings = $("channelSettings");
+  if (!currentChannel) {
+    settings.classList.add("hidden");
+    return;
+  }
+
+  const canManage = canManageChannel();
+  $("btnShowChannelSettings").classList.toggle("hidden", !canManage);
+  settings.classList.toggle("hidden", !canManage);
+  $("channelSettingsInfo").textContent = `${currentChannel.is_private ? "Private" : "Public"}${currentChannel.is_locked ? " Locked" : ""} channel: #${currentChannel.name}`;
+  $("channelRenameInput").value = currentChannel.name;
+  $("channelPrivateToggle").checked = !!currentChannel.is_private;
+  $("channelLockToggle").checked = !!currentChannel.is_locked;
+  $("privateMemberControls").classList.toggle("hidden", !currentChannel.is_private);
+  $("channelSettingsMsg").textContent = canManage ? "Admins and channel creators can rename, delete, manage privacy, and lock/unlock chat." : "";
+  $("channelSettingsInfo").textContent = `${currentChannel.is_private ? "Private" : "Public"} channel: #${currentChannel.name}`;
+  $("channelRenameInput").value = currentChannel.name;
+  $("channelPrivateToggle").checked = !!currentChannel.is_private;
+  $("privateMemberControls").classList.toggle("hidden", !currentChannel.is_private);
+  $("channelSettingsMsg").textContent = canManage ? "Admins and channel creators can rename, delete, and manage privacy." : "";
+  if (canManage && currentChannel.is_private) {
+    loadChannelMembers().catch(e => debugLog("channel.members.load", e));
+  } else {
+    $("privateMemberList").innerHTML = "";
+  }
+}
+
+async function renameCurrentChannel() {
+  await requireAuthedUser();
+  if (!canManageChannel()) throw new Error("Only admins or the channel creator can rename this channel");
+  const nextName = $("channelRenameInput").value.trim().slice(0, 64);
+  if (!nextName) throw new Error("Channel name required");
+
+  const q = await sb.from("channels")
+    .update({ name: nextName })
+    .eq("id", currentChannel.id)
+    .select("id,name,created_by,is_private,is_locked,sort_order,created_at")
+    .select("id,name,created_by,is_private,sort_order,created_at")
+    .select("id,name,created_by,is_private,created_at")
+    .single();
+  if (q.error) throw q.error;
+  currentChannel = q.data;
+  $("roomInput").value = currentChannel.name;
+  updateChannelSettingsUI();
+  await loadRooms();
+}
+
+async function deleteCurrentChannel() {
+  await requireAuthedUser();
+  if (!canManageChannel()) throw new Error("Only admins or the channel creator can delete this channel");
+  if (!confirm(`Delete #${currentChannel.name}? This also deletes messages in the channel.`)) return;
+
+  const channelId = currentChannel.id;
+  const msgDelete = await sb.from("messages").delete().eq("room", channelId);
+  if (msgDelete.error) throw msgDelete.error;
+  const memberDelete = await sb.from("channel_members").delete().eq("channel_id", channelId);
+  if (memberDelete.error) throw memberDelete.error;
+  const channelDelete = await sb.from("channels").delete().eq("id", channelId);
+  if (channelDelete.error) throw channelDelete.error;
+
+  toast("Channel deleted", "ok");
+  currentChannel = null;
+  $("roomInput").value = "lobby";
+  await joinRoom();
+  await loadRooms();
+}
+
+async function setCurrentChannelPrivate(isPrivate) {
+  await requireAuthedUser();
+  if (!canManageChannel()) throw new Error("Only admins or the channel creator can change privacy");
+  const q = await sb.from("channels")
+    .update({ is_private: isPrivate })
+    .eq("id", currentChannel.id)
+    .select("id,name,created_by,is_private,is_locked,sort_order,created_at")
+    .select("id,name,created_by,is_private,sort_order,created_at")
+    .select("id,name,created_by,is_private,created_at")
+    .single();
+  if (q.error) throw q.error;
+  currentChannel = q.data;
+  updateChannelSettingsUI();
+  await loadRooms();
+}
+
+async function addPrivateMemberToCurrentChannel() {
+  await requireAuthedUser();
+  if (!canManageChannel()) throw new Error("Only admins or the channel creator can add users");
+  if (!currentChannel?.is_private) throw new Error("Make the channel private first");
+  const username = $("privateMemberUsername").value.trim();
+  const userId = await getUserIdByUsername(username);
+  const q = await sb.from("channel_members").insert({
+    channel_id: currentChannel.id,
+    user_id: userId,
+    added_by: me.id
+  });
+  if (q.error && q.error.code !== "23505") throw q.error;
+  $("privateMemberUsername").value = "";
+  toast(`Added @${username} to #${currentChannel.name}`, "ok");
+}
+
+async function getChannelLockBypassIds(channelId) {
+  const q = await sb.from("channel_lock_bypass").select("user_id").eq("channel_id", channelId);
+  if (q.error) throw q.error;
+  return new Set((q.data || []).map(row => row.user_id));
+}
+
+async function canTalkInChannel(ch) {
+  if (!ch?.is_locked) return true;
+  if (myProfile?.role === "admin" || ch.created_by === me?.id) return true;
+  const bypassUsers = await getChannelLockBypassIds(ch.id);
+  return bypassUsers.has(me?.id);
+}
+
+async function setCurrentChannelLocked(isLocked) {
+  await requireAuthedUser();
+  if (!canManageChannel()) throw new Error("Only admins or the channel creator can lock this channel");
+  const q = await sb.from("channels")
+    .update({ is_locked: isLocked })
+    .eq("id", currentChannel.id)
+    .select("id,name,created_by,is_private,is_locked,sort_order,created_at")
+    .single();
+  if (q.error) throw q.error;
+  currentChannel = q.data;
+  updateChannelSettingsUI();
+  await loadRooms();
+}
+
+async function addLockBypassToCurrentChannel() {
+  await requireAuthedUser();
+  if (!canManageChannel()) throw new Error("Only admins or the channel creator can add lock bypass users");
+  if (!currentChannel?.is_locked) throw new Error("Lock the channel first");
+  const username = $("lockBypassUsername").value.trim();
+  const userId = await getUserIdByUsername(username);
+  const q = await sb.from("channel_lock_bypass").insert({
+    channel_id: currentChannel.id,
+    user_id: userId,
+    added_by: me.id
+  });
+  if (q.error && q.error.code !== "23505") throw q.error;
+  $("lockBypassUsername").value = "";
+  toast(`@${username} can talk while #${currentChannel.name} is locked`, "ok");
+  await loadChannelMembers();
+}
+
+async function loadChannelMembers() {
+  if (!currentChannel?.is_private || !canManageChannel()) {
+    $("privateMemberList").innerHTML = "";
+    return;
+  }
+
+  const q = await sb.from("channel_members")
+    .select("user_id,created_at")
+    .eq("channel_id", currentChannel.id)
+    .order("created_at", { ascending: true });
+  if (q.error) throw q.error;
+
+  const rows = q.data || [];
+  const ids = rows.map(row => row.user_id);
+  let profilesById = new Map();
+  if (ids.length) {
+    const profiles = await sb.from("profiles")
+      .select("id,username,display_name")
+      .in("id", ids);
+    if (profiles.error) throw profiles.error;
+    profilesById = new Map((profiles.data || []).map(profile => [profile.id, profile]));
+  }
+
+  const list = $("privateMemberList");
+  list.innerHTML = rows.length ? rows.map(row => {
+    const profile = profilesById.get(row.user_id) || {};
+    const username = profile.username || row.user_id;
+    const label = profile.display_name ? `${esc(profile.display_name)} @${esc(username)}` : `@${esc(username)}`;
+    return `
+      <div class="list-item">
+        <div>
+          <div><b>${label}</b></div>
+          <div class="muted">Added ${fmt(row.created_at)}</div>
+        </div>
+        <button class="danger" data-remove-channel-member="${esc(row.user_id)}">Remove</button>
+      </div>
+    `;
+  }).join("") : `<div class="muted">No extra users added yet.</div>`;
+
+  list.querySelectorAll("[data-remove-channel-member]").forEach(btn => {
+    btn.onclick = async () => {
+      try {
+        await removePrivateMemberFromCurrentChannel(btn.getAttribute("data-remove-channel-member"));
+      } catch (e) {
+        $("channelSettingsMsg").textContent = errText("remove private user", e);
+        debugLog("channel.member.remove", e);
+      }
+    };
+  });
+}
+
+async function removePrivateMemberFromCurrentChannel(userId) {
+  await requireAuthedUser();
+  if (!canManageChannel()) throw new Error("Only admins or the channel creator can remove users");
+  const q = await sb.from("channel_members")
+    .delete()
+    .eq("channel_id", currentChannel.id)
+    .eq("user_id", userId);
+  if (q.error) throw q.error;
+  toast("Removed user from private channel", "ok");
+  await loadChannelMembers();
+}
+
+function addAdminMenu(x, y, msg){
+  const host = $("menuHost");
+  host.innerHTML = "";
+
+  const p = profileMap.get(msg.user_id) || {};
+  const username = p.username || "unknown";
+
+  const m = document.createElement("div");
+  m.className = "menu";
+  m.style.left = x + "px";
+  m.style.top = y + "px";
+
+  m.innerHTML = `
+    <button data-act="copyuser">Copy username (@${esc(username)})</button>
+    <button data-act="mute">Mute user</button>
+    <button data-act="unmute">Unmute user</button>
+    <button data-act="ban">Ban user</button>
+    <button data-act="unban">Unban user</button>
+    <button data-act="delete">Delete message</button>
+  `;
+  host.appendChild(m);
+
+  m.onclick = async (e) => {
+    const act = e.target.getAttribute("data-act");
+    if(!act) return;
+
+    try{
+      if(act === "copyuser"){
+        await navigator.clipboard.writeText(username);
+        toast("Username copied", "ok");
+      }
+
+      if(act === "mute"){
+        const sec = Number(prompt("Mute seconds?", "60") || 60);
+        const reason = prompt("Mute reason?", "No reason provided") || "No reason provided";
+        await adminMuteUser(msg.user_id, sec, reason);
+        toast(`Muted @${username} for ${sec}s. Reason: ${reason}`, "ok");
+      }
+
+      if(act === "unmute"){
+        await adminUnmuteUser(msg.user_id);
+        toast(`Unmuted @${username}`, "ok");
+      }
+
+      if(act === "ban"){
+        const reason = prompt("Ban reason?", "No reason provided") || "No reason provided";
+        await adminBanUser(msg.user_id, reason);
+        toast(`Banned @${username}. Reason: ${reason}`, "ok");
+      }
+
+      if(act === "unban"){
+        await adminUnbanUser(msg.user_id);
+        toast(`Unbanned @${username}`, "ok");
+      }
+
+      if(act === "delete"){
+        await softDelete(msg.id);
+      }
+    }catch(err){
+      toast(err.message || String(err), "err", 4500);
+      debugLog("admin.menu.error", err);
+    }
+
+    host.innerHTML = "";
+  };
+
+  setTimeout(() => {
+    document.addEventListener("click", () => host.innerHTML = "", { once:true });
+  }, 0);
+}
+function messageHTML(m) {
+  const p = profileMap.get(m.user_id) || {};
+  const isAdmin = myProfile?.role === "admin";
+  const canDelete = (me && m.user_id === me.id) || isAdmin;
+  const canEdit = (me && m.user_id === me.id) || isAdmin;
+  const avatar = p.avatar_url ? `<img class="avatar" data-src="${esc(p.avatar_url)}" loading="lazy" decoding="async" alt="">` : "";
+  const rich = m.deleted ? `<i>[deleted]</i>` : parseRich(m.text || "");
+  const img = (!m.deleted && m.image_url) ? attachmentHTML(m.image_url) : "";
+  const dot = isAdmin ? `<div class="admin-dot" data-dot="${m.id}">\u2026</div>` : "";
+
+  return `<div class="msg" id="m-${m.id}">
+    ${dot}
+    <div class="meta"><span>${avatar}<b>${esc(p.display_name || "user")}</b> @${esc(p.username || "unknown")}</span><span>${fmt(m.created_at)}</span></div>
+    <div class="body">${rich}</div>${img}
+    <div class="actions">
+      ${canDelete ? `<button class="ghost" data-del="${m.id}">Delete</button>` : ""}
+      ${canEdit ? `<button class="ghost" data-edit-msg="${m.id}">Edit</button>` : ""}
+    </div>
+  </div>`;
+}
+
+function wireMessageActions(root = document) {
+  root.querySelectorAll("[data-del]").forEach(btn => {
+    btn.onclick = async () => {
+      try {
+        await softDelete(btn.getAttribute("data-del"));
+      } catch (e) {
+        toast(errText("delete", e), "err");
+      }
+    };
+  });
+
+  root.querySelectorAll("[data-dot]").forEach(dot => {
+    dot.onclick = (ev) => {
+      const msg = messageMap.get(dot.getAttribute("data-dot"));
+      addAdminMenu(ev.clientX, ev.clientY, msg);
+    };
+  });
+
+  root.querySelectorAll("[data-edit-msg]").forEach(btn => {
+    btn.onclick = async () => {
+      const id = btn.getAttribute("data-edit-msg");
+      const m = messageMap.get(id);
+      try {
+        await editMessage(id, m?.text || "");
+        toast("Message edited", "ok");
+      } catch (e) {
+        toast(errText("edit message", e), "err", 4500);
+        debugLog("msg.edit", e);
+      }
+    };
+  });
+}
+
+async function softDelete(id) {
+  const q = await sb.from("messages").delete().eq("id", id);
+  if (q.error) throw q.error;
+  const old = document.getElementById(`m-${id}`);
+  if (old) old.remove();
+  messageMap.delete(id);
+  toast("Message deleted");
+}
+
+function getMatchedFilter(text) {
+  const lc = (text || "").toLowerCase();
+  return filters.find(f => f.enabled && lc.includes(f.pattern.toLowerCase()));
+}
+
+function rememberMessages(messages) {
+  messages.forEach(m => messageMap.set(m.id, m));
+}
+
+function hydrateMessages(root) {
+  root.querySelectorAll(".body").forEach(renderMathIn);
+  wireMessageActions(root);
+  watchLazyMedia(root);
+}
+
+function renderMessageBatch(chat, messages, position = "beforeend") {
+  if (!messages.length) return;
+  rememberMessages(messages);
+  chat.insertAdjacentHTML(position, messages.map(messageHTML).join(""));
+  hydrateMessages(chat);
+}
+
+async function loadMessages() {
+  await loadProfileMap();
+
+  const q = await sb.from("messages")
+    .select("id,room,user_id,text,image_url,created_at")
+    .eq("room", room)
+    .eq("deleted", false)
+    .order("created_at", { ascending: false })
+    .limit(MESSAGE_HISTORY_LIMIT);
+
+  const chat = $("chat");
+  chat.innerHTML = "";
+  messageMap = new Map();
+  oldestMessageCreatedAt = null;
+  loadingOlderMessages = false;
+  allOlderMessagesLoaded = false;
+
+  if (q.error) {
+    debugLog("messages.load", q.error);
+    chat.innerHTML = `<div class="msg"><div class="body">Could not load messages: ${esc(q.error.message || "permission denied")}</div></div>`;
+    throw q.error;
+  }
+
+  const messages = (q.data || []).slice().reverse();
+  renderMessageBatch(chat, messages, "beforeend");
+  oldestMessageCreatedAt = messages[0]?.created_at || null;
+  allOlderMessagesLoaded = (q.data || []).length < MESSAGE_HISTORY_LIMIT;
+  chat.scrollTop = chat.scrollHeight;
+}
+
+async function loadOlderMessages() {
+  if (loadingOlderMessages || allOlderMessagesLoaded || !oldestMessageCreatedAt) return;
+
+  const chat = $("chat");
+  const previousHeight = chat.scrollHeight;
+  const previousTop = chat.scrollTop;
+  loadingOlderMessages = true;
+
+  try {
+    const q = await sb.from("messages")
+      .select("id,room,user_id,text,image_url,created_at")
+      .eq("room", room)
+      .eq("deleted", false)
+      .lt("created_at", oldestMessageCreatedAt)
+      .order("created_at", { ascending: false })
+      .limit(OLDER_MESSAGE_BATCH_SIZE);
+
+    if (q.error) throw q.error;
+
+    const batch = (q.data || []).filter(m => !messageMap.has(m.id));
+    if (!batch.length) {
+      allOlderMessagesLoaded = true;
+      return;
+    }
+
+    const messages = batch.slice().reverse();
+    renderMessageBatch(chat, messages, "afterbegin");
+    oldestMessageCreatedAt = messages[0]?.created_at || oldestMessageCreatedAt;
+    allOlderMessagesLoaded = (q.data || []).length < OLDER_MESSAGE_BATCH_SIZE;
+    chat.scrollTop = previousTop + (chat.scrollHeight - previousHeight);
+  } catch (e) {
+    toast(errText("load older messages", e), "err", 4500);
+    debugLog("messages.loadOlder", e);
+  } finally {
+    loadingOlderMessages = false;
+  }
+}
+
+async function joinRoom() {
+  const requestedRoom = ($("roomInput").value.trim() || "lobby").slice(0, 64);
+  const ch = await ensureChannelByInput(requestedRoom);
+  const allowed = await canEnterChannel(ch);
+  if (!allowed) {
+    $("chat").innerHTML = `<div class="msg"><div class="body">This channel is private.</div></div>`;
+    toast("This channel is private.", "err", 4500);
+    return;
+  }
+
+  currentChannel = ch;
+  room = ch.id;
+  $("roomInput").value = ch.name;
+  updateChannelSettingsUI();
+  await loadMessages();
+  loadRooms();
+
+  if (channel) await sb.removeChannel(channel);
+
+  channel = sb.channel(`room-${room}-${Date.now()}`)
+    .on("postgres_changes", {
+      event: "INSERT",
+      schema: "public",
+      table: "messages",
+      filter: `room=eq.${room}`
+    }, async (payload) => {
+      const m = payload.new;
+      if (m.deleted) return;
+      if (!profileMap.has(m.user_id)) {
+        const p = await sb.from("profiles")
+          .select("id,username,display_name,avatar_url,role")
+          .eq("id", m.user_id)
+          .maybeSingle();
+        if (p.data) profileMap.set(m.user_id, p.data);
+      }
+
+      const chat = $("chat");
+      messageMap.set(m.id, m);
+      chat.insertAdjacentHTML("beforeend", messageHTML(m));
+      const el = document.getElementById(`m-${m.id}`);
+      if (el) {
+        renderMathIn(el.querySelector(".body"));
+        wireMessageActions(el);
+        watchLazyMedia(el);
+      }
+
+      chat.scrollTop = chat.scrollHeight;
+    })
+    .on("postgres_changes", {
+      event: "UPDATE",
+      schema: "public",
+      table: "messages",
+      filter: `room=eq.${room}`
+    }, async (payload) => {
+      const m = payload.new;
+      const old = document.getElementById(`m-${m.id}`);
+      if (m.deleted) {
+        if (old) old.remove();
+        messageMap.delete(m.id);
+        return;
+      }
+      messageMap.set(m.id, m);
+      if (old) {
+        old.outerHTML = messageHTML(m);
+        const ne = document.getElementById(`m-${m.id}`);
+        if (ne) {
+          renderMathIn(ne.querySelector(".body"));
+          wireMessageActions(ne);
+          watchLazyMedia(ne);
+        }
+      }
+    })
+    .on("postgres_changes", {
+      event: "DELETE",
+      schema: "public",
+      table: "messages",
+      filter: `room=eq.${room}`
+    }, async (payload) => {
+      const deletedId = payload.old?.id;
+      if (!deletedId) return;
+      const old = document.getElementById(`m-${deletedId}`);
+      if (old) old.remove();
+      messageMap.delete(deletedId);
+    })
+    .subscribe();
+}
+
+async function initializeChatAfterAuth() {
+  try {
+    await loadFilters();
+  } catch (e) {
+    debugLog("init.loadFilters", e);
+    toast("Login worked, but filters failed to load.", "warn", 4500);
+  }
+
+  try {
+    await loadAnnouncements();
+  } catch (e) {
+    debugLog("init.loadAnnouncements", e);
+    toast("Login worked, but announcements failed to load.", "warn", 4500);
+  }
+
+  try {
+    await joinRoom();
+    await loadRooms();
+  } catch (e) {
+    debugLog("init.channels", e);
+    toast("Login worked, but channels failed. Run the channel SQL or check Supabase policies.", "warn", 7000);
+  }
+}
+
+async function moveChannelInOrder(channelId, direction, channels) {
+  await requireAdmin();
+  const index = channels.findIndex(ch => ch.id === channelId);
+  const swapIndex = index + direction;
+  if (index < 0 || swapIndex < 0 || swapIndex >= channels.length) return;
+
+  toast("Channel ordering is not available on this chat database.", "warn", 4500);
+}
+
+async function loadRooms() {
+  const q = await sb.from("channels")
+    .select("id,name,created_by,is_private,is_locked,sort_order,created_at")
+    .order("sort_order", { ascending: true, nullsFirst: false })
+    .order("name", { ascending: true });
+
+  if (q.error) {
+    debugLog("rooms.load", q.error);
+    return;
+  }
+
+  const channels = q.data || [];
+  const isAdmin = myProfile?.role === "admin";
+  const box = $("roomList");
+  box.innerHTML = channels.length ? channels.map(ch => {
+    const manageable = isAdmin || ch.created_by === me?.id;
+    return `
+      <div class="list-item">
+        <div>
+          <div><b>${ch.is_private ? '<span class="lock">Private</span>' : ''}#${esc(ch.name)}</b></div>
+          <div class="muted">${[ch.is_private ? "Private" : "Public", ...(manageable ? ["Manageable"] : []), ...(ch.is_locked ? ["Locked"] : [])].join(" &middot; ")}</div>
+        </div>
+        <div class="room-actions">
+          <button class="ghost" data-open-channel="${esc(ch.id)}">Open</button>
+        </div>
+      </div>
+    `;
+  }).join("") : `<div class="muted">No rooms yet.</div>`;
+
+  box.querySelectorAll("[data-open-channel]").forEach(btn => {
+    btn.onclick = async () => {
+      const channelId = btn.getAttribute("data-open-channel");
+      const selected = channels.find(ch => ch.id === channelId);
+      if (!selected) return;
+      $("roomInput").value = selected.name;
+      await joinRoom();
+      toast(`Joined #${selected.name}`, "ok");
+    };
+  });
+}
+
+/* announcements */
+async function loadAnnouncements() {
+  const q = await sb.from("announcements")
+    .select("*")
+    .order("is_pinned", { ascending: false })
+    .order("pinned_at", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
+    .limit(100);
+
+  if (q.error) {
+    debugLog("ann.load", q.error);
+    return;
+  }
+
+  const isAdmin = myProfile?.role === "admin";
+  const rows = q.data || [];
+
+  $("annList").innerHTML = rows.map(a => `
+    <div class="list-item" style="${a.is_pinned ? "border-left:4px solid #ffd06a;padding-left:8px" : ""}">
+      <div style="flex:1">
+        <div>
+          ${a.is_pinned ? "\u{1F4CC} " : ""}<b>${esc(a.title)}</b>
+        </div>
+        <div class="muted">${esc(a.body)}</div>
+        <div class="muted">
+          ${fmt(a.created_at)}
+          ${a.pinned_at ? ` \u2022 pinned ${fmt(a.pinned_at)}` : ""}
+        </div>
+      </div>
+      ${isAdmin ? `
+        <div class="row">
+          <button class="ghost" data-edit-ann="${a.id}">Edit</button>
+          <button class="warn" data-pin-ann="${a.id}">${a.is_pinned ? "Unpin" : "Pin"}</button>
+          <button class="danger" data-del-ann="${a.id}">Delete</button>
+        </div>
+      ` : ""}
+    </div>
+  `).join("") || `<div class="muted">No announcements yet.</div>`;
+
+  if (isAdmin) {
+    const map = new Map(rows.map(a => [a.id, a]));
+
+    document.querySelectorAll("[data-edit-ann]").forEach(btn => {
+      btn.onclick = async () => {
+        const id = btn.getAttribute("data-edit-ann");
+        const a = map.get(id);
+        try {
+          await editAnnouncement(id, a?.title || "", a?.body || "");
+          toast("Announcement updated", "ok");
+          await loadAnnouncements();
+        } catch (e) {
+          toast(errText("edit announcement", e), "err", 4500);
+          debugLog("ann.edit", e);
+        }
+      };
+    });
+
+    document.querySelectorAll("[data-pin-ann]").forEach(btn => {
+      btn.onclick = async () => {
+        const id = btn.getAttribute("data-pin-ann");
+        const a = map.get(id);
+        try {
+          await togglePinAnnouncement(a);
+          toast(a?.is_pinned ? "Announcement unpinned" : "Announcement pinned", "ok");
+          await loadAnnouncements();
+        } catch (e) {
+          toast(errText("pin announcement", e), "err", 4500);
+          debugLog("ann.pin", e);
+        }
+      };
+    });
+
+    document.querySelectorAll("[data-del-ann]").forEach(btn => {
+      btn.onclick = async () => {
+        const id = btn.getAttribute("data-del-ann");
+        try {
+          const qd = await sb.from("announcements").delete().eq("id", id);
+          if (qd.error) throw qd.error;
+          toast("Announcement deleted", "ok");
+          await loadAnnouncements();
+        } catch (e) {
+          toast(errText("delete announcement", e), "err", 4500);
+          debugLog("ann.delete", e);
+        }
+      };
+    });
+  }
+}
+
+async function editAnnouncement(id, currentTitle, currentBody) {
+  const title = prompt("Edit title:", currentTitle || "");
+  if (title === null) return;
+
+  const body = prompt("Edit body:", currentBody || "");
+  if (body === null) return;
+
+  const q = await sb.from("announcements")
+    .update({ title: title.trim(), body: body.trim() })
+    .eq("id", id);
+
+  if (q.error) throw q.error;
+}
+
+async function togglePinAnnouncement(a) {
+  const nextPinned = !a.is_pinned;
+  const q = await sb.from("announcements")
+    .update({
+      is_pinned: nextPinned,
+      pinned_at: nextPinned ? new Date().toISOString() : null
+    })
+    .eq("id", a.id);
+
+  if (q.error) throw q.error;
+}
+
+async function editMessage(msgId, oldText) {
+  const next = prompt("Edit message:", oldText || "");
+  if (next === null) return;
+
+  const cleaned = next.trim();
+  if (!cleaned) return toast("Message cannot be empty", "warn");
+
+  const q = await sb.from("messages")
+    .update({
+      text: cleaned,
+      edited_at: new Date().toISOString()
+    })
+    .eq("id", msgId);
+
+  if (q.error) throw q.error;
+}
+
+async function publishAnnouncement() {
+  const title = $("annTitle").value.trim();
+  const body = $("annBody").value.trim();
+
+  if (!title || !body) return toast("Need title and body", "warn");
+
+  const q = await sb.from("announcements").insert({ title, body, created_by: me.id });
+  if (q.error) throw q.error;
+
+  $("annTitle").value = "";
+  $("annBody").value = "";
+  toast("Announcement published");
+  await loadAnnouncements();
+}
+
+/* filters */
+async function loadFilters() {
+  const q = await sb.from("message_filters").select("*").order("created_at", { ascending: false });
+  if (q.error) {
+    debugLog("filters.load", q.error);
+    filters = [];
+    if (myProfile?.role === "admin") renderFilterList();
+    return;
+  }
+  filters = q.data || [];
+  if (myProfile?.role === "admin") renderFilterList();
+}
+
+function renderFilterList() {
+  const box = $("filterList");
+  box.innerHTML = filters.map(f => `
+    <div class="list-item">
+      <div>
+        <b>${esc(f.pattern)}</b> <span class="muted">${f.enabled ? "enabled" : "disabled"}</span>
+      </div>
+      <div class="row">
+        <button class="ghost" data-toggle="${f.id}">${f.enabled ? "Disable" : "Enable"}</button>
+        <button class="danger" data-del-filter="${f.id}">Delete</button>
+      </div>
+    </div>
+  `).join("") || `<div class="muted">No filters.</div>`;
+
+  box.querySelectorAll("[data-toggle]").forEach(btn => btn.onclick = async () => {
+    const id = btn.getAttribute("data-toggle");
+    const f = filters.find(x => x.id === id);
+    if (!f) return;
+    const q = await sb.from("message_filters").update({ enabled: !f.enabled }).eq("id", id);
+    if (q.error) return toast(errText("toggle filter", q.error), "err");
+    await loadFilters();
+  });
+
+  box.querySelectorAll("[data-del-filter]").forEach(btn => btn.onclick = async () => {
+    const id = btn.getAttribute("data-del-filter");
+    const q = await sb.from("message_filters").delete().eq("id", id);
+    if (q.error) return toast(errText("delete filter", q.error), "err");
+    await loadFilters();
+  });
+}
+
+async function addFilter() {
+  const pattern = $("filterInput").value.trim();
+  if (!pattern) return toast("Filter text required", "warn");
+
+  const q = await sb.from("message_filters").insert({ pattern, enabled: true, created_by: me.id });
+  if (q.error) throw q.error;
+
+  $("filterInput").value = "";
+  await loadFilters();
+  toast("Filter added");
+}
+
+/* admin */
+async function requireAdmin() {
+  if (myProfile?.role !== "admin") throw new Error("Admin only");
+}
+
+function isRootOwner() {
+  return me?.email === "root@local.chat" && myProfile?.username === "root";
+}
+
+async function requireRootOwner() {
+  if (!isRootOwner()) throw new Error("Root account only");
+}
+
+async function getUserProfileByUsername(username){
+  const q = await sb.from("profiles")
+    .select("id, username, display_name, role")
+    .ilike("username", username.trim())
+    .limit(1)
+    .maybeSingle();
+
+  if(q.error) throw q.error;
+  if(!q.data) throw new Error("User not found");
+  return q.data;
+}
+
+async function getUserIdByUsername(username){
+  const profile = await getUserProfileByUsername(username);
+  return profile.id;
+}
+
+async function setUserAdminRole(username, makeAdmin) {
+  await requireRootOwner();
+  const target = await getUserProfileByUsername(username);
+  if (target.username === "root" && !makeAdmin) throw new Error("Cannot remove admin from @root");
+
+  const q = await sb.from("profiles")
+    .update({ role: makeAdmin ? "admin" : "user" })
+    .eq("id", target.id);
+
+  if (q.error) throw q.error;
+  return target;
+}
+
+async function setUserAdminRole(username, makeAdmin) {
+  await requireRootOwner();
+  const target = await getUserProfileByUsername(username);
+  if (target.username === "root" && !makeAdmin) throw new Error("Cannot remove admin from @root");
+
+  const q = await sb.from("profiles")
+    .update({ role: makeAdmin ? "admin" : "user" })
+    .eq("id", target.id);
+
+  if (q.error) throw q.error;
+  return target;
+}
+
+async function adminBanUser(userId, reason = "No reason provided"){
+  await requireAdmin();
+  const q = await sb.from("user_bans").upsert({
+    user_id: userId,
+    reason: reason || "No reason provided",
+    created_at: new Date().toISOString(),
+    created_by: me.id
+  });
+  if(q.error) throw q.error;
+}
+
+async function adminMuteUser(userId, seconds=60, reason = "No reason provided"){
+  await requireAdmin();
+  const muted_until = new Date(Date.now() + Math.max(1, seconds)*1000).toISOString();
+  const q = await sb.from("user_mutes").upsert({
+    user_id: userId,
+    muted_until,
+    reason: reason || "No reason provided",
+    updated_at: new Date().toISOString(),
+    updated_by: me.id
+  });
+  if(q.error) throw q.error;
+}
+
+async function adminUnmuteUser(userId){
+  await requireAdmin();
+  const q = await sb.from("user_mutes").delete().eq("user_id", userId);
+  if(q.error) throw q.error;
+}
+
+async function adminUnbanUser(userId){
+  await requireAdmin();
+  const q = await sb.from("user_bans").delete().eq("user_id", userId);
+  if(q.error) throw q.error;
+}
+
+/* live account moderation */
+function muteUntilText(mutedUntil) {
+  const until = new Date(mutedUntil);
+  const remainingMs = until.getTime() - Date.now();
+  if (remainingMs <= 0) return "now";
+  const totalSeconds = Math.ceil(remainingMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${until.toLocaleString()} (${minutes}m ${seconds}s left)`;
+}
+
+async function checkBan(userId){
+  if(!userId) return false;
+
+  const q = await sb.from("user_bans")
+    .select("user_id, reason")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if(q.error){
+    debugLog("checkBan.error", q.error);
+    return false;
+  }
+
+  if(q.data){
+    toast(`Your account has been banned. Reason: ${q.data.reason || "No reason provided"}`, "err", 6000);
+    await sb.auth.signOut();
+    me = null;
+    myProfile = null;
+    showAuth();
+    return true;
+  }
+
+  return false;
+}
+
+async function checkMute(userId){
+  if(!userId) return false;
+
+  const q = await sb.from("user_mutes")
+    .select("muted_until")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if(q.error){
+    debugLog("checkMute.error", q.error);
+    return false;
+  }
+
+  if(q.data && new Date(q.data.muted_until).getTime() > Date.now()){
+    toast(`Your account is muted until ${muteUntilText(q.data.muted_until)}`, "warn", 6500);
+    return true;
+  }
+
+  return false;
+}
+
+/* ui wiring */
+document.getElementById("btnPickAvatar").onclick = () => {
+  document.getElementById("avatarFile").click();
+};
+$("btnPickMsg").onclick = () => $("msgFile").click();
+
+$("avatarFile").onchange = () => $("avatarFileName").textContent = $("avatarFile").files?.[0]?.name || "No file chosen";
+$("msgFile").onchange = () => $("msgFileName").textContent = $("msgFile").files?.[0]?.name || "No file chosen";
+
+document.querySelectorAll("[data-md]").forEach(btn => btn.onclick = () => {
+  const s = btn.getAttribute("data-md");
+  const ta = $("msgText");
+  const a = ta.selectionStart;
+  const b = ta.selectionEnd;
+  const v = ta.value;
+  ta.value = v.slice(0, a) + s + v.slice(b);
+  ta.focus();
+});
+
+document.querySelectorAll(".tabbtn").forEach(btn => btn.onclick = () => {
+  document.querySelectorAll(".tabbtn").forEach(x => x.classList.remove("active"));
+  document.querySelectorAll(".tabpane").forEach(x => x.classList.remove("active"));
+  btn.classList.add("active");
+  $("tab-" + btn.getAttribute("data-tab")).classList.add("active");
+});
+
+$("chat").onscroll = () => {
+  if ($("chat").scrollTop <= 160) loadOlderMessages();
+};
+
+$("btnClearDebug").onclick = () => $("debug").textContent = "";
+
+$("btnRegister").onclick = async () => {
+  setAuthMsg("");
+  try {
+    const email = $("email").value.trim();
+    const password = $("password").value;
+    if (!email || !password) return setAuthMsg("Email/password required", true);
+
+    const r = await sb.auth.signUp({ email, password });
+    if (r.error) throw r.error;
+
+    localStorage.setItem("pending_username", $("regUsername").value.trim());
+    localStorage.setItem("pending_display", $("regDisplay").value.trim());
+
+    setAuthMsg("Registered. Login now (confirm email if required).");
+    toast("Account created");
+  } catch (e) {
+    setAuthMsg(errText("register", e), true);
+    debugLog("register", e);
+  }
+};
+
+$("btnLogin").onclick = async () => {
+  setAuthMsg("");
+  try {
+    const email = $("email").value.trim();
+    const password = $("password").value;
+    const r = await sb.auth.signInWithPassword({ email, password });
+    if (r.error) throw r.error;
+
+    me = r.data.user;
+
+    if (await checkBan(me.id)) return;
+    await checkMute(me.id);
+
+    myProfile = await ensureProfileAfterLogin(
+      me,
+      localStorage.getItem("pending_username") || "",
+      localStorage.getItem("pending_display") || ""
+    );
+
+    localStorage.removeItem("pending_username");
+    localStorage.removeItem("pending_display");
+
+    showApp();
+    try {
+      subscribeSideChannels();
+    } catch (subErr) {
+      debugLog("sideChannels.subscribe", subErr);
+    }
+    await initializeChatAfterAuth();
+    toast("Login success");
+  } catch (e) {
+    setAuthMsg(errText("login", e), true);
+    debugLog("login", e);
+  }
+};
+$("btnLogout").onclick = async () => {
+  await sb.auth.signOut();
+  me = null;
+  myProfile = null;
+  showAuth();
+  toast("Logged out");
+};
+
+$("btnJoin").onclick = async () => {
+  try {
+    await joinRoom();
+  } catch (e) {
+    toast(errText("join channel", e), "err", 4500);
+    debugLog("channel.join", e);
+  }
+};
+
+$("btnShowChannelSettings").onclick = () => {
+  updateChannelSettingsUI();
+  $("channelSettings").scrollIntoView({ behavior: "smooth", block: "nearest" });
+};
+
+$("btnRenameChannel").onclick = async () => {
+  try {
+    await renameCurrentChannel();
+    toast("Channel renamed", "ok");
+  } catch (e) {
+    $("channelSettingsMsg").textContent = errText("rename channel", e);
+    debugLog("channel.rename", e);
+  }
+};
+
+$("btnDeleteChannel").onclick = async () => {
+  try {
+    await deleteCurrentChannel();
+  } catch (e) {
+    $("channelSettingsMsg").textContent = errText("delete channel", e);
+    debugLog("channel.delete", e);
+  }
+};
+
+$("channelPrivateToggle").onchange = async () => {
+  try {
+    await setCurrentChannelPrivate($("channelPrivateToggle").checked);
+    if (currentChannel?.is_private) await loadChannelMembers();
+    toast($("channelPrivateToggle").checked ? "Channel is private" : "Channel is public", "ok");
+  } catch (e) {
+    $("channelPrivateToggle").checked = !!currentChannel?.is_private;
+    $("channelSettingsMsg").textContent = errText("channel privacy", e);
+    debugLog("channel.privacy", e);
+  }
+};
+
+$("channelLockToggle").onchange = async () => {
+  try {
+    await setCurrentChannelLocked($("channelLockToggle").checked);
+    toast($("channelLockToggle").checked ? "Channel is locked" : "Channel is unlocked", "ok");
+  } catch (e) {
+    $("channelLockToggle").checked = !!currentChannel?.is_locked;
+    $("channelSettingsMsg").textContent = errText("channel lock", e);
+    debugLog("channel.lock", e);
+  }
+};
+
+$("btnAddLockBypass").onclick = async () => {
+  try {
+    await addLockBypassToCurrentChannel();
+  } catch (e) {
+    $("channelSettingsMsg").textContent = errText("add lock bypass user", e);
+    debugLog("channel.lockBypass", e);
+  }
+};
+
+$("btnAddPrivateMember").onclick = async () => {
+  try {
+    await addPrivateMemberToCurrentChannel();
+  } catch (e) {
+    $("channelSettingsMsg").textContent = errText("add private user", e);
+    debugLog("channel.member", e);
+  }
+};
+
+$("btnSaveProfile").onclick = async () => {
+  try {
+    const authUser = await requireAuthedUser();
+    let display_name = ($("newDisplay").value.trim() || myProfile.display_name).slice(0, 48);
+    let avatar_url = myProfile.avatar_url || null;
+
+    const f = $("avatarFile").files?.[0];
+    if (f) avatar_url = await uploadImage(f);
+
+    const q = await sb.from("profiles").update({ display_name, avatar_url }).eq("id", authUser.id);
+    if (q.error) throw q.error;
+
+    myProfile.display_name = display_name;
+    myProfile.avatar_url = avatar_url;
+
+    showApp();
+    await loadMessages();
+    toast("Profile updated");
+  } catch (e) {
+    toast(errText("profile", e), "err", 4500);
+    debugLog("profile", e);
+  }
+};
+
+$("btnSendInvite").onclick = async () => {
+  const email = $("inviteEmail").value.trim();
+  setInviteMsg("");
+  try {
+    await sendInviteEmail(email);
+    $("inviteEmail").value = "";
+    setInviteMsg(`Invite sent to ${email}`);
+    toast("Invite sent", "ok");
+  } catch (e) {
+    const msg = errText("invite", e);
+    setInviteMsg(msg, true);
+    toast(msg, "err", 6000);
+    debugLog("invite", e);
+  }
+};
+
+$("btnSend").onclick = async () => {
+  try {
+    const authUser = await requireAuthedUser();
+    const text = $("msgText").value.trim();
+    const file = $("msgFile").files?.[0];
+    const mute = await sb.from("user_mutes")
+      .select("muted_until")
+      .eq("user_id", authUser.id)
+      .maybeSingle();
+    if (mute.data && new Date(mute.data.muted_until).getTime() > Date.now()) {
+      toast(`Your account is muted until ${muteUntilText(mute.data.muted_until)}`, "warn", 6500);
+      return;
+    }
+    if (!text && !file) return toast("Write text or attach image", "warn");
+
+    if (currentChannel && !(await canEnterChannel(currentChannel))) {
+      toast("This channel is private.", "err", 4500);
+      await loadRooms();
+      return;
+    }
+
+    if (currentChannel && !(await canTalkInChannel(currentChannel))) {
+      toast("This channel is locked. Only admins, the creator, and bypass users can talk.", "warn", 5000);
+      await loadRooms();
+      return;
+    }
+
+    const hit = getMatchedFilter(text);
+    if (hit) return toast(`Blocked by filter: "${hit.pattern}"`, "err", 4500);
+
+    let image_url = null;
+    if (file) image_url = await uploadMedia(file);
+
+    const ins = await sb.from("messages").insert({ room, user_id: authUser.id, text: text || null, image_url });
+    if (ins.error) {
+      if (ins.error.code === "42501") throw new Error("Sending is blocked by Supabase RLS. Run/update the channel-aware messages SQL policies.");
+      throw ins.error;
+    }
+
+    $("msgText").value = "";
+    $("msgFile").value = "";
+    $("msgFileName").textContent = "No file chosen";
+  } catch (e) {
+    toast(errText("send", e), "err", 5000);
+    debugLog("send", e);
+  }
+};
+
+$("btnPublishAnn").onclick = async () => {
+  try {
+    await requireAdmin();
+    await publishAnnouncement();
+  } catch (e) {
+    toast(errText("publish ann", e), "err", 4500);
+  }
+};
+
+$("btnAddFilter").onclick = async () => {
+  try {
+    await requireAdmin();
+    await addFilter();
+  } catch (e) {
+    toast(errText("add filter", e), "err", 4500);
+  }
+};
+
+$("btnMute").onclick = async ()=>{
+  try{
+    await requireAdmin();
+    const uname = $("targetUsername").value.trim();
+    const uid = await getUserIdByUsername(uname);
+    const sec = Number($("muteSec").value || 60);
+    const reason = prompt("Mute reason?", "No reason provided") || "No reason provided";
+    await adminMuteUser(uid, sec, reason);
+    setAdminMsg(`Muted @${uname} for ${sec}s. Reason: ${reason}`);
+    toast(`User muted. Reason: ${reason}`);
+  }catch(e){ setAdminMsg(errText("mute user", e), true); }
+};
+
+$("btnUnmute").onclick = async ()=>{
+  try{
+    await requireAdmin();
+    const uname = $("targetUsername").value.trim();
+    const uid = await getUserIdByUsername(uname);
+    await adminUnmuteUser(uid);
+    setAdminMsg(`Unmuted @${uname}`);
+    toast("User unmuted");
+  }catch(e){ setAdminMsg(errText("unmute user", e), true); }
+};
+
+$("btnBan").onclick = async ()=>{
+  try{
+    await requireAdmin();
+    const uname = $("targetUsername").value.trim();
+    const uid = await getUserIdByUsername(uname);
+    const reason = prompt("Ban reason?", "No reason provided") || "No reason provided";
+    await adminBanUser(uid, reason);
+    setAdminMsg(`Banned @${uname}. Reason: ${reason}`);
+    toast(`User banned. Reason: ${reason}`);
+  }catch(e){ setAdminMsg(errText("ban user", e), true); }
+};
+
+$("btnUnban").onclick = async ()=>{
+  try{
+    await requireAdmin();
+    const uname = $("targetUsername").value.trim();
+    const uid = await getUserIdByUsername(uname);
+    await adminUnbanUser(uid);
+    setAdminMsg(`Unbanned @${uname}`);
+    toast("User unbanned");
+  }catch(e){ setAdminMsg(errText("unban user", e), true); }
+};
+
+$("btnGiveAdmin").onclick = async () => {
+  try {
+    const uname = $("adminRoleUsername").value.trim();
+    const target = await setUserAdminRole(uname, true);
+    $("rootAdminMsg").textContent = `Gave admin to @${target.username}`;
+    toast(`@${target.username} is now admin`, "ok");
+  } catch (e) {
+    $("rootAdminMsg").textContent = errText("give admin", e);
+    debugLog("root.giveAdmin", e);
+  }
+}
+
+$("btnRemoveAdmin").onclick = async () => {
+  try {
+    const uname = $("adminRoleUsername").value.trim();
+    const target = await setUserAdminRole(uname, false);
+    $("rootAdminMsg").textContent = `Removed admin from @${target.username}`;
+    toast(`@${target.username} is no longer admin`, "ok");
+  } catch (e) {
+    $("rootAdminMsg").textContent = errText("remove admin", e);
+    debugLog("root.removeAdmin", e);
+  }
+};
+/* remember to lick and sub */
+function subscribeSideChannels() {
+  removeSideChannels();
+
+  sideChannels.push(
+    sb.channel("ann-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "announcements" }, () => loadAnnouncements())
+      .subscribe()
+  );
+
+  sideChannels.push(
+    sb.channel("filters-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "message_filters" }, () => loadFilters())
+      .subscribe()
+  );
+
+  sideChannels.push(
+    sb.channel("channels-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "channels" }, () => loadRooms())
+      .subscribe()
+  );
+
+  sideChannels.push(
+    sb.channel("channel-members-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "channel_members" }, () => loadRooms())
+      .subscribe()
+  );
+
+  sideChannels.push(
+    sb.channel("channel-lock-bypass-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "channel_lock_bypass" }, () => loadRooms())
+      .on("postgres_changes", { event: "*", schema: "public", table: "channel_members" }, () => {
+        loadRooms();
+        if (currentChannel?.is_private && canManageChannel()) {
+          loadChannelMembers().catch(e => debugLog("channel.members.live", e));
+        }
+      })
+      .subscribe()
+  );
+
+  if (me?.id) {
+    sideChannels.push(
+      sb.channel("user-bans-live")
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "user_bans",
+            filter: `user_id=eq.${me.id}`
+          },
+          () => checkBan(me.id)
+        )
+        .subscribe()
+    );
+
+    sideChannels.push(
+      sb.channel("user-mutes-live")
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "user_mutes",
+            filter: `user_id=eq.${me.id}`
+          },
+          () => checkMute(me.id)
+        )
+        .subscribe()
+    );
+  }
+}
+
+(async () => {
+  const s = await sb.auth.getSession();
+  if (!s.data.session?.user) {
+    showAuth();
+    return;
+  }
+  console.log(
+    '%cDon\'t paste anything here!',
+    'background: linear-gradient(to right, #5614b0, #dbd65c); ' +
+    'color: transparent; ' +
+    '-webkit-background-clip: text; ' +
+    'text-shadow: 0px 0px 0px rgba(0,0,0,0); ' +
+    'font-size: 30px; font-weight: bold; padding: 10px;'
+  );
+  console.log(
+    '%cIf someone told you to paste anything here, there is a 11/10 chance you\'re getting scammed!',
+    'background: linear-gradient(to right, #5614b0, #dbd65c); ' +
+    'color: transparent; ' +
+    '-webkit-background-clip: text; ' +
+    'text-shadow: 0px 0px 0px rgba(0,0,0,0); ' +
+    'font-size: 15px; font-weight: bold; padding: 10px;'
+  );
+  try {
+    me = s.data.session.user;
+    if (await checkBan(me.id)) return;
+    await checkMute(me.id);
+    myProfile = await ensureProfileAfterLogin(me);
+    showApp();
+    try {
+      subscribeSideChannels();
+    } catch (subErr) {
+      debugLog("sideChannels.subscribe", subErr);
+    }
+    await initializeChatAfterAuth();
+  } catch (e) {
+    debugLog("init", e);
+    showAuth();
+    toast(errText("init", e), "err", 5000);
+  }
+})()
