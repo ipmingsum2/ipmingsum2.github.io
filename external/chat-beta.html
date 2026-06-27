@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="mask-icon" href="/apple-touch-icon.svg" color="#000"›
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <title>CHATBOX</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+  <script src="/external/js/anti-vpn.js"></script> <!-- obfucation required because it contains API key and webhook -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+  <script type="text/javascript" src="/external/js/noembed.js"></script>
+
+	<link rel="stylesheet" href="/external/css/chat.css">
+</head>
+<body>
+<div class="app">
+  <div class="titlebar">
+    <h2 style="margin:0">CHATBOX</h2>
+    <div id="status" class="muted">Not logged in</div>
+  </div>
+
+  <div id="authCard" class="card">
+    <h3 style="margin-top:0">Login / Register CHATBOX</h3>
+    <div class="row">
+      <input id="email" placeholder="Email">
+      <input id="password" type="password" placeholder="Password">
+    </div>
+    <div class="row">
+      <input id="regUsername" placeholder="Username (register)">
+      <input id="regDisplay" placeholder="Display Name (register)">
+    </div>
+    <div class="row">
+      <button id="btnLogin">Login</button>
+      <button id="btnRegister" class="ghost">Register</button>
+    </div>
+    <div id="authMsg" class="muted"></div>
+  </div>
+
+  <div id="appCard" class="hidden layout">
+    <div class="card">
+      <div class="row">
+        <span id="roleChip" class="chip">user</span>
+        <input id="roomInput" value="lobby" style="max-width:180px">
+        <button id="btnJoin" class="ghost">Join Room</button>
+        <button id="btnShowChannelSettings" class="ghost hidden">Channel Settings</button>
+        <button id="btnLogout" class="danger">Logout</button>
+      </div>
+
+      <div id="meInfo" class="muted" style="margin-top:6px"></div>
+
+      <div class="row" style="margin-top:8px">
+        <div style="flex:1">
+          <div class="muted">Rooms</div>
+          <div id="roomList" class="list"></div>
+        </div>
+      </div>
+
+      <div id="channelSettings" class="settings-card hidden">
+        <div class="row" style="justify-content:space-between">
+          <div>
+            <b>Channel settings</b>
+            <div id="channelSettingsInfo" class="muted"></div>
+          </div>
+          <label class="switch" title="Private channel">
+            <input id="channelPrivateToggle" type="checkbox">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <input id="channelRenameInput" placeholder="Rename channel">
+          <button id="btnRenameChannel" class="ghost">Rename</button>
+          <button id="btnDeleteChannel" class="danger">Delete Channel</button>
+        </div>
+        <div id="channelLockControls" style="margin-top:8px">
+          <div class="row" style="justify-content:space-between">
+            <div>
+              <b>Lock channel</b>
+              <div class="muted">Locked channels are read-only except for admins, channel creator, and bypass users.</div>
+            </div>
+            <label class="switch" title="Lock channel">
+              <input id="channelLockToggle" type="checkbox">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="row" style="margin-top:8px">
+            <input id="lockBypassUsername" placeholder="Add username who can talk while locked">
+            <button id="btnAddLockBypass" class="ghost">Add Lock Bypass</button>
+          </div>
+        </div>
+        <div id="privateMemberControls" class="hidden" style="margin-top:8px">
+          <div class="row">
+            <input id="privateMemberUsername" placeholder="Add username to private channel">
+            <button id="btnAddPrivateMember" class="ghost">Add User</button>
+          </div>
+          <div class="muted" style="margin-top:8px">Private members</div>
+          <div id="privateMemberList" class="list" style="margin-top:6px"></div>
+        </div>
+        <div id="channelSettingsMsg" class="muted" style="margin-top:6px"></div>
+      </div>
+
+      <div class="chat" id="chat" style="margin-top:10px"></div>
+
+      <div style="margin-top:10px">
+        <div class="toolbar">
+          <button class="ghost" data-md="**bold**">Bold</button>
+          <button class="ghost" data-md="*italic*">Italic</button>
+          <button class="ghost" data-md="<u>underline</u>">Underline</button>
+          <button class="ghost" data-md="`code`">Code</button>
+          <button class="ghost" data-md="> quote">Quote</button>
+          <button class="ghost" data-md="[title](https://example.com)">Link</button>
+          <button class="ghost" data-md="\(x^2+y^2=z^2\)">LaTeX</button>
+          <button class="ghost" data-md="\[\int_0^1 x^2\,dx\]">Block LaTeX</button>
+          <button class="ghost" data-md='!iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" width="560" height="315"!'>Iframe</button>
+        </div>
+        <textarea id="msgText" placeholder="Write message with markdown/latex..."></textarea>
+        <div class="row">
+          <input id="msgFile" type="file" accept="image/*,audio/*,video/*,.mp3,.wav,.ogg,.oga,.m4a,.aac,.flac,.opus,.weba,.mp4,.webm,.mov,.m4v,.avi,.mkv,.ogv,.3gp,.3g2" hidden>
+          <button id="btnPickMsg" class="ghost" type="button">Attach Media</button>
+          <span id="msgFileName" class="fname">No file chosen</span>
+          <button id="btnSend">Send</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="card">
+        <h3 style="margin-top:0">Profile</h3>
+        <input id="newDisplay" placeholder="New display name">
+        <div class="file-ui">
+          <input id="avatarFile" type="file" accept="image/*" hidden>
+          <button id="btnPickAvatar" class="ghost" type="button">Choose Avatar</button>
+          <span id="avatarFileName" class="fname">No file chosen</span>
+        </div>
+        <button id="btnSaveProfile" class="ghost">Save Profile</button>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top:0">Invite User</h3>
+        <div class="muted">Enter an email to send a invite. Available to everyone logged in.</div>
+        <div class="row" style="margin-top:8px">
+          <input id="inviteEmail" type="email" placeholder="friend@example.com">
+          <button id="btnSendInvite" class="ghost">Send Invite</button>
+        </div>
+        <div id="inviteMsg" class="muted" style="margin-top:6px"></div>
+      </div>
+
+      <div class="card">
+        <div class="tabs">
+          <button class="tabbtn active" data-tab="ann">Announcements</button>
+          <button class="tabbtn" data-tab="admin">Admin</button>
+          <button class="tabbtn" data-tab="debug">Debug</button>
+        </div>
+
+        <div id="tab-ann" class="tabpane active" style="margin-top:8px">
+          <div id="annList" class="list"></div>
+          <div id="annComposer" class="hidden" style="margin-top:8px">
+            <input id="annTitle" placeholder="Announcement title">
+            <textarea id="annBody" placeholder="Announcement body"></textarea>
+            <button id="btnPublishAnn">Publish Announcement</button>
+          </div>
+        </div>
+
+        <div id="tab-admin" class="tabpane" style="margin-top:8px">
+          <div id="adminOnly" class="hidden">
+            <h4 style="margin:0 0 6px">Moderation</h4>
+            <div class="row">
+              <input id="targetUsername" placeholder="Target username">
+							<input id="muteSec" type="number" value="60" style="max-width:120px">
+            </div>
+            <div class="row">
+              <button id="btnMute" class="warn">Mute</button>
+              <button id="btnUnmute" class="ghost">Unmute</button>
+              <button id="btnBan" class="danger">Ban</button>
+              <button id="btnUnban" class="ghost">Unban</button>
+              <button id="btnIpBanUser" class="danger">IP Ban User</button>
+              <button id="btnIpUnbanUser" class="ghost">IP Unban User</button>
+            </div>
+            <div id="adminMsg" class="muted"></div>
+
+            <div id="rootAdminTools" class="hidden" style="margin-top:10px;border-top:1px solid #2a3d67;padding-top:10px">
+              <h4 style="margin:0 0 6px">Root-only Admin Manager</h4>
+              <div class="muted">Only @root can see this.</div>
+              <div class="row" style="margin-top:8px">
+                <input id="adminRoleUsername" placeholder="Username to admin/unadmin">
+              </div>
+              <div class="row">
+                <button id="btnGiveAdmin" class="ghost">Give Admin</button>
+                <button id="btnRemoveAdmin" class="danger">Remove Admin</button>
+              </div>
+              <div id="rootAdminMsg" class="muted"></div>
+            </div>
+
+            <h4 style="margin:10px 0 6px">Message Filters</h4>
+            <div class="row">
+              <input id="filterInput" placeholder="blocked word/phrase">
+              <button id="btnAddFilter">Add Filter</button>
+            </div>
+            <div id="filterList" class="list" style="margin-top:8px"></div>
+          </div>
+          <div id="adminNotAllowed" class="muted">Admin only. Ask Alvin for it.</div>
+        </div>
+
+        <div id="tab-debug" class="tabpane" style="margin-top:8px">
+          <button id="btnClearDebug" class="ghost">Clear Debug</button>
+          <div id="debug" class="debug" style="margin-top:8px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toastWrap" class="toast-wrap"></div>
+<div id="menuHost"></div>
+
+<script type="text/javascript" src="/external/js/chat-beta.js"></script>
+</body>
+</html>
