@@ -2,8 +2,19 @@ const SUPABASE_URL = "https://lflkpziiwnoamvtrbcil.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_tFvlhmTEDV3SOSVp0JvVzg_KHXFiDNb";
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = id => document.getElementById(id);
+const CHAT_MEDIA_BUCKET = "chat-media";
+const MESSAGE_HISTORY_LIMIT = 120;
+const OLDER_MESSAGE_BATCH_SIZE = 50;
+const CHAT_IMAGE_MAX_EDGE = 1600;
+const CHAT_IMAGE_MAX_BYTES = 900 * 1024;
+const AVATAR_IMAGE_MAX_EDGE = 320;
+const AVATAR_IMAGE_MAX_BYTES = 120 * 1024;
+const MAX_AUDIO_BYTES = 8 * 1024 * 1024;
+const MAX_VIDEO_BYTES = 12 * 1024 * 1024;
 
 let me = null, myProfile = null, room = "lobby", channel = null, currentChannel = null;
+let sideChannels = [], mediaObserver = null;
+let messageMap = new Map(), oldestMessageCreatedAt = null, loadingOlderMessages = false, allOlderMessagesLoaded = false;
 let profileMap = new Map(), filters = [];
 
 function toast(msg, type = "ok", ms = 3200) {
@@ -142,12 +153,18 @@ function renderMathIn(el) {
   });
 }
 
+function removeSideChannels() {
+  sideChannels.forEach(ch => sb.removeChannel(ch));
+  sideChannels = [];
+}
+
 function showAuth() {
   $("authCard").classList.remove("hidden");
   $("appCard").classList.add("hidden");
   $("status").textContent = "Not logged in";
   currentChannel = null;
   $("channelSettings").classList.add("hidden");
+  removeSideChannels();
   if (channel) {
     sb.removeChannel(channel);
     channel = null;
@@ -243,35 +260,19 @@ async function ensureProfileAfterLogin(user, uh = "", dh = "") {
   return { ...fallbackProfile, ...ins.data };
 }
 
-async function uploadFile(file, allowedKinds = ["image", "audio", "video"]) {
-  const authUser = await requireAuthedUser();
-  const kind = (file.type || "").split("/")[0];
-  const ext = (file.name.split(".").pop() || kind || "file").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 12) || "file";
-  const extKind = mediaKindFromExtension(ext);
-  if (!allowedKinds.includes(kind) && !allowedKinds.includes(extKind)) {
-    throw new Error(`Unsupported file type: ${file.type || file.name}`);
-  }
-  const path = `${authUser.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-  const up = await sb.storage.from("chat-media").upload(path, file, {
-    upsert: false,
-    contentType: file.type || "application/octet-stream"
-  });
-  if (up.error) throw up.error;
-  return sb.storage.from("chat-media").getPublicUrl(path).data.publicUrl;
-}
-
-async function uploadImage(file) {
-  return uploadFile(file, ["image"]);
-}
-
-async function uploadMedia(file) {
-  return uploadFile(file, ["image", "audio", "video"]);
-}
-
 function mediaKindFromExtension(ext = "") {
-  if (["mp3", "wav", "ogg", "oga", "m4a", "aac", "flac", "opus", "weba"].includes(ext)) return "audio";
-  if (["mp4", "webm", "mov", "m4v", "avi", "mkv", "ogv", "3gp", "3g2"].includes(ext)) return "video";
-  return "image";
+  const clean = String(ext || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (["jpg", "jpeg", "png", "webp", "gif", "avif", "bmp"].includes(clean)) return "image";
+  if (["mp3", "wav", "ogg", "oga", "m4a", "aac", "flac", "opus", "weba"].includes(clean)) return "audio";
+  if (["mp4", "webm", "mov", "m4v", "avi", "mkv", "ogv", "3gp", "3g2"].includes(clean)) return "video";
+  return "";
+}
+
+function mediaKindFromFile(file) {
+  const mimeKind = (file.type || "").split("/")[0];
+  if (["image", "audio", "video"].includes(mimeKind)) return mimeKind;
+  const ext = String(file.name || "").split(".").pop() || "";
+  return mediaKindFromExtension(ext);
 }
 
 function mediaKindFromUrl(url = "") {
@@ -279,13 +280,217 @@ function mediaKindFromUrl(url = "") {
   return mediaKindFromExtension(clean.split(".").pop() || "");
 }
 
+function loadLazyMediaElement(el) {
+  const src = el?.dataset?.src;
+  if (!src) return;
+  el.src = src;
+  el.removeAttribute("data-src");
+  if (el.tagName === "AUDIO" || el.tagName === "VIDEO") el.load();
+  if (mediaObserver) mediaObserver.unobserve(el);
+}
+
+function watchLazyMedia(root = document) {
+  const items = root.querySelectorAll("[data-src]");
+  if (!items.length) return;
+
+  if (!("IntersectionObserver" in window)) {
+    items.forEach(loadLazyMediaElement);
+    return;
+  }
+
+  if (!mediaObserver) {
+    mediaObserver = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) loadLazyMediaElement(entry.target);
+      });
+    }, {
+      root: $("chat") || null,
+      rootMargin: "700px 0px",
+      threshold: 0.01
+    });
+  }
+
+  items.forEach(el => mediaObserver.observe(el));
+}
+
+function formatBytes(bytes) {
+  if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(bytes >= 10 * 1024 * 1024 ? 0 : 1)} MB`;
+  return `${Math.ceil(bytes / 1024)} KB`;
+}
+
+function uploadExtensionForFile(file, kind) {
+  const ext = String(file.name || "").split(".").pop() || "";
+  const clean = ext.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 12);
+  if (clean) return clean;
+  if (file.type === "image/webp") return "webp";
+  if (file.type === "image/jpeg") return "jpg";
+  if (file.type === "image/png") return "png";
+  if (file.type === "audio/mpeg") return "mp3";
+  if (file.type === "video/mp4") return "mp4";
+  return kind || "file";
+}
+
+function outputNameForImage(name, type) {
+  const base = String(name || "image")
+    .replace(/\.[^/.\\]+$/, "")
+    .replace(/[^a-z0-9_-]+/gi, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48) || "image";
+  const ext = type === "image/jpeg" ? "jpg" : type === "image/png" ? "png" : "webp";
+  return `${base}.${ext}`;
+}
+
+function blobAsFile(blob, name) {
+  if (typeof File === "function") {
+    return new File([blob], name, { type: blob.type, lastModified: Date.now() });
+  }
+  Object.defineProperty(blob, "name", { value: name });
+  return blob;
+}
+
+function canvasToBlob(canvas, type, quality) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("Could not compress image")), type, quality);
+  });
+}
+
+async function decodeImageForCanvas(file) {
+  if ("createImageBitmap" in window) return createImageBitmap(file);
+
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Could not read image"));
+    };
+    img.src = url;
+  });
+}
+
+async function compressImageForUpload(file, {
+  maxEdge = CHAT_IMAGE_MAX_EDGE,
+  maxBytes = CHAT_IMAGE_MAX_BYTES,
+  quality = 0.78,
+  label = "Image"
+} = {}) {
+  if (file.type === "image/gif") {
+    if (file.size > maxBytes) {
+      throw new Error(`${label} GIF is ${formatBytes(file.size)}. Please keep GIFs under ${formatBytes(maxBytes)}.`);
+    }
+    return file;
+  }
+
+  const source = await decodeImageForCanvas(file);
+  const sourceWidth = source.width || source.naturalWidth || 0;
+  const sourceHeight = source.height || source.naturalHeight || 0;
+  if (!sourceWidth || !sourceHeight) throw new Error("Could not read image dimensions");
+
+  let targetWidth = sourceWidth;
+  let targetHeight = sourceHeight;
+  const edgeScale = Math.min(1, maxEdge / Math.max(sourceWidth, sourceHeight));
+  targetWidth = Math.max(1, Math.round(sourceWidth * edgeScale));
+  targetHeight = Math.max(1, Math.round(sourceHeight * edgeScale));
+
+  if (file.size <= maxBytes && edgeScale === 1) {
+    if (source.close) source.close();
+    return file;
+  }
+
+  let bestBlob = null;
+  let currentQuality = quality;
+
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const canvas = document.createElement("canvas");
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    const ctx = canvas.getContext("2d", { alpha: true });
+    ctx.drawImage(source, 0, 0, targetWidth, targetHeight);
+
+    let blob = await canvasToBlob(canvas, "image/webp", currentQuality);
+    if (!blob.type || blob.type === "image/png") {
+      blob = await canvasToBlob(canvas, "image/jpeg", currentQuality);
+    }
+
+    if (!bestBlob || blob.size < bestBlob.size) bestBlob = blob;
+    if (blob.size <= maxBytes) break;
+
+    currentQuality = Math.max(0.52, currentQuality - 0.08);
+    if (currentQuality <= 0.56) {
+      targetWidth = Math.max(1, Math.round(targetWidth * 0.85));
+      targetHeight = Math.max(1, Math.round(targetHeight * 0.85));
+    }
+  }
+
+  if (source.close) source.close();
+
+  if (bestBlob && bestBlob.size <= maxBytes) {
+    return blobAsFile(bestBlob, outputNameForImage(file.name, bestBlob.type));
+  }
+
+  throw new Error(`${label} is still too large after compression. Please choose a smaller image.`);
+}
+
+async function prepareFileForUpload(file, allowedKinds, options = {}) {
+  const kind = mediaKindFromFile(file);
+  if (!kind || !allowedKinds.includes(kind)) {
+    throw new Error(`Unsupported file type: ${file.type || file.name}`);
+  }
+
+  if (kind === "image") return compressImageForUpload(file, options);
+  if (kind === "audio" && file.size > MAX_AUDIO_BYTES) {
+    throw new Error(`Audio is ${formatBytes(file.size)}. Please keep audio under ${formatBytes(MAX_AUDIO_BYTES)}.`);
+  }
+  if (kind === "video" && file.size > MAX_VIDEO_BYTES) {
+    throw new Error(`Video is ${formatBytes(file.size)}. Please keep videos under ${formatBytes(MAX_VIDEO_BYTES)} or share a link.`);
+  }
+  return file;
+}
+
+async function uploadFile(file, allowedKinds = ["image", "audio", "video"], options = {}) {
+  const authUser = await requireAuthedUser();
+  const uploadFile = await prepareFileForUpload(file, allowedKinds, options);
+  const kind = mediaKindFromFile(uploadFile) || mediaKindFromFile(file);
+  const ext = uploadExtensionForFile(uploadFile, kind);
+  const path = `${authUser.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  const up = await sb.storage.from(CHAT_MEDIA_BUCKET).upload(path, uploadFile, {
+    cacheControl: "31536000",
+    upsert: false,
+    contentType: uploadFile.type || "application/octet-stream"
+  });
+  if (up.error) throw up.error;
+  return sb.storage.from(CHAT_MEDIA_BUCKET).getPublicUrl(path).data.publicUrl;
+}
+
+async function uploadImage(file) {
+  return uploadFile(file, ["image"], {
+    maxEdge: AVATAR_IMAGE_MAX_EDGE,
+    maxBytes: AVATAR_IMAGE_MAX_BYTES,
+    quality: 0.72,
+    label: "Avatar image"
+  });
+}
+
+async function uploadMedia(file) {
+  return uploadFile(file, ["image", "audio", "video"], {
+    maxEdge: CHAT_IMAGE_MAX_EDGE,
+    maxBytes: CHAT_IMAGE_MAX_BYTES,
+    quality: 0.78,
+    label: "Chat image"
+  });
+}
+
 function attachmentHTML(url) {
   if (!url) return "";
   const safeUrl = esc(url);
   const kind = mediaKindFromUrl(url);
-  if (kind === "audio") return `<audio class="audio" controls preload="metadata" src="${safeUrl}"></audio>`;
-  if (kind === "video") return `<video class="video" controls preload="metadata" src="${safeUrl}"></video>`;
-  return `<img class="img" src="${safeUrl}">`;
+  if (kind === "audio") return `<audio class="audio" controls preload="none" data-src="${safeUrl}"></audio>`;
+  if (kind === "video") return `<video class="video" controls preload="none" data-src="${safeUrl}"></video>`;
+  return `<img class="img" data-src="${safeUrl}" loading="lazy" decoding="async" alt="">`;
 }
 
 async function loadProfileMap() {
@@ -652,7 +857,7 @@ function messageHTML(m) {
   const isAdmin = myProfile?.role === "admin";
   const canDelete = (me && m.user_id === me.id) || isAdmin;
   const canEdit = (me && m.user_id === me.id) || isAdmin;
-  const avatar = p.avatar_url ? `<img class="avatar" src="${esc(p.avatar_url)}">` : "";
+  const avatar = p.avatar_url ? `<img class="avatar" data-src="${esc(p.avatar_url)}" loading="lazy" decoding="async" alt="">` : "";
   const rich = m.deleted ? `<i>[deleted]</i>` : parseRich(m.text || "");
   const img = (!m.deleted && m.image_url) ? attachmentHTML(m.image_url) : "";
   const dot = isAdmin ? `<div class="admin-dot" data-dot="${m.id}">\u2026</div>` : "";
@@ -668,8 +873,8 @@ function messageHTML(m) {
   </div>`;
 }
 
-function wireMessageActions(map) {
-  document.querySelectorAll("[data-del]").forEach(btn => {
+function wireMessageActions(root = document) {
+  root.querySelectorAll("[data-del]").forEach(btn => {
     btn.onclick = async () => {
       try {
         await softDelete(btn.getAttribute("data-del"));
@@ -679,17 +884,17 @@ function wireMessageActions(map) {
     };
   });
 
-  document.querySelectorAll("[data-dot]").forEach(dot => {
+  root.querySelectorAll("[data-dot]").forEach(dot => {
     dot.onclick = (ev) => {
-      const msg = map.get(dot.getAttribute("data-dot"));
+      const msg = messageMap.get(dot.getAttribute("data-dot"));
       addAdminMenu(ev.clientX, ev.clientY, msg);
     };
   });
 
-  document.querySelectorAll("[data-edit-msg]").forEach(btn => {
+  root.querySelectorAll("[data-edit-msg]").forEach(btn => {
     btn.onclick = async () => {
       const id = btn.getAttribute("data-edit-msg");
-      const m = map.get(id);
+      const m = messageMap.get(id);
       try {
         await editMessage(id, m?.text || "");
         toast("Message edited", "ok");
@@ -706,12 +911,30 @@ async function softDelete(id) {
   if (q.error) throw q.error;
   const old = document.getElementById(`m-${id}`);
   if (old) old.remove();
+  messageMap.delete(id);
   toast("Message deleted");
 }
 
 function getMatchedFilter(text) {
   const lc = (text || "").toLowerCase();
   return filters.find(f => f.enabled && lc.includes(f.pattern.toLowerCase()));
+}
+
+function rememberMessages(messages) {
+  messages.forEach(m => messageMap.set(m.id, m));
+}
+
+function hydrateMessages(root) {
+  root.querySelectorAll(".body").forEach(renderMathIn);
+  wireMessageActions(root);
+  watchLazyMedia(root);
+}
+
+function renderMessageBatch(chat, messages, position = "beforeend") {
+  if (!messages.length) return;
+  rememberMessages(messages);
+  chat.insertAdjacentHTML(position, messages.map(messageHTML).join(""));
+  hydrateMessages(chat);
 }
 
 async function loadMessages() {
@@ -721,11 +944,15 @@ async function loadMessages() {
     .select("id,room,user_id,text,image_url,created_at")
     .eq("room", room)
     .eq("deleted", false)
-    .order("created_at", { ascending: true })
-    .limit(400);
+    .order("created_at", { ascending: false })
+    .limit(MESSAGE_HISTORY_LIMIT);
 
   const chat = $("chat");
   chat.innerHTML = "";
+  messageMap = new Map();
+  oldestMessageCreatedAt = null;
+  loadingOlderMessages = false;
+  allOlderMessagesLoaded = false;
 
   if (q.error) {
     debugLog("messages.load", q.error);
@@ -733,15 +960,49 @@ async function loadMessages() {
     throw q.error;
   }
 
-  const map = new Map();
-  (q.data || []).forEach(m => {
-    map.set(m.id, m);
-    chat.insertAdjacentHTML("beforeend", messageHTML(m));
-  });
-
-  chat.querySelectorAll(".body").forEach(renderMathIn);
-  wireMessageActions(map);
+  const messages = (q.data || []).slice().reverse();
+  renderMessageBatch(chat, messages, "beforeend");
+  oldestMessageCreatedAt = messages[0]?.created_at || null;
+  allOlderMessagesLoaded = (q.data || []).length < MESSAGE_HISTORY_LIMIT;
   chat.scrollTop = chat.scrollHeight;
+}
+
+async function loadOlderMessages() {
+  if (loadingOlderMessages || allOlderMessagesLoaded || !oldestMessageCreatedAt) return;
+
+  const chat = $("chat");
+  const previousHeight = chat.scrollHeight;
+  const previousTop = chat.scrollTop;
+  loadingOlderMessages = true;
+
+  try {
+    const q = await sb.from("messages")
+      .select("id,room,user_id,text,image_url,created_at")
+      .eq("room", room)
+      .eq("deleted", false)
+      .lt("created_at", oldestMessageCreatedAt)
+      .order("created_at", { ascending: false })
+      .limit(OLDER_MESSAGE_BATCH_SIZE);
+
+    if (q.error) throw q.error;
+
+    const batch = (q.data || []).filter(m => !messageMap.has(m.id));
+    if (!batch.length) {
+      allOlderMessagesLoaded = true;
+      return;
+    }
+
+    const messages = batch.slice().reverse();
+    renderMessageBatch(chat, messages, "afterbegin");
+    oldestMessageCreatedAt = messages[0]?.created_at || oldestMessageCreatedAt;
+    allOlderMessagesLoaded = (q.data || []).length < OLDER_MESSAGE_BATCH_SIZE;
+    chat.scrollTop = previousTop + (chat.scrollHeight - previousHeight);
+  } catch (e) {
+    toast(errText("load older messages", e), "err", 4500);
+    debugLog("messages.loadOlder", e);
+  } finally {
+    loadingOlderMessages = false;
+  }
 }
 
 async function joinRoom() {
@@ -781,13 +1042,14 @@ async function joinRoom() {
       }
 
       const chat = $("chat");
+      messageMap.set(m.id, m);
       chat.insertAdjacentHTML("beforeend", messageHTML(m));
       const el = document.getElementById(`m-${m.id}`);
-      if (el) renderMathIn(el.querySelector(".body"));
-
-      const single = new Map();
-      single.set(m.id, m);
-      wireMessageActions(single);
+      if (el) {
+        renderMathIn(el.querySelector(".body"));
+        wireMessageActions(el);
+        watchLazyMedia(el);
+      }
 
       chat.scrollTop = chat.scrollHeight;
     })
@@ -801,17 +1063,19 @@ async function joinRoom() {
       const old = document.getElementById(`m-${m.id}`);
       if (m.deleted) {
         if (old) old.remove();
+        messageMap.delete(m.id);
         return;
       }
+      messageMap.set(m.id, m);
       if (old) {
         old.outerHTML = messageHTML(m);
         const ne = document.getElementById(`m-${m.id}`);
-        if (ne) renderMathIn(ne.querySelector(".body"));
+        if (ne) {
+          renderMathIn(ne.querySelector(".body"));
+          wireMessageActions(ne);
+          watchLazyMedia(ne);
+        }
       }
-
-      const single = new Map();
-      single.set(m.id, m);
-      wireMessageActions(single);
     })
     .on("postgres_changes", {
       event: "DELETE",
@@ -823,6 +1087,7 @@ async function joinRoom() {
       if (!deletedId) return;
       const old = document.getElementById(`m-${deletedId}`);
       if (old) old.remove();
+      messageMap.delete(deletedId);
     })
     .subscribe();
 }
@@ -1279,6 +1544,10 @@ document.querySelectorAll(".tabbtn").forEach(btn => btn.onclick = () => {
   $("tab-" + btn.getAttribute("data-tab")).classList.add("active");
 });
 
+$("chat").onscroll = () => {
+  if ($("chat").scrollTop <= 160) loadOlderMessages();
+};
+
 $("btnClearDebug").onclick = () => $("debug").textContent = "";
 
 $("btnRegister").onclick = async () => {
@@ -1597,58 +1866,74 @@ $("btnRemoveAdmin").onclick = async () => {
 };
 /* remember to lick and sub */
 function subscribeSideChannels() {
-  sb.channel("ann-live")
-    .on("postgres_changes", { event: "*", schema: "public", table: "announcements" }, () => loadAnnouncements())
-    .subscribe();
+  removeSideChannels();
 
-  sb.channel("filters-live")
-    .on("postgres_changes", { event: "*", schema: "public", table: "message_filters" }, () => loadFilters())
-    .subscribe();
+  sideChannels.push(
+    sb.channel("ann-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "announcements" }, () => loadAnnouncements())
+      .subscribe()
+  );
 
-  sb.channel("channels-live")
-    .on("postgres_changes", { event: "*", schema: "public", table: "channels" }, () => loadRooms())
-    .subscribe();
+  sideChannels.push(
+    sb.channel("filters-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "message_filters" }, () => loadFilters())
+      .subscribe()
+  );
 
-  sb.channel("channel-members-live")
-    .on("postgres_changes", { event: "*", schema: "public", table: "channel_members" }, () => loadRooms())
-    .subscribe();
+  sideChannels.push(
+    sb.channel("channels-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "channels" }, () => loadRooms())
+      .subscribe()
+  );
 
-  sb.channel("channel-lock-bypass-live")
-    .on("postgres_changes", { event: "*", schema: "public", table: "channel_lock_bypass" }, () => loadRooms())
-    .on("postgres_changes", { event: "*", schema: "public", table: "channel_members" }, () => {
-      loadRooms();
-      if (currentChannel?.is_private && canManageChannel()) {
-        loadChannelMembers().catch(e => debugLog("channel.members.live", e));
-      }
-    })
-    .subscribe();
+  sideChannels.push(
+    sb.channel("channel-members-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "channel_members" }, () => loadRooms())
+      .subscribe()
+  );
+
+  sideChannels.push(
+    sb.channel("channel-lock-bypass-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "channel_lock_bypass" }, () => loadRooms())
+      .on("postgres_changes", { event: "*", schema: "public", table: "channel_members" }, () => {
+        loadRooms();
+        if (currentChannel?.is_private && canManageChannel()) {
+          loadChannelMembers().catch(e => debugLog("channel.members.live", e));
+        }
+      })
+      .subscribe()
+  );
 
   if (me?.id) {
-    sb.channel("user-bans-live")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "user_bans",
-          filter: `user_id=eq.${me.id}`
-        },
-        () => checkBan(me.id)
-      )
-      .subscribe();
+    sideChannels.push(
+      sb.channel("user-bans-live")
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "user_bans",
+            filter: `user_id=eq.${me.id}`
+          },
+          () => checkBan(me.id)
+        )
+        .subscribe()
+    );
 
-    sb.channel("user-mutes-live")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "user_mutes",
-          filter: `user_id=eq.${me.id}`
-        },
-        () => checkMute(me.id)
-      )
-      .subscribe();
+    sideChannels.push(
+      sb.channel("user-mutes-live")
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "user_mutes",
+            filter: `user_id=eq.${me.id}`
+          },
+          () => checkMute(me.id)
+        )
+        .subscribe()
+    );
   }
 }
 
