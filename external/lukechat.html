@@ -338,20 +338,67 @@
       background: #111113;
       padding: 1rem;
       display: grid;
-      gap: 0.7rem;
+      gap: 0.55rem;
     }
 
     .composer-main {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-columns: auto minmax(0, 1fr) auto;
       gap: 0.7rem;
+      align-items: center;
     }
 
-    .media-options {
+    .file-plus-button {
+      width: 46px;
+      height: 46px;
+      padding: 0;
+      border-radius: 999px;
+      background: #27272a;
       display: grid;
-      grid-template-columns: 130px minmax(0, 1fr) minmax(0, 1fr);
-      gap: 0.7rem;
-      align-items: end;
+      place-items: center;
+      font-size: 1.55rem;
+      line-height: 1;
+    }
+
+    .file-plus-button:hover {
+      background: #3f3f46;
+      filter: none;
+    }
+
+    .hidden-file-input {
+      display: none;
+    }
+
+    .selected-media-row {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 12px;
+      padding: 0.55rem 0.7rem;
+    }
+
+    .selected-media-row.show {
+      display: flex;
+    }
+
+    .selected-media-name {
+      min-width: 0;
+      color: #d4d4d8;
+      font-size: 0.85rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .clear-media-button {
+      background: #3f3f46;
+      padding: 0.35rem 0.55rem;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      flex: 0 0 auto;
     }
 
     @media (max-width: 760px) {
@@ -370,9 +417,8 @@
         min-height: 70vh;
       }
 
-      .composer-main,
-      .media-options {
-        grid-template-columns: 1fr;
+      .composer-main {
+        grid-template-columns: auto minmax(0, 1fr) auto;
       }
     }
   </style>
@@ -614,30 +660,25 @@
       event.preventDefault();
 
       const input = document.getElementById('message-input');
-      const mediaTypeSelect = document.getElementById('post-media-type-input');
-      const mediaUrlInput = document.getElementById('post-media-url-input');
       const mediaFileInput = document.getElementById('post-media-file-input');
       const sendButton = document.getElementById('send-message-button');
 
       const content = input.value.trim();
-      let mediaType = mediaTypeSelect.value;
-      let mediaUrl = mediaUrlInput.value.trim();
-
       const mediaFile = mediaFileInput.files?.[0] || null;
 
-      if (!content && !mediaUrl && !mediaFile) return;
+      if (!content && !mediaFile) return;
 
       sendButton.disabled = true;
       sendButton.textContent = 'Sending...';
 
       const originalContent = input.value;
-      const originalMediaUrl = mediaUrlInput.value;
 
       input.value = '';
-      mediaUrlInput.value = '';
-      mediaFileInput.value = '';
 
       try {
+        let mediaType = null;
+        let mediaUrl = null;
+
         if (mediaFile) {
           mediaType = getMediaTypeFromFile(mediaFile);
 
@@ -650,31 +691,22 @@
             mediaFile,
             `posts/${state.session.user.id}`
           );
-        } else if (mediaUrl) {
-          if (mediaType === 'auto') {
-            mediaType = getMediaTypeFromUrl(mediaUrl);
-          }
-
-          if (!mediaType || mediaType === 'auto') {
-            throw new Error('Choose whether your URL is an image or video.');
-          }
-        } else {
-          mediaType = null;
-          mediaUrl = null;
         }
 
         const { error } = await db.from('messages').insert({
           user_id: state.session.user.id,
           content,
-          media_url: mediaUrl || null,
-          media_type: mediaType || null
+          media_url: mediaUrl,
+          media_type: mediaType
         });
 
         if (error) throw error;
+
+        mediaFileInput.value = '';
+        updateSelectedMediaName();
       } catch (error) {
         console.error(error);
         input.value = originalContent;
-        mediaUrlInput.value = originalMediaUrl;
         window.__lastSendError = error.message || 'Could not send message.';
         renderChat();
       } finally {
@@ -783,18 +815,23 @@
       return null;
     }
 
-    function getMediaTypeFromUrl(url) {
-      const cleanUrl = url.split('?')[0].toLowerCase();
+    function updateSelectedMediaName() {
+      const fileInput = document.getElementById('post-media-file-input');
+      const row = document.getElementById('selected-media-row');
+      const nameEl = document.getElementById('selected-media-name');
 
-      if (/\.(png|jpg|jpeg|gif|webp|avif|bmp|svg)$/.test(cleanUrl)) {
-        return 'image';
+      if (!fileInput || !row || !nameEl) return;
+
+      const file = fileInput.files?.[0] || null;
+
+      if (!file) {
+        row.classList.remove('show');
+        nameEl.textContent = '';
+        return;
       }
 
-      if (/\.(mp4|webm|ogg|mov|m4v)$/.test(cleanUrl)) {
-        return 'video';
-      }
-
-      return 'auto';
+      row.classList.add('show');
+      nameEl.textContent = file.name;
     }
 
     function renderLogin() {
@@ -1002,42 +1039,42 @@
 
             <form id="composer" class="composer">
               <div class="composer-main">
+                <button
+                  id="pick-media-button"
+                  class="file-plus-button"
+                  type="button"
+                  title="Add image or video"
+                  aria-label="Add image or video"
+                >
+                  +
+                </button>
+
+                <input
+                  id="post-media-file-input"
+                  class="hidden-file-input"
+                  type="file"
+                  accept="image/*,video/*"
+                />
+
                 <input
                   id="message-input"
                   placeholder="Type a message..."
                   maxlength="1000"
                   autocomplete="off"
                 />
+
                 <button id="send-message-button" type="submit">Send</button>
               </div>
 
-              <div class="media-options">
-                <label>
-                  Media type
-                  <select id="post-media-type-input">
-                    <option value="auto">Auto</option>
-                    <option value="image">Image</option>
-                    <option value="video">Video</option>
-                  </select>
-                </label>
-
-                <label>
-                  Image/video URL
-                  <input
-                    id="post-media-url-input"
-                    placeholder="https://..."
-                    autocomplete="off"
-                  />
-                </label>
-
-                <label>
-                  Or upload file
-                  <input
-                    id="post-media-file-input"
-                    type="file"
-                    accept="image/*,video/*"
-                  />
-                </label>
+              <div id="selected-media-row" class="selected-media-row">
+                <span id="selected-media-name" class="selected-media-name"></span>
+                <button
+                  id="clear-media-button"
+                  class="clear-media-button"
+                  type="button"
+                >
+                  Remove
+                </button>
               </div>
 
               ${
@@ -1061,6 +1098,24 @@
       document
         .getElementById('composer')
         .addEventListener('submit', sendMessage);
+
+      document
+        .getElementById('pick-media-button')
+        .addEventListener('click', () => {
+          document.getElementById('post-media-file-input').click();
+        });
+
+      document
+        .getElementById('post-media-file-input')
+        .addEventListener('change', updateSelectedMediaName);
+
+      document
+        .getElementById('clear-media-button')
+        .addEventListener('click', () => {
+          const fileInput = document.getElementById('post-media-file-input');
+          fileInput.value = '';
+          updateSelectedMediaName();
+        });
 
       scrollToBottom();
     }
