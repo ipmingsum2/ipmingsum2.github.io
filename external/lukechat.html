@@ -30,7 +30,8 @@
     }
 
     button,
-    input {
+    input,
+    select {
       font: inherit;
     }
 
@@ -63,7 +64,8 @@
       font-size: 0.9rem;
     }
 
-    input {
+    input,
+    select {
       width: 100%;
       border: 1px solid #3f3f46;
       border-radius: 12px;
@@ -73,7 +75,12 @@
       outline: none;
     }
 
-    input:focus {
+    input[type="file"] {
+      padding: 0.65rem;
+    }
+
+    input:focus,
+    select:focus {
       border-color: #818cf8;
     }
 
@@ -121,6 +128,11 @@
 
     .error {
       color: #f87171;
+      margin: 0;
+    }
+
+    .success {
+      color: #86efac;
       margin: 0;
     }
 
@@ -213,6 +225,16 @@
       margin: 0;
     }
 
+    .preview-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: #09090b;
+      border: 1px solid #27272a;
+      border-radius: 14px;
+      padding: 0.75rem;
+    }
+
     .chat-panel {
       min-width: 0;
       display: grid;
@@ -243,6 +265,7 @@
       border: 1px solid #27272a;
       border-radius: 16px;
       padding: 0.75rem 0.9rem;
+      max-width: min(680px, 100%);
     }
 
     .message.mine .message-body {
@@ -255,6 +278,7 @@
       gap: 0.7rem;
       align-items: baseline;
       margin-bottom: 0.25rem;
+      flex-wrap: wrap;
     }
 
     .message-meta span {
@@ -268,6 +292,25 @@
       overflow-wrap: anywhere;
     }
 
+    .message-media {
+      margin-top: 0.7rem;
+      max-width: 100%;
+      border-radius: 14px;
+      border: 1px solid #3f3f46;
+      background: #09090b;
+      display: block;
+    }
+
+    img.message-media {
+      max-height: 420px;
+      object-fit: contain;
+    }
+
+    video.message-media {
+      width: min(100%, 620px);
+      max-height: 420px;
+    }
+
     .avatar {
       width: 38px;
       height: 38px;
@@ -275,6 +318,11 @@
       object-fit: cover;
       background: #27272a;
       flex: 0 0 auto;
+    }
+
+    .avatar.large {
+      width: 54px;
+      height: 54px;
     }
 
     .avatar.fallback {
@@ -290,8 +338,20 @@
       background: #111113;
       padding: 1rem;
       display: grid;
+      gap: 0.7rem;
+    }
+
+    .composer-main {
+      display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
       gap: 0.7rem;
+    }
+
+    .media-options {
+      display: grid;
+      grid-template-columns: 130px minmax(0, 1fr) minmax(0, 1fr);
+      gap: 0.7rem;
+      align-items: end;
     }
 
     @media (max-width: 760px) {
@@ -310,7 +370,8 @@
         min-height: 70vh;
       }
 
-      .composer {
+      .composer-main,
+      .media-options {
         grid-template-columns: 1fr;
       }
     }
@@ -331,6 +392,8 @@
       'https://raw.githubusercontent.com/ipmingsum2/ipmingsum2.github.io/main/assets/images/google.png';
 
     const MESSAGE_LIMIT = 50;
+    const AVATAR_BUCKET = 'avatars';
+    const MESSAGE_MEDIA_BUCKET = 'message-media';
 
     const db = window.supabase.createClient(
       SUPABASE_URL,
@@ -442,7 +505,7 @@
     async function loadInitialMessages() {
       const { data, error } = await db
         .from('messages')
-        .select('id, user_id, content, created_at')
+        .select('id, user_id, content, media_url, media_type, created_at')
         .order('created_at', { ascending: false })
         .limit(MESSAGE_LIMIT);
 
@@ -551,20 +614,72 @@
       event.preventDefault();
 
       const input = document.getElementById('message-input');
-      const content = input.value.trim();
+      const mediaTypeSelect = document.getElementById('post-media-type-input');
+      const mediaUrlInput = document.getElementById('post-media-url-input');
+      const mediaFileInput = document.getElementById('post-media-file-input');
+      const sendButton = document.getElementById('send-message-button');
 
-      if (!content) return;
+      const content = input.value.trim();
+      let mediaType = mediaTypeSelect.value;
+      let mediaUrl = mediaUrlInput.value.trim();
+
+      const mediaFile = mediaFileInput.files?.[0] || null;
+
+      if (!content && !mediaUrl && !mediaFile) return;
+
+      sendButton.disabled = true;
+      sendButton.textContent = 'Sending...';
+
+      const originalContent = input.value;
+      const originalMediaUrl = mediaUrlInput.value;
 
       input.value = '';
+      mediaUrlInput.value = '';
+      mediaFileInput.value = '';
 
-      const { error } = await db.from('messages').insert({
-        user_id: state.session.user.id,
-        content
-      });
+      try {
+        if (mediaFile) {
+          mediaType = getMediaTypeFromFile(mediaFile);
 
-      if (error) {
+          if (!mediaType) {
+            throw new Error('Only image and video files are allowed.');
+          }
+
+          mediaUrl = await uploadFile(
+            MESSAGE_MEDIA_BUCKET,
+            mediaFile,
+            `posts/${state.session.user.id}`
+          );
+        } else if (mediaUrl) {
+          if (mediaType === 'auto') {
+            mediaType = getMediaTypeFromUrl(mediaUrl);
+          }
+
+          if (!mediaType || mediaType === 'auto') {
+            throw new Error('Choose whether your URL is an image or video.');
+          }
+        } else {
+          mediaType = null;
+          mediaUrl = null;
+        }
+
+        const { error } = await db.from('messages').insert({
+          user_id: state.session.user.id,
+          content,
+          media_url: mediaUrl || null,
+          media_type: mediaType || null
+        });
+
+        if (error) throw error;
+      } catch (error) {
         console.error(error);
-        input.value = content;
+        input.value = originalContent;
+        mediaUrlInput.value = originalMediaUrl;
+        window.__lastSendError = error.message || 'Could not send message.';
+        renderChat();
+      } finally {
+        sendButton.disabled = false;
+        sendButton.textContent = 'Send';
       }
     }
 
@@ -577,38 +692,109 @@
         .trim()
         .slice(0, 40) || 'User';
 
-      const avatarUrl = document
+      const avatarUrlInput = document
         .getElementById('avatar-url-input')
         .value
         .trim()
         .slice(0, 500);
 
+      const avatarFileInput = document.getElementById('avatar-file-input');
+      const avatarFile = avatarFileInput.files?.[0] || null;
+
       const button = document.getElementById('save-profile-button');
+      const statusEl = document.getElementById('profile-status');
+
       button.disabled = true;
       button.textContent = 'Saving...';
+      statusEl.textContent = '';
+      statusEl.className = 'tiny muted';
 
-      const { data, error } = await db
-        .from('profiles')
-        .update({
-          display_name: displayName,
-          avatar_url: avatarUrl || null
-        })
-        .eq('id', state.session.user.id)
-        .select('id, display_name, avatar_url, provider, provider_user_id, email')
-        .single();
+      try {
+        let avatarUrl = avatarUrlInput || null;
 
-      button.disabled = false;
-      button.textContent = 'Save profile';
+        if (avatarFile) {
+          if (!avatarFile.type.startsWith('image/')) {
+            throw new Error('Profile image must be an image file.');
+          }
 
-      if (error) {
+          avatarUrl = await uploadFile(
+            AVATAR_BUCKET,
+            avatarFile,
+            `avatars/${state.session.user.id}`
+          );
+        }
+
+        const { data, error } = await db
+          .from('profiles')
+          .update({
+            display_name: displayName,
+            avatar_url: avatarUrl || null
+          })
+          .eq('id', state.session.user.id)
+          .select('id, display_name, avatar_url, provider, provider_user_id, email')
+          .single();
+
+        if (error) throw error;
+
+        state.profile = data;
+        state.profilesById[data.id] = data;
+
+        statusEl.textContent = 'Profile saved.';
+        statusEl.className = 'tiny success';
+
+        renderChat();
+      } catch (error) {
         console.error(error);
-        return;
+        statusEl.textContent = error.message || 'Could not save profile.';
+        statusEl.className = 'tiny error';
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Save profile';
+      }
+    }
+
+    async function uploadFile(bucket, file, folder) {
+      const safeName = file.name
+        .toLowerCase()
+        .replace(/[^a-z0-9._-]/g, '-');
+
+      const path =
+        `${folder}/${Date.now()}-${crypto.randomUUID()}-${safeName}`;
+
+      const { error } = await db.storage
+        .from(bucket)
+        .upload(path, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (error) throw error;
+
+      const { data } = db.storage
+        .from(bucket)
+        .getPublicUrl(path);
+
+      return data.publicUrl;
+    }
+
+    function getMediaTypeFromFile(file) {
+      if (file.type.startsWith('image/')) return 'image';
+      if (file.type.startsWith('video/')) return 'video';
+      return null;
+    }
+
+    function getMediaTypeFromUrl(url) {
+      const cleanUrl = url.split('?')[0].toLowerCase();
+
+      if (/\.(png|jpg|jpeg|gif|webp|avif|bmp|svg)$/.test(cleanUrl)) {
+        return 'image';
       }
 
-      state.profile = data;
-      state.profilesById[data.id] = data;
+      if (/\.(mp4|webm|ogg|mov|m4v)$/.test(cleanUrl)) {
+        return 'video';
+      }
 
-      renderChat();
+      return 'auto';
     }
 
     function renderLogin() {
@@ -733,6 +919,8 @@
     function renderChat() {
       const profile = state.profile || {};
       const user = state.session.user;
+      const sendError = window.__lastSendError || '';
+      window.__lastSendError = '';
 
       app.innerHTML = `
         <main class="chat-layout">
@@ -746,6 +934,14 @@
 
             <form id="profile-form" class="profile-form">
               <h3>Profile</h3>
+
+              <div class="preview-row">
+                ${renderAvatar(profile.display_name || 'User', profile.avatar_url, true)}
+                <div>
+                  <strong>${escapeHtml(profile.display_name || 'User')}</strong>
+                  <div class="muted tiny">Current profile image</div>
+                </div>
+              </div>
 
               <label>
                 Display name
@@ -764,6 +960,21 @@
                   placeholder="https://..."
                 />
               </label>
+
+              <label>
+                Or upload profile image
+                <input
+                  id="avatar-file-input"
+                  type="file"
+                  accept="image/*"
+                />
+              </label>
+
+              <p class="muted tiny">
+                If you upload a file, it will replace the URL above.
+              </p>
+
+              <p id="profile-status" class="tiny muted"></p>
 
               <button id="save-profile-button" type="submit">
                 Save profile
@@ -790,13 +1001,50 @@
             </div>
 
             <form id="composer" class="composer">
-              <input
-                id="message-input"
-                placeholder="Type a message..."
-                maxlength="1000"
-                autocomplete="off"
-              />
-              <button type="submit">Send</button>
+              <div class="composer-main">
+                <input
+                  id="message-input"
+                  placeholder="Type a message..."
+                  maxlength="1000"
+                  autocomplete="off"
+                />
+                <button id="send-message-button" type="submit">Send</button>
+              </div>
+
+              <div class="media-options">
+                <label>
+                  Media type
+                  <select id="post-media-type-input">
+                    <option value="auto">Auto</option>
+                    <option value="image">Image</option>
+                    <option value="video">Video</option>
+                  </select>
+                </label>
+
+                <label>
+                  Image/video URL
+                  <input
+                    id="post-media-url-input"
+                    placeholder="https://..."
+                    autocomplete="off"
+                  />
+                </label>
+
+                <label>
+                  Or upload file
+                  <input
+                    id="post-media-file-input"
+                    type="file"
+                    accept="image/*,video/*"
+                  />
+                </label>
+              </div>
+
+              ${
+                sendError
+                  ? `<p class="error tiny">${escapeHtml(sendError)}</p>`
+                  : ''
+              }
             </form>
           </section>
         </main>
@@ -833,17 +1081,52 @@
               <span>${escapeHtml(new Date(message.created_at).toLocaleString())}</span>
             </div>
 
-            <p>${escapeHtml(message.content)}</p>
+            ${
+              message.content
+                ? `<p>${escapeHtml(message.content)}</p>`
+                : ''
+            }
+
+            ${renderMessageMedia(message.media_url, message.media_type)}
           </div>
         </article>
       `;
     }
 
-    function renderAvatar(name, avatarUrl) {
+    function renderMessageMedia(mediaUrl, mediaType) {
+      if (!mediaUrl || !mediaType) return '';
+
+      if (mediaType === 'image') {
+        return `
+          <img
+            class="message-media"
+            src="${escapeAttr(mediaUrl)}"
+            alt="Post image"
+            loading="lazy"
+            referrerpolicy="no-referrer"
+          />
+        `;
+      }
+
+      if (mediaType === 'video') {
+        return `
+          <video
+            class="message-media"
+            src="${escapeAttr(mediaUrl)}"
+            controls
+            preload="metadata"
+          ></video>
+        `;
+      }
+
+      return '';
+    }
+
+    function renderAvatar(name, avatarUrl, large = false) {
       if (avatarUrl) {
         return `
           <img
-            class="avatar"
+            class="avatar ${large ? 'large' : ''}"
             src="${escapeAttr(avatarUrl)}"
             alt="${escapeAttr(name)}"
             loading="lazy"
@@ -853,7 +1136,7 @@
       }
 
       return `
-        <div class="avatar fallback">
+        <div class="avatar fallback ${large ? 'large' : ''}">
           ${escapeHtml(name.slice(0, 1).toUpperCase())}
         </div>
       `;
