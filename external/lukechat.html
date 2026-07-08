@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+  <title>Whitelist Chat</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family:
+        Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", sans-serif;
+      background: #09090b;
+      color: #f4f4f5;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #09090b;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 0.8rem 1rem;
+      background: #5865f2;
+      color: white;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    button:hover {
+      filter: brightness(1.08);
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    button.secondary {
+      background: #27272a;
+    }
+
+    button.small {
+      padding: 0.45rem 0.7rem;
+      border-radius: 9px;
+      font-size: 0.9rem;
+    }
+
+    input {
+      width: 100%;
+      border: 1px solid #3f3f46;
+      border-radius: 12px;
+      background: #18181b;
+      color: #f4f4f5;
+      padding: 0.8rem;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: #818cf8;
+    }
+
+    label {
+      display: grid;
+      gap: 0.4rem;
+      color: #d4d4d8;
+      font-size: 0.9rem;
+    }
+
+    .page {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 1rem;
+    }
+
+    .auth-page {
+      background:
+        radial-gradient(circle at top, rgba(88, 101, 242, 0.28), transparent 35%),
+        #09090b;
+    }
+
+    .card {
+      width: min(100%, 460px);
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 22px;
+      padding: 1.5rem;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+    }
+
+    .auth-card h1 {
+      margin-top: 0;
+      font-size: 2rem;
+    }
+
+    .muted {
+      color: #a1a1aa;
+    }
+
+    .tiny {
+      font-size: 0.78rem;
+    }
+
+    .error {
+      color: #f87171;
+      margin: 0;
+    }
+
+    .auth-buttons,
+    .passcode-form,
+    .profile-form {
+      display: grid;
+      gap: 0.8rem;
+    }
+
+    .login-button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      width: 100%;
+    }
+
+    .login-button img {
+      width: 26px;
+      height: 26px;
+      object-fit: contain;
+      flex: 0 0 auto;
+    }
+
+    .login-button.discord {
+      background: #5865f2;
+    }
+
+    .login-button.discord img {
+      width: 32px;
+      height: 28px;
+    }
+
+    .login-button.google {
+      background: #ffffff;
+      color: #18181b;
+    }
+
+    .login-button.google:hover {
+      filter: brightness(0.95);
+    }
+
+    .account-box,
+    .account-small {
+      background: #09090b;
+      border: 1px solid #27272a;
+      border-radius: 14px;
+      padding: 0.9rem;
+      margin: 1rem 0;
+      overflow-wrap: anywhere;
+    }
+
+    .chat-layout {
+      height: 100vh;
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr);
+      background: #09090b;
+    }
+
+    .sidebar {
+      border-right: 1px solid #27272a;
+      background: #111113;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      overflow-y: auto;
+    }
+
+    .sidebar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.8rem;
+    }
+
+    .sidebar-header h2 {
+      margin: 0;
+    }
+
+    .profile-form {
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 18px;
+      padding: 1rem;
+    }
+
+    .profile-form h3 {
+      margin: 0;
+    }
+
+    .chat-panel {
+      min-width: 0;
+      display: grid;
+      grid-template-rows: minmax(0, 1fr) auto;
+    }
+
+    .messages {
+      overflow-y: auto;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+
+    .message {
+      display: flex;
+      gap: 0.75rem;
+      max-width: 760px;
+    }
+
+    .message.mine {
+      align-self: flex-end;
+      flex-direction: row-reverse;
+    }
+
+    .message-body {
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 16px;
+      padding: 0.75rem 0.9rem;
+    }
+
+    .message.mine .message-body {
+      background: #312e81;
+      border-color: #4338ca;
+    }
+
+    .message-meta {
+      display: flex;
+      gap: 0.7rem;
+      align-items: baseline;
+      margin-bottom: 0.25rem;
+    }
+
+    .message-meta span {
+      color: #a1a1aa;
+      font-size: 0.75rem;
+    }
+
+    .message-body p {
+      margin: 0;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 999px;
+      object-fit: cover;
+      background: #27272a;
+      flex: 0 0 auto;
+    }
+
+    .avatar.fallback {
+      display: grid;
+      place-items: center;
+      color: white;
+      font-weight: 800;
+      background: linear-gradient(135deg, #5865f2, #a855f7);
+    }
+
+    .composer {
+      border-top: 1px solid #27272a;
+      background: #111113;
+      padding: 1rem;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 0.7rem;
+    }
+
+    @media (max-width: 760px) {
+      .chat-layout {
+        height: auto;
+        min-height: 100vh;
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        border-right: 0;
+        border-bottom: 1px solid #27272a;
+      }
+
+      .chat-panel {
+        min-height: 70vh;
+      }
+
+      .composer {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app"></div>
+
+  <script>
+    const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';
+    const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+
+    const DISCORD_LOGO_URL =
+      'https://raw.githubusercontent.com/ipmingsum2/ipmingsum2.github.io/main/assets/images/Discord.png';
+
+    const GOOGLE_LOGO_URL =
+      'https://raw.githubusercontent.com/ipmingsum2/ipmingsum2.github.io/main/assets/images/google.png';
+
+    const MESSAGE_LIMIT = 50;
+
+    const supabase = window.supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_ANON_KEY,
+      {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true
+        },
+        realtime: {
+          params: {
+            eventsPerSecond: 5
+          }
+        }
+      }
+    );
+
+    const state = {
+      session: null,
+      profile: null,
+      isWhitelisted: false,
+      checkingAccess: true,
+      messages: [],
+      profilesById: {},
+      channel: null
+    };
+
+    const app = document.getElementById('app');
+
+    init();
+
+    async function init() {
+      const { data } = await supabase.auth.getSession();
+      state.session = data.session;
+
+      supabase.auth.onAuthStateChange(async (_event, session) => {
+        state.session = session;
+        state.profile = null;
+        state.isWhitelisted = false;
+        state.messages = [];
+        state.profilesById = {};
+
+        if (state.channel) {
+          await supabase.removeChannel(state.channel);
+          state.channel = null;
+        }
+
+        await boot();
+      });
+
+      await boot();
+    }
+
+    async function boot() {
+      if (!state.session) {
+        state.checkingAccess = false;
+        renderLogin();
+        return;
+      }
+
+      await initializeUser();
+    }
+
+    async function initializeUser() {
+      state.checkingAccess = true;
+      renderLoading();
+
+      try {
+        await supabase.rpc('sync_my_profile');
+
+        const { data: allowed, error } = await supabase.rpc(
+          'is_current_user_whitelisted'
+        );
+
+        if (error) throw error;
+
+        state.isWhitelisted = Boolean(allowed);
+
+        if (allowed) {
+          await loadMyProfile();
+          await loadInitialMessages();
+          subscribeToMessages();
+          renderChat();
+        } else {
+          renderPasscode();
+        }
+      } catch (error) {
+        console.error(error);
+        renderError('Could not initialize user.');
+      } finally {
+        state.checkingAccess = false;
+      }
+    }
+
+    async function loadMyProfile() {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, display_name, avatar_url, provider, provider_user_id, email')
+        .eq('id', state.session.user.id)
+        .single();
+
+      if (error) throw error;
+
+      state.profile = data;
+      state.profilesById[data.id] = data;
+    }
+
+    async function loadInitialMessages() {
+      const { data, error } = await supabase
+        .from('messages')
+        .select('id, user_id, content, created_at')
+        .order('created_at', { ascending: false })
+        .limit(MESSAGE_LIMIT);
+
+      if (error) throw error;
+
+      state.messages = data.reverse();
+
+      const userIds = [...new Set(state.messages.map(m => m.user_id))];
+      await loadProfilesForUsers(userIds);
+    }
+
+    async function loadProfilesForUsers(userIds) {
+      const missing = userIds.filter(id => !state.profilesById[id]);
+
+      if (missing.length === 0) return;
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, display_name, avatar_url')
+        .in('id', missing);
+
+      if (error) {
+        console.error(error);
+        return;
+      }
+
+      for (const profile of data) {
+        state.profilesById[profile.id] = profile;
+      }
+    }
+
+    function subscribeToMessages() {
+      if (state.channel) return;
+
+      state.channel = supabase
+        .channel('room:messages')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages'
+          },
+          async payload => {
+            const message = payload.new;
+
+            if (!state.messages.some(m => m.id === message.id)) {
+              state.messages.push(message);
+              state.messages = state.messages.slice(-MESSAGE_LIMIT);
+            }
+
+            await loadProfilesForUsers([message.user_id]);
+            renderChat();
+            scrollToBottom();
+          }
+        )
+        .subscribe();
+    }
+
+    async function login(provider) {
+      await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: window.location.href.split('#')[0]
+        }
+      });
+    }
+
+    async function logout() {
+      if (state.channel) {
+        await supabase.removeChannel(state.channel);
+        state.channel = null;
+      }
+
+      await supabase.auth.signOut();
+    }
+
+    async function redeemPasscode(event) {
+      event.preventDefault();
+
+      const form = event.currentTarget;
+      const passcode = form.passcode.value.trim();
+      const errorEl = document.getElementById('passcode-error');
+
+      errorEl.textContent = '';
+
+      const { data, error } = await supabase.rpc('redeem_auth_passcode', {
+        passcode
+      });
+
+      if (error) {
+        console.error(error);
+        errorEl.textContent = 'Something went wrong.';
+        return;
+      }
+
+      if (!data) {
+        errorEl.textContent = 'Incorrect passcode.';
+        return;
+      }
+
+      await initializeUser();
+    }
+
+    async function sendMessage(event) {
+      event.preventDefault();
+
+      const input = document.getElementById('message-input');
+      const content = input.value.trim();
+
+      if (!content) return;
+
+      input.value = '';
+
+      const { error } = await supabase.from('messages').insert({
+        user_id: state.session.user.id,
+        content
+      });
+
+      if (error) {
+        console.error(error);
+        input.value = content;
+      }
+    }
+
+    async function saveProfile(event) {
+      event.preventDefault();
+
+      const displayName = document
+        .getElementById('display-name-input')
+        .value
+        .trim()
+        .slice(0, 40) || 'User';
+
+      const avatarUrl = document
+        .getElementById('avatar-url-input')
+        .value
+        .trim()
+        .slice(0, 500);
+
+      const button = document.getElementById('save-profile-button');
+      button.disabled = true;
+      button.textContent = 'Saving...';
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({
+          display_name: displayName,
+          avatar_url: avatarUrl || null
+        })
+        .eq('id', state.session.user.id)
+        .select('id, display_name, avatar_url, provider, provider_user_id, email')
+        .single();
+
+      button.disabled = false;
+      button.textContent = 'Save profile';
+
+      if (error) {
+        console.error(error);
+        return;
+      }
+
+      state.profile = data;
+      state.profilesById[data.id] = data;
+
+      renderChat();
+    }
+
+    function renderLogin() {
+      app.innerHTML = `
+        <main class="page auth-page">
+          <section class="card auth-card">
+            <h1>Whitelist Chat</h1>
+            <p class="muted">Sign in with Discord or Google to continue.</p>
+
+            <div class="auth-buttons">
+              <button id="discord-login" class="login-button discord">
+                <img
+                  src="${DISCORD_LOGO_URL}"
+                  alt=""
+                  loading="lazy"
+                  referrerpolicy="no-referrer"
+                />
+                <span>Continue with Discord</span>
+              </button>
+
+              <button id="google-login" class="login-button google">
+                <img
+                  src="${GOOGLE_LOGO_URL}"
+                  alt=""
+                  loading="lazy"
+                  referrerpolicy="no-referrer"
+                />
+                <span>Continue with Google</span>
+              </button>
+            </div>
+          </section>
+        </main>
+      `;
+
+      document
+        .getElementById('discord-login')
+        .addEventListener('click', () => login('discord'));
+
+      document
+        .getElementById('google-login')
+        .addEventListener('click', () => login('google'));
+    }
+
+    function renderLoading() {
+      app.innerHTML = `
+        <main class="page">
+          <section class="card">
+            <p>Checking whitelist...</p>
+          </section>
+        </main>
+      `;
+    }
+
+    function renderError(message) {
+      app.innerHTML = `
+        <main class="page">
+          <section class="card">
+            <h1>Error</h1>
+            <p class="error">${escapeHtml(message)}</p>
+            <button id="logout-button">Sign out</button>
+          </section>
+        </main>
+      `;
+
+      document
+        .getElementById('logout-button')
+        .addEventListener('click', logout);
+    }
+
+    function renderPasscode() {
+      const user = state.session.user;
+      const provider = user.app_metadata?.provider || 'unknown';
+      const providerId =
+        user.user_metadata?.provider_id ||
+        user.user_metadata?.sub ||
+        user.id;
+
+      app.innerHTML = `
+        <main class="page auth-page">
+          <section class="card auth-card">
+            <h1>Access Required</h1>
+
+            <p class="muted">
+              This account is not currently whitelisted.
+            </p>
+
+            <div class="account-box">
+              <div><strong>Provider:</strong> ${escapeHtml(provider)}</div>
+              <div><strong>Provider ID:</strong> ${escapeHtml(providerId)}</div>
+              <div><strong>Email:</strong> ${escapeHtml(user.email || 'N/A')}</div>
+            </div>
+
+            <form id="passcode-form" class="passcode-form">
+              <label>
+                Authentication passcode
+                <input
+                  name="passcode"
+                  placeholder="Enter passcode"
+                  autocomplete="off"
+                />
+              </label>
+
+              <p id="passcode-error" class="error"></p>
+
+              <button type="submit">Authenticate</button>
+            </form>
+
+            <button id="logout-button" class="secondary">Sign out</button>
+          </section>
+        </main>
+      `;
+
+      document
+        .getElementById('passcode-form')
+        .addEventListener('submit', redeemPasscode);
+
+      document
+        .getElementById('logout-button')
+        .addEventListener('click', logout);
+    }
+
+    function renderChat() {
+      const profile = state.profile || {};
+      const user = state.session.user;
+
+      app.innerHTML = `
+        <main class="chat-layout">
+          <aside class="sidebar">
+            <div class="sidebar-header">
+              <h2>Chat</h2>
+              <button id="logout-button" class="secondary small">
+                Sign out
+              </button>
+            </div>
+
+            <form id="profile-form" class="profile-form">
+              <h3>Profile</h3>
+
+              <label>
+                Display name
+                <input
+                  id="display-name-input"
+                  value="${escapeAttr(profile.display_name || '')}"
+                  maxlength="40"
+                />
+              </label>
+
+              <label>
+                Profile image URL
+                <input
+                  id="avatar-url-input"
+                  value="${escapeAttr(profile.avatar_url || '')}"
+                  placeholder="https://..."
+                />
+              </label>
+
+              <button id="save-profile-button" type="submit">
+                Save profile
+              </button>
+            </form>
+
+            <div class="account-small">
+              <p>
+                Signed in as
+                <strong>${escapeHtml(profile.display_name || user.email || 'User')}</strong>
+              </p>
+              <p class="muted tiny">
+                ${escapeHtml(profile.provider || '')}
+                /
+                ${escapeHtml(profile.email || profile.provider_user_id || '')}
+              </p>
+            </div>
+          </aside>
+
+          <section class="chat-panel">
+            <div id="messages" class="messages">
+              ${state.messages.map(renderMessage).join('')}
+              <div id="bottom"></div>
+            </div>
+
+            <form id="composer" class="composer">
+              <input
+                id="message-input"
+                placeholder="Type a message..."
+                maxlength="1000"
+                autocomplete="off"
+              />
+              <button type="submit">Send</button>
+            </form>
+          </section>
+        </main>
+      `;
+
+      document
+        .getElementById('logout-button')
+        .addEventListener('click', logout);
+
+      document
+        .getElementById('profile-form')
+        .addEventListener('submit', saveProfile);
+
+      document
+        .getElementById('composer')
+        .addEventListener('submit', sendMessage);
+
+      scrollToBottom();
+    }
+
+    function renderMessage(message) {
+      const sender = state.profilesById[message.user_id] || {};
+      const mine = message.user_id === state.session.user.id;
+      const name = sender.display_name || 'User';
+      const avatarUrl = sender.avatar_url;
+
+      return `
+        <article class="message ${mine ? 'mine' : ''}">
+          ${renderAvatar(name, avatarUrl)}
+
+          <div class="message-body">
+            <div class="message-meta">
+              <strong>${escapeHtml(name)}</strong>
+              <span>${escapeHtml(new Date(message.created_at).toLocaleString())}</span>
+            </div>
+
+            <p>${escapeHtml(message.content)}</p>
+          </div>
+        </article>
+      `;
+    }
+
+    function renderAvatar(name, avatarUrl) {
+      if (avatarUrl) {
+        return `
+          <img
+            class="avatar"
+            src="${escapeAttr(avatarUrl)}"
+            alt="${escapeAttr(name)}"
+            loading="lazy"
+            referrerpolicy="no-referrer"
+          />
+        `;
+      }
+
+      return `
+        <div class="avatar fallback">
+          ${escapeHtml(name.slice(0, 1).toUpperCase())}
+        </div>
+      `;
+    }
+
+    function scrollToBottom() {
+      requestAnimationFrame(() => {
+        document.getElementById('bottom')?.scrollIntoView({
+          behavior: 'smooth'
+        });
+      });
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    function escapeAttr(value) {
+      return escapeHtml(value);
+    }
+  </script>
+</body>
+</html>
