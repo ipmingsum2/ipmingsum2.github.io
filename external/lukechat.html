@@ -6,7 +6,7 @@
     name="viewport"
     content="width=device-width, initial-scale=1.0"
   />
-  <title>Whitelist Chat</title>
+  <title>Luke Chat</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -332,7 +332,7 @@
 
     const MESSAGE_LIMIT = 50;
 
-    const supabase = window.supabase.createClient(
+    const db = window.supabase.createClient(
       SUPABASE_URL,
       SUPABASE_ANON_KEY,
       {
@@ -364,10 +364,10 @@
     init();
 
     async function init() {
-      const { data } = await supabase.auth.getSession();
+      const { data } = await db.auth.getSession();
       state.session = data.session;
 
-      supabase.auth.onAuthStateChange(async (_event, session) => {
+      db.auth.onAuthStateChange(async (_event, session) => {
         state.session = session;
         state.profile = null;
         state.isWhitelisted = false;
@@ -375,7 +375,7 @@
         state.profilesById = {};
 
         if (state.channel) {
-          await supabase.removeChannel(state.channel);
+          await db.removeChannel(state.channel);
           state.channel = null;
         }
 
@@ -400,9 +400,9 @@
       renderLoading();
 
       try {
-        await supabase.rpc('sync_my_profile');
+        await db.rpc('sync_my_profile');
 
-        const { data: allowed, error } = await supabase.rpc(
+        const { data: allowed, error } = await db.rpc(
           'is_current_user_whitelisted'
         );
 
@@ -427,7 +427,7 @@
     }
 
     async function loadMyProfile() {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('profiles')
         .select('id, display_name, avatar_url, provider, provider_user_id, email')
         .eq('id', state.session.user.id)
@@ -440,7 +440,7 @@
     }
 
     async function loadInitialMessages() {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('messages')
         .select('id, user_id, content, created_at')
         .order('created_at', { ascending: false })
@@ -459,7 +459,7 @@
 
       if (missing.length === 0) return;
 
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('profiles')
         .select('id, display_name, avatar_url')
         .in('id', missing);
@@ -477,7 +477,7 @@
     function subscribeToMessages() {
       if (state.channel) return;
 
-      state.channel = supabase
+      state.channel = db
         .channel('room:messages')
         .on(
           'postgres_changes',
@@ -503,7 +503,7 @@
     }
 
     async function login(provider) {
-      await supabase.auth.signInWithOAuth({
+      await db.auth.signInWithOAuth({
         provider,
         options: {
           redirectTo: window.location.href.split('#')[0]
@@ -513,11 +513,11 @@
 
     async function logout() {
       if (state.channel) {
-        await supabase.removeChannel(state.channel);
+        await db.removeChannel(state.channel);
         state.channel = null;
       }
 
-      await supabase.auth.signOut();
+      await db.auth.signOut();
     }
 
     async function redeemPasscode(event) {
@@ -529,7 +529,7 @@
 
       errorEl.textContent = '';
 
-      const { data, error } = await supabase.rpc('redeem_auth_passcode', {
+      const { data, error } = await db.rpc('redeem_auth_passcode', {
         passcode
       });
 
@@ -557,7 +557,7 @@
 
       input.value = '';
 
-      const { error } = await supabase.from('messages').insert({
+      const { error } = await db.from('messages').insert({
         user_id: state.session.user.id,
         content
       });
@@ -587,7 +587,7 @@
       button.disabled = true;
       button.textContent = 'Saving...';
 
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('profiles')
         .update({
           display_name: displayName,
@@ -615,8 +615,8 @@
       app.innerHTML = `
         <main class="page auth-page">
           <section class="card auth-card">
-            <h1>Whitelist Chat</h1>
-            <p class="muted">Sign in with Discord or Google to continue.</p>
+            <h1>Luke Chat</h1>
+            <p class="muted">A chat made for Alvin and Luke to finally chat without YouTube comments.</p>
 
             <div class="auth-buttons">
               <button id="discord-login" class="login-button discord">
