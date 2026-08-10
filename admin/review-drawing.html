@@ -1,0 +1,416 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Alvin's Creationz Staff — Drawing Review</title>
+  <style>
+    :root {
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #f7f9ff;
+      background: #080d16;
+      --panel: rgba(16, 22, 32, .94);
+      --line: rgba(116, 137, 169, .24);
+      --muted: #8997ae;
+      --blue: #3168ee;
+      --cyan: #51bee7;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+    button, textarea, input { font: inherit; }
+
+    body {
+      min-width: 320px;
+      background:
+        radial-gradient(circle at 8% 0%, rgba(29, 91, 133, .3), transparent 36%),
+        radial-gradient(circle at 98% 100%, rgba(43, 50, 121, .18), transparent 42%),
+        linear-gradient(135deg, #0d2033 0%, #080e18 48%, #0b121d 100%);
+    }
+
+    .app {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      grid-template-rows: 72px minmax(0, 1fr);
+      gap: 16px;
+      padding: 20px 24px 24px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, .27);
+      backdrop-filter: blur(18px);
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      transition: transform 160ms ease-out;
+    }
+
+    .brand-mark {
+      display: grid;
+      width: 40px;
+      height: 40px;
+      flex: 0 0 auto;
+      place-items: center;
+      border-radius: 11px;
+      background: linear-gradient(135deg, #3476ff, #4836de);
+      box-shadow: 0 10px 26px rgba(49, 104, 238, .32);
+      font-weight: 800;
+      transition: transform 160ms ease-out;
+    }
+
+    .brand-copy { min-width: 0; }
+    .brand-copy h1 { margin: 0; font-size: 18px; letter-spacing: -.01em; }
+    .brand-copy p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+
+    .review-button {
+      margin-left: auto;
+      min-width: 178px;
+      height: 42px;
+      padding: 0 20px;
+      border: 1px solid rgba(133, 163, 255, .46);
+      border-radius: 11px;
+      color: white;
+      background: linear-gradient(135deg, #3975f5, #294ed5);
+      box-shadow: 0 12px 30px rgba(42, 86, 220, .28);
+      cursor: pointer;
+      font-weight: 750;
+      transition: transform 150ms ease, filter 150ms ease;
+    }
+
+    .review-button:hover { filter: brightness(1.12); transform: translateY(-1px); }
+    .review-button:active { transform: translateY(1px); }
+    .review-button:focus-visible, textarea:focus-visible { outline: 2px solid #7ba8ff; outline-offset: 2px; }
+
+    .content {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
+      gap: 18px;
+      transition: transform 160ms ease-out;
+    }
+
+    .sidebar, .preview-card { min-height: 0; border-radius: 16px; }
+    .sidebar { display: flex; flex-direction: column; padding: 18px 16px; }
+    .eyebrow { margin: 0 2px 5px; color: #8595b0; font-size: 11px; font-weight: 800; letter-spacing: .1em; }
+    h2 { margin: 0 2px 14px; font-size: 17px; }
+
+    .player-info {
+      width: 100%;
+      height: 206px;
+      resize: none;
+      padding: 14px;
+      border: 1px solid rgba(90, 112, 147, .34);
+      border-radius: 13px;
+      color: #dde4f0;
+      background: #171e2a;
+      font: 14px/1.65 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      cursor: text;
+    }
+
+    .status-card {
+      margin-top: 16px;
+      padding: 12px 14px;
+      min-height: 92px;
+      border: 1px solid rgba(48, 144, 184, .34);
+      border-radius: 13px;
+      background: #0d212f;
+    }
+
+    .status-card strong { display: block; margin-bottom: 8px; color: var(--cyan); font-size: 10px; letter-spacing: .09em; }
+    .status-card span { color: #c9dbe8; font-size: 12px; line-height: 1.45; }
+    .privacy { margin: auto 2px 0; padding-top: 18px; color: #748297; font-size: 11px; line-height: 1.45; }
+
+    .preview-card {
+      display: grid;
+      min-width: 0;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      padding: 16px 18px 12px;
+    }
+
+    .preview-title h2 { margin: 0; }
+    .preview-title p { margin: 4px 0 11px; color: #7f8da3; font-size: 11px; }
+
+    .canvas-well {
+      position: relative;
+      display: grid;
+      min-height: 0;
+      place-items: center;
+      overflow: hidden;
+      border: 1px solid rgba(77, 94, 120, .31);
+      border-radius: 13px;
+      background:
+        linear-gradient(rgba(255, 255, 255, .018) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, .018) 1px, transparent 1px),
+        #090d14;
+      background-size: 24px 24px;
+    }
+
+    canvas {
+      display: none;
+      max-width: calc(100% - 36px);
+      max-height: calc(100% - 36px);
+      border-radius: 4px;
+      background: white;
+      box-shadow: 0 22px 65px rgba(0, 0, 0, .42);
+    }
+
+    .empty-state { padding: 30px; color: #6f7e95; text-align: center; font-size: 13px; font-weight: 800; line-height: 1.6; }
+    .drop-active { border-color: #4b86ff; box-shadow: inset 0 0 0 1px #4b86ff, 0 0 42px rgba(54, 110, 239, .17); }
+    .footer { min-height: 24px; padding: 9px 2px 0; color: #7e8ca1; font-size: 11px; }
+    #fileInput { position: fixed; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+    @media (max-width: 760px) {
+      html, body { overflow: auto; }
+      .app { position: relative; min-height: 100%; grid-template-rows: auto auto; padding: 12px; }
+      .topbar { flex-wrap: wrap; }
+      .review-button { width: 100%; margin-left: 0; }
+      .content { grid-template-columns: 1fr; }
+      .sidebar { min-height: 420px; }
+      .preview-card { min-height: 64vh; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app" id="app">
+    <header class="topbar panel" id="topbar">
+      <div class="brand-mark" id="brandMark">A</div>
+      <div class="brand-copy">
+        <h1>Alvin's Creationz Staff</h1>
+        <p>Drawing Review Console</p>
+      </div>
+      <button class="review-button" id="reviewButton" type="button">Review Drawing</button>
+      <input id="fileInput" type="file" accept=".txt,text/plain,application/json">
+    </header>
+
+    <section class="content" id="content">
+      <aside class="sidebar panel">
+        <p class="eyebrow">REVIEW DETAILS</p>
+        <h2>Player information</h2>
+        <textarea class="player-info" id="playerInfo" readonly aria-label="Player information">No drawing selected.
+
+Review a webhook TXT file to display the player's username, display name, user ID, place, and timestamps.</textarea>
+        <div class="status-card">
+          <strong>STATUS</strong>
+          <span id="status" role="status">Ready to review a downloaded webhook TXT.</span>
+        </div>
+        <p class="privacy">Coordinates and colors are reconstructed locally. No AI moderation is used. You can also drag a TXT file anywhere onto this window.</p>
+      </aside>
+
+      <section class="preview-card panel">
+        <div class="preview-title">
+          <h2>Drawing Preview</h2>
+          <p>Faithful reconstruction of submitted coordinates and colors</p>
+        </div>
+        <div class="canvas-well" id="canvasWell">
+          <div class="empty-state" id="emptyState">NO DRAWING LOADED<br>Select Review Drawing or drop a TXT log here.</div>
+          <canvas id="drawingCanvas" aria-label="Reconstructed whiteboard drawing"></canvas>
+        </div>
+        <div class="footer" id="footer">No log loaded</div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const fileInput = document.getElementById("fileInput");
+      const reviewButton = document.getElementById("reviewButton");
+      const playerInfo = document.getElementById("playerInfo");
+      const status = document.getElementById("status");
+      const footer = document.getElementById("footer");
+      const emptyState = document.getElementById("emptyState");
+      const canvasWell = document.getElementById("canvasWell");
+      const canvas = document.getElementById("drawingCanvas");
+      const context = canvas.getContext("2d");
+      const topbar = document.getElementById("topbar");
+      const content = document.getElementById("content");
+      const brandMark = document.getElementById("brandMark");
+      let loadedData = null;
+
+      const safeColor = (value, fallback = "#111111") =>
+        typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value) ? value : fallback;
+
+      const utcDate = (seconds) => {
+        if (!Number.isFinite(Number(seconds))) return "Unknown";
+        return new Date(Number(seconds) * 1000).toISOString().replace("T", " ").replace(".000Z", " UTC");
+      };
+
+      function point(point, width, height) {
+        const x = Number(point?.x ?? point?.[0] ?? 0);
+        const y = Number(point?.y ?? point?.[1] ?? 0);
+        return [Math.max(0, Math.min(1, x)) * width, Math.max(0, Math.min(1, y)) * height];
+      }
+
+      function drawPath(action, width, height, scale) {
+        const points = Array.isArray(action.points) ? action.points : [];
+        if (!points.length) return;
+        const kind = String(action.kind || "").toLowerCase();
+        const thickness = Math.max(1, Number(action.size || 8) * scale);
+        const first = point(points[0], width, height);
+        const last = point(points[points.length - 1], width, height);
+        let stroke = kind === "erase" ? "#ffffff" : safeColor(action.color);
+
+        if (kind === "gradient") {
+          const gradient = context.createLinearGradient(first[0], first[1], last[0], last[1]);
+          gradient.addColorStop(0, safeColor(action.color));
+          gradient.addColorStop(1, safeColor(action.color2, "#ffffff"));
+          stroke = gradient;
+        }
+
+        context.strokeStyle = stroke;
+        context.fillStyle = stroke;
+        context.lineWidth = thickness;
+        context.lineCap = "round";
+        context.lineJoin = "round";
+
+        if (kind === "rectangle" && points.length >= 2) {
+          context.strokeRect(Math.min(first[0], last[0]), Math.min(first[1], last[1]), Math.abs(last[0] - first[0]), Math.abs(last[1] - first[1]));
+          return;
+        }
+
+        if (kind === "ellipse" && points.length >= 2) {
+          context.beginPath();
+          context.ellipse((first[0] + last[0]) / 2, (first[1] + last[1]) / 2,
+            Math.max(thickness / 2, Math.abs(last[0] - first[0]) / 2),
+            Math.max(thickness / 2, Math.abs(last[1] - first[1]) / 2), 0, 0, Math.PI * 2);
+          context.stroke();
+          return;
+        }
+
+        if (points.length === 1) {
+          context.beginPath();
+          context.arc(first[0], first[1], thickness / 2, 0, Math.PI * 2);
+          context.fill();
+          return;
+        }
+
+        context.beginPath();
+        context.moveTo(first[0], first[1]);
+        for (let index = 1; index < points.length; index += 1) {
+          const next = point(points[index], width, height);
+          context.lineTo(next[0], next[1]);
+        }
+        context.stroke();
+      }
+
+      function renderDrawing() {
+        if (!loadedData) return;
+        const sourceWidth = Math.max(1, Number(loadedData.canvas?.width || 1000));
+        const sourceHeight = Math.max(1, Number(loadedData.canvas?.height || 823));
+        const availableWidth = Math.max(1, canvasWell.clientWidth - 36);
+        const availableHeight = Math.max(1, canvasWell.clientHeight - 36);
+        const ratio = sourceWidth / sourceHeight;
+        let width = availableWidth;
+        let height = width / ratio;
+        if (height > availableHeight) {
+          height = availableHeight;
+          width = height * ratio;
+        }
+
+        const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.style.width = `${Math.floor(width)}px`;
+        canvas.style.height = `${Math.floor(height)}px`;
+        canvas.width = Math.max(1, Math.floor(width * pixelRatio));
+        canvas.height = Math.max(1, Math.floor(height * pixelRatio));
+        context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+        context.fillStyle = "#ffffff";
+        context.fillRect(0, 0, width, height);
+
+        const scale = width / sourceWidth;
+        for (const action of loadedData.actions || []) {
+          const kind = String(action.kind || "").toLowerCase();
+          if (kind === "clear") {
+            context.fillStyle = "#ffffff";
+            context.fillRect(0, 0, width, height);
+          } else if (kind === "fill") {
+            context.fillStyle = safeColor(action.color);
+            context.fillRect(0, 0, width, height);
+          } else {
+            drawPath(action, width, height, scale);
+          }
+        }
+      }
+
+      function showData(data) {
+        if (!data || data.format !== "RobloxWhiteboard/v1" || !Array.isArray(data.actions)) {
+          throw new Error("Invalid whiteboard TXT format.");
+        }
+        loadedData = data;
+        const player = data.player || {};
+        const place = data.place || {};
+        const session = data.session || {};
+        playerInfo.value = [
+          `Username: @${player.username ?? "Unknown"}`,
+          `Display name: ${player.displayName ?? "Unknown"}`,
+          `User ID: ${player.userId ?? "Unknown"}`,
+          `Place ID: ${place.placeId ?? "Unknown"}`,
+          `Started: ${utcDate(session.startedAt)}`,
+          `Ended: ${utcDate(session.endedAt)}`
+        ].join("\n");
+        status.textContent = "Loaded successfully. Reconstructed preview shown below.";
+        footer.textContent = `${data.actions.length} actions — ${session.reason || "Unknown exit reason"}`;
+        emptyState.hidden = true;
+        canvas.style.display = "block";
+        renderDrawing();
+      }
+
+      async function loadFile(file) {
+        if (!file) return;
+        status.textContent = "Reading drawing log…";
+        try {
+          const text = await file.text();
+          showData(JSON.parse(text));
+        } catch (error) {
+          status.textContent = error instanceof SyntaxError ? "The selected TXT does not contain valid JSON." : String(error.message || error);
+        }
+      }
+
+      reviewButton.addEventListener("click", () => fileInput.click());
+      fileInput.addEventListener("change", () => {
+        loadFile(fileInput.files?.[0]);
+        fileInput.value = "";
+      });
+
+      for (const eventName of ["dragenter", "dragover"]) {
+        window.addEventListener(eventName, (event) => {
+          event.preventDefault();
+          canvasWell.classList.add("drop-active");
+        });
+      }
+      for (const eventName of ["dragleave", "drop"]) {
+        window.addEventListener(eventName, (event) => {
+          event.preventDefault();
+          canvasWell.classList.remove("drop-active");
+        });
+      }
+      window.addEventListener("drop", (event) => loadFile(event.dataTransfer?.files?.[0]));
+
+      let resizeFrame = 0;
+      window.addEventListener("resize", () => {
+        cancelAnimationFrame(resizeFrame);
+        resizeFrame = requestAnimationFrame(renderDrawing);
+      });
+
+      window.addEventListener("pointermove", (event) => {
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+        const x = (event.clientX / window.innerWidth - .5) * 2;
+        const y = (event.clientY / window.innerHeight - .5) * 2;
+        topbar.style.transform = `translate(${x * 4}px, ${y * 3}px)`;
+        content.style.transform = `translate(${-x * 3}px, ${-y * 2}px)`;
+        brandMark.style.transform = `rotate(${x * 4}deg)`;
+      }, { passive: true });
+    })();
+  </script>
+</body>
+</html>
