@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -164,6 +165,29 @@
     }
 
     .empty-state { padding: 30px; color: #6f7e95; text-align: center; font-size: 13px; font-weight: 800; line-height: 1.6; }
+    .owner-tooltip {
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      z-index: 10;
+      max-width: calc(100% - 32px);
+      padding: 10px 16px;
+      overflow: hidden;
+      border: 1px solid rgba(111, 145, 199, .42);
+      border-radius: 10px;
+      color: white;
+      background: rgba(17, 25, 38, .96);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, .3);
+      font-size: 13px;
+      font-weight: 750;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, -8px);
+      transition: opacity 120ms ease, transform 120ms ease;
+    }
+    .owner-tooltip.visible { opacity: 1; transform: translate(-50%, 0); }
     .drop-active { border-color: #4b86ff; box-shadow: inset 0 0 0 1px #4b86ff, 0 0 42px rgba(54, 110, 239, .17); }
     .footer { min-height: 24px; padding: 9px 2px 0; color: #7e8ca1; font-size: 11px; }
     #fileInput { position: fixed; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
@@ -213,6 +237,7 @@ Review a webhook TXT file to display the player's username, display name, user I
         <div class="canvas-well" id="canvasWell">
           <div class="empty-state" id="emptyState">NO DRAWING LOADED<br>Select Review Drawing or drop a TXT log here.</div>
           <canvas id="drawingCanvas" aria-label="Reconstructed whiteboard drawing"></canvas>
+          <div class="owner-tooltip" id="ownerTooltip" role="status"></div>
         </div>
         <div class="footer" id="footer">No log loaded</div>
       </section>
@@ -232,10 +257,12 @@ Review a webhook TXT file to display the player's username, display name, user I
       const canvasWell = document.getElementById("canvasWell");
       const canvas = document.getElementById("drawingCanvas");
       const context = canvas.getContext("2d");
+      const ownerTooltip = document.getElementById("ownerTooltip");
       const topbar = document.getElementById("topbar");
       const content = document.getElementById("content");
       const brandMark = document.getElementById("brandMark");
       let loadedData = null;
+      let hoverRegions = [];
 
       const safeColor = (value, fallback = "#111111") =>
         typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value) ? value : fallback;
@@ -249,6 +276,22 @@ Review a webhook TXT file to display the player's username, display name, user I
         const x = Number(point?.x ?? point?.[0] ?? 0);
         const y = Number(point?.y ?? point?.[1] ?? 0);
         return [Math.max(0, Math.min(1, x)) * width, Math.max(0, Math.min(1, y)) * height];
+      }
+
+      function ownerFor(action) {
+        const fallback = loadedData?.player || {};
+        const username = action?.username ?? fallback.username;
+        const displayName = action?.displayName ?? fallback.displayName;
+        const userId = action?.userId ?? fallback.userId;
+        if (!username && !userId) return "Unknown player";
+        if (displayName && username && displayName !== username) {
+          return `Drawn by ${displayName} (@${username}) • User ID ${userId ?? "Unknown"}`;
+        }
+        return `Drawn by @${username ?? "Unknown"} • User ID ${userId ?? "Unknown"}`;
+      }
+
+      function addSegmentRegion(first, second, width, action) {
+        hoverRegions.push({ type: "segment", first, second, width: Math.max(10, width + 8), owner: ownerFor(action) });
       }
 
       function drawPath(action, width, height, scale) {
@@ -275,6 +318,12 @@ Review a webhook TXT file to display the player's username, display name, user I
 
         if (kind === "rectangle" && points.length >= 2) {
           context.strokeRect(Math.min(first[0], last[0]), Math.min(first[1], last[1]), Math.abs(last[0] - first[0]), Math.abs(last[1] - first[1]));
+          const topRight = [last[0], first[1]];
+          const bottomLeft = [first[0], last[1]];
+          addSegmentRegion(first, topRight, thickness, action);
+          addSegmentRegion(topRight, last, thickness, action);
+          addSegmentRegion(last, bottomLeft, thickness, action);
+          addSegmentRegion(bottomLeft, first, thickness, action);
           return;
         }
 
@@ -284,6 +333,15 @@ Review a webhook TXT file to display the player's username, display name, user I
             Math.max(thickness / 2, Math.abs(last[0] - first[0]) / 2),
             Math.max(thickness / 2, Math.abs(last[1] - first[1]) / 2), 0, 0, Math.PI * 2);
           context.stroke();
+          hoverRegions.push({
+            type: "ellipse",
+            cx: (first[0] + last[0]) / 2,
+            cy: (first[1] + last[1]) / 2,
+            rx: Math.max(thickness / 2, Math.abs(last[0] - first[0]) / 2),
+            ry: Math.max(thickness / 2, Math.abs(last[1] - first[1]) / 2),
+            width: Math.max(6, thickness / 2 + 4),
+            owner: ownerFor(action)
+          });
           return;
         }
 
@@ -291,6 +349,7 @@ Review a webhook TXT file to display the player's username, display name, user I
           context.beginPath();
           context.arc(first[0], first[1], thickness / 2, 0, Math.PI * 2);
           context.fill();
+          addSegmentRegion(first, first, thickness, action);
           return;
         }
 
@@ -299,12 +358,15 @@ Review a webhook TXT file to display the player's username, display name, user I
         for (let index = 1; index < points.length; index += 1) {
           const next = point(points[index], width, height);
           context.lineTo(next[0], next[1]);
+          addSegmentRegion(point(points[index - 1], width, height), next, thickness, action);
         }
         context.stroke();
       }
 
       function renderDrawing() {
         if (!loadedData) return;
+        hoverRegions = [];
+        ownerTooltip.classList.remove("visible");
         const sourceWidth = Math.max(1, Number(loadedData.canvas?.width || 1000));
         const sourceHeight = Math.max(1, Number(loadedData.canvas?.height || 823));
         const availableWidth = Math.max(1, canvasWell.clientWidth - 36);
@@ -322,6 +384,8 @@ Review a webhook TXT file to display the player's username, display name, user I
         canvas.style.height = `${Math.floor(height)}px`;
         canvas.width = Math.max(1, Math.floor(width * pixelRatio));
         canvas.height = Math.max(1, Math.floor(height * pixelRatio));
+        canvas.logicalWidth = width;
+        canvas.logicalHeight = height;
         context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
         context.fillStyle = "#ffffff";
         context.fillRect(0, 0, width, height);
@@ -332,14 +396,50 @@ Review a webhook TXT file to display the player's username, display name, user I
           if (kind === "clear") {
             context.fillStyle = "#ffffff";
             context.fillRect(0, 0, width, height);
+            hoverRegions = [];
           } else if (kind === "fill") {
             context.fillStyle = safeColor(action.color);
             context.fillRect(0, 0, width, height);
+            hoverRegions.push({ type: "fill", owner: ownerFor(action) });
           } else {
             drawPath(action, width, height, scale);
           }
         }
       }
+
+      function distanceToSegment(x, y, first, second) {
+        const dx = second[0] - first[0];
+        const dy = second[1] - first[1];
+        if (dx === 0 && dy === 0) return Math.hypot(x - first[0], y - first[1]);
+        const amount = Math.max(0, Math.min(1, ((x - first[0]) * dx + (y - first[1]) * dy) / (dx * dx + dy * dy)));
+        return Math.hypot(x - (first[0] + amount * dx), y - (first[1] + amount * dy));
+      }
+
+      function regionContains(region, x, y) {
+        if (region.type === "fill") return true;
+        if (region.type === "segment") return distanceToSegment(x, y, region.first, region.second) <= region.width / 2;
+        if (region.type === "ellipse") {
+          const normalized = Math.hypot((x - region.cx) / region.rx, (y - region.cy) / region.ry);
+          return Math.abs(normalized - 1) * Math.min(region.rx, region.ry) <= region.width;
+        }
+        return false;
+      }
+
+      canvas.addEventListener("pointermove", (event) => {
+        const bounds = canvas.getBoundingClientRect();
+        const x = (event.clientX - bounds.left) * ((canvas.logicalWidth || bounds.width) / bounds.width);
+        const y = (event.clientY - bounds.top) * ((canvas.logicalHeight || bounds.height) / bounds.height);
+        let owner = "";
+        for (let index = hoverRegions.length - 1; index >= 0; index -= 1) {
+          if (regionContains(hoverRegions[index], x, y)) {
+            owner = hoverRegions[index].owner;
+            break;
+          }
+        }
+        ownerTooltip.textContent = owner;
+        ownerTooltip.classList.toggle("visible", Boolean(owner));
+      });
+      canvas.addEventListener("pointerleave", () => ownerTooltip.classList.remove("visible"));
 
       function showData(data) {
         if (!data || data.format !== "RobloxWhiteboard/v1" || !Array.isArray(data.actions)) {
