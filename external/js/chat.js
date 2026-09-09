@@ -1,4 +1,6 @@
-let validEmail = true; // Let me know if this had caused bugs.
+function validEmail() {
+  return true;
+}
 const SUPABASE_URL = "https://lflkpziiwnoamvtrbcil.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_tFvlhmTEDV3SOSVp0JvVzg_KHXFiDNb";
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
