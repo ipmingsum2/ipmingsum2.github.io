@@ -220,8 +220,7 @@
   <main class="container">
     <h1>Get Modmail Source</h1>
     <div class="subtitle">
-      Enter your code. The page will generate an MD5 hash from it, send it to the Worker,
-      and show the returned source in a read-only textarea.
+      Please enter the secret password to access the modmail's source code.
     </div>
 
     <label for="codeInput">Code</label>
@@ -230,7 +229,7 @@
       <input
         id="codeInput"
         type="password"
-        placeholder="Type code here"
+        placeholder="What's the secret password?"
         autocomplete="off"
       />
       <button id="submitBtn" type="button">Submit</button>
@@ -242,7 +241,7 @@
 
     <section id="resultSection" class="hidden">
       <div class="result-header">
-        <h2>Returned Source</h2>
+        <h2>Modmail Source</h2>
         <button id="copyBtn" class="copy-btn" type="button">Copy</button>
       </div>
 
@@ -493,14 +492,16 @@
       resultSection.classList.add("hidden");
 
       try {
-        setStatus("Generating MD5 hash...", "loading");
+        setStatus("Processing password...", "loading");
 
         const hashedCode = md5(rawCode);
 
-        hashBox.textContent = "MD5: " + hashedCode;
-        hashBox.classList.remove("hidden");
+        /*
+        * hashBox.textContent = "MD5: " + hashedCode;
+        * hashBox.classList.remove("hidden");
+        */
 
-        setStatus("Requesting source from Worker...", "loading");
+        setStatus("Finding source...", "loading");
 
         const response = await fetch(
           WORKER_URL + "?code=" + encodeURIComponent(hashedCode),
@@ -521,6 +522,10 @@
           throw new Error("Server did not return JSON. Response: " + text);
         }
 
+        if (response.status === 403) {
+          throw new Error("invalid_code");
+        }
+
         if (!response.ok) {
           throw new Error(data.error || "Request failed with status " + response.status);
         }
@@ -535,7 +540,11 @@
         }
       } catch (error) {
         resultSection.classList.add("hidden");
-        setStatus("Request failed: " + error.message, "error");
+        if (error === "invalid_code") {
+          setStatus("Incorrect password.", "error");
+        } else {
+          setStatus("Request failed: " + error.message, "error");
+        }
       } finally {
         submitBtn.disabled = false;
       }
@@ -560,7 +569,7 @@
           document.execCommand("copy");
           setStatus("Copied to clipboard.", "success");
         } catch {
-          setStatus("Copy failed. Select the textarea manually.", "error");
+          setStatus("Copy failed.", "error");
         }
       }
     }
