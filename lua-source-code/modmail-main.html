@@ -3,135 +3,279 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Get Source</title>
+  <title>Get Modmail Source</title>
   <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel-light: #1f2937;
+      --text: #f9fafb;
+      --muted: #9ca3af;
+      --border: #374151;
+      --blue: #2563eb;
+      --blue-hover: #1d4ed8;
+      --green: #22c55e;
+      --red: #ef4444;
+      --yellow: #eab308;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
-      font-family: Arial, sans-serif;
-      background: #f4f4f5;
       margin: 0;
+      min-height: 100vh;
+      font-family: Arial, Helvetica, sans-serif;
+      background:
+        radial-gradient(circle at top, #1e3a8a 0, transparent 35%),
+        var(--bg);
+      color: var(--text);
       padding: 24px;
-      color: #111827;
     }
 
     .container {
-      max-width: 800px;
+      width: 100%;
+      max-width: 980px;
       margin: 0 auto;
-      background: white;
+      background: rgba(17, 24, 39, 0.95);
+      border: 1px solid var(--border);
+      border-radius: 16px;
       padding: 24px;
-      border-radius: 12px;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
     }
 
     h1 {
-      margin-top: 0;
-      font-size: 24px;
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      margin-bottom: 24px;
+      line-height: 1.5;
     }
 
     label {
       display: block;
       margin-bottom: 8px;
-      font-weight: bold;
+      font-weight: 700;
+    }
+
+    .row {
+      display: flex;
+      gap: 12px;
+      align-items: stretch;
     }
 
     input {
+      flex: 1;
       width: 100%;
-      box-sizing: border-box;
-      padding: 12px;
+      padding: 13px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--panel-light);
+      color: var(--text);
       font-size: 16px;
-      border: 1px solid #d1d5db;
-      border-radius: 8px;
-      margin-bottom: 12px;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
     }
 
     button {
-      background: #2563eb;
-      color: white;
       border: none;
-      padding: 12px 18px;
+      border-radius: 10px;
+      padding: 0 20px;
+      background: var(--blue);
+      color: white;
       font-size: 16px;
-      border-radius: 8px;
+      font-weight: 700;
       cursor: pointer;
+      white-space: nowrap;
     }
 
     button:hover {
-      background: #1d4ed8;
+      background: var(--blue-hover);
     }
 
     button:disabled {
-      background: #9ca3af;
+      opacity: 0.6;
       cursor: not-allowed;
     }
 
     .status {
       margin-top: 16px;
-      font-weight: bold;
+      min-height: 24px;
+      font-weight: 700;
+    }
+
+    .status.success {
+      color: var(--green);
+    }
+
+    .status.error {
+      color: var(--red);
+    }
+
+    .status.loading {
+      color: var(--yellow);
+    }
+
+    .hash-box {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #020617;
+      color: var(--muted);
+      font-family: Consolas, Monaco, monospace;
+      font-size: 14px;
+      overflow-wrap: anywhere;
+    }
+
+    .result-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .result-header h2 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .copy-btn {
+      padding: 10px 14px;
+      font-size: 14px;
+      background: #374151;
+    }
+
+    .copy-btn:hover {
+      background: #4b5563;
     }
 
     textarea {
       width: 100%;
-      min-height: 400px;
-      margin-top: 16px;
-      box-sizing: border-box;
-      padding: 12px;
-      font-family: Consolas, Monaco, monospace;
-      font-size: 14px;
-      border: 1px solid #d1d5db;
-      border-radius: 8px;
+      min-height: 520px;
+      margin-top: 12px;
+      padding: 16px;
       resize: vertical;
-      background: #f9fafb;
-      color: #111827;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #020617;
+      color: #e5e7eb;
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      font-size: 14px;
+      line-height: 1.5;
+      outline: none;
+    }
+
+    textarea:focus {
+      border-color: var(--blue);
     }
 
     .hidden {
       display: none;
     }
+
+    @media (max-width: 640px) {
+      body {
+        padding: 12px;
+      }
+
+      .container {
+        padding: 16px;
+      }
+
+      .row {
+        flex-direction: column;
+      }
+
+      button {
+        padding: 13px 16px;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+
+      textarea {
+        min-height: 420px;
+        font-size: 13px;
+      }
+
+      .result-header {
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Enter Code</h1>
+  <main class="container">
+    <h1>Get Modmail Source</h1>
+    <div class="subtitle">
+      Enter your code. The page will generate an MD5 hash from it, send it to the Worker,
+      and show the returned source in a read-only textarea.
+    </div>
 
     <label for="codeInput">Code</label>
-    <input id="codeInput" type="password" placeholder="Type code here" />
 
-    <button id="submitBtn">Submit</button>
+    <div class="row">
+      <input
+        id="codeInput"
+        type="password"
+        placeholder="Type code here"
+        autocomplete="off"
+      />
+      <button id="submitBtn" type="button">Submit</button>
+    </div>
 
     <div id="status" class="status"></div>
 
-    <textarea id="resultBox" class="hidden" readonly></textarea>
-  </div>
+    <div id="hashBox" class="hash-box hidden"></div>
+
+    <section id="resultSection" class="hidden">
+      <div class="result-header">
+        <h2>Returned Source</h2>
+        <button id="copyBtn" class="copy-btn" type="button">Copy</button>
+      </div>
+
+      <textarea id="resultBox" readonly spellcheck="false"></textarea>
+    </section>
+  </main>
 
   <script>
-    async function md5(message) {
-      /*
-        Web Crypto does not support MD5 directly,
-        so this is a small JS MD5 implementation.
-      */
-
-      function rotateLeft(lValue, iShiftBits) {
-        return (lValue << iShiftBits) | (lValue >>> (32 - iShiftBits));
+    function md5(inputString) {
+      function rotateLeft(value, shiftBits) {
+        return (value << shiftBits) | (value >>> (32 - shiftBits));
       }
 
-      function addUnsigned(lX, lY) {
-        const lX4 = lX & 0x40000000;
-        const lY4 = lY & 0x40000000;
-        const lX8 = lX & 0x80000000;
-        const lY8 = lY & 0x80000000;
-        const lResult = (lX & 0x3fffffff) + (lY & 0x3fffffff);
+      function addUnsigned(x, y) {
+        const x4 = x & 0x40000000;
+        const y4 = y & 0x40000000;
+        const x8 = x & 0x80000000;
+        const y8 = y & 0x80000000;
+        const result = (x & 0x3fffffff) + (y & 0x3fffffff);
 
-        if (lX4 & lY4) {
-          return lResult ^ 0x80000000 ^ lX8 ^ lY8;
+        if (x4 & y4) {
+          return result ^ 0x80000000 ^ x8 ^ y8;
         }
 
-        if (lX4 | lY4) {
-          if (lResult & 0x40000000) {
-            return lResult ^ 0xc0000000 ^ lX8 ^ lY8;
-          } else {
-            return lResult ^ 0x40000000 ^ lX8 ^ lY8;
+        if (x4 | y4) {
+          if (result & 0x40000000) {
+            return result ^ 0xc0000000 ^ x8 ^ y8;
           }
+
+          return result ^ 0x40000000 ^ x8 ^ y8;
         }
 
-        return lResult ^ lX8 ^ lY8;
+        return result ^ x8 ^ y8;
       }
 
       function f(x, y, z) {
@@ -170,56 +314,57 @@
         return addUnsigned(rotateLeft(a, s), b);
       }
 
-      function convertToWordArray(string) {
-        const lWordCount = [];
-        const lMessageLength = string.length;
-        const lNumberOfWordsTemp1 = lMessageLength + 8;
-        const lNumberOfWordsTemp2 =
-          (lNumberOfWordsTemp1 - (lNumberOfWordsTemp1 % 64)) / 64;
-        const lNumberOfWords = (lNumberOfWordsTemp2 + 1) * 16;
-
-        for (let i = 0; i < lNumberOfWords; i++) {
-          lWordCount[i] = 0;
-        }
-
-        let lBytePosition = 0;
-        let lByteCount = 0;
-
-        while (lByteCount < lMessageLength) {
-          const lWordCountIndex = (lByteCount - (lByteCount % 4)) / 4;
-          lBytePosition = (lByteCount % 4) * 8;
-          lWordCount[lWordCountIndex] =
-            lWordCount[lWordCountIndex] |
-            (string.charCodeAt(lByteCount) << lBytePosition);
-          lByteCount++;
-        }
-
-        const lWordCountIndex = (lByteCount - (lByteCount % 4)) / 4;
-        lBytePosition = (lByteCount % 4) * 8;
-        lWordCount[lWordCountIndex] =
-          lWordCount[lWordCountIndex] | (0x80 << lBytePosition);
-
-        lWordCount[lNumberOfWords - 2] = lMessageLength << 3;
-        lWordCount[lNumberOfWords - 1] = lMessageLength >>> 29;
-
-        return lWordCount;
+      function utf8Encode(str) {
+        return unescape(encodeURIComponent(str));
       }
 
-      function wordToHex(lValue) {
-        let wordToHexValue = "";
-        for (let lCount = 0; lCount <= 3; lCount++) {
-          const lByte = (lValue >>> (lCount * 8)) & 255;
-          const wordToHexValueTemp = "0" + lByte.toString(16);
-          wordToHexValue += wordToHexValueTemp.slice(-2);
+      function convertToWordArray(str) {
+        let messageLength = str.length;
+        let numberOfWordsTempOne = messageLength + 8;
+        let numberOfWordsTempTwo =
+          (numberOfWordsTempOne - (numberOfWordsTempOne % 64)) / 64;
+        let numberOfWords = (numberOfWordsTempTwo + 1) * 16;
+
+        let wordArray = new Array(numberOfWords - 1);
+
+        for (let i = 0; i < numberOfWords; i++) {
+          wordArray[i] = 0;
         }
-        return wordToHexValue;
+
+        let bytePosition = 0;
+        let byteCount = 0;
+
+        while (byteCount < messageLength) {
+          let wordCount = (byteCount - (byteCount % 4)) / 4;
+          bytePosition = (byteCount % 4) * 8;
+          wordArray[wordCount] =
+            wordArray[wordCount] | (str.charCodeAt(byteCount) << bytePosition);
+          byteCount++;
+        }
+
+        let wordCount = (byteCount - (byteCount % 4)) / 4;
+        bytePosition = (byteCount % 4) * 8;
+        wordArray[wordCount] = wordArray[wordCount] | (0x80 << bytePosition);
+
+        wordArray[numberOfWords - 2] = messageLength << 3;
+        wordArray[numberOfWords - 1] = messageLength >>> 29;
+
+        return wordArray;
       }
 
-      function utf8Encode(string) {
-        return unescape(encodeURIComponent(string));
+      function wordToHex(value) {
+        let hex = "";
+
+        for (let count = 0; count <= 3; count++) {
+          let byte = (value >>> (count * 8)) & 255;
+          let temp = "0" + byte.toString(16);
+          hex += temp.slice(-2);
+        }
+
+        return hex;
       }
 
-      const x = convertToWordArray(utf8Encode(message));
+      const x = convertToWordArray(utf8Encode(inputString));
 
       let a = 0x67452301;
       let b = 0xefcdab89;
@@ -227,10 +372,10 @@
       let d = 0x10325476;
 
       for (let k = 0; k < x.length; k += 16) {
-        const AA = a;
-        const BB = b;
-        const CC = c;
-        const DD = d;
+        const aa = a;
+        const bb = b;
+        const cc = c;
+        const dd = d;
 
         a = ff(a, b, c, d, x[k + 0], 7, 0xd76aa478);
         d = ff(d, a, b, c, x[k + 1], 12, 0xe8c7b756);
@@ -300,10 +445,10 @@
         c = ii(c, d, a, b, x[k + 2], 15, 0x2ad7d2bb);
         b = ii(b, c, d, a, x[k + 9], 21, 0xeb86d391);
 
-        a = addUnsigned(a, AA);
-        b = addUnsigned(b, BB);
-        c = addUnsigned(c, CC);
-        d = addUnsigned(d, DD);
+        a = addUnsigned(a, aa);
+        b = addUnsigned(b, bb);
+        c = addUnsigned(c, cc);
+        d = addUnsigned(d, dd);
       }
 
       return (
@@ -314,54 +459,114 @@
       ).toLowerCase();
     }
 
+    const WORKER_URL = "https://get-modmail-main-source.ipmingsum5.workers.dev/";
+
     const codeInput = document.getElementById("codeInput");
     const submitBtn = document.getElementById("submitBtn");
     const statusBox = document.getElementById("status");
+    const hashBox = document.getElementById("hashBox");
+    const resultSection = document.getElementById("resultSection");
     const resultBox = document.getElementById("resultBox");
+    const copyBtn = document.getElementById("copyBtn");
+
+    function setStatus(message, type) {
+      statusBox.textContent = message;
+      statusBox.className = "status";
+
+      if (type) {
+        statusBox.classList.add(type);
+      }
+    }
 
     async function submitCode() {
       const rawCode = codeInput.value;
 
       if (!rawCode) {
-        statusBox.textContent = "Please enter a code.";
-        resultBox.classList.add("hidden");
+        setStatus("Please enter a code.", "error");
+        hashBox.classList.add("hidden");
+        resultSection.classList.add("hidden");
         return;
       }
 
       submitBtn.disabled = true;
-      statusBox.textContent = "Generating MD5 hash...";
-      resultBox.classList.add("hidden");
       resultBox.value = "";
+      resultSection.classList.add("hidden");
 
       try {
-        const hashedCode = await md5(rawCode);
+        setStatus("Generating MD5 hash...", "loading");
 
-        statusBox.textContent = "Requesting source...";
+        const hashedCode = md5(rawCode);
+
+        hashBox.textContent = "MD5: " + hashedCode;
+        hashBox.classList.remove("hidden");
+
+        setStatus("Requesting source from Worker...", "loading");
 
         const response = await fetch(
-          "https://get-modmail-main-source.ipmingsum5.workers.dev/?code=" +
-            encodeURIComponent(hashedCode)
+          WORKER_URL + "?code=" + encodeURIComponent(hashedCode),
+          {
+            method: "GET",
+            mode: "cors",
+            cache: "no-store"
+          }
         );
 
-        const data = await response.json();
+        const text = await response.text();
 
-        if (data.code) {
-          statusBox.textContent = "Success.";
+        let data;
+
+        try {
+          data = JSON.parse(text);
+        } catch (error) {
+          throw new Error("Server did not return JSON. Response: " + text);
+        }
+
+        if (!response.ok) {
+          throw new Error(data.error || "Request failed with status " + response.status);
+        }
+
+        if (typeof data.code === "string" && data.code.length > 0) {
           resultBox.value = data.code;
-          resultBox.classList.remove("hidden");
+          resultSection.classList.remove("hidden");
+          setStatus("Success. Source loaded.", "success");
         } else {
-          statusBox.textContent = data.error || "No code returned.";
-          resultBox.classList.add("hidden");
+          resultSection.classList.add("hidden");
+          setStatus("No source code was returned.", "error");
         }
       } catch (error) {
-        statusBox.textContent = "Request failed: " + error.message;
-        resultBox.classList.add("hidden");
+        resultSection.classList.add("hidden");
+        setStatus("Request failed: " + error.message, "error");
       } finally {
         submitBtn.disabled = false;
       }
     }
 
+    async function copyResult() {
+      const value = resultBox.value;
+
+      if (!value) {
+        setStatus("Nothing to copy.", "error");
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(value);
+        setStatus("Copied to clipboard.", "success");
+      } catch (error) {
+        resultBox.focus();
+        resultBox.select();
+
+        try {
+          document.execCommand("copy");
+          setStatus("Copied to clipboard.", "success");
+        } catch {
+          setStatus("Copy failed. Select the textarea manually.", "error");
+        }
+      }
+    }
+
     submitBtn.addEventListener("click", submitCode);
+    copyBtn.addEventListener("click", copyResult);
 
     codeInput.addEventListener("keydown", function (event) {
       if (event.key === "Enter") {
