@@ -540,7 +540,7 @@
         }
       } catch (error) {
         resultSection.classList.add("hidden");
-        if (error === "invalid_code") {
+        if (error.message === "invalid_code") {
           setStatus("Incorrect password.", "error");
         } else {
           setStatus("Request failed: " + error.message, "error");
