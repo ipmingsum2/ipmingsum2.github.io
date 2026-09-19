@@ -20359,7 +20359,9 @@ this.
 */
 const indentWithTab = { key: "Tab", run: indentMore, shift: indentLess };
 
-const API_ORIGIN = (window.REMOTE_ADMIN_CONFIG?.apiOrigin || '').replace(/\/$/, '');
+const API_ORIGIN = (
+  window.REMOTE_ADMIN_CONFIG?.apiOrigin || 'https://alvins-remote-admin.ipmingsum5.workers.dev'
+).replace(/\/$/, '');
 const HOME = new URL('./', location.href).href;
 let authToken = sessionStorage.getItem('ra-session') || '';
 
@@ -21103,4 +21105,4 @@ async function start() {
   }
 }
 await start();
-//# sourceMappingURL=app.js.map
+
