@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Get Remote Admin Source</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel-light: #1f2937;
+      --text: #f9fafb;
+      --muted: #9ca3af;
+      --border: #374151;
+      --blue: #2563eb;
+      --blue-hover: #1d4ed8;
+      --green: #22c55e;
+      --red: #ef4444;
+      --yellow: #eab308;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, Helvetica, sans-serif;
+      background:
+        radial-gradient(circle at top, #1e3a8a 0, transparent 35%),
+        var(--bg);
+      color: var(--text);
+      padding: 24px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 980px;
+      margin: 0 auto;
+      background: rgba(17, 24, 39, 0.95);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+
+    .row {
+      display: flex;
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    input {
+      flex: 1;
+      width: 100%;
+      padding: 13px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--panel-light);
+      color: var(--text);
+      font-size: 16px;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 0 20px;
+      background: var(--blue);
+      color: white;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    button:hover {
+      background: var(--blue-hover);
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .status {
+      margin-top: 16px;
+      min-height: 24px;
+      font-weight: 700;
+    }
+
+    .status.success {
+      color: var(--green);
+    }
+
+    .status.error {
+      color: var(--red);
+    }
+
+    .status.loading {
+      color: var(--yellow);
+    }
+
+    .hash-box {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #020617;
+      color: var(--muted);
+      font-family: Consolas, Monaco, monospace;
+      font-size: 14px;
+      overflow-wrap: anywhere;
+    }
+
+    .result-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .result-header h2 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .copy-btn {
+      padding: 10px 14px;
+      font-size: 14px;
+      background: #374151;
+    }
+
+    .copy-btn:hover {
+      background: #4b5563;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 520px;
+      margin-top: 12px;
+      padding: 16px;
+      resize: vertical;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #020617;
+      color: #e5e7eb;
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      font-size: 14px;
+      line-height: 1.5;
+      outline: none;
+    }
+
+    textarea:focus {
+      border-color: var(--blue);
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    @media (max-width: 640px) {
+      body {
+        padding: 12px;
+      }
+
+      .container {
+        padding: 16px;
+      }
+
+      .row {
+        flex-direction: column;
+      }
+
+      button {
+        padding: 13px 16px;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+
+      textarea {
+        min-height: 420px;
+        font-size: 13px;
+      }
+
+      .result-header {
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <h1>Get Remote Admin Source</h1>
+    <div class="subtitle">
+      Please enter the secret password to access the remote admin's source code.
+    </div>
+
+    <label for="codeInput">Code</label>
+
+    <div class="row">
+      <input
+        id="codeInput"
+        type="password"
+        placeholder="What's the secret password?"
+        autocomplete="off"
+      />
+      <button id="submitBtn" type="button">Submit</button>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <div id="hashBox" class="hash-box hidden"></div>
+
+    <section id="resultSection" class="hidden">
+      <div class="result-header">
+        <h2>Remote Admin Source</h2>
+        <button id="copyBtn" class="copy-btn" type="button">Copy</button>
+      </div>
+
+      <textarea id="resultBox" readonly spellcheck="false"></textarea>
+    </section>
+  </main>
+
+  <script>
+    function md5(inputString) {
+      function rotateLeft(value, shiftBits) {
+        return (value << shiftBits) | (value >>> (32 - shiftBits));
+      }
+
+      function addUnsigned(x, y) {
+        const x4 = x & 0x40000000;
+        const y4 = y & 0x40000000;
+        const x8 = x & 0x80000000;
+        const y8 = y & 0x80000000;
+        const result = (x & 0x3fffffff) + (y & 0x3fffffff);
+
+        if (x4 & y4) {
+          return result ^ 0x80000000 ^ x8 ^ y8;
+        }
+
+        if (x4 | y4) {
+          if (result & 0x40000000) {
+            return result ^ 0xc0000000 ^ x8 ^ y8;
+          }
+
+          return result ^ 0x40000000 ^ x8 ^ y8;
+        }
+
+        return result ^ x8 ^ y8;
+      }
+
+      function f(x, y, z) {
+        return (x & y) | (~x & z);
+      }
+
+      function g(x, y, z) {
+        return (x & z) | (y & ~z);
+      }
+
+      function h(x, y, z) {
+        return x ^ y ^ z;
+      }
+
+      function i(x, y, z) {
+        return y ^ (x | ~z);
+      }
+
+      function ff(a, b, c, d, x, s, ac) {
+        a = addUnsigned(a, addUnsigned(addUnsigned(f(b, c, d), x), ac));
+        return addUnsigned(rotateLeft(a, s), b);
+      }
+
+      function gg(a, b, c, d, x, s, ac) {
+        a = addUnsigned(a, addUnsigned(addUnsigned(g(b, c, d), x), ac));
+        return addUnsigned(rotateLeft(a, s), b);
+      }
+
+      function hh(a, b, c, d, x, s, ac) {
+        a = addUnsigned(a, addUnsigned(addUnsigned(h(b, c, d), x), ac));
+        return addUnsigned(rotateLeft(a, s), b);
+      }
+
+      function ii(a, b, c, d, x, s, ac) {
+        a = addUnsigned(a, addUnsigned(addUnsigned(i(b, c, d), x), ac));
+        return addUnsigned(rotateLeft(a, s), b);
+      }
+
+      function utf8Encode(str) {
+        return unescape(encodeURIComponent(str));
+      }
+
+      function convertToWordArray(str) {
+        let messageLength = str.length;
+        let numberOfWordsTempOne = messageLength + 8;
+        let numberOfWordsTempTwo =
+          (numberOfWordsTempOne - (numberOfWordsTempOne % 64)) / 64;
+        let numberOfWords = (numberOfWordsTempTwo + 1) * 16;
+
+        let wordArray = new Array(numberOfWords - 1);
+
+        for (let i = 0; i < numberOfWords; i++) {
+          wordArray[i] = 0;
+        }
+
+        let bytePosition = 0;
+        let byteCount = 0;
+
+        while (byteCount < messageLength) {
+          let wordCount = (byteCount - (byteCount % 4)) / 4;
+          bytePosition = (byteCount % 4) * 8;
+          wordArray[wordCount] =
+            wordArray[wordCount] | (str.charCodeAt(byteCount) << bytePosition);
+          byteCount++;
+        }
+
+        let wordCount = (byteCount - (byteCount % 4)) / 4;
+        bytePosition = (byteCount % 4) * 8;
+        wordArray[wordCount] = wordArray[wordCount] | (0x80 << bytePosition);
+
+        wordArray[numberOfWords - 2] = messageLength << 3;
+        wordArray[numberOfWords - 1] = messageLength >>> 29;
+
+        return wordArray;
+      }
+
+      function wordToHex(value) {
+        let hex = "";
+
+        for (let count = 0; count <= 3; count++) {
+          let byte = (value >>> (count * 8)) & 255;
+          let temp = "0" + byte.toString(16);
+          hex += temp.slice(-2);
+        }
+
+        return hex;
+      }
+
+      const x = convertToWordArray(utf8Encode(inputString));
+
+      let a = 0x67452301;
+      let b = 0xefcdab89;
+      let c = 0x98badcfe;
+      let d = 0x10325476;
+
+      for (let k = 0; k < x.length; k += 16) {
+        const aa = a;
+        const bb = b;
+        const cc = c;
+        const dd = d;
+
+        a = ff(a, b, c, d, x[k + 0], 7, 0xd76aa478);
+        d = ff(d, a, b, c, x[k + 1], 12, 0xe8c7b756);
+        c = ff(c, d, a, b, x[k + 2], 17, 0x242070db);
+        b = ff(b, c, d, a, x[k + 3], 22, 0xc1bdceee);
+        a = ff(a, b, c, d, x[k + 4], 7, 0xf57c0faf);
+        d = ff(d, a, b, c, x[k + 5], 12, 0x4787c62a);
+        c = ff(c, d, a, b, x[k + 6], 17, 0xa8304613);
+        b = ff(b, c, d, a, x[k + 7], 22, 0xfd469501);
+        a = ff(a, b, c, d, x[k + 8], 7, 0x698098d8);
+        d = ff(d, a, b, c, x[k + 9], 12, 0x8b44f7af);
+        c = ff(c, d, a, b, x[k + 10], 17, 0xffff5bb1);
+        b = ff(b, c, d, a, x[k + 11], 22, 0x895cd7be);
+        a = ff(a, b, c, d, x[k + 12], 7, 0x6b901122);
+        d = ff(d, a, b, c, x[k + 13], 12, 0xfd987193);
+        c = ff(c, d, a, b, x[k + 14], 17, 0xa679438e);
+        b = ff(b, c, d, a, x[k + 15], 22, 0x49b40821);
+
+        a = gg(a, b, c, d, x[k + 1], 5, 0xf61e2562);
+        d = gg(d, a, b, c, x[k + 6], 9, 0xc040b340);
+        c = gg(c, d, a, b, x[k + 11], 14, 0x265e5a51);
+        b = gg(b, c, d, a, x[k + 0], 20, 0xe9b6c7aa);
+        a = gg(a, b, c, d, x[k + 5], 5, 0xd62f105d);
+        d = gg(d, a, b, c, x[k + 10], 9, 0x02441453);
+        c = gg(c, d, a, b, x[k + 15], 14, 0xd8a1e681);
+        b = gg(b, c, d, a, x[k + 4], 20, 0xe7d3fbc8);
+        a = gg(a, b, c, d, x[k + 9], 5, 0x21e1cde6);
+        d = gg(d, a, b, c, x[k + 14], 9, 0xc33707d6);
+        c = gg(c, d, a, b, x[k + 3], 14, 0xf4d50d87);
+        b = gg(b, c, d, a, x[k + 8], 20, 0x455a14ed);
+        a = gg(a, b, c, d, x[k + 13], 5, 0xa9e3e905);
+        d = gg(d, a, b, c, x[k + 2], 9, 0xfcefa3f8);
+        c = gg(c, d, a, b, x[k + 7], 14, 0x676f02d9);
+        b = gg(b, c, d, a, x[k + 12], 20, 0x8d2a4c8a);
+
+        a = hh(a, b, c, d, x[k + 5], 4, 0xfffa3942);
+        d = hh(d, a, b, c, x[k + 8], 11, 0x8771f681);
+        c = hh(c, d, a, b, x[k + 11], 16, 0x6d9d6122);
+        b = hh(b, c, d, a, x[k + 14], 23, 0xfde5380c);
+        a = hh(a, b, c, d, x[k + 1], 4, 0xa4beea44);
+        d = hh(d, a, b, c, x[k + 4], 11, 0x4bdecfa9);
+        c = hh(c, d, a, b, x[k + 7], 16, 0xf6bb4b60);
+        b = hh(b, c, d, a, x[k + 10], 23, 0xbebfbc70);
+        a = hh(a, b, c, d, x[k + 13], 4, 0x289b7ec6);
+        d = hh(d, a, b, c, x[k + 0], 11, 0xeaa127fa);
+        c = hh(c, d, a, b, x[k + 3], 16, 0xd4ef3085);
+        b = hh(b, c, d, a, x[k + 6], 23, 0x04881d05);
+        a = hh(a, b, c, d, x[k + 9], 4, 0xd9d4d039);
+        d = hh(d, a, b, c, x[k + 12], 11, 0xe6db99e5);
+        c = hh(c, d, a, b, x[k + 15], 16, 0x1fa27cf8);
+        b = hh(b, c, d, a, x[k + 2], 23, 0xc4ac5665);
+
+        a = ii(a, b, c, d, x[k + 0], 6, 0xf4292244);
+        d = ii(d, a, b, c, x[k + 7], 10, 0x432aff97);
+        c = ii(c, d, a, b, x[k + 14], 15, 0xab9423a7);
+        b = ii(b, c, d, a, x[k + 5], 21, 0xfc93a039);
+        a = ii(a, b, c, d, x[k + 12], 6, 0x655b59c3);
+        d = ii(d, a, b, c, x[k + 3], 10, 0x8f0ccc92);
+        c = ii(c, d, a, b, x[k + 10], 15, 0xffeff47d);
+        b = ii(b, c, d, a, x[k + 1], 21, 0x85845dd1);
+        a = ii(a, b, c, d, x[k + 8], 6, 0x6fa87e4f);
+        d = ii(d, a, b, c, x[k + 15], 10, 0xfe2ce6e0);
+        c = ii(c, d, a, b, x[k + 6], 15, 0xa3014314);
+        b = ii(b, c, d, a, x[k + 13], 21, 0x4e0811a1);
+        a = ii(a, b, c, d, x[k + 4], 6, 0xf7537e82);
+        d = ii(d, a, b, c, x[k + 11], 10, 0xbd3af235);
+        c = ii(c, d, a, b, x[k + 2], 15, 0x2ad7d2bb);
+        b = ii(b, c, d, a, x[k + 9], 21, 0xeb86d391);
+
+        a = addUnsigned(a, aa);
+        b = addUnsigned(b, bb);
+        c = addUnsigned(c, cc);
+        d = addUnsigned(d, dd);
+      }
+
+      return (
+        wordToHex(a) +
+        wordToHex(b) +
+        wordToHex(c) +
+        wordToHex(d)
+      ).toLowerCase();
+    }
+
+    const WORKER_URL = "https://get-remote-admin-source.ipmingsum5.workers.dev/";
+
+    const codeInput = document.getElementById("codeInput");
+    const submitBtn = document.getElementById("submitBtn");
+    const statusBox = document.getElementById("status");
+    const hashBox = document.getElementById("hashBox");
+    const resultSection = document.getElementById("resultSection");
+    const resultBox = document.getElementById("resultBox");
+    const copyBtn = document.getElementById("copyBtn");
+
+    function setStatus(message, type) {
+      statusBox.textContent = message;
+      statusBox.className = "status";
+
+      if (type) {
+        statusBox.classList.add(type);
+      }
+    }
+
+    async function submitCode() {
+      const rawCode = codeInput.value;
+
+      if (!rawCode) {
+        setStatus("Please enter a code.", "error");
+        hashBox.classList.add("hidden");
+        resultSection.classList.add("hidden");
+        return;
+      }
+
+      submitBtn.disabled = true;
+      resultBox.value = "";
+      resultSection.classList.add("hidden");
+
+      try {
+        setStatus("Processing password...", "loading");
+
+        const hashedCode = md5(rawCode);
+
+        /*
+        * hashBox.textContent = "MD5: " + hashedCode;
+        * hashBox.classList.remove("hidden");
+        */
+
+        setStatus("Finding source...", "loading");
+
+        const response = await fetch(
+          WORKER_URL + "?code=" + encodeURIComponent(hashedCode),
+          {
+            method: "GET",
+            mode: "cors",
+            cache: "no-store"
+          }
+        );
+
+        const text = await response.text();
+
+        let data;
+
+        try {
+          data = JSON.parse(text);
+        } catch (error) {
+          throw new Error("Server did not return JSON. Response: " + text);
+        }
+
+        if (response.status === 403) {
+          throw new Error("invalid_code");
+        }
+
+        if (!response.ok) {
+          throw new Error(data.error || "Request failed with status " + response.status);
+        }
+
+        if (typeof data.code === "string" && data.code.length > 0) {
+          resultBox.value = data.code;
+          resultSection.classList.remove("hidden");
+          setStatus("Success. Source loaded.", "success");
+        } else {
+          resultSection.classList.add("hidden");
+          setStatus("No source code was returned.", "error");
+        }
+      } catch (error) {
+        resultSection.classList.add("hidden");
+        if (error.message === "invalid_code") {
+          setStatus("Incorrect password.", "error");
+        } else {
+          setStatus("Request failed: " + error.message, "error");
+        }
+      } finally {
+        submitBtn.disabled = false;
+      }
+    }
+
+    async function copyResult() {
+      const value = resultBox.value;
+
+      if (!value) {
+        setStatus("Nothing to copy.", "error");
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(value);
+        setStatus("Copied to clipboard.", "success");
+      } catch (error) {
+        resultBox.focus();
+        resultBox.select();
+
+        try {
+          document.execCommand("copy");
+          setStatus("Copied to clipboard.", "success");
+        } catch {
+          setStatus("Copy failed.", "error");
+        }
+      }
+    }
+
+    submitBtn.addEventListener("click", submitCode);
+    copyBtn.addEventListener("click", copyResult);
+
+    codeInput.addEventListener("keydown", function (event) {
+      if (event.key === "Enter") {
+        submitCode();
+      }
+    });
+  </script>
+</body>
+</html>
