@@ -20414,6 +20414,7 @@ const definitions = {
   sound: ['Play sound', 'Play an audio asset for the selected audience.', 'sound'],
   fly: ['Fly', 'Enable flight controls for the selected players.', 'fly'],
   unfly: ['Unfly', 'Restore normal movement.', 'fly'],
+  announce: ['Announce', 'Display an announcement using your in-game template.', 'commands'],
   mute: ['Mute player', 'Disable chat for a specified number of seconds.', 'mute'],
   shutdown: ['Soft shutdown', 'Migrate connected players to a fresh server.', 'shutdown'],
 };
@@ -20781,9 +20782,18 @@ function targetField(scope, id = 'target') {
 }
 function setupCommand() {
   const k = selectedCommand,
-    multi = ['sound', 'fly', 'unfly', 'shutdown'].includes(k);
+    multi = ['sound', 'fly', 'unfly', 'shutdown', 'announce'].includes(k);
   $('#command-fields').innerHTML =
     `${multi ? `<div class="field"><label for="scope">Target scope</label><select id="scope">${k !== 'shutdown' ? '<option value="player">One player</option>' : ''}<option value="server">One server</option><option value="global">All servers</option></select></div>` : ''}<div id="target-field">${targetField(k === 'shutdown' ? 'server' : 'player')}</div>${['ban', 'kick'].includes(k) ? '<div class="field"><label for="reason">Reason</label><textarea id="reason" required maxlength="400" placeholder="Tell the player why this action was taken"></textarea></div>' : ''}${k === 'speed' ? '<div class="field"><label for="speed">Walk speed</label><input id="speed" type="number" min="0" max="500" value="32" required><small>Roblox’s default walk speed is 16.</small></div>' : ''}${k === 'mute' ? '<div class="field"><label for="duration">Duration in seconds</label><input id="duration" type="number" min="1" max="604800" value="300" required><small>Chat is restored when the mute expires, including after rejoining.</small></div>' : ''}${k === 'sound' ? '<div class="field-row"><div class="field"><label for="soundId">Audio asset ID</label><input id="soundId" inputmode="numeric" pattern="[0-9]+" placeholder="Roblox audio ID" required></div><div class="field"><label for="volume">Volume (0–2)</label><input id="volume" type="number" min="0" max="2" step="0.1" value="0.5" required></div></div><div class="notice">The experience must have permission to use this audio asset.</div>' : ''}${k === 'shutdown' ? '<div class="notice warning">Players are teleported together to a new reserved server. They cannot be teleported after a kick. Teleport failures are reported in history.</div>' : ''}`;
+  if (k === 'announce') {
+    $('#scope').value = 'global';
+    $('#target-field').innerHTML = targetField('global');
+    $('#command-fields').insertAdjacentHTML(
+      'beforeend',
+      '<div class="field"><label for="message">Announcement</label><textarea id="message" required maxlength="1000" placeholder="Write a message for your players"></textarea></div>' +
+        '<label class="checkbox-field"><input id="anonymous" type="checkbox"> Send anonymously</label><small>Closes automatically after 5 seconds. Anonymous announcements hide your name in-game; history still records the administrator.</small>',
+    );
+  }
   if (multi)
     $('#scope').onchange = () => ($('#target-field').innerHTML = targetField($('#scope').value));
   $('#command-form').onsubmit = async (e) => {
@@ -20792,11 +20802,12 @@ function setupCommand() {
       payload = { kind: k, scope };
     if (scope === 'player') payload.target = $('#target').value.trim();
     if (scope === 'server') payload.jobId = $('#target').value.trim();
-    for (const field of ['reason', 'speed', 'duration', 'soundId', 'volume'])
+    for (const field of ['reason', 'speed', 'duration', 'soundId', 'volume', 'message'])
       if ($('#' + field))
         payload[field] = ['speed', 'duration', 'volume'].includes(field)
           ? Number($('#' + field).value)
           : $('#' + field).value;
+    if (k === 'announce') payload.anonymous = $('#anonymous').checked;
     if (
       await confirm(
         definitions[k][0] + '?',
