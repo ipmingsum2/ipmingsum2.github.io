@@ -1297,3 +1297,43 @@ dialog::backdrop {
   height: 1.1rem;
   accent-color: #647aff;
 }
+:root .game-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 16px;
+}
+.game-card {
+  border: 1px solid var(--border, #24304b);
+  border-radius: 12px;
+  padding: 20px;
+  overflow-wrap: anywhere;
+}
+.game-card h2 {
+  margin-top: 0;
+}
+.game-card p {
+  color: #94a5c2;
+}
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+#game-picker {
+  max-width: 260px;
+}
+#game-secret {
+  margin-top: 18px;
+  overflow-wrap: anywhere;
+}
+#new-bridge-secret {
+  width: 100%;
+  margin: 12px 0;
+  font-family: var(--font-mono);
+}
+@media (max-width: 640px) {
+  #game-picker {
+    max-width: 145px;
+  }
+}

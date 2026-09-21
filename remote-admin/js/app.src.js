@@ -20405,8 +20405,32 @@ let me,
   editor,
   mode = 'server-script',
   selectedCommand = 'ban';
+let games = [],
+  networks = [],
+  gameRange = 'game',
+  gameId = sessionStorage.getItem('ra-game') || '',
+  accessGame = null,
+  refreshRevision = 0;
+const currentGame = () => games.find((g) => g.universe_id === gameId);
+const can = (permission) => !!currentGame()?.permissions[permission];
+const rankLabel = (rank) =>
+  ({
+    root: 'Root',
+    manager: 'Manager',
+    'super-admin': 'Super Admin',
+    admin: 'Admin',
+    mod: 'Mod',
+    access: 'Access only',
+  })[rank] || 'No game rank';
+const commandDrafts = new Map();
+function commandDraft() {
+  if (!commandDrafts.has(gameId)) commandDrafts.set(gameId, { scopes: {} });
+  return commandDrafts.get(gameId);
+}
 const definitions = {
   ban: ['Ban player', 'Prevent a player from joining this experience.', 'ban'],
+  serverban: ['Server ban', 'Ban a player only from the specified JobId.', 'ban'],
+  serverunban: ['Server unban', 'Revoke a player’s ban in the specified JobId.', 'shield'],
   kick: ['Kick player', 'Remove a player from their current server.', 'logout'],
   unban: ['Unban player', 'Allow a banned player to join again.', 'shield'],
   kill: ['Kill player', 'Set the player’s current character health to zero.', 'kill'],
@@ -20427,6 +20451,8 @@ const toast = (message, error = false) => {
 };
 async function api(path, options = {}) {
   if (!API_ORIGIN) throw Error('The backend URL is missing from config.js.');
+  if (gameId && /^\/api\/(servers|bans|history|commands|queue)(?:\?|$)/.test(path))
+    path += (path.includes('?') ? '&' : '?') + 'gameId=' + encodeURIComponent(gameId);
   const r = await fetch(API_ORIGIN + path, {
     ...options,
     credentials: 'omit',
@@ -20483,24 +20509,53 @@ function shell() {
     ['servers', 'Servers', 'server'],
     ['players', 'Players', 'players'],
     ['commands', 'Commands', 'commands'],
-    ['scripts', 'Script editor', 'code'],
-    ['history', 'History', 'history'],
+    ...(can('scripts') ? [['scripts', 'Script editor', 'code']] : []),
+    ...(can('audit') ? [['history', 'History', 'history']] : []),
+    ['queue', 'Offline queue', 'commands'],
     ['bans', 'Bans', 'ban'],
-    ...(me.root ? [['access', 'Access control', 'shield']] : []),
+    ['games', 'Games', 'server'],
+    ['networks', 'Networks', 'server'],
+    ...(me.globalRank || can('permissions') ? [['access', 'Access control', 'shield']] : []),
   ];
+  const visibleNav = nav.filter((n) => can('commands') || ['games', 'access'].includes(n[0]));
   $('#root').innerHTML =
-    `<aside class="sidebar"><div>${brand}</div><div class="nav-label">WORKSPACE</div><nav>${nav
+    `<aside class="sidebar"><div>${brand}</div><div class="nav-label">WORKSPACE</div><nav>${visibleNav
       .slice(0, 5)
       .map((n) => `<button class="nav-item" data-view="${n[0]}">${icon(n[2])}${n[1]}</button>`)
-      .join('')}</nav><div class="nav-label">MANAGEMENT</div><nav>${nav
+      .join('')}</nav><div class="nav-label">MANAGEMENT</div><nav>${visibleNav
       .slice(5)
       .map((n) => `<button class="nav-item" data-view="${n[0]}">${icon(n[2])}${n[1]}</button>`)
       .join(
         '',
-      )}</nav><div class="sidebar-bottom"><div class="connection"><strong>Remote Admin Test</strong>Universe 10766913143</div><div class="user"><div class="user-avatar">${esc(me.name.slice(0, 2).toUpperCase())}</div><div><div class="user-name">${esc(me.name)}</div><small>${me.root ? 'Root administrator' : 'Administrator'}</small></div><button class="ghost" id="logout" aria-label="Sign out">${icon('logout')}</button></div></div></aside><main class="app-main"><header class="topbar"><div class="topbar-left"><button class="ghost mobile-menu" id="menu" aria-label="Toggle navigation">${icon('menu')}</button><span>Workspace</span><span class="slash">/</span><strong id="breadcrumb">Overview</strong></div><div class="topbar-right"><span>Remote Admin Test</span>${pill(me.root ? 'ROOT' : 'ADMIN')}<button class="ghost" id="refresh" title="Refresh data" aria-label="Refresh data">${icon('refresh')}</button></div></header><div class="content" id="content"></div></main>`;
+      )}</nav><div class="sidebar-bottom"><div class="connection"><strong>${esc(currentGame()?.name || 'Choose a game')}</strong>${esc(gameId ? 'Game ' + gameId : 'No game selected')}</div><div class="user"><div class="user-avatar">${esc(me.name.slice(0, 2).toUpperCase())}</div><div><div class="user-name">${esc(me.name)}</div><small>${esc(me.globalRank ? 'Global ' + rankLabel(me.globalRank) : rankLabel(currentGame()?.permissions.rank))}</small></div><button class="ghost" id="logout" aria-label="Sign out">${icon('logout')}</button></div></div></aside><main class="app-main"><header class="topbar"><div class="topbar-left"><button class="ghost mobile-menu" id="menu" aria-label="Toggle navigation">${icon('menu')}</button><span>Workspace</span><span class="slash">/</span><strong id="breadcrumb">Overview</strong></div><div class="topbar-right"><select id="game-picker" aria-label="Selected game">${games
+      .filter((g) => g.enabled)
+      .map(
+        (g) =>
+          `<option value="${esc(g.universe_id)}" ${g.universe_id === gameId ? 'selected' : ''}>${esc(g.name)}</option>`,
+      )
+      .join(
+        '',
+      )}</select>${pill(rankLabel(currentGame()?.permissions.rank))}<button class="ghost" id="refresh" title="Refresh data" aria-label="Refresh data">${icon('refresh')}</button></div></header><div class="content" id="content"></div></main>`;
   document
     .querySelectorAll('[data-view]')
     .forEach((b) => (b.onclick = () => navigate(b.dataset.view)));
+  $('#game-picker').onchange = async (event) => {
+    gameId = event.target.value;
+    sessionStorage.setItem('ra-game', gameId);
+    servers = [];
+    bans = [];
+    commands = [];
+    audit = [];
+    view = can('commands') ? 'dashboard' : 'games';
+    location.hash = view;
+    shell();
+    render();
+    try {
+      await refresh();
+    } catch (e) {
+      toast(e.message, true);
+    }
+  };
   $('#menu').onclick = () => $('.sidebar').classList.toggle('open');
   $('#refresh').onclick = () =>
     refresh()
@@ -20519,7 +20574,40 @@ function shell() {
   };
 }
 async function refresh() {
-  const [s, b, h] = await Promise.all([api('/api/servers'), api('/api/bans'), api('/api/history')]);
+  const revision = ++refreshRevision;
+  const [gameData, networkData] = await Promise.all([api('/api/games'), api('/api/networks')]);
+  const updatedGames = gameData.games;
+  if (revision !== refreshRevision) return;
+  games = updatedGames;
+  networks = networkData.networks;
+  const previousGame = gameId;
+  if (!currentGame()?.enabled) {
+    gameId = games.find((g) => g.enabled)?.universe_id || '';
+    sessionStorage.setItem('ra-game', gameId);
+  }
+  if (previousGame !== gameId) {
+    servers = [];
+    bans = [];
+    commands = [];
+    audit = [];
+    shell();
+  }
+  if (!can('commands')) {
+    servers = [];
+    bans = [];
+    commands = [];
+    audit = [];
+    view = ['games', 'access'].includes(view) ? view : 'games';
+    render();
+    return;
+  }
+  const requestedGame = gameId;
+  const [s, b, h] = await Promise.all([
+    api('/api/servers'),
+    api('/api/bans'),
+    can('audit') ? api('/api/history') : Promise.resolve({ commands: [], audit: [] }),
+  ]);
+  if (revision !== refreshRevision || requestedGame !== gameId) return;
   servers = s.servers;
   bans = b.bans;
   commands = h.commands;
@@ -20538,6 +20626,8 @@ function heading(title, detail, action = '') {
   return `<div class="page-heading"><div><h1>${title}</h1><p>${detail}</p></div>${action}</div>`;
 }
 function status(c) {
+  if (c.state === 'waiting') return ['Waiting for player', 'amber'];
+  if (c.state === 'cancelled') return ['Cancelled', 'neutral'];
   const d = c.deliveries;
   if (!d.length) return ['Saved', 'green'];
   if (d.every((x) => x.status === 'done')) return ['Done', 'green'];
@@ -20573,6 +20663,9 @@ function serverRows() {
       );
 }
 function render() {
+  if (!can('commands') && !['games', 'access'].includes(view)) view = 'games';
+  if ((view === 'history' && !can('audit')) || (view === 'scripts' && !can('scripts')))
+    view = 'dashboard';
   if (editor) {
     editor.destroy();
     editor = null;
@@ -20584,6 +20677,9 @@ function render() {
     commands: 'Commands',
     scripts: 'Script editor',
     history: 'History',
+    games: 'Games',
+    networks: 'Networks',
+    queue: 'Offline queue',
     bans: 'Bans',
     access: 'Access control',
   };
@@ -20643,7 +20739,7 @@ function render() {
         'Write Luau. Choose where it runs. Keep a record of every execution.',
         `<div class="segments"><button id="server-mode" class="${mode === 'server-script' ? 'active' : ''}">Server</button><button id="client-mode" class="${mode === 'client-script' ? 'active' : ''}">Client</button></div>`,
       ) +
-      `<div class="notice">${me.root ? 'Script execution is root-only. Scripts run with game permissions. Start with one server or player.' : 'Only root can execute scripts. You can browse the examples.'}</div><div class="editor-layout"><aside class="panel snippets">${[
+      `<div class="notice">${can('scripts') ? 'Script execution requires Super Admin or Root in this game. Start with one server or player.' : 'Script execution is unavailable for your game rank.'}</div><div class="editor-layout"><aside class="panel snippets">${[
         ['inspect', ';inspect', 'Print connected players'],
         ['launch', ';launch', 'Send characters skyward'],
         ['lighting', ';lighting', 'Change the time of day'],
@@ -20654,7 +20750,7 @@ function render() {
         )
         .join(
           '',
-        )}</aside><section class="panel editor-panel"><div class="editor-controls"><div class="field-row"><div class="field"><label for="script-scope">Run on</label><select id="script-scope">${mode === 'server-script' ? '<option value="server">One server</option>' : '<option value="player">One player</option>'}<option value="global">${mode === 'server-script' ? 'All servers' : 'All players'}</option></select></div><div class="field" id="script-target-field"></div></div></div><div class="editor-toolbar"><code>${mode === 'server-script' ? 'server' : 'client'}.luau</code><button class="ghost" id="copy-script">${icon('copy')} Copy</button></div><div id="editor"></div><div class="editor-footer"><small>Luau · Roblox API · UTF-8</small><button class="button primary" id="execute-script" ${me.root ? '' : 'disabled'}>${icon('code')} Execute ${mode === 'server-script' ? 'server' : 'client'} script</button></div></section></div>`;
+        )}</aside><section class="panel editor-panel"><div class="editor-controls"><div class="field-row"><div class="field"><label for="script-scope">Run on</label><select id="script-scope">${mode === 'server-script' ? '<option value="server">One server</option>' : '<option value="player">One player</option>'}<option value="global">${mode === 'server-script' ? 'All servers' : 'All players'}</option></select></div><div class="field" id="script-target-field"></div></div></div><div class="editor-toolbar"><code>${mode === 'server-script' ? 'server' : 'client'}.luau</code><button class="ghost" id="copy-script">${icon('copy')} Copy</button></div><div id="editor"></div><div class="editor-footer"><small>Luau · Roblox API · UTF-8</small><button class="button primary" id="execute-script" ${can('scripts') ? '' : 'disabled'}>${icon('code')} Execute ${mode === 'server-script' ? 'server' : 'client'} script</button></div></section></div>`;
   if (view === 'history')
     html =
       heading('History', 'Commands, outcomes, and access changes in one place.') +
@@ -20669,8 +20765,18 @@ function render() {
       `<section class="panel"><div class="panel-head"><h2>Active bans ${pill(bans.length)}</h2><input class="search" id="ban-search" placeholder="Search users or reasons…" aria-label="Search bans"></div><div id="ban-table"></div></section>`;
   if (view === 'access')
     html =
-      heading('Access control', 'Only root can grant and revoke dashboard access.') +
-      `<section class="panel"><div class="panel-head"><h2>Allow an account</h2>${pill('ROOT ONLY')}</div><form id="allow-form" class="panel-body allow-form"><div class="field"><label for="allow-provider">Sign-in provider</label><select id="allow-provider"><option value="google">Google email</option><option value="discord">Discord user ID</option></select></div><div class="field"><label for="allow-identity">Account</label><input id="allow-identity" placeholder="name@gmail.com" required maxlength="254"></div><button class="button primary" type="submit">Grant access</button></form></section><section class="panel"><div class="panel-head"><h2>Root identities</h2>${icon('shield')}</div><div id="root-identities"></div></section><section class="panel"><div class="panel-head"><h2>Allowed accounts</h2></div><div id="allow-table">${empty('Loading accounts…', '', 'shield', true)}</div></section>`;
+      heading(
+        'Access control',
+        'Global ranks apply across games. Game ranks apply only to the selected game.',
+      ) + '<div id="access-content"></div>';
+  if (view === 'games') html = gamesPage();
+  if (view === 'networks') html = networksPage();
+  if (view === 'queue')
+    html =
+      heading(
+        'Offline queue',
+        'Mutes start their full duration when the player joins. Bans and unbans are saved immediately as policies.',
+      ) + '<section class="panel" id="queue-content"></section>';
   $('#content').innerHTML = html;
   document.querySelectorAll('[data-go]').forEach((b) => (b.onclick = () => navigate(b.dataset.go)));
   document.querySelectorAll('[data-command]').forEach(
@@ -20715,6 +20821,10 @@ function render() {
   if (view === 'commands') setupCommand();
   if (view === 'scripts') setupEditor();
   if (view === 'access') setupAccess().catch((e) => toast(e.message, true));
+  if (view === 'games') setupGames();
+  if (view === 'networks') setupNetworks();
+  if (view === 'queue') setupQueue().catch((e) => toast(e.message, true));
+  if (!can('audit')) document.querySelector('[data-go="history"]')?.closest('section')?.remove();
 }
 function navigate(v) {
   view = v;
@@ -20738,6 +20848,7 @@ function renderPlayers() {
         selectedCommand = 'kick';
         navigate('commands');
         $('#target').value = b.dataset.target;
+        commandDraft().target = b.dataset.target;
       }),
   );
 }
@@ -20747,7 +20858,7 @@ function renderBans() {
       [b.username, b.user_id, b.reason].join(' ').toLowerCase().includes(q),
     );
   $('#ban-table').innerHTML = list.length
-    ? `<div class="table-wrap"><table><thead><tr><th>User</th><th>By</th><th>Reason</th><th>When</th><th>Expires</th><th>Scope</th><th></th></tr></thead><tbody>${list.map((b) => `<tr><td><strong>${esc(b.username)}</strong><div class="subtle mono">${esc(b.user_id)}</div></td><td class="identity subtle">${esc(b.actor.split(':').slice(1).join(':'))}</td><td>${esc(b.reason)}</td><td class="subtle">${ago(b.created_at)}</td><td>${pill('Permanent', 'red')}</td><td>${pill('All servers')}</td><td><button class="button secondary small" data-unban="${esc(b.user_id)}" data-name="${esc(b.username)}">Revoke</button></td></tr>`).join('')}</tbody></table></div>`
+    ? `<div class="table-wrap"><table><thead><tr><th>User</th><th>By</th><th>Reason</th><th>When</th><th>Expires</th><th>Scope</th><th></th></tr></thead><tbody>${list.map((b) => `<tr><td><strong>${esc(b.username)}</strong><div class="subtle mono">${esc(b.user_id)}</div></td><td class="identity subtle">${esc(b.actor.split(':').slice(1).join(':'))}</td><td>${esc(b.reason)}</td><td class="subtle">${ago(b.created_at)}</td><td>${pill('Permanent', 'red')}</td><td>${pill(b.job_id ? 'Job ' + b.job_id : 'All game servers')}</td><td><button data-job="${esc(b.job_id || '')}" class="button secondary small" data-unban="${esc(b.user_id)}" data-name="${esc(b.username)}">Revoke</button></td></tr>`).join('')}</tbody></table></div>`
     : empty(
         'No active bans',
         'Banned players and their moderation reasons will appear here.',
@@ -20756,13 +20867,26 @@ function renderBans() {
   document.querySelectorAll('[data-unban]').forEach(
     (b) =>
       (b.onclick = async () => {
+        if (b.dataset.job) {
+          selectedCommand = 'serverunban';
+          navigate('commands');
+          $('#target').value = b.dataset.unban;
+          $('#ban-job').value = b.dataset.job;
+          Object.assign(commandDraft(), { target: b.dataset.unban, jobId: b.dataset.job });
+          return;
+        }
         if (
           await confirm(
             'Revoke this ban?',
             `${b.dataset.name} will be able to join the experience again.`,
           )
         )
-          await send({ kind: 'unban', scope: 'player', target: b.dataset.unban });
+          await send({
+            kind: 'unban',
+            scope: 'player',
+            target: b.dataset.unban,
+            gameRange: 'game',
+          });
       }),
   );
 }
@@ -20775,7 +20899,7 @@ const jobOptions = () =>
     .join('');
 function targetField(scope, id = 'target') {
   return scope === 'global'
-    ? '<div class="notice">This action targets every connected server at the time you send it.</div>'
+    ? '<div class="notice">This targets all currently connected servers in this game. With no live servers, it is not sent or stored.</div>'
     : scope === 'server'
       ? `<div class="field"><label for="${id}">Server job ID</label><input id="${id}" list="jobs" placeholder="Paste a full job ID" required><datalist id="jobs">${jobOptions()}</datalist></div>`
       : `<div class="field"><label for="${id}">Roblox username or user ID</label><input id="${id}" placeholder="e.g. builderman or 156" required maxlength="32"><small>Use a full username or user ID. Display names are not unique.</small></div>`;
@@ -20784,7 +20908,15 @@ function setupCommand() {
   const k = selectedCommand,
     multi = ['sound', 'fly', 'unfly', 'shutdown', 'announce'].includes(k);
   $('#command-fields').innerHTML =
-    `${multi ? `<div class="field"><label for="scope">Target scope</label><select id="scope">${k !== 'shutdown' ? '<option value="player">One player</option>' : ''}<option value="server">One server</option><option value="global">All servers</option></select></div>` : ''}<div id="target-field">${targetField(k === 'shutdown' ? 'server' : 'player')}</div>${['ban', 'kick'].includes(k) ? '<div class="field"><label for="reason">Reason</label><textarea id="reason" required maxlength="400" placeholder="Tell the player why this action was taken"></textarea></div>' : ''}${k === 'speed' ? '<div class="field"><label for="speed">Walk speed</label><input id="speed" type="number" min="0" max="500" value="32" required><small>Roblox’s default walk speed is 16.</small></div>' : ''}${k === 'mute' ? '<div class="field"><label for="duration">Duration in seconds</label><input id="duration" type="number" min="1" max="604800" value="300" required><small>Chat is restored when the mute expires, including after rejoining.</small></div>' : ''}${k === 'sound' ? '<div class="field-row"><div class="field"><label for="soundId">Audio asset ID</label><input id="soundId" inputmode="numeric" pattern="[0-9]+" placeholder="Roblox audio ID" required></div><div class="field"><label for="volume">Volume (0–2)</label><input id="volume" type="number" min="0" max="2" step="0.1" value="0.5" required></div></div><div class="notice">The experience must have permission to use this audio asset.</div>' : ''}${k === 'shutdown' ? '<div class="notice warning">Players are teleported together to a new reserved server. They cannot be teleported after a kick. Teleport failures are reported in history.</div>' : ''}`;
+    `${multi ? `<div class="field"><label for="scope">Target scope</label><select id="scope">${k !== 'shutdown' ? '<option value="player">One player</option>' : ''}<option value="server">One server</option><option value="global">All servers</option></select></div>` : ''}<div id="target-field">${targetField(k === 'shutdown' ? 'server' : 'player')}</div>${['ban', 'kick', 'serverban', 'serverunban'].includes(k) ? '<div class="field"><label for="reason">Reason</label><textarea id="reason" required maxlength="400" placeholder="Tell the player why this action was taken"></textarea></div>' : ''}${k === 'speed' ? '<div class="field"><label for="speed">Walk speed</label><input id="speed" type="number" min="0" max="500" value="32" required><small>Roblox’s default walk speed is 16.</small></div>' : ''}${k === 'mute' ? '<div class="field"><label for="duration">Duration in seconds</label><input id="duration" type="number" min="1" max="604800" value="300" required><small>Chat is restored when the mute expires, including after rejoining.</small></div>' : ''}${k === 'sound' ? '<div class="field-row"><div class="field"><label for="soundId">Audio asset ID</label><input id="soundId" inputmode="numeric" pattern="[0-9]+" placeholder="Roblox audio ID" required></div><div class="field"><label for="volume">Volume (1–10; above 2 needs Admin+)</label><input id="volume" type="number" min="1" max="10" step="0.1" value="1" required></div></div><div class="notice">The experience must have permission to use this audio asset.</div>' : ''}${k === 'shutdown' ? '<div class="notice warning">Players are teleported together to a new reserved server. They cannot be teleported after a kick. Teleport failures are reported in history.</div>' : ''}`;
+  $('#command-fields').insertAdjacentHTML('afterbegin', gameRangeFields());
+  setupGameRange();
+  if (k === 'sound') $('#volume').max = can('loudSound') ? '10' : '2';
+  if (['serverban', 'serverunban'].includes(k))
+    $('#command-fields').insertAdjacentHTML(
+      'beforeend',
+      '<div class="field"><label for="ban-job">Server JobId</label><input id="ban-job" list="jobs" required maxlength="80" placeholder="Exact JobId"><small>A server ban only applies to this exact JobId.</small></div>',
+    );
   if (k === 'announce') {
     $('#scope').value = 'global';
     $('#target-field').innerHTML = targetField('global');
@@ -20794,8 +20926,41 @@ function setupCommand() {
         '<label class="checkbox-field"><input id="anonymous" type="checkbox"> Send anonymously</label><small>Closes automatically after 5 seconds. Anonymous announcements hide your name in-game; history still records the administrator.</small>',
     );
   }
+  const draft = commandDraft();
+  let currentScope = draft.scopes[k] || $('#scope')?.value || 'player';
+  if (multi) {
+    $('#scope').value = currentScope;
+    $('#target-field').innerHTML = targetField(currentScope);
+  }
+  const restoreTarget = () => {
+    if ($('#target'))
+      $('#target').value = draft[currentScope === 'server' ? 'jobId' : 'target'] || '';
+  };
+  restoreTarget();
+  if ($('#ban-job')) $('#ban-job').value = draft.jobId || '';
+  for (const name of ['reason', 'speed', 'duration', 'soundId', 'volume', 'message']) {
+    if ($('#' + name) && draft[name] !== undefined) $('#' + name).value = draft[name];
+  }
+  if ($('#anonymous') && draft.anonymous !== undefined) $('#anonymous').checked = draft.anonymous;
+  const capture = () => {
+    if ($('#target')) draft[currentScope === 'server' ? 'jobId' : 'target'] = $('#target').value;
+    if ($('#ban-job')) draft.jobId = $('#ban-job').value;
+    for (const name of ['reason', 'speed', 'duration', 'soundId', 'volume', 'message']) {
+      if ($('#' + name)) draft[name] = $('#' + name).value;
+    }
+    if ($('#anonymous')) draft.anonymous = $('#anonymous').checked;
+    draft.scopes[k] = currentScope;
+  };
   if (multi)
-    $('#scope').onchange = () => ($('#target-field').innerHTML = targetField($('#scope').value));
+    $('#scope').onchange = () => {
+      capture();
+      currentScope = $('#scope').value;
+      draft.scopes[k] = currentScope;
+      $('#target-field').innerHTML = targetField(currentScope);
+      restoreTarget();
+    };
+  $('#command-fields').addEventListener('input', capture);
+  $('#command-fields').addEventListener('change', capture);
   $('#command-form').onsubmit = async (e) => {
     e.preventDefault();
     const scope = $('#scope')?.value || 'player',
@@ -20807,11 +20972,12 @@ function setupCommand() {
         payload[field] = ['speed', 'duration', 'volume'].includes(field)
           ? Number($('#' + field).value)
           : $('#' + field).value;
+    if (['serverban', 'serverunban'].includes(k)) payload.jobId = $('#ban-job').value.trim();
     if (k === 'announce') payload.anonymous = $('#anonymous').checked;
     if (
       await confirm(
         definitions[k][0] + '?',
-        `${definitions[k][1]} Target: ${payload.target || payload.jobId || 'all connected servers'}.`,
+        `${definitions[k][1]} Games: ${gameRangeDescription()}. Target: ${payload.target || payload.jobId || 'all connected servers'}.`,
       )
     ) {
       const button = e.submitter;
@@ -20826,12 +20992,23 @@ function setupCommand() {
 }
 async function send(payload) {
   try {
-    const r = await api('/api/commands', { method: 'POST', body: JSON.stringify(payload) });
+    const r = await api('/api/commands', {
+      method: 'POST',
+      body: JSON.stringify({ ...payload, gameRange: payload.gameRange || gameRange }),
+    });
     toast(
-      r.status === 'saved'
-        ? 'Policy saved. It will apply when the player joins.'
-        : `Queued for ${r.recipients} server${r.recipients === 1 ? '' : 's'}. Check history for results.`,
+      r.status === 'ignored'
+        ? r.message
+        : r.status === 'waiting'
+          ? 'Mute saved. Its timer starts when the player joins.'
+          : r.status === 'saved'
+            ? 'Policy saved. It will apply when the player joins.'
+            : `Queued for ${r.recipients} server${r.recipients === 1 ? '' : 's'}. Check history for results.`,
     );
+    if (r.games)
+      toast(
+        `Applied to ${r.games.filter((g) => g.status !== 'ignored').length} of ${r.games.length} games. ${r.games.filter((g) => g.status === 'ignored').length} had no live target.`,
+      );
     await refresh();
     return true;
   } catch (e) {
@@ -20907,6 +21084,8 @@ const luau = StreamLanguage.define({
   },
 });
 function setupEditor() {
+  $('.editor-controls').insertAdjacentHTML('afterbegin', gameRangeFields());
+  setupGameRange();
   const saved = sessionStorage.getItem('ra-draft-' + mode);
   editor = new EditorView({
     state: EditorState.create({
@@ -20999,7 +21178,7 @@ function setupEditor() {
     if (
       await confirm(
         'Execute this script?',
-        `Run ${source.split('\n').length} lines on ${target || 'all connected ' + (mode === 'server-script' ? 'servers' : 'players')}? Scripts run with ${mode === 'server-script' ? 'server' : 'client'} permissions.`,
+        `Games: ${gameRangeDescription()}. Run ${source.split('\n').length} lines on ${target || 'all connected ' + (mode === 'server-script' ? 'servers' : 'players')}? Scripts run with ${mode === 'server-script' ? 'server' : 'client'} permissions.`,
       )
     ) {
       executeButton.disabled = true;
@@ -21013,65 +21192,298 @@ function setupEditor() {
     }
   };
 }
-async function setupAccess() {
-  const data = await api('/api/allowlist');
-  if (view !== 'access') return;
-  $('#root-identities').innerHTML = data.roots
-    .map(
-      (x) =>
-        `<div class="access-root"><span class="tile-icon">${icon('shield')}</span><div class="identity">${esc(x.identity)}<small>${x.provider === 'google' ? 'Google · verified email' : 'Discord · immutable user ID'}</small></div>${pill('ROOT')}</div>`,
-    )
-    .join('');
-  $('#allow-table').innerHTML = data.entries.length
-    ? `<div class="table-wrap"><table><thead><tr><th>Provider</th><th>Identity</th><th>Added</th><th></th></tr></thead><tbody>${data.entries.map((x) => `<tr><td>${esc(x.provider)}</td><td class="identity">${esc(x.identity)}</td><td>${ago(x.created_at)}</td><td><button class="button secondary small" data-revoke="${esc(x.identity)}" data-provider="${esc(x.provider)}">Revoke access</button></td></tr>`).join('')}</tbody></table></div>`
-    : empty(
-        'Only root has access',
-        'Add a verified Google email or a Discord user ID above.',
-        'shield',
-        true,
+function gameRangeDescription() {
+  if (me.globalRank && gameRange === 'all') return 'all enabled games';
+  const network = networks.find((n) => n.games.some((g) => g.universe_id === gameId));
+  return network
+    ? network.name +
+        ' network (' +
+        network.games
+          .filter((g) => g.enabled)
+          .map((g) => g.name)
+          .join(', ') +
+        ')'
+    : currentGame()?.name || gameId;
+}
+function gameRangeFields() {
+  return (
+    (me.globalRank
+      ? `<div class="field"><label for="command-game-range">Game range</label><select id="command-game-range"><option value="game">Per-Game (${esc(gameId)})</option><option value="all">All Games</option></select></div>`
+      : '') + '<div class="notice" id="command-network-note"></div>'
+  );
+}
+function setupGameRange() {
+  const update = () => {
+    $('#command-network-note').textContent =
+      'Destinations: ' +
+      gameRangeDescription() +
+      '. Permissions are checked in every game. Player and server targets are selected separately.';
+  };
+  if ($('#command-game-range')) {
+    $('#command-game-range').value = gameRange;
+    $('#command-game-range').onchange = () => {
+      gameRange = $('#command-game-range').value;
+      update();
+    };
+  }
+  update();
+}
+function networksPage() {
+  const eligible = games.filter((g) => g.enabled && g.permissions.networks);
+  return (
+    heading(
+      'Networks',
+      'New commands and policy changes sync across linked games. Existing policies and ranks stay separate.',
+    ) +
+    `<section class="panel"><div class="panel-body game-grid">${networks.map((n) => `<article class="game-card"><h2>${esc(n.name)}</h2><p>${n.games.map((g) => esc(g.name)).join(' · ')}</p><small>Commands still require permission in every destination game.</small>${n.canEdit ? `<div class="button-row"><button class="button secondary small" data-edit-network="${esc(n.id)}">Edit links</button><button class="button secondary small" data-remove-network="${esc(n.id)}">Unlink network</button></div>` : ''}</article>`).join('') || empty('No networks yet', 'Link two or more games where you have Admin or higher.', 'server')}</div></section>` +
+    (eligible.length >= 2
+      ? `<section class="panel"><div class="panel-head"><h2>Link games</h2>${pill('ADMIN+ IN EACH GAME')}</div><form id="network-form" class="panel-body"><input type="hidden" id="network-id"><div class="field"><label for="network-name">Network name</label><input id="network-name" required maxlength="100"></div><fieldset><legend>Games in this network</legend>${eligible.map((g) => `<label class="checkbox-field"><input type="checkbox" name="network-game" value="${esc(g.universe_id)}">${esc(g.name)} (${esc(g.universe_id)})</label>`).join('')}</fieldset><div class="form-bottom"><small>Each game can belong to one network. Past commands are never replayed.</small><button class="button primary">Save network</button></div></form></section>`
+      : '<div class="notice">You need Admin+ in at least two games to create a network.</div>')
+  );
+}
+function setupNetworks() {
+  document.querySelectorAll('[data-edit-network]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        const n = networks.find((n) => n.id === b.dataset.editNetwork);
+        if (!$('#network-form')) {
+          toast('Enable at least two member games before editing.', true);
+          return;
+        }
+        $('#network-id').value = n.id;
+        $('#network-name').value = n.name;
+        document
+          .querySelectorAll('[name="network-game"]')
+          .forEach((input) => (input.checked = n.games.some((g) => g.universe_id === input.value)));
+        $('#network-name').focus();
+      }),
+  );
+  document.querySelectorAll('[data-remove-network]').forEach(
+    (b) =>
+      (b.onclick = async () => {
+        if (
+          !(await confirm(
+            'Unlink this network?',
+            'Future commands will stop syncing. Previously saved policies stay in their games.',
+          ))
+        )
+          return;
+        try {
+          await api('/api/networks', {
+            method: 'DELETE',
+            body: JSON.stringify({ id: b.dataset.removeNetwork }),
+          });
+          networks = (await api('/api/networks')).networks;
+          render();
+          toast('Network unlinked.');
+        } catch (e) {
+          toast(e.message, true);
+        }
+      }),
+  );
+  if ($('#network-form'))
+    $('#network-form').onsubmit = async (e) => {
+      e.preventDefault();
+      const gameIds = [...document.querySelectorAll('[name="network-game"]:checked')].map(
+        (input) => input.value,
       );
+      if (gameIds.length < 2) {
+        toast('Select at least two games.', true);
+        return;
+      }
+      try {
+        await api('/api/networks', {
+          method: 'POST',
+          body: JSON.stringify({
+            id: $('#network-id').value || undefined,
+            name: $('#network-name').value.trim(),
+            gameIds,
+          }),
+        });
+        networks = (await api('/api/networks')).networks;
+        render();
+        toast('Network saved. New actions will sync.');
+      } catch (e) {
+        toast(e.message, true);
+      }
+    };
+}
+function gamesPage() {
+  return (
+    heading(
+      'Games',
+      'Choose an allowed experience. Linked networks also receive new commands and policy changes.',
+    ) +
+    `<section class="panel"><div class="panel-body game-grid">${games.map((g) => `<article class="game-card"><h2>${esc(g.name)}</h2><p class="mono">Game ${esc(g.universe_id)}</p><p>Places: ${g.placeIds.map(esc).join(', ')}</p>${pill(g.enabled ? rankLabel(g.permissions.rank) : 'Disabled')}<div class="button-row">${g.enabled ? `<button class="button secondary small" data-select-game="${esc(g.universe_id)}">Select game</button>` : ''}${me.root ? `<button class="button secondary small" data-edit-game="${esc(g.universe_id)}">Edit settings</button>` : ''}</div></article>`).join('') || empty('No allowed games', 'Ask a Manager or Global Root for game access.', 'server')}</div></section>` +
+    (me.root
+      ? `<section class="panel"><div class="panel-head"><h2>Allow or update a game</h2>${pill('GLOBAL ROOT')}</div><form id="game-form" class="panel-body"><div class="field-row"><div class="field"><label for="game-name">Game name</label><input id="game-name" required maxlength="100"></div><div class="field"><label for="game-id">Game / universe ID</label><input id="game-id" required inputmode="numeric" pattern="[0-9]+"></div></div><div class="field"><label for="game-places">Allowed place IDs</label><input id="game-places" required placeholder="Place IDs separated by commas"><small>Use Roblox’s universe ID for the game, and its place IDs here.</small></div><label class="checkbox-field"><input id="game-enabled" type="checkbox" checked> Game enabled</label><label class="checkbox-field"><input id="rotate-secret" type="checkbox"> Replace this game’s bridge secret</label><div class="form-bottom"><small>A new game gets its own server credential.</small><button class="button primary">Save game</button></div><div id="game-secret"></div></form></section>`
+      : '')
+  );
+}
+function setupGames() {
+  document.querySelectorAll('[data-select-game]').forEach(
+    (b) =>
+      (b.onclick = async () => {
+        gameId = b.dataset.selectGame;
+        sessionStorage.setItem('ra-game', gameId);
+        view = can('commands') ? 'dashboard' : 'access';
+        accessGame = gameId;
+        shell();
+        render();
+        try {
+          await refresh();
+        } catch (e) {
+          toast(e.message, true);
+        }
+      }),
+  );
+  document.querySelectorAll('[data-edit-game]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        const g = games.find((g) => g.universe_id === b.dataset.editGame);
+        $('#game-name').value = g.name;
+        $('#game-id').value = g.universe_id;
+        $('#game-places').value = g.placeIds.join(', ');
+        $('#game-enabled').checked = !!g.enabled;
+        $('#rotate-secret').checked = false;
+        $('#game-id').focus();
+      }),
+  );
+  if (!$('#game-form')) return;
+  $('#game-form').onsubmit = async (e) => {
+    e.preventDefault();
+    const button = e.submitter;
+    button.disabled = true;
+    try {
+      const response = await api('/api/games', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: $('#game-name').value.trim(),
+          gameId: $('#game-id').value.trim(),
+          placeIds: $('#game-places')
+            .value.split(/[\s,]+/)
+            .filter(Boolean),
+          enabled: $('#game-enabled').checked,
+          rotateSecret: $('#rotate-secret').checked,
+        }),
+      });
+      const secret = response.bridgeSecret;
+      games = (await api('/api/games')).games;
+      gameId = response.gameId;
+      sessionStorage.setItem('ra-game', gameId);
+      shell();
+      render();
+      if (secret) {
+        $('#game-secret').innerHTML =
+          '<div class="notice"><strong>Save this bridge secret now.</strong><p>Put it in this game’s server-only Configuration.BridgeSecret. It will not be shown again.</p><input id="new-bridge-secret" readonly aria-label="New game bridge secret"><button type="button" id="copy-bridge-secret" class="button secondary small">Copy secret</button></div>';
+        $('#new-bridge-secret').value = secret;
+        $('#copy-bridge-secret').onclick = () =>
+          navigator.clipboard
+            .writeText(secret)
+            .then(() => toast('Secret copied'))
+            .catch(() => toast('Select and copy the secret manually.', true));
+      }
+      toast('Game settings saved.');
+    } catch (error) {
+      toast(error.message, true);
+    } finally {
+      button.disabled = false;
+    }
+  };
+}
+async function setupQueue() {
+  const selected = gameId,
+    data = await api('/api/queue');
+  if (view !== 'queue' || selected !== gameId) return;
+  $('#queue-content').innerHTML = data.commands.length
+    ? `<div class="table-wrap"><table><thead><tr><th>Command</th><th>Player</th><th>Queued</th><th></th></tr></thead><tbody>${data.commands.map((c) => `<tr><td>Mute</td><td>${esc(c.target)}</td><td>${ago(c.created_at)}</td><td><button class="button secondary small" data-cancel-queue="${esc(c.id)}">Cancel</button></td></tr>`).join('')}</tbody></table></div>`
+    : empty(
+        'Nothing waiting',
+        'Offline mutes appear here until the target player joins.',
+        'commands',
+      );
+  document.querySelectorAll('[data-cancel-queue]').forEach(
+    (b) =>
+      (b.onclick = async () => {
+        try {
+          await api('/api/queue', {
+            method: 'DELETE',
+            body: JSON.stringify({ id: b.dataset.cancelQueue }),
+          });
+          await setupQueue();
+          toast('Queued mute cancelled.');
+        } catch (e) {
+          toast(e.message, true);
+        }
+      }),
+  );
+}
+async function setupAccess() {
+  const available = games.filter((g) => g.enabled && (me.globalRank || g.permissions.permissions));
+  if (accessGame === null || (accessGame && !available.some((g) => g.universe_id === accessGame)))
+    accessGame = me.root ? '' : available[0]?.universe_id || '';
+  const selected = accessGame;
+  const data = await api(
+    '/api/access' + (selected ? '?gameId=' + encodeURIComponent(selected) : ''),
+  );
+  if (view !== 'access' || selected !== accessGame) return;
+  const ranks = selected ? data.assignableRanks || [] : ['access', 'manager', 'root'];
+  $('#access-content').innerHTML =
+    `<section class="panel"><div class="panel-body"><div class="field"><label for="access-scope">Permissions scope</label><select id="access-scope">${me.root ? '<option value="">Global access and ranks</option>' : ''}${available.map((g) => `<option value="${esc(g.universe_id)}">${esc(g.name)}</option>`).join('')}</select></div><form id="allow-form" class="allow-form"><div class="field"><label for="allow-provider">Provider</label><select id="allow-provider"><option value="google">Google email</option><option value="discord">Discord user ID</option></select></div><div class="field"><label for="allow-identity">Account</label><input id="allow-identity" required maxlength="254" placeholder="name@gmail.com"></div><div class="field"><label for="allow-rank">Rank</label><select id="allow-rank">${ranks.map((r) => `<option value="${r}">${rankLabel(r)}</option>`).join('')}</select></div><button class="button primary">Save access</button></form></div></section><section class="panel"><div class="panel-head"><h2>${selected ? 'Game permissions' : 'Global permissions'}</h2></div>${data.roots.map((r) => `<div class="access-root"><span class="identity">${esc(r.identity)}</span>${pill('GLOBAL ROOT')}</div>`).join('')}${data.entries.length ? `<div class="table-wrap"><table><thead><tr><th>Account</th><th>Provider</th><th>Rank</th><th></th></tr></thead><tbody>${data.entries.map((r) => `<tr><td class="identity">${esc(r.identity)}</td><td>${esc(r.provider)}</td><td>${rankLabel(r.rank || 'access')}</td><td><button class="button secondary small" data-revoke="${esc(r.identity)}" data-provider="${esc(r.provider)}">Revoke</button></td></tr>`).join('')}</tbody></table></div>` : empty('No assigned accounts', 'Add an account above. Global Root always has full game access.', 'shield')}</section>`;
+  $('#access-scope').value = selected;
+  $('#access-scope').onchange = () => {
+    accessGame = $('#access-scope').value;
+    setupAccess().catch((e) => toast(e.message, true));
+  };
   $('#allow-provider').onchange = () =>
     ($('#allow-identity').placeholder =
       $('#allow-provider').value === 'google' ? 'name@gmail.com' : 'Discord numeric user ID');
   $('#allow-form').onsubmit = async (e) => {
     e.preventDefault();
     try {
-      await api('/api/allowlist', {
+      await api('/api/access', {
         method: 'POST',
         body: JSON.stringify({
+          gameId: accessGame || undefined,
           provider: $('#allow-provider').value,
           identity: $('#allow-identity').value.trim(),
+          rank: $('#allow-rank').value,
         }),
       });
-      toast('Account allowed.');
+      toast('Permissions saved.');
       await setupAccess();
-      $('#allow-identity').value = '';
-    } catch (e) {
-      toast(e.message, true);
+    } catch (error) {
+      toast(error.message, true);
     }
   };
   document.querySelectorAll('[data-revoke]').forEach(
     (b) =>
       (b.onclick = async () => {
         if (
-          await confirm(
-            'Revoke dashboard access?',
-            `${b.dataset.revoke} will be signed out immediately.`,
-          )
+          !(await confirm(
+            'Revoke access?',
+            `${b.dataset.revoke}: ${accessGame ? 'remove access to this game.' : 'remove all global and game access.'}`,
+          ))
         )
-          try {
-            await api('/api/allowlist', {
-              method: 'DELETE',
-              body: JSON.stringify({ provider: b.dataset.provider, identity: b.dataset.revoke }),
-            });
-            toast('Access revoked.');
-            await setupAccess();
-          } catch (e) {
-            toast(e.message, true);
-          }
+          return;
+        try {
+          await api('/api/access', {
+            method: 'DELETE',
+            body: JSON.stringify({
+              gameId: accessGame || undefined,
+              provider: b.dataset.provider,
+              identity: b.dataset.revoke,
+            }),
+          });
+          await setupAccess();
+          toast('Access revoked.');
+        } catch (error) {
+          toast(error.message, true);
+        }
       }),
   );
 }
+
 async function start() {
   try {
     const ticket = new URLSearchParams(location.hash.slice(1)).get('ticket');
@@ -21089,6 +21501,8 @@ async function start() {
       return;
     }
     me = await api('/api/me');
+    games = (await api('/api/games')).games;
+    if (!currentGame()?.enabled) gameId = games.find((g) => g.enabled)?.universe_id || '';
     const requested = location.hash.slice(1);
     if (
       [
@@ -21100,6 +21514,9 @@ async function start() {
         'history',
         'bans',
         'access',
+        'games',
+        'networks',
+        'queue',
       ].includes(requested)
     )
       view = requested;
