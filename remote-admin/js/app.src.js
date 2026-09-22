@@ -4014,6 +4014,206 @@ function findColumn(string, col, tabSize, strict) {
     return string.length;
 }
 
+// Keep native select values/events for forms while presenting an accessible custom menu.
+function installControls(root) {
+  const controls = new Map();
+  let opened;
+  let nextId = 0;
+  const close = () => {
+    if (!opened) return;
+    opened.menu.remove();
+    opened.button.setAttribute('aria-expanded', 'false');
+    opened.button.removeAttribute('aria-activedescendant');
+    opened = null;
+  };
+  const enhance = (select) => {
+    if (controls.has(select) || select.multiple) return;
+    const wrapper = document.createElement('div');
+    wrapper.className = 'custom-select';
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'select-trigger';
+    button.setAttribute('role', 'combobox');
+    button.setAttribute('aria-haspopup', 'listbox');
+    button.setAttribute('aria-expanded', 'false');
+    const label = document.createElement('span');
+    const arrow = document.createElement('span');
+    arrow.className = 'select-chevron';
+    arrow.setAttribute('aria-hidden', 'true');
+    button.append(label, arrow);
+    const menu = document.createElement('div');
+    menu.id = 'select-options-' + ++nextId;
+    menu.className = 'select-menu';
+    menu.setAttribute('role', 'listbox');
+    button.setAttribute('aria-controls', menu.id);
+    select.before(wrapper);
+    wrapper.append(select, button);
+    select.classList.add('native-select');
+    select.tabIndex = -1;
+    select.setAttribute('aria-hidden', 'true');
+    const control = { button, menu, active: select.selectedIndex };
+    controls.set(select, control);
+    const sync = () => {
+      const text = select.selectedOptions[0]?.textContent || 'Select an option';
+      if (label.textContent !== text) label.textContent = text;
+      button.disabled = select.disabled;
+      const name =
+        select.getAttribute('aria-label') ||
+        Array.from(select.labels || [])
+          .map((l) => l.textContent.trim())
+          .join(' ') ||
+        'Select an option';
+      button.setAttribute('aria-label', name);
+      menu.setAttribute('aria-label', name);
+    };
+    control.sync = sync;
+    // Existing forms assign .value directly after rendering; keep that API intact.
+    const value = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+    Object.defineProperty(select, 'value', {
+      configurable: true,
+      get() {
+        return value.get.call(this);
+      },
+      set(next) {
+        value.set.call(this, next);
+        sync();
+      },
+    });
+    const options = () => Array.from(select.options);
+    const activate = (index) => {
+      control.active = index;
+      Array.from(menu.children).forEach((option, i) =>
+        option.classList.toggle('highlighted', i === index),
+      );
+      const option = menu.children[index];
+      if (option) {
+        button.setAttribute('aria-activedescendant', option.id);
+        option.scrollIntoView({ block: 'nearest' });
+      }
+    };
+    const choose = (index) => {
+      if (!options()[index] || options()[index].disabled) return;
+      select.selectedIndex = index;
+      sync();
+      close();
+      select.dispatchEvent(new Event('input', { bubbles: true }));
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      if (button.isConnected) button.focus();
+    };
+    const open = () => {
+      close();
+      if (select.disabled) return;
+      menu.replaceChildren(
+        ...options().map((option, i) => {
+          const item = document.createElement('div');
+          item.id = menu.id + '-' + i;
+          item.className = 'select-option';
+          item.setAttribute('role', 'option');
+          item.setAttribute('aria-selected', String(option.selected));
+          item.setAttribute('aria-disabled', String(option.disabled));
+          item.textContent = option.textContent;
+          item.onpointerdown = (event) => event.preventDefault();
+          item.onclick = () => choose(i);
+          return item;
+        }),
+      );
+      opened = control;
+      document.body.append(menu);
+      const rect = button.getBoundingClientRect();
+      const width = Math.min(Math.max(rect.width, 180), innerWidth - 24);
+      const below = innerHeight - rect.bottom - 12;
+      const above = rect.top - 12;
+      const upwards = below < 160 && above > below;
+      menu.style.width = width + 'px';
+      menu.style.left = Math.max(12, Math.min(rect.left, innerWidth - width - 12)) + 'px';
+      menu.style.maxHeight = Math.max(80, Math.min(300, upwards ? above : below)) + 'px';
+      menu.style.top = upwards ? 'auto' : rect.bottom + 6 + 'px';
+      menu.style.bottom = upwards ? innerHeight - rect.top + 6 + 'px' : 'auto';
+      button.setAttribute('aria-expanded', 'true');
+      activate(select.selectedIndex);
+    };
+    button.onclick = () => (opened === control ? close() : open());
+    let typed = '',
+      typedAt = 0;
+    button.onkeydown = (event) => {
+      const list = options();
+      const available = list.map((item, i) => (item.disabled ? -1 : i)).filter((i) => i >= 0);
+      if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+        event.preventDefault();
+        if (opened !== control) open();
+        const current = available.indexOf(control.active);
+        activate(
+          event.key === 'Home'
+            ? available[0]
+            : event.key === 'End'
+              ? available.at(-1)
+              : available[
+                  (current + (event.key === 'ArrowDown' ? 1 : -1) + available.length) %
+                    available.length
+                ],
+        );
+      } else if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        if (opened === control) choose(control.active);
+        else open();
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        close();
+      } else if (event.key === 'Tab') close();
+      else if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+        event.preventDefault();
+        typed = Date.now() - typedAt < 700 ? typed + event.key : event.key;
+        typedAt = Date.now();
+        const match = available.find((i) =>
+          list[i].textContent.toLowerCase().startsWith(typed.toLowerCase()),
+        );
+        if (match !== undefined) {
+          if (opened !== control) open();
+          activate(match);
+        }
+      }
+    };
+    select.addEventListener('change', sync);
+    select.addEventListener('focus', () => button.focus());
+    select.form?.addEventListener('reset', () => queueMicrotask(sync));
+    sync();
+  };
+  const scan = () => {
+    for (const [select, control] of controls) {
+      if (!select.isConnected) {
+        if (opened === control) close();
+        controls.delete(select);
+      }
+    }
+    root.querySelectorAll('select').forEach(enhance);
+  };
+  new MutationObserver((records) => {
+    scan();
+    for (const record of records) {
+      const select = record.target.closest?.('select');
+      if (select) controls.get(select)?.sync();
+    }
+  }).observe(root, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['disabled'],
+  });
+  document.addEventListener('pointerdown', (event) => {
+    if (opened && !opened.button.contains(event.target) && !opened.menu.contains(event.target))
+      close();
+  });
+  window.addEventListener('resize', close);
+  window.addEventListener(
+    'scroll',
+    (event) => {
+      if (opened && !opened.menu.contains(event.target)) close();
+    },
+    true,
+  );
+  scan();
+}
+
 const C = "\u037c";
 const COUNT = typeof Symbol == "undefined" ? "__" + C : Symbol.for(C);
 const SET = typeof Symbol == "undefined" ? "__styleSet" + Math.floor(Math.random() * 1e8) : Symbol("styleSet");
@@ -20364,6 +20564,9 @@ const API_ORIGIN = (
 ).replace(/\/$/, '');
 const HOME = new URL('./', location.href).href;
 let authToken = sessionStorage.getItem('ra-session') || '';
+// Old auto-saved editor drafts are retired; temporary scripts stay in memory only.
+sessionStorage.removeItem('ra-draft-server-script');
+sessionStorage.removeItem('ra-draft-client-script');
 
 const $ = (s) => document.querySelector(s),
   esc = (s) =>
@@ -20395,7 +20598,7 @@ const paths = {
 };
 const icon = (name, cls = '') =>
   `<svg class="icon ${cls}" viewBox="0 0 24 24" aria-hidden="true"><path d="${paths[name] || paths.commands}"/></svg>`;
-const brand = `<a href="${esc(HOME)}" class="brand"><span class="logo-mark"></span><span>Alvin’s<span class="brand-sub"><small>REMOTE ADMIN</small></span></span></a>`;
+const brand = `<a href="${esc(HOME)}" class="brand"><img class="brand-icon" src="./assets/roblox_icon.png" alt=""><span>Alvin’s<span class="brand-sub"><small>REMOTE ADMIN</small></span></span></a>`;
 let me,
   view = 'dashboard',
   servers = [],
@@ -20423,6 +20626,13 @@ const rankLabel = (rank) =>
     access: 'Access only',
   })[rank] || 'No game rank';
 const commandDrafts = new Map();
+const scriptWorkspaces = new Map();
+function scriptWorkspace() {
+  if (!scriptWorkspaces.has(gameId)) scriptWorkspaces.set(gameId, { library: null, drafts: {} });
+  const workspace = scriptWorkspaces.get(gameId);
+  workspace.drafts[mode] ||= { id: null, name: '', source: '', temporary: true, dirty: false };
+  return workspace;
+}
 function commandDraft() {
   if (!commandDrafts.has(gameId)) commandDrafts.set(gameId, { scopes: {} });
   return commandDrafts.get(gameId);
@@ -20501,7 +20711,7 @@ async function confirm(title, detail) {
 function landing() {
   const denied = new URLSearchParams(location.search).get('error');
   $('#root').innerHTML =
-    `<main class="landing"><nav class="landing-nav">${brand}<div class="landing-links"><a href="#sign-in" class="button secondary small">Dashboard ${icon('arrow')}</a></div></nav><section class="hero"><div class="hero-copy"><div class="eyebrow">YOUR EXPERIENCE. YOUR CONTROL.</div><h1>A little more power.<br><span>A lot more control.</span></h1><p>Keep your Roblox world running smoothly. Manage players, connect with every server, and make things happen — from one place.</p>${denied ? `<div class="notice warning">${denied === 'not-allowed' ? 'This account is not on the allowlist. Ask root to grant access.' : 'Sign in to open your admin panel.'}</div>` : ''}<div class="login-box" id="sign-in"><a class="button primary" href="${esc(API_ORIGIN)}/auth/google/start"><span class="provider-icon">G</span> Continue with Google</a><a class="button secondary" href="${esc(API_ORIGIN)}/auth/discord/start"><span class="provider-icon">◒</span> Continue with Discord</a></div><small>${icon('shield')} Private access. Only approved accounts can sign in.</small></div><div class="hero-art" aria-hidden="true"><div class="orbital"></div><div class="orbital two"></div><div class="world"></div><div class="avatar"><i class="av-head"></i><i class="av-body"></i><i class="av-arm"></i><i class="av-arm right"></i><i class="av-leg"></i><i class="av-leg right"></i></div><div class="floating-command float-one"><em>↗</em>:fly me</div><div class="floating-command float-two"><em>✓</em>:speed me 32</div><div class="floating-command float-three"><em>⌘</em>All your servers. One panel.</div></div></section><footer class="landing-bottom"><span>${icon('server')} Connected through Cloudflare</span><span>${icon('shield')} Root-managed access</span><span>ALVIN’S REMOTE ADMIN · ROBLOX</span></footer></main>`;
+    `<main class="landing"><nav class="landing-nav">${brand}<div class="landing-links"><a href="#sign-in" class="button secondary small">Dashboard ${icon('arrow')}</a></div></nav><section class="hero"><div class="hero-copy"><div class="eyebrow">YOUR EXPERIENCE. YOUR CONTROL.</div><h1>A little more power.<br><span>A lot more control.</span></h1><p>Keep your Roblox world running smoothly. Manage players, connect with every server, and make things happen — from one place.</p>${denied ? `<div class="notice warning">${denied === 'not-allowed' ? 'This account is not on the allowlist. Ask root to grant access.' : 'Sign in to open your admin panel.'}</div>` : ''}<div class="login-box" id="sign-in"><a class="button primary" href="${esc(API_ORIGIN)}/auth/google/start"><img class="provider-icon" src="./assets/google.png" alt=""> Continue with Google</a><a class="button secondary" href="${esc(API_ORIGIN)}/auth/discord/start"><img class="provider-icon" src="./assets/Discord.png" alt=""> Continue with Discord</a></div><small>${icon('shield')} Private access. Only approved accounts can sign in.</small></div><div class="hero-art" aria-hidden="true"><div class="orbital"></div><div class="orbital two"></div><div class="world"></div><div class="avatar"><i class="av-head"></i><i class="av-body"></i><i class="av-arm"></i><i class="av-arm right"></i><i class="av-leg"></i><i class="av-leg right"></i></div><div class="floating-command float-one"><em>↗</em>:fly me</div><div class="floating-command float-two"><em>✓</em>:speed me 32</div><div class="floating-command float-three"><em>⌘</em>All your servers. One panel.</div></div></section><footer class="landing-bottom"><span>${icon('server')} Connected through Cloudflare</span><span>${icon('shield')} Root-managed access</span><span>ALVIN’S REMOTE ADMIN · ROBLOX</span></footer></main>`;
 }
 function shell() {
   const nav = [
@@ -20513,7 +20723,7 @@ function shell() {
     ...(can('audit') ? [['history', 'History', 'history']] : []),
     ['queue', 'Offline queue', 'commands'],
     ['bans', 'Bans', 'ban'],
-    ['games', 'Games', 'server'],
+    ['games', 'Manage games', 'server'],
     ['networks', 'Networks', 'server'],
     ...(me.globalRank || can('permissions') ? [['access', 'Access control', 'shield']] : []),
   ];
@@ -20677,7 +20887,7 @@ function render() {
     commands: 'Commands',
     scripts: 'Script editor',
     history: 'History',
-    games: 'Games',
+    games: 'Manage games',
     networks: 'Networks',
     queue: 'Offline queue',
     bans: 'Bans',
@@ -20739,18 +20949,7 @@ function render() {
         'Write Luau. Choose where it runs. Keep a record of every execution.',
         `<div class="segments"><button id="server-mode" class="${mode === 'server-script' ? 'active' : ''}">Server</button><button id="client-mode" class="${mode === 'client-script' ? 'active' : ''}">Client</button></div>`,
       ) +
-      `<div class="notice">${can('scripts') ? 'Script execution requires Super Admin or Root in this game. Start with one server or player.' : 'Script execution is unavailable for your game rank.'}</div><div class="editor-layout"><aside class="panel snippets">${[
-        ['inspect', ';inspect', 'Print connected players'],
-        ['launch', ';launch', 'Send characters skyward'],
-        ['lighting', ';lighting', 'Change the time of day'],
-      ]
-        .map(
-          (x, i) =>
-            `<button class="snippet ${i === 0 ? 'selected' : ''}" data-snippet="${x[0]}"><code>${x[1]}</code><p>${x[2]}</p></button>`,
-        )
-        .join(
-          '',
-        )}</aside><section class="panel editor-panel"><div class="editor-controls"><div class="field-row"><div class="field"><label for="script-scope">Run on</label><select id="script-scope">${mode === 'server-script' ? '<option value="server">One server</option>' : '<option value="player">One player</option>'}<option value="global">${mode === 'server-script' ? 'All servers' : 'All players'}</option></select></div><div class="field" id="script-target-field"></div></div></div><div class="editor-toolbar"><code>${mode === 'server-script' ? 'server' : 'client'}.luau</code><button class="ghost" id="copy-script">${icon('copy')} Copy</button></div><div id="editor"></div><div class="editor-footer"><small>Luau · Roblox API · UTF-8</small><button class="button primary" id="execute-script" ${can('scripts') ? '' : 'disabled'}>${icon('code')} Execute ${mode === 'server-script' ? 'server' : 'client'} script</button></div></section></div>`;
+      `<div class="notice">${can('scripts') ? 'Script execution requires Super Admin or Root in this game. Start with one server or player.' : 'Script execution is unavailable for your game rank.'}</div><div class="editor-layout"><aside class="panel snippets"><div class="template-actions"><button class="button primary small" id="new-template">New template</button><button class="button secondary small" id="temporary-script">Temporary script</button></div><p class="subtle">Your templates for this game</p><div id="template-list">Loading templates…</div></aside><section class="panel editor-panel"><div class="editor-controls"><div class="field-row"><div class="field"><label for="script-scope">Run on</label><select id="script-scope">${mode === 'server-script' ? '<option value="server">One server</option>' : '<option value="player">One player</option>'}<option value="global">${mode === 'server-script' ? 'All servers' : 'All players'}</option></select></div><div class="field" id="script-target-field"></div></div></div><div class="template-details"><div class="field"><label for="template-name">Template name</label><input id="template-name" maxlength="80" placeholder="Name this template"></div><div class="button-row"><button class="button secondary small" id="save-template">Save template</button><button class="button secondary small" id="delete-template">Delete template</button></div><small id="template-status" role="status"></small></div><div class="editor-toolbar"><code id="script-filename">${mode === 'server-script' ? 'server' : 'client'}.luau</code><button class="ghost" id="copy-script">${icon('copy')} Copy</button></div><div id="editor"></div><div class="editor-footer"><small>Luau · Roblox API · UTF-8</small><button class="button primary" id="execute-script" ${can('scripts') ? '' : 'disabled'}>${icon('code')} Execute ${mode === 'server-script' ? 'server' : 'client'} script</button></div></section></div>`;
   if (view === 'history')
     html =
       heading('History', 'Commands, outcomes, and access changes in one place.') +
@@ -21016,14 +21215,6 @@ async function send(payload) {
     return false;
   }
 }
-const examples = {
-  inspect:
-    '-- Inspect connected players\nlocal Players = game:GetService("Players")\n\nfor _, player in Players:GetPlayers() do\n    print(player.UserId, player.Name, player.DisplayName)\nend',
-  launch:
-    '-- Launch every character in this server\nlocal Players = game:GetService("Players")\n\nfor _, player in Players:GetPlayers() do\n    local character = player.Character\n    local root = character and character:FindFirstChild("HumanoidRootPart")\n    if root then\n        root.AssemblyLinearVelocity = Vector3.new(0, 150, 0)\n    end\nend',
-  lighting:
-    '-- Set the time of day\nlocal Lighting = game:GetService("Lighting")\nLighting.ClockTime = 17.5\n\nprint("Golden hour is here.")',
-};
 const keywords = new Set(
   'and break do else elseif end false for function if in local nil not or repeat return then true until while continue type export typeof'.split(
     ' ',
@@ -21083,15 +21274,162 @@ const luau = StreamLanguage.define({
     return null;
   },
 });
+function updateTemplateStatus(draft) {
+  const status = $('#template-status');
+  if (!status) return;
+  status.textContent = draft.temporary
+    ? 'Temporary — not saved. Cleared on reload. Executions still appear in history.'
+    : draft.dirty || !draft.id
+      ? 'Unsaved changes. Use Save template to keep them.'
+      : 'Saved to your account for this game.';
+}
+function setupTemplates(workspace, draft, editorGame, editorMode, activeEditor) {
+  const current = () => editor === activeEditor && gameId === editorGame && mode === editorMode;
+  const endpoint = '/api/script-templates?gameId=' + encodeURIComponent(editorGame);
+  let busy = false;
+  const paint = () => {
+    if (!current()) return;
+    $('#template-name').value = draft.name;
+    $('#template-name').disabled = draft.temporary;
+    $('#save-template').hidden = draft.temporary;
+    $('#save-template').disabled = !workspace.library || busy;
+    $('#delete-template').hidden = !draft.id;
+    $('#delete-template').disabled = busy;
+    $('#new-template').disabled = busy;
+    $('#temporary-script').disabled = busy;
+    $('#script-filename').textContent = draft.temporary
+      ? 'temporary.luau'
+      : (draft.name || 'untitled') + '.luau';
+    updateTemplateStatus(draft);
+    if (!workspace.library) return;
+    const items = workspace.library.templates.filter((t) => t.mode === editorMode);
+    $('#template-list').innerHTML =
+      items
+        .map(
+          (t) =>
+            `<button class="snippet ${t.id === draft.id ? 'selected' : ''}" data-template="${esc(t.id)}" ${busy ? 'disabled' : ''}><code>${esc(t.name)}</code><p>${editorMode === 'server-script' ? 'Server' : 'Client'} template</p></button>`,
+        )
+        .join('') || '<p class="subtle">No saved templates yet.</p>';
+    document.querySelectorAll('[data-template]').forEach((button) => {
+      button.onclick = async () => {
+        if (
+          draft.dirty &&
+          !(await confirm(
+            'Discard unsaved changes?',
+            'Switching templates replaces the current editor contents.',
+          ))
+        )
+          return;
+        if (!current()) return;
+        const item = workspace.library.templates.find((t) => t.id === button.dataset.template);
+        Object.assign(draft, item, { temporary: false, dirty: false });
+        render();
+      };
+    });
+  };
+  const load = async () => {
+    const library = await api(endpoint);
+    if (!workspace.library || library.revision >= workspace.library.revision)
+      workspace.library = library;
+    paint();
+  };
+  const persist = async (templates) => {
+    busy = true;
+    paint();
+    try {
+      workspace.library = await api(endpoint, {
+        method: 'PUT',
+        body: JSON.stringify({ templates, revision: workspace.library.revision }),
+      });
+      return true;
+    } catch (error) {
+      toast(error.message, true);
+      // Refresh the revision without discarding the editor's unsaved content.
+      try {
+        await load();
+      } catch {
+        /* Keep the existing library available for retry. */
+      }
+      return false;
+    } finally {
+      busy = false;
+      paint();
+    }
+  };
+  $('#template-name').oninput = (event) => {
+    draft.name = event.target.value;
+    draft.dirty = true;
+    updateTemplateStatus(draft);
+  };
+  const fresh = async (temporary) => {
+    if (
+      draft.dirty &&
+      !(await confirm(
+        'Discard unsaved changes?',
+        'Starting a new script replaces the current editor contents.',
+      ))
+    )
+      return;
+    if (!current()) return;
+    Object.assign(draft, { id: null, name: '', source: '', temporary, dirty: false });
+    render();
+  };
+  $('#new-template').onclick = () => fresh(false);
+  $('#temporary-script').onclick = () => fresh(true);
+  $('#save-template').onclick = async () => {
+    if (busy || !workspace.library || draft.temporary) return;
+    const name = draft.name.trim();
+    if (!name) return toast('Give the template a name.', true);
+    const item = {
+      id: draft.id || crypto.randomUUID(),
+      name,
+      mode: editorMode,
+      source: draft.source,
+    };
+    const templates = workspace.library.templates.filter((t) => t.id !== item.id).concat(item);
+    if (await persist(templates)) {
+      draft.id = item.id;
+      draft.dirty = draft.source !== item.source || draft.name.trim() !== item.name;
+      toast('Template saved.');
+      paint();
+    }
+  };
+  $('#delete-template').onclick = async () => {
+    if (busy || !draft.id || !workspace.library) return;
+    if (
+      !(await confirm(
+        'Delete this template?',
+        `Remove “${draft.name}” from your saved templates? The editor contents will become a temporary script.`,
+      ))
+    )
+      return;
+    if (!current()) return;
+    if (await persist(workspace.library.templates.filter((t) => t.id !== draft.id))) {
+      Object.assign(draft, { id: null, name: '', temporary: true, dirty: false });
+      toast('Template deleted.');
+      paint();
+    }
+  };
+  paint();
+  load().catch((error) => {
+    if (current())
+      $('#template-list').textContent = 'Could not load templates. Reopen the editor to retry.';
+    toast(error.message, true);
+  });
+}
 function setupEditor() {
   $('.editor-controls').insertAdjacentHTML('afterbegin', gameRangeFields());
   setupGameRange();
-  const saved = sessionStorage.getItem('ra-draft-' + mode);
+  const workspace = scriptWorkspace();
+  const draft = workspace.drafts[mode];
+  const editorGame = gameId;
+  const editorMode = mode;
   editor = new EditorView({
     state: EditorState.create({
-      doc: saved || examples.inspect,
+      doc: draft.source,
       extensions: [
         lineNumbers(),
+        EditorView.contentAttributes.of({ 'aria-label': 'Luau script' }),
         history(),
         drawSelection(),
         highlightActiveLine(),
@@ -21128,7 +21466,11 @@ function setupEditor() {
           { dark: true },
         ),
         EditorView.updateListener.of((u) => {
-          if (u.docChanged) sessionStorage.setItem('ra-draft-' + mode, u.state.doc.toString());
+          if (u.docChanged) {
+            draft.source = u.state.doc.toString();
+            draft.dirty = true;
+            updateTemplateStatus(draft);
+          }
         }),
       ],
     }),
@@ -21151,17 +21493,7 @@ function setupEditor() {
       .writeText(editor.state.doc.toString())
       .then(() => toast('Script copied'))
       .catch(() => toast('Clipboard access unavailable', true));
-  document.querySelectorAll('[data-snippet]').forEach(
-    (b) =>
-      (b.onclick = () => {
-        editor.dispatch({
-          changes: { from: 0, to: editor.state.doc.length, insert: examples[b.dataset.snippet] },
-        });
-        document
-          .querySelectorAll('[data-snippet]')
-          .forEach((x) => x.classList.toggle('selected', x === b));
-      }),
-  );
+  setupTemplates(workspace, draft, editorGame, editorMode, editor);
   $('#execute-script').onclick = async (e) => {
     const executeButton = e.currentTarget;
     const scope = $('#script-scope').value,
@@ -21308,25 +21640,99 @@ function setupNetworks() {
       }
     };
 }
+function gamePins() {
+  try {
+    return new Set(
+      JSON.parse(localStorage.getItem('ra-pins-' + me.provider + ':' + me.identity) || '[]'),
+    );
+  } catch {
+    return new Set();
+  }
+}
 function gamesPage() {
   return (
     heading(
-      'Games',
-      'Choose an allowed experience. Linked networks also receive new commands and policy changes.',
+      'Manage games',
+      'Your experiences, in one place. Choose a game to open its dashboard.',
+      me.root
+        ? '<button class="button primary" id="add-game">' + icon('server') + ' Add game</button>'
+        : '',
     ) +
-    `<section class="panel"><div class="panel-body game-grid">${games.map((g) => `<article class="game-card"><h2>${esc(g.name)}</h2><p class="mono">Game ${esc(g.universe_id)}</p><p>Places: ${g.placeIds.map(esc).join(', ')}</p>${pill(g.enabled ? rankLabel(g.permissions.rank) : 'Disabled')}<div class="button-row">${g.enabled ? `<button class="button secondary small" data-select-game="${esc(g.universe_id)}">Select game</button>` : ''}${me.root ? `<button class="button secondary small" data-edit-game="${esc(g.universe_id)}">Edit settings</button>` : ''}</div></article>`).join('') || empty('No allowed games', 'Ask a Manager or Global Root for game access.', 'server')}</div></section>` +
+    '<div class="games-toolbar"><div><strong>' +
+    games.length +
+    '</strong> available experience' +
+    (games.length === 1 ? '' : 's') +
+    '</div><input class="search" id="game-search" type="search" placeholder="Search games or IDs…" aria-label="Search games"></div><section class="managed-games-grid" id="managed-games" aria-label="Available games"></section>' +
     (me.root
       ? `<section class="panel"><div class="panel-head"><h2>Allow or update a game</h2>${pill('GLOBAL ROOT')}</div><form id="game-form" class="panel-body"><div class="field-row"><div class="field"><label for="game-name">Game name</label><input id="game-name" required maxlength="100"></div><div class="field"><label for="game-id">Game / universe ID</label><input id="game-id" required inputmode="numeric" pattern="[0-9]+"></div></div><div class="field"><label for="game-places">Allowed place IDs</label><input id="game-places" required placeholder="Place IDs separated by commas"><small>Use Roblox’s universe ID for the game, and its place IDs here.</small></div><label class="checkbox-field"><input id="game-enabled" type="checkbox" checked> Game enabled</label><label class="checkbox-field"><input id="rotate-secret" type="checkbox"> Replace this game’s bridge secret</label><div class="form-bottom"><small>A new game gets its own server credential.</small><button class="button primary">Save game</button></div><div id="game-secret"></div></form></section>`
       : '')
   );
 }
 function setupGames() {
+  const pins = gamePins();
+  const renderCards = () => {
+    const query = $('#game-search').value.trim().toLowerCase();
+    const visible = games
+      .filter((g) => (g.name + ' ' + g.universe_id).toLowerCase().includes(query))
+      .sort(
+        (a, b) =>
+          Number(pins.has(b.universe_id)) - Number(pins.has(a.universe_id)) ||
+          a.name.localeCompare(b.name),
+      );
+    $('#managed-games').innerHTML =
+      visible
+        .map((g) => {
+          const network = networks.find((n) =>
+            n.games.some((member) => member.universe_id === g.universe_id),
+          );
+          return `<article class="managed-game-card"><div class="game-banner"><img src="./assets/roblox_icon.png" class="banner-watermark" alt=""><span class="game-status ${g.enabled ? '' : 'disabled'}">${g.enabled ? 'Enabled' : 'Disabled'}</span><button class="pin-game ${pins.has(g.universe_id) ? 'pinned' : ''}" data-pin-game="${esc(g.universe_id)}" aria-label="${pins.has(g.universe_id) ? 'Unpin' : 'Pin'} ${esc(g.name)}" aria-pressed="${pins.has(g.universe_id)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 3 8 0-1 6 4 4v2H5v-2l4-4-1-6ZM12 15v6"/></svg></button></div><div class="game-card-content"><div class="game-avatar"><img src="./assets/roblox_icon.png" alt=""></div><h2>${esc(g.name)}</h2><p class="game-role">${esc(me.globalRank ? 'Global ' + rankLabel(me.globalRank) : rankLabel(g.permissions.rank))}</p><p class="game-id">UNIVERSE <span>${esc(g.universe_id)}</span></p><div class="game-card-tags">${pill(g.placeIds.length + (g.placeIds.length === 1 ? ' place' : ' places'), 'neutral')}${network ? pill(network.name) : ''}</div><div class="game-card-footer">${me.root ? `<button class="ghost" data-edit-game="${esc(g.universe_id)}" aria-label="Edit settings for ${esc(g.name)}">Settings</button>` : '<span></span>'}<button class="button primary small" data-select-game="${esc(g.universe_id)}" ${g.enabled ? '' : 'disabled'} aria-label="Configure ${esc(g.name)}">Configure ${icon('arrow')}</button></div></div></article>`;
+        })
+        .join('') ||
+      empty(
+        'No games found',
+        games.length
+          ? 'Try another name or universe ID.'
+          : 'Ask a Manager or Global Root for game access.',
+        'server',
+      );
+    bindGameCards();
+    document.querySelectorAll('[data-pin-game]').forEach(
+      (button) =>
+        (button.onclick = () => {
+          const id = button.dataset.pinGame;
+          if (pins.has(id)) pins.delete(id);
+          else pins.add(id);
+          try {
+            localStorage.setItem(
+              'ra-pins-' + me.provider + ':' + me.identity,
+              JSON.stringify([...pins]),
+            );
+          } catch {
+            toast('Pinned for this visit; browser storage is unavailable.', true);
+          }
+          renderCards();
+        }),
+    );
+  };
+  $('#game-search').oninput = renderCards;
+  if ($('#add-game'))
+    $('#add-game').onclick = () => {
+      $('#game-form').reset();
+      $('#game-secret').replaceChildren();
+      $('#game-name').focus();
+    };
+  renderCards();
+  if (!$('#game-form')) return;
+  setupGameForm();
+}
+function bindGameCards() {
   document.querySelectorAll('[data-select-game]').forEach(
     (b) =>
       (b.onclick = async () => {
         gameId = b.dataset.selectGame;
         sessionStorage.setItem('ra-game', gameId);
         view = can('commands') ? 'dashboard' : 'access';
+        location.hash = view;
         accessGame = gameId;
         shell();
         render();
@@ -21349,7 +21755,8 @@ function setupGames() {
         $('#game-id').focus();
       }),
   );
-  if (!$('#game-form')) return;
+}
+function setupGameForm() {
   $('#game-form').onsubmit = async (e) => {
     e.preventDefault();
     const button = e.submitter;
@@ -21532,4 +21939,5 @@ async function start() {
       `<main class="error-page"><h1>Connection unavailable</h1><p>${esc(e.message)}</p><a class="button primary" href="${esc(HOME)}">Return to sign-in</a></main>`;
   }
 }
+installControls(document.querySelector('#root'));
 await start();
