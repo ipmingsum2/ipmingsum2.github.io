@@ -1,13 +1,18 @@
-const audios = document.querySelectorAll("audio");
-audios.forEach((audio) => {
-  audio.addEventListener("play", () => {
-    audios.forEach((otherAudio) => {
+document.addEventListener(
+  "play",
+  (event) => {
+    const audio = event.target;
+
+    if (audio.tagName !== "AUDIO") return;
+
+    document.querySelectorAll("audio").forEach((otherAudio) => {
       if (otherAudio !== audio) {
         otherAudio.pause();
       }
     });
-  });
-});
+  },
+  true
+);
 const SUPABASE_URL = "https://lflkpziiwnoamvtrbcil.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_tFvlhmTEDV3SOSVp0JvVzg_KHXFiDNb";
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
