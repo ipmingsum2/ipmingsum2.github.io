@@ -1,0 +1,18 @@
+{
+  "name": "chatbox-checks",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "check": "node --check ../js/chat.js && node --check ../js/chat-core.js && node --check ../js/chat-audio.js && node --check ../js/chat-icons.js && node --check chatbox-bot.mjs && node --check example-bot.mjs",
+    "sync": "node sync-variants.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.3.14",
+    "dompurify": "3.4.16",
+    "highlight.js": "11.11.1",
+    "jsdom": "26.1.0",
+    "marked": "15.0.12",
+    "prettier": "^3.6.2"
+  }
+}

@@ -1,0 +1,3 @@
+[functions.chat-api]
+# The function verifies user JWTs itself and separately validates hashed bot tokens.
+verify_jwt = false
