@@ -40,12 +40,13 @@ revoke all on function chat_private.automod_hit(uuid,text,public.cb_automod,text
 -- Preserve the existing dispatch implementation and all its authorization,
 -- rate, attachment, and slowmode checks. Replace the single matching branch.
 do $$
-declare source text; old_branch text:=$old$insert into public.cb_automod_events(user_id,room,rule_id,rule_name) values(a,c,r.id,r.name);
-    return jsonb_build_object('blocked',true,'message',r.block_message,'rule',r.name);$old$;
+declare source text;
+ old_insert text:=$old$insert into public.cb_automod_events(user_id,room,rule_id,rule_name) values(a,c,r.id,r.name);$old$;
+ old_return text:=$old$return jsonb_build_object('blocked',true,'message',r.block_message,'rule',r.name);$old$;
 begin
  source:=replace(pg_get_functiondef('chat_private.dispatch(uuid,text,jsonb)'::regprocedure),E'\r\n',E'\n');
- if strpos(source,old_branch)=0 then raise exception 'AutoMod dispatch version mismatch';end if;
- source:=replace(source,old_branch,'return chat_private.automod_hit(a,c,r,body,item);');
+ if strpos(source,old_insert)=0 or strpos(source,old_return)=0 then raise exception 'AutoMod dispatch version mismatch';end if;
+ source:=replace(replace(source,old_insert,'return chat_private.automod_hit(a,c,r,body,item);'),old_return,'');
  execute source;
 end $$;
 
