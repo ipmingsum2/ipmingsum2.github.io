@@ -2765,3 +2765,666 @@ chat-audio {
   width: 17px;
   height: 17px;
 }
+
+/* Custom controls and compact profiles. Avatars sit above the isolated banner. */
+.profile-inner {
+  position: relative;
+  z-index: 1;
+}
+.profile-inner > .avatar {
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+}
+.profile-card .profile-banner {
+  z-index: 0;
+}
+.floating-surface {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  z-index: 1000;
+  color: var(--text, #f2f3f5);
+  border: 1px solid #57566d;
+  box-shadow: 0 16px 55px #0008;
+  max-height: calc(100dvh - 16px);
+  overflow: auto;
+  animation: surface-in 0.16s ease;
+}
+.profile-popout {
+  width: min(350px, calc(100vw - 16px));
+  max-width: 350px;
+  padding: 0;
+  background: #22232c;
+}
+.profile-popout .profile-banner {
+  height: 108px;
+}
+.profile-popout .profile-inner {
+  padding: 0 20px 20px;
+}
+.profile-popout h2 {
+  font-size: 22px;
+}
+.profile-popout-close {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  z-index: 3;
+  background: #15162699;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+}
+.profile-bio-preview {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
+}
+.profile-status {
+  margin: 12px 0 0;
+  color: #b9c1cf;
+}
+.profile-role-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 16px;
+}
+.profile-expand {
+  color: #c9c4fb;
+  font-size: 12px;
+  padding: 4px 0;
+}
+.custom-select {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 42px;
+  width: 100%;
+  padding: 10px 13px;
+  background: #1d1e27;
+  border: 1px solid #454653;
+  border-radius: 9px;
+  color: #e6e6ef;
+  text-align: left;
+  font-weight: 500;
+}
+.custom-select:after {
+  content: "";
+  border: solid #bcb9d1;
+  border-width: 0 2px 2px 0;
+  padding: 3px;
+  transform: rotate(45deg);
+  margin: -3px 3px 0;
+}
+.custom-select[aria-expanded="true"] {
+  border-color: #9e91fa;
+  box-shadow: 0 0 0 3px #8972f522;
+}
+.select-options,
+.action-menu {
+  padding: 6px;
+  border-radius: 10px;
+  background: #22232d;
+  min-width: 210px;
+  max-width: calc(100vw - 16px);
+}
+.select-options button,
+.action-menu button {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: transparent;
+  color: #e5e5ee;
+  text-align: left;
+  font-weight: 500;
+}
+.select-options button:hover,
+.select-options button:focus,
+.action-menu button:hover,
+.action-menu button:focus {
+  background: #6653d9;
+  color: white;
+  outline: 0;
+}
+.select-options [aria-selected="true"] {
+  background: #39334f;
+}
+.select-options [aria-selected="true"]:after {
+  content: "✓";
+  float: right;
+  margin-left: 18px;
+}
+.member-admin .custom-select {
+  width: auto;
+  min-width: 120px;
+}
+input[type="checkbox"],
+input[type="radio"] {
+  appearance: none;
+  width: 19px;
+  height: 19px;
+  min-width: 19px;
+  padding: 0;
+  display: inline-grid;
+  place-content: center;
+  border: 1.5px solid #838294;
+  background: #20212a;
+  border-radius: 5px;
+  vertical-align: middle;
+  cursor: pointer;
+}
+input[type="checkbox"]:checked,
+input[type="radio"]:checked {
+  background: #7b68ed;
+  border-color: #a294ff;
+}
+input[type="checkbox"]:checked:before {
+  content: "✓";
+  font-size: 14px;
+  color: white;
+}
+input[type="radio"] {
+  border-radius: 50%;
+}
+input[type="radio"]:checked:before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: white;
+}
+input::file-selector-button {
+  border: 1px solid #625b86;
+  border-radius: 7px;
+  padding: 8px 12px;
+  margin-right: 12px;
+  background: #383248;
+  color: #ece9ff;
+  font: inherit;
+  cursor: pointer;
+}
+.message-content {
+  min-height: 100%;
+  padding-bottom: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .floating-surface {
+    animation: none;
+  }
+}
+.reduce-motion .floating-surface {
+  animation: none;
+}
+.messages {
+  scroll-behavior: auto;
+  overflow-anchor: none;
+}
+.channel-symbol .ui-icon,
+#channelIcon .ui-icon {
+  width: 22px;
+  height: 22px;
+  vertical-align: middle;
+}
+.poll-card {
+  max-width: 580px;
+  margin: 12px 0;
+  padding: 20px;
+  background: #24252d;
+  border: 1px solid #383943;
+  border-radius: 12px;
+}
+.poll-card h3 {
+  margin: 0 0 6px;
+  font-size: 17px;
+}
+.poll-instruction {
+  color: #a5a6b4;
+  margin: 0 0 14px;
+}
+.poll-answers {
+  display: grid;
+  gap: 9px;
+}
+.poll-answer,
+.poll-result {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+  padding: 14px 18px;
+  background: #2e2f39;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 0;
+}
+.poll-answer {
+  cursor: pointer;
+  justify-content: space-between;
+}
+.poll-answer:hover {
+  background: #363745;
+}
+.poll-answer.selected,
+.poll-result.voted {
+  border-color: #a9a2ff;
+  background: #393854;
+}
+.poll-answer input {
+  flex: none;
+}
+.poll-result > span:not(.poll-result-bar),
+.poll-result > b,
+.poll-result > small {
+  position: relative;
+  z-index: 1;
+}
+.poll-result > span:nth-child(2) {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+.poll-result small {
+  white-space: nowrap;
+}
+.poll-result-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: #7465ee33;
+  transition: width 0.35s ease;
+}
+.poll-check {
+  border-radius: 50%;
+  background: #7765f5;
+  padding: 3px 7px;
+}
+.poll-card footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 16px;
+}
+.poll-card footer > div {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.poll-card footer button {
+  padding: 9px 12px;
+}
+.poll-answer-field {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 5px 8px;
+  background: #202127;
+  border: 1px solid #3b3c46;
+  border-radius: 9px;
+  margin: 7px 0;
+}
+.poll-answer-field input {
+  border: 0;
+  background: transparent;
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
+.poll-add {
+  display: block;
+  margin: 10px 0 22px auto;
+}
+.poll-form-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  margin-top: 22px;
+}
+.poll-form-footer label {
+  margin: 0;
+}
+.poll-counter {
+  text-align: right;
+  color: #9394a3;
+  font-size: 12px;
+  margin-top: -8px;
+}
+.thread-card {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  text-align: left;
+  padding: 13px 18px;
+  margin: 10px 0;
+  background: #262832;
+  border: 1px solid #41404f;
+  border-radius: 10px;
+  min-width: 210px;
+}
+.thread-card:hover {
+  border-color: #8375ef;
+  background: #30303e;
+}
+.thread-card small {
+  display: block;
+  color: #a6a0fd;
+  margin-top: 5px;
+}
+.thread-card-icon {
+  font-size: 27px;
+  color: #b6b0f6;
+}
+.thread-pane {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: #202128;
+  border-left: 1px solid #3b3b46;
+  overflow: hidden;
+  animation: thread-in 0.2s ease;
+}
+.thread-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 74px;
+  padding: 12px 15px;
+  border-bottom: 1px solid #343540;
+}
+.thread-header > div {
+  flex: 1;
+  min-width: 0;
+}
+.thread-header h2 {
+  font-size: 16px;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.thread-header small {
+  color: #9595a5;
+}
+.thread-messages {
+  overflow: auto;
+  flex: 1;
+  min-height: 0;
+  padding: 20px 14px;
+  scroll-behavior: auto;
+  overflow-anchor: none;
+}
+.thread-welcome {
+  margin: 35px 0 25px;
+}
+.thread-welcome > span {
+  font-size: 30px;
+  background: #32333e;
+  border-radius: 50%;
+  padding: 10px 15px;
+}
+.thread-welcome h2 {
+  margin: 22px 0 6px;
+}
+.thread-welcome p {
+  color: #9595a5;
+}
+.thread-message {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+  margin: 17px 0;
+}
+.thread-message .avatar {
+  width: 34px;
+  height: 34px;
+}
+.thread-message time {
+  font-size: 10px;
+  color: #9293a2;
+  margin-left: 7px;
+}
+.thread-message .body {
+  overflow-wrap: anywhere;
+  margin-top: 5px;
+}
+.thread-message-actions {
+  display: flex;
+  gap: 12px;
+  opacity: 0.5;
+  font-size: 11px;
+  margin-top: 6px;
+}
+.thread-message:hover .thread-message-actions {
+  opacity: 1;
+}
+.thread-message .poll-card {
+  padding: 12px;
+}
+.thread-message .poll-card footer {
+  flex-wrap: wrap;
+}
+.thread-reply-label {
+  display: block;
+  color: #aaa3ff;
+}
+.thread-compose-area {
+  padding: 12px;
+}
+.thread-compose-area .composer {
+  padding: 8px;
+  gap: 6px;
+}
+.thread-compose-area textarea {
+  min-width: 0;
+}
+.thread-directory {
+  margin-top: 20px;
+}
+.thread-directory-item {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  padding: 18px;
+  border: 1px solid #3b3d47;
+  border-radius: 10px;
+  background: #262731;
+  margin: 10px 0;
+}
+.thread-directory-item div {
+  flex: 1;
+}
+.thread-directory-item small {
+  display: block;
+  color: #9596a5;
+  margin-top: 5px;
+}
+.app-shell.thread-open {
+  grid-template-columns: 72px 248px minmax(280px, 1fr) minmax(330px, 420px);
+}
+.thread-open .member-sidebar {
+  display: none;
+}
+.thread-pane .attachment-img {
+  max-width: 100%;
+}
+#threadReply {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px;
+  background: #343242;
+  border-radius: 6px;
+  font-size: 12px;
+}
+.timeout-bar {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  background: #17171c;
+  border: 1px solid #583b41;
+  border-radius: 10px;
+  padding: 15px 18px;
+}
+.timeout-symbol {
+  font-size: 28px;
+  color: #fb9297;
+}
+.timeout-bar > div {
+  flex: 1;
+}
+.timeout-bar small {
+  display: block;
+  color: #b4b4c2;
+  margin-top: 4px;
+}
+.timeout-bar > strong {
+  font-size: 12px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.automod-action-options {
+  display: grid;
+  gap: 6px;
+  padding: 10px 0;
+}
+.automod-log {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 15px;
+  padding: 18px 12px;
+}
+.automod-avatar {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  width: 42px;
+  height: 42px;
+  background: #6656dd;
+  color: white;
+}
+.automod-log header {
+  color: #a9a9ba;
+}
+.automod-log header > b {
+  color: #9b91ff;
+}
+.automod-log time {
+  font-size: 11px;
+  margin-left: 6px;
+}
+.automod-evidence {
+  display: flex;
+  gap: 12px;
+  margin: 20px 0 15px 18px;
+}
+.automod-evidence .avatar {
+  width: 38px;
+  height: 38px;
+}
+.automod-evidence blockquote {
+  margin: 4px 0;
+  background: #54472e;
+  color: #f7e5bc;
+  padding: 4px 7px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  border-left: 3px solid #bfa873;
+}
+.automod-evidence small {
+  color: #a8a8b6;
+}
+.automod-log footer {
+  padding: 12px;
+  background: #19191f;
+  border-radius: 0 0 7px 7px;
+  color: #716787;
+}
+.automod-log footer button {
+  color: #a498ff;
+}
+@keyframes thread-in {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@media (max-width: 1200px) {
+  .app-shell.thread-open {
+    grid-template-columns: 64px 210px minmax(230px, 1fr) 340px;
+  }
+}
+@media (max-width: 1000px) {
+  .thread-pane {
+    position: fixed;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: min(440px, calc(100vw - 64px));
+    z-index: 40;
+    box-shadow: -20px 0 70px #0007;
+  }
+  .app-shell.thread-open {
+    grid-template-columns: 64px 210px minmax(0, 1fr);
+  }
+}
+@media (max-width: 700px) {
+  .app-shell.thread-open {
+    grid-template-columns: 1fr;
+  }
+  .thread-pane {
+    width: 100vw;
+  }
+  .poll-card {
+    padding: 12px;
+  }
+  .poll-card footer {
+    flex-wrap: wrap;
+  }
+  .timeout-bar {
+    padding: 12px;
+  }
+  .timeout-bar > strong {
+    white-space: normal;
+    max-width: 85px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .thread-pane,
+  .poll-result-bar {
+    animation: none;
+    transition: none;
+  }
+}
+.thread-message > button {
+  align-self: start;
+}
+.thread-open #channelTopic {
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  max-width: 200px;
+}
+.thread-open #channelIcon + div {
+  min-width: 0;
+}
+.thread-open #searchMessages {
+  width: 150px;
+}
+.reduce-motion .thread-pane,
+.reduce-motion .poll-result-bar {
+  animation: none;
+  transition: none;
+}

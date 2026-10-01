@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark">
-    <meta name="turbo-cache-control" content="no-cache" data-turbo-track="reload" data-track-token="4.6.0.844143465938">
+    <meta name="turbo-cache-control" content="no-cache" data-turbo-track="reload" data-track-token="4.6.0.844175319539">
 
     <!-- See retype.com -->
     <meta name="generator" content="Retype 4.6.0">
@@ -38,11 +38,11 @@
     <script data-cfasync="false">(function(){var cl=document.documentElement.classList,ls=localStorage.getItem("retype_scheme"),hd=cl.contains("dark"),hl=cl.contains("light"),wm=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches;if(ls==="dark"||(!ls&&wm&&!hd&&!hl)){cl.remove("light");cl.add("dark")}else if(ls==="light"||(!ls&&!wm&&!hd&&!hl)){cl.remove("dark");cl.add("light")}})();</script>
 
     <link id="retype-favicon" rel="icon" href="../../../favicon.ico" />
-    <link href="../../../resources/css/retype.css?v=4.6.0.844143465938" rel="stylesheet">
+    <link href="../../../resources/css/retype.css?v=4.6.0.844175319539" rel="stylesheet">
 
-    <script data-cfasync="false" src="../../../resources/js/config.js?v=4.6.0.844143465938" data-turbo-eval="false" defer></script>
+    <script data-cfasync="false" src="../../../resources/js/config.js?v=4.6.0.844175319539" data-turbo-eval="false" defer></script>
     <script data-cfasync="false" src="../../../resources/js/retype.js?v=4.6.0" data-turbo-eval="false" defer></script>
-    <script id="lunr-js" data-cfasync="false" src="../../../resources/js/lunr.js?v=4.6.0.844143465938" data-turbo-eval="false" defer></script>
+    <script id="lunr-js" data-cfasync="false" src="../../../resources/js/lunr.js?v=4.6.0.844175319539" data-turbo-eval="false" defer></script>
 </head>
 <body>
     <div id="retype-app" class="relative text-base antialiased text-base-text bg-base-bg font-body">
@@ -199,6 +199,10 @@
 <p>The migration locks the original tables, saves their client grants, revokes legacy client access, validates root and message references, and imports within one transaction. A failure rolls back the transaction. Original tables and rows remain as an archive. <code translate="no" v-pre>chat-legacy.html</code> preserves the original frontend source; it is an archive, not a second writable client after cutover. Legacy IP bans/mutes and audit records remain in their original tables; IP-based enforcement is not part of this release.</p>
 <p>New message attachments use private storage with channel permission checks and five-minute signed links. Existing attachments remain at their original public URLs. This upgrade does not retroactively make those URLs private.</p>
 <h2 id="apply-the-backend">Apply the backend</h2>
+<h3 id="october-conversation-update">October conversation update</h3>
+<p>For an existing v2 deployment, apply <code translate="no" v-pre>202610010003_threads_polls.sql</code>, then <code translate="no" v-pre>202610010004_automod_actions.sql</code> before publishing the updated frontend. Do not rerun migrations 001/002. These additive migrations preserve existing channels and messages; no default channels or rules are created. No Edge Function update is required.</p>
+<p>Threads inherit their parent channel&#x27;s current permissions. Poll voting is authorized on the server and expires at the configured deadline. AutoMod rules always block matching content and can additionally warn, mute, or ban. The rule creator&#x27;s current role limits automated punishment; root is protected. Duration fields use seconds (blank ban duration is permanent). Select a private log channel that you can manage. If that channel is subsequently made public or archived, alerts remain in the staff-only event table instead of being published there. Existing rules keep their original block-only behavior until configured.</p>
+<p>The release also includes compact profile popouts, corrected avatar stacking, accessible custom dropdowns, supplied normal/private channel icons, and send-to-bottom scrolling. <code translate="no" v-pre>chat-backup</code>, <code translate="no" v-pre>chat-beta</code>, and <code translate="no" v-pre>chatbeta</code> share this release; legacy remains archived.</p>
 <ol>
 <li>Confirm a normal project backup is available and choose a short maintenance window. Keep the existing project; do not create a replacement database.</li>
 <li>In the project&#x27;s SQL Editor, run <code translate="no" v-pre>supabase/migrations/202609280001_chatbox_v2.sql</code> as one complete script, then <code translate="no" v-pre>202609280002_chatbox_private_media.sql</code>. Alternatively, apply both through an authenticated Supabase CLI migration workflow. Stop if either fails. Do not partially execute statements to bypass a validation error.</li>
