@@ -18,6 +18,13 @@
 - [Chat System Installation](https://ipmingsum2.github.io/chat/installation.md): Before getting started, insert the latest version of this product from our Discord into your game.
 - [Configuring Your Chat](https://ipmingsum2.github.io/chat/config.md): Need to color your chats? You got into the right place.
 
+## External
+
+### Chatbox
+
+- [CHATBOX bot API](https://ipmingsum2.github.io/external/chatbox/bot-api.md): Create a bot in Server settings → Apps & Bots → Create Bot. An Administrator or higher can create bots; only root assigns human staff roles. Copy the token once and keep it in a server environment variable.
+- [CHATBOX deployment](https://ipmingsum2.github.io/external/chatbox/deployment.md): The frontend stays on GitHub Pages and uses the existing Supabase project. No database export is required. Deploy the database and Edge Function before publishing the frontend.
+
 ## Tests
 
 - [Test Page](https://ipmingsum2.github.io/tests/test.md): This is a test page.
