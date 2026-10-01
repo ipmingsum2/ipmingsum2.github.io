@@ -978,6 +978,32 @@
       html = `<h2>Account Standing</h2><div class="standing-row"><span class="standing-icon">${active.length ? "!" : "✓"}</span><div><strong>${active.length ? "Your account has active restrictions" : "All good"}</strong><p>${active.length ? "See the details below." : "Thank you for keeping CHATBOX welcoming."}</p></div></div><h3>Moderation history</h3>${historyHTML(state.history)}`;
     }
     settingsFrame(tab, html);
+    if (tab === "password") {
+      $("passwordForm").insertAdjacentHTML(
+        "afterend",
+        '<h3 style="margin-top:28px">Reset by email</h3><p class="small-note">Send a reset link to your account email. This requires an inbox you can access; made-up addresses cannot receive it.</p><button class="secondary" id="sendPasswordReset">Send Reset Link</button><p id="passwordResetStatus" class="small-note" role="status"></p>',
+      );
+      $("sendPasswordReset").onclick = async () => {
+        const button = $("sendPasswordReset"),
+          status = $("passwordResetStatus");
+        button.disabled = true;
+        try {
+          if (preview)
+            throw new Error("Password resets need a connected account.");
+          await checked(
+            client.auth.resetPasswordForEmail(state.user.email, {
+              redirectTo: new URL("/external/chat.html", location.origin).href,
+            }),
+          );
+          status.textContent =
+            "Reset link requested. Check your inbox and spam folder.";
+        } catch (error) {
+          status.textContent = error.message;
+        } finally {
+          button.disabled = false;
+        }
+      };
+    }
     if (tab === "profile")
       formSave("profileForm", async (v) => {
         const file = $("avatarUpload").files[0];
