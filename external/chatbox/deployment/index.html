@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark">
-    <meta name="turbo-cache-control" content="no-cache" data-turbo-track="reload" data-track-token="4.6.0.844143099630">
+    <meta name="turbo-cache-control" content="no-cache" data-turbo-track="reload" data-track-token="4.6.0.844143465938">
 
     <!-- See retype.com -->
     <meta name="generator" content="Retype 4.6.0">
@@ -38,11 +38,11 @@
     <script data-cfasync="false">(function(){var cl=document.documentElement.classList,ls=localStorage.getItem("retype_scheme"),hd=cl.contains("dark"),hl=cl.contains("light"),wm=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches;if(ls==="dark"||(!ls&&wm&&!hd&&!hl)){cl.remove("light");cl.add("dark")}else if(ls==="light"||(!ls&&!wm&&!hd&&!hl)){cl.remove("dark");cl.add("light")}})();</script>
 
     <link id="retype-favicon" rel="icon" href="../../../favicon.ico" />
-    <link href="../../../resources/css/retype.css?v=4.6.0.844143099630" rel="stylesheet">
+    <link href="../../../resources/css/retype.css?v=4.6.0.844143465938" rel="stylesheet">
 
-    <script data-cfasync="false" src="../../../resources/js/config.js?v=4.6.0.844143099630" data-turbo-eval="false" defer></script>
+    <script data-cfasync="false" src="../../../resources/js/config.js?v=4.6.0.844143465938" data-turbo-eval="false" defer></script>
     <script data-cfasync="false" src="../../../resources/js/retype.js?v=4.6.0" data-turbo-eval="false" defer></script>
-    <script id="lunr-js" data-cfasync="false" src="../../../resources/js/lunr.js?v=4.6.0.844143099630" data-turbo-eval="false" defer></script>
+    <script id="lunr-js" data-cfasync="false" src="../../../resources/js/lunr.js?v=4.6.0.844143465938" data-turbo-eval="false" defer></script>
 </head>
 <body>
     <div id="retype-app" class="relative text-base antialiased text-base-text bg-base-bg font-body">
@@ -205,8 +205,8 @@
 <li>Verify the counts and original IDs using the read-only queries in <code translate="no" v-pre>supabase/verify-chatbox.sql</code>. Root must resolve to exactly one account. No original channel/message should be missing.</li>
 <li>Deploy <code translate="no" v-pre>supabase/functions/chat-api/index.ts</code> as <strong>chat-api</strong>. For CLI deployment, use <code translate="no" v-pre>supabase functions deploy chat-api --project-ref lflkpziiwnoamvtrbcil</code>. <code translate="no" v-pre>supabase/config.toml</code> disables the gateway&#x27;s legacy JWT check for this function because the function validates user sessions with <code translate="no" v-pre>auth.getUser()</code> and separately verifies hashed bot tokens. Do not remove those checks.</li>
 <li>Supabase supplies <code translate="no" v-pre>SUPABASE_URL</code> and <code translate="no" v-pre>SUPABASE_SERVICE_ROLE_KEY</code> to Edge Functions. Never copy the service key into frontend code or GitHub. Optional secrets are listed below.</li>
-<li>In Authentication → URL Configuration, allow <code translate="no" v-pre>https://ipmingsum2.github.io/external/chat.html</code> and <code translate="no" v-pre>https://ipmingsum2.github.io/external/chat.html?invited=1</code> as redirect URLs. Keep other required existing URLs. The production site URL is <code translate="no" v-pre>https://ipmingsum2.github.io</code>.</li>
-<li>Confirm email was already OFF during inspection, which supports registration with a syntactically valid made-up email. An unreachable inbox cannot receive invitations or recovery emails. Signed-in users change passwords in Settings using their current password. Recovery links issued through Supabase open the password-reset form; the login page has no forgot-password link.</li>
+<li>In Authentication → URL Configuration, allow <code translate="no" v-pre>https://ipmingsum2.github.io/external/chat.html</code> and <code translate="no" v-pre>https://ipmingsum2.github.io/external/chat.html?invited=1</code> as redirect URLs. Keep other required existing URLs. Set the Supabase Auth Site URL to <code translate="no" v-pre>https://ipmingsum2.github.io/external/chat.html</code>. The Edge Function <code translate="no" v-pre>CHATBOX_SITE_URL</code> remains the origin <code translate="no" v-pre>https://ipmingsum2.github.io</code>.</li>
+<li>Confirm email was already OFF during inspection, which supports registration with a syntactically valid made-up email. An unreachable inbox cannot receive invitations or recovery emails. Signed-in users change passwords in Settings using their current password, or request a reset link from Settings → Password → Send Reset Link. Recovery links issued through Supabase open the password-reset form; the login page has no forgot-password link.</li>
 <li>Configure an email sender for reliable email invitations (below), then publish the frontend branch through the repository&#x27;s existing GitHub Pages deployment.</li>
 </ol>
 <h2 id="email-and-optional-providers">Email and optional providers</h2>
