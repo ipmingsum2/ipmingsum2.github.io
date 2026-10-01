@@ -12,6 +12,14 @@ New message attachments use private storage with channel permission checks and f
 
 ## Apply the backend
 
+### October conversation update
+
+For an existing v2 deployment, apply `202610010003_threads_polls.sql`, then `202610010004_automod_actions.sql` before publishing the updated frontend. Do not rerun migrations 001/002. These additive migrations preserve existing channels and messages; no default channels or rules are created. No Edge Function update is required.
+
+Threads inherit their parent channel's current permissions. Poll voting is authorized on the server and expires at the configured deadline. AutoMod rules always block matching content and can additionally warn, mute, or ban. The rule creator's current role limits automated punishment; root is protected. Duration fields use seconds (blank ban duration is permanent). Select a private log channel that you can manage. If that channel is subsequently made public or archived, alerts remain in the staff-only event table instead of being published there. Existing rules keep their original block-only behavior until configured.
+
+The release also includes compact profile popouts, corrected avatar stacking, accessible custom dropdowns, supplied normal/private channel icons, and send-to-bottom scrolling. `chat-backup`, `chat-beta`, and `chatbeta` share this release; legacy remains archived.
+
 1. Confirm a normal project backup is available and choose a short maintenance window. Keep the existing project; do not create a replacement database.
 2. In the project's SQL Editor, run `supabase/migrations/202609280001_chatbox_v2.sql` as one complete script, then `202609280002_chatbox_private_media.sql`. Alternatively, apply both through an authenticated Supabase CLI migration workflow. Stop if either fails. Do not partially execute statements to bypass a validation error.
 3. Verify the counts and original IDs using the read-only queries in `supabase/verify-chatbox.sql`. Root must resolve to exactly one account. No original channel/message should be missing.

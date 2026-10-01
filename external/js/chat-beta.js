@@ -31,6 +31,7 @@
     older: true,
     loading: false,
     gate: null,
+    timeout: null,
   };
   let client = null,
     live = null,
@@ -45,6 +46,15 @@
   const signedMedia = new Map();
   let passwordRecovery = false;
   let pendingRegistration = null;
+  let social = null;
+  let profilePopup = null,
+    followMessages = true,
+    scrollFrame = 0;
+  const messageResize = window.ResizeObserver
+    ? new ResizeObserver(() => {
+        if (followMessages) scrollBottom();
+      })
+    : null;
   const demoId = "00000000-0000-4000-8000-000000000001";
   function toast(message, error = false) {
     const el = document.createElement("div");
@@ -159,6 +169,7 @@
     return data;
   }
   function modal(title, body, footer = "", subtitle = "") {
+    window.ChatUI?.closeAll();
     modalReturnFocus = document.activeElement;
     $("modalContent").innerHTML =
       `<header class="modal-heading"><div><h2>${esc(title)}</h2>${subtitle ? `<p>${esc(subtitle)}</p>` : ""}</div><button class="icon-button" data-close aria-label="Close dialog">×</button></header><div class="modal-body">${body}</div>${footer ? `<footer class="modal-footer">${footer}</footer>` : ""}`;
@@ -213,6 +224,8 @@
     $("connectionState").textContent = text;
   }
   function setAuth() {
+    social?.closeThread();
+    window.ChatUI?.closeAll();
     state.user = null;
     state.me = null;
     $("appView").hidden = true;
@@ -314,7 +327,8 @@
     await openChannel(
       state.channels.some((c) => c.id === wanted)
         ? wanted
-        : state.channels.find((c) => c.kind !== "dm")?.id,
+        : state.channels.find((c) => c.kind !== "dm" && c.kind !== "thread")
+            ?.id,
     );
     subscribe();
     if (
@@ -350,7 +364,9 @@
   }
   function renderSidebar() {
     const list = state.channels.filter((c) =>
-      state.mode === "dm" ? c.kind === "dm" : c.kind !== "dm",
+      state.mode === "dm"
+        ? c.kind === "dm"
+        : c.kind !== "dm" && c.kind !== "thread",
     );
     $("sidebarHeading").textContent =
       state.mode === "dm" ? "DIRECT MESSAGES" : "YOUR CHANNELS";
@@ -366,8 +382,12 @@
       if (!items.length) continue;
       html += `<div class="category-heading">⌄ ${esc(group.name.toUpperCase())}</div>`;
       for (const ch of items) {
-        const n = state.mentions[ch.id] || 0;
-        html += `<button class="channel-link ${ch.id === state.room ? "active" : ""}" data-channel="${esc(ch.id)}"><span class="channel-symbol">${ch.kind === "dm" ? "@" : ch.is_private ? "♙" : ch.kind === "announcement" ? "◖" : "#"}</span><span class="name">${esc(channelName(ch))}</span>${n ? `<span class="badge" aria-label="${n} mentions">${n > 99 ? "99+" : n}</span>` : ""}</button>`;
+        const n =
+          (state.mentions[ch.id] || 0) +
+          state.channels
+            .filter((c) => c.parent_id === ch.id)
+            .reduce((n, c) => n + (state.mentions[c.id] || 0), 0);
+        html += `<button class="channel-link ${ch.id === state.room ? "active" : ""}" data-channel="${esc(ch.id)}"><span class="channel-symbol">${channelIcon(ch)}</span><span class="name">${esc(channelName(ch))}</span>${n ? `<span class="badge" aria-label="${n} mentions">${n > 99 ? "99+" : n}</span>` : ""}</button>`;
       }
     }
     $("channelList").innerHTML =
@@ -391,7 +411,20 @@
       )
       .join("");
   }
+  function channelIcon(ch) {
+    return window.ChatIcons(
+      ch.kind === "dm"
+        ? "dm"
+        : ch.is_private
+          ? "channel-private"
+          : ch.kind === "announcement"
+            ? "announcement"
+            : "channel",
+    );
+  }
   async function openChannel(id) {
+    if (state.channels.find((c) => c.id === id)?.kind === "thread" && social)
+      return social.openThread(id);
     if (!id) {
       state.room = null;
       renderMessages();
@@ -421,7 +454,7 @@
         : ch.is_private
           ? "A private place for your group."
           : "A place to say hello, share, and stay connected.");
-    $("channelIcon").textContent = ch.kind === "dm" ? "@" : "#";
+    $("channelIcon").innerHTML = channelIcon(ch);
     $("messageText").placeholder =
       `Message ${ch.kind === "dm" ? "@" : "#"}${channelName(ch)}`;
     $("channelSettingsButton").hidden =
@@ -441,6 +474,7 @@
     await rpc("read", { channel_id: id });
     state.mentions[id] = 0;
     renderSidebar();
+    social?.onChannel();
   }
   async function loadMessages(id, before) {
     if (preview) return state.demoMessages.filter((m) => m.room === id);
@@ -460,10 +494,11 @@
     return signMedia(rows.reverse());
   }
   function messageHTML(m) {
+    if (m.automod_event && !m.deleted) return automodMessage(m);
     const p = profile(m.user_id),
       parent = state.messages.find((x) => x.id === m.reply_to),
       ping = m.text?.includes(`<@${state.me.id}>`);
-    return `<article class="message ${ping ? "pinged" : ""}" id="message-${esc(m.id)}">${m.reply_to ? `<div class="reply-context" data-jump="${esc(m.reply_to)}">${parent ? `${avatar(profile(parent.user_id))}<b>${esc(profile(parent.user_id).display_name)}</b> ${esc(parent.deleted ? "Message deleted" : parent.text.slice(0, 90))}` : "↳ Reply to an earlier message"}</div>` : ""}<button class="text-button" data-profile="${p.id}" aria-label="View ${esc(p.display_name)} profile">${avatar(p)}</button><div><div><button class="message-author ${p.roles?.length ? "staff" : ""}" data-profile="${p.id}">${esc(p.display_name)}</button>${p.is_bot ? '<span class="bot-label">APP</span>' : ""}<time datetime="${esc(m.created_at)}" title="${esc(new Date(m.created_at).toLocaleString())}">${new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>${m.edited_at ? '<small class="muted"> (edited)</small>' : ""}</div><div class="body">${m.deleted ? '<i class="muted">Message deleted</i>' : C.render(m.text, state.profiles, state.channels)}</div>${!m.deleted ? attachmentHTML(m) : ""}<div class="embeds" data-embeds="${esc(m.id)}"></div></div>${!m.deleted ? `<div class="message-actions"><button data-reply="${esc(m.id)}" title="Reply">↩ Reply</button>${m.user_id === state.me.id ? `<button data-edit="${esc(m.id)}">Edit</button>` : ""}${m.user_id === state.me.id || staff() ? `<button data-delete="${esc(m.id)}">Delete</button>` : ""}</div>` : ""}</article>`;
+    return `<article class="message ${ping ? "pinged" : ""}" id="message-${esc(m.id)}">${m.reply_to ? `<div class="reply-context" data-jump="${esc(m.reply_to)}">${parent ? `${avatar(profile(parent.user_id))}<b>${esc(profile(parent.user_id).display_name)}</b> ${esc(parent.deleted ? "Message deleted" : parent.text.slice(0, 90))}` : "↳ Reply to an earlier message"}</div>` : ""}<button class="text-button" data-profile="${p.id}" aria-label="View ${esc(p.display_name)} profile">${avatar(p)}</button><div><div><button class="message-author ${p.roles?.length ? "staff" : ""}" data-profile="${p.id}">${esc(p.display_name)}</button>${p.is_bot ? '<span class="bot-label">APP</span>' : ""}<time datetime="${esc(m.created_at)}" title="${esc(new Date(m.created_at).toLocaleString())}">${new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>${m.edited_at ? '<small class="muted"> (edited)</small>' : ""}</div><div class="body">${m.deleted ? '<i class="muted">Message deleted</i>' : m.poll_id ? "" : m.thread_id ? "Started a thread" : C.render(m.text, state.profiles, state.channels)}</div>${!m.deleted ? attachmentHTML(m) + (social?.messageExtra(m) || "") : ""}<div class="embeds" data-embeds="${esc(m.id)}"></div></div>${!m.deleted ? `<div class="message-actions">${channel()?.kind !== "dm" ? `<button data-create-thread="${esc(m.id)}" title="Create thread">≋ Thread</button>` : ""}<button data-reply="${esc(m.id)}" title="Reply">↩ Reply</button>${m.user_id === state.me.id && !m.poll_id && !m.thread_id ? `<button data-edit="${esc(m.id)}">Edit</button>` : ""}${m.user_id === state.me.id || staff() ? `<button data-delete="${esc(m.id)}">Delete</button>` : ""}</div>` : ""}</article>`;
   }
   function attachmentHTML(m) {
     const url = https(m.resolved_url || m.image_url);
@@ -519,7 +554,10 @@
       }
       html += messageHTML(m);
     }
-    $("messages").innerHTML = html;
+    $("messages").innerHTML = '<div class="message-content">' + html + "</div>";
+    social?.decorate();
+    messageResize?.disconnect();
+    messageResize?.observe($("messages").firstElementChild);
     $("messages")
       .querySelectorAll(".message")
       .forEach((el) => {
@@ -579,7 +617,14 @@
     }
   }
   function scrollBottom() {
+    followMessages = true;
+    const room = state.room;
+    cancelAnimationFrame(scrollFrame);
     $("messages").scrollTop = $("messages").scrollHeight;
+    scrollFrame = requestAnimationFrame(() => {
+      if (state.room === room && followMessages)
+        $("messages").scrollTop = $("messages").scrollHeight;
+    });
   }
   function subscribe() {
     if (preview) return;
@@ -629,7 +674,7 @@
         );
         const oldTop = $("messages").scrollTop;
         renderMessages();
-        if (nearBottom) scrollBottom();
+        if (followMessages || nearBottom) scrollBottom();
         else $("messages").scrollTop = oldTop;
         if (document.hasFocus()) {
           await rpc("read", { channel_id: room });
@@ -637,6 +682,7 @@
           renderSidebar();
         }
       }
+      await social?.refresh();
     } finally {
       state.loading = false;
     }
@@ -670,11 +716,102 @@
         ? "Slowmode: " + slowmode.seconds + " seconds. You can bypass slowmode."
         : "Slowmode: " + slowmode.seconds + " seconds between messages";
     el.setAttribute("aria-label", el.title);
-    $("sendButton").disabled = sending || waiting || !state.room;
+    $("sendButton").disabled =
+      sending || waiting || !state.room || isTimedOut();
   }
   setInterval(() => {
-    if (state.me && !document.hidden) renderSlowmode();
+    if (state.me && !document.hidden) {
+      renderSlowmode();
+      renderTimeout();
+    }
   }, 500);
+  function isTimedOut() {
+    return (
+      !!state.timeout &&
+      new Date(state.timeout.expires_at).getTime() > Date.now()
+    );
+  }
+  function renderTimeout() {
+    let bar = $("timeoutBar");
+    if (!bar) {
+      bar = document.createElement("div");
+      bar.id = "timeoutBar";
+      bar.className = "timeout-bar";
+      bar.setAttribute("role", "status");
+      $("messageForm").before(bar);
+    }
+    const muted = isTimedOut();
+    bar.hidden = !muted;
+    $("messageForm").hidden = muted;
+    for (const id of [
+      "messageText",
+      "attachButton",
+      "gifButton",
+      "emojiButton",
+    ])
+      $(id).disabled = muted;
+    if (muted) {
+      const n = Math.max(
+        0,
+        Math.ceil((new Date(state.timeout.expires_at) - Date.now()) / 1000),
+      );
+      const d = Math.floor(n / 86400),
+        h = Math.floor((n % 86400) / 3600),
+        m = Math.floor((n % 3600) / 60);
+      bar.innerHTML =
+        '<span class="timeout-symbol">◷</span><div><b>Timed Out</b><small>You cannot chat, reply, or vote during this timeout.</small></div><strong>' +
+        [d + "d", h + "h", m + "m", (n % 60) + "s"].join(" ") +
+        "</strong>";
+    }
+  }
+  function automodMessage(m) {
+    const e = m.automod_event,
+      p = profile(e.user_id),
+      ch = state.channels.find((c) => c.id === e.channel_id);
+    return (
+      '<article class="automod-log" id="message-' +
+      esc(m.id) +
+      '"><span class="automod-avatar">' +
+      window.ChatIcons("shield") +
+      '</span><div><header><b>AutoMod</b> <span class="bot-label">✓ SYSTEM</span> has blocked a message in <button class="mention" data-channel="' +
+      esc(e.channel_id) +
+      '"># ' +
+      esc(ch?.name || "channel") +
+      "</button> <time>" +
+      esc(
+        new Date(m.created_at).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      ) +
+      '</time></header><div class="automod-evidence">' +
+      avatar(p) +
+      '<div><button class="message-author" data-profile="' +
+      esc(p.id) +
+      '">' +
+      esc(p.display_name) +
+      "</button><blockquote>" +
+      esc(e.content) +
+      "</blockquote><small>Matched: " +
+      esc(e.matched) +
+      " · Rule: " +
+      esc(e.rule) +
+      " · " +
+      esc(
+        e.actions?.length
+          ? e.actions.map((x) => (x === "timeout" ? "Mute" : x)).join(", ")
+          : "Message blocked",
+      ) +
+      (e.expires_at
+        ? " · Until " + esc(new Date(e.expires_at).toLocaleString())
+        : "") +
+      '</small></div></div><footer><button class="text-button" data-moderate="' +
+      esc(p.id) +
+      '">Actions</button> · <button class="text-button" data-channel="' +
+      esc(e.channel_id) +
+      '">Go to channel</button></footer></div></article>'
+    );
+  }
   async function signMedia(rows) {
     await Promise.all(
       rows.map(async (m) => {
@@ -817,6 +954,7 @@
         return;
       }
       if (result?.blocked) {
+        await refreshGate();
         $("blockedNotice").hidden = false;
         $("blockedNotice").innerHTML =
           `<strong>⛨ This content is blocked by this server.</strong><p>From server moderators: “${esc(result.message)}”</p><small>Only you can see this · </small><button class="text-button" data-dismiss-block>Dismiss message</button>`;
@@ -832,6 +970,14 @@
       state.edit = null;
       $("replyBar").hidden = true;
       $("autocomplete").hidden = true;
+      if (result?.id) {
+        const delivered = (await signMedia([result]))[0];
+        const index = state.messages.findIndex((m) => m.id === delivered.id);
+        if (index < 0) state.messages.push(delivered);
+        else state.messages[index] = delivered;
+        renderMessages();
+      }
+      scrollBottom();
       await sync();
       await refreshSlowmode();
       scrollBottom();
@@ -882,8 +1028,39 @@
       `<span>${edit ? "Editing your message" : "Replying to <b>" + esc(profile(m.user_id).display_name) + "</b>"}</span><button class="text-button" data-cancel-reply aria-label="Cancel reply">×</button>`;
     $("messageText").focus();
   }
-  async function showProfile(id) {
+  async function showProfile(id, anchor = null, full = false) {
     const p = profile(id);
+    profilePopup?.close();
+    if (!full && window.ChatUI) {
+      const el = document.createElement("article");
+      el.className = "profile-card profile-popout";
+      el.setAttribute("role", "dialog");
+      el.setAttribute("aria-label", p.display_name + " profile");
+      el.innerHTML = `<div class="profile-banner" style="background-color:${/^#[0-9a-f]{6}$/i.test(p.banner_color) ? p.banner_color : "#5865f2"}"></div><button class="profile-popout-close icon-button" aria-label="Close profile">×</button><div class="profile-inner">${avatar(p)}<h2>${esc(p.display_name)}${p.is_bot ? '<span class="bot-label">APP</span>' : ""}</h2><small class="muted">${esc(p.username)}${p.pronouns ? " · " + esc(p.pronouns) : ""}</small>${p.status ? `<p class="profile-status">● ${esc(p.status)}</p>` : ""}<p class="profile-bio profile-bio-preview">${esc(p.bio || "This member hasn’t written a bio yet.")}</p><button class="text-button profile-expand">View Full Profile</button><div class="profile-role-list">${rolePills(p)}</div><div class="profile-actions">${id === state.me.id ? '<button class="primary" data-profile-edit>Edit Profile</button>' : !p.is_bot ? '<button class="primary" data-profile-message>Message</button>' : ""}</div></div>`;
+      const trigger = anchor || $("selfProfile");
+      profilePopup = window.ChatUI.floating(el, trigger, () => {
+        profilePopup = null;
+      });
+      el.querySelector(".profile-popout-close").onclick = () =>
+        profilePopup?.close(true);
+      el.querySelector(".profile-expand").onclick = () =>
+        showProfile(id, trigger, true);
+      el.querySelector("[data-profile-edit]")?.addEventListener("click", () => {
+        profilePopup?.close();
+        openSettings("profile");
+      });
+      el.querySelector("[data-profile-message]")?.addEventListener(
+        "click",
+        () =>
+          safe(async () => {
+            const dm = await rpc("dm", { user_id: id });
+            profilePopup?.close();
+            await refresh();
+            await openChannel(dm.id);
+          }),
+      );
+      return;
+    }
     modal(
       "",
       `<article class="profile-card"><div class="profile-banner" style="background:${/^#[0-9a-f]{6}$/i.test(p.banner_color) ? p.banner_color : "#5865f2"}"></div><div class="profile-inner">${avatar(p)}<h2>${esc(p.display_name)}${p.is_bot ? '<span class="bot-label">APP</span>' : ""}</h2><small class="muted">${esc(p.username)} ${p.pronouns ? " · " + esc(p.pronouns) : ""}</small><div class="status-line">${p.status ? "● " + esc(p.status) : ""}</div><div>${rolePills(p, state.root)}</div><p class="profile-bio">${esc(p.bio || "This member hasn’t written a bio yet.")}</p>${state.root && !p.is_bot ? select("profileRole", "Add a role", [["", "Choose a role"], ...C.roles.map((r) => [r, r])], "") : ""}<div class="profile-actions">${id === state.me.id ? '<button class="primary" id="profileEdit">Edit profile</button>' : !p.is_bot ? '<button class="primary" id="profileMessage">Message</button>' : ""}${staff() && id !== state.me.id ? '<button class="secondary" id="profileModerate">Moderate</button>' : ""}</div></div></article>`,
@@ -911,7 +1088,7 @@
             remove: false,
           });
           await refresh();
-          showProfile(id);
+          showProfile(id, anchor, true);
         });
   }
   function settingsFrame(tab, content) {
@@ -1074,6 +1251,12 @@
       order: "created_at",
       ascending: false,
     });
+    state.timeout =
+      rows
+        .filter((x) => x.action === "timeout" && activeCase(x))
+        .sort((a, b) => new Date(b.expires_at) - new Date(a.expires_at))[0] ||
+      null;
+    renderTimeout();
     const gate =
       rows.find((x) => x.action === "ban" && activeCase(x)) ||
       rows.find((x) => x.action === "warning" && activeCase(x));
@@ -1235,7 +1418,18 @@
     };
     modal(
       id ? "Edit AutoMod rule" : "Create AutoMod rule",
-      `<form id="ruleForm" class="rule-editor">${field("name", "Rule name", r.name, "text", "required")}${area("words", "Block words and phrases", r.words.join("\n"), "One word or phrase per line. Matching is case insensitive. No fixed list or rule count limit.")}${area("patterns", "Regular expression patterns", r.patterns.join("\n"), "One PostgreSQL regular expression per line. Invalid patterns cannot be saved.")}${area("allowed_words", "Allowed words", r.allowed_words.join("\n"), "Allowed phrases are removed before checking blocked words and patterns.")}${area("block_message", "Custom block message", r.block_message)}${area("exempt_channels", "Exempt channel IDs", r.exempt_channels.join("\n"))}${area("exempt_roles", "Exempt role names", r.exempt_roles.join("\n"))}<label class="check-label"><input type="checkbox" name="enabled" ${r.enabled ? "checked" : ""}> Enable this rule</label><label>Import a word list (.txt)<input type="file" id="wordImport" accept=".txt,text/plain"></label><div class="toolbar-row"><button class="secondary" type="button" data-admin="automod">Cancel</button><button class="primary" type="submit">Save Rule</button></div></form>`,
+      `<form id="ruleForm" class="rule-editor">${field("name", "Rule name", r.name, "text", "required")}${area("words", "Block words and phrases", r.words.join("\n"), "One word or phrase per line. Matching is case insensitive. No fixed list or rule count limit.")}${area("patterns", "Regular expression patterns", r.patterns.join("\n"), "One PostgreSQL regular expression per line. Invalid patterns cannot be saved.")}${area("allowed_words", "Allowed words", r.allowed_words.join("\n"), "Allowed phrases are removed before checking blocked words and patterns.")}${area("block_message", "Custom block message", r.block_message)}<h3>Actions</h3><p class="small-note">Matching messages are always blocked. Additional actions respect the rule creator’s role hierarchy; root cannot be punished automatically.</p><div class="automod-action-options">${[
+        ["warning", "Warn member"],
+        ["timeout", "Mute / timeout member"],
+        ["ban", "Ban member"],
+      ]
+        .map(
+          ([value, label]) =>
+            `<label class="check-label"><input type="checkbox" name="action_${value}" ${(r.actions || []).includes(value) ? "checked" : ""}> ${label}</label>`,
+        )
+        .join(
+          "",
+        )}</div>${field("timeout_seconds", "Mute duration (seconds)", r.timeout_seconds || 600, "number", 'min="1" max="2419200" required')}${field("ban_seconds", "Ban duration (seconds; leave blank for permanent)", r.ban_seconds || "", "number", 'min="1" max="31536000"')}${select("log_channel_id", "Send alerts to", [["", "No log channel"], ...state.channels.filter((c) => c.is_private && ["text", "announcement"].includes(c.kind)).map((c) => [c.id, "# " + c.name])], r.log_channel_id || "")}<p class="small-note">Choose a private channel you can manage. Alerts contain blocked content and moderation details.</p>${area("exempt_channels", "Exempt channel IDs", r.exempt_channels.join("\n"))}${area("exempt_roles", "Exempt role names", r.exempt_roles.join("\n"))}<label class="check-label"><input type="checkbox" name="enabled" ${r.enabled ? "checked" : ""}> Enable this rule</label><label>Import a word list (.txt)<input type="file" id="wordImport" accept=".txt,text/plain"></label><div class="toolbar-row"><button class="secondary" type="button" data-admin="automod">Cancel</button><button class="primary" type="submit">Save Rule</button></div></form>`,
     );
     $("wordImport").onchange = () =>
       safe(async () => {
@@ -1250,6 +1444,9 @@
         ...v,
         id,
         enabled: !!v.enabled,
+        actions: ["warning", "timeout", "ban"].filter((a) => v["action_" + a]),
+        timeout_seconds: Number(v.timeout_seconds),
+        ban_seconds: v.ban_seconds ? Number(v.ban_seconds) : null,
         words: lines(v.words),
         patterns: lines(v.patterns),
         allowed_words: lines(v.allowed_words),
@@ -1532,6 +1729,30 @@
     $("conversationQuery").focus();
   }
   function wire() {
+    social = window.ChatSocial?.({
+      state,
+      rpc,
+      refresh,
+      sync,
+      modal,
+      closeModal,
+      profile,
+      avatar,
+      attachmentHTML,
+      openChannel,
+      toast,
+      safe,
+      preview,
+      scrollBottom,
+      socialRPC: (action, payload) =>
+        checked(client.rpc("chat_social", { action, payload })),
+      getMessages: async (id, before) => {
+        if(preview)return state.demoMessages.filter(m=>m.room===id);
+        let q=client.from("cb_messages").select("*").eq("room",id).order("created_at",{ascending:false}).order("id",{ascending:false}).limit(100);
+        if(before)q=q.or(`created_at.lt.${before.created_at},and(created_at.eq.${before.created_at},id.lt.${before.id})`);
+        return signMedia((await checked(q)).reverse());
+      },
+    });
     const icons = {
       settingsButton: "settings",
       channelSettingsButton: "settings",
@@ -1565,7 +1786,7 @@
           closeModal();
           await openChannel(b.dataset.channel);
         }
-        if (b.dataset.profile) await showProfile(b.dataset.profile);
+        if (b.dataset.profile) await showProfile(b.dataset.profile, b);
         if (b.dataset.settings) await openSettings(b.dataset.settings);
         if (b.dataset.admin) await openAdmin(b.dataset.admin);
         if (b.dataset.reply) replyTo(b.dataset.reply);
@@ -1695,7 +1916,9 @@
         safe(() => sendMessage());
       }
     };
-    $("attachButton").onclick = () => $("attachment").click();
+    $("attachButton").setAttribute("aria-label", "Add to message");
+    $("attachButton").onclick = (e) =>
+      social ? social.composerMenu(e.currentTarget) : $("attachment").click();
     $("attachment").onchange = () => {
       $("attachmentLabel").textContent =
         $("attachment").files[0]?.name ||
@@ -1704,7 +1927,16 @@
     $("gifButton").onclick = gifDialog;
     $("emojiButton").onclick = emojiDialog;
     $("settingsButton").onclick = () => safe(() => openSettings());
-    $("selfProfile").onclick = () => safe(() => showProfile(state.me.id));
+    $("selfProfile").onclick = (e) =>
+      safe(() => showProfile(state.me.id, e.currentTarget));
+    $("messages").addEventListener(
+      "scroll",
+      () => {
+        const el = $("messages");
+        followMessages = el.scrollHeight - el.clientHeight - el.scrollTop < 100;
+      },
+      { passive: true },
+    );
     $("editProfileShortcut").onclick = () =>
       safe(() => openSettings("profile"));
     $("adminButton").onclick = () => safe(() => openAdmin());

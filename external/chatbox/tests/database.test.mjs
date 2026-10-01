@@ -52,10 +52,29 @@ insert into public.messages values('11111111-1111-4111-8111-111111111111','lobby
       "utf8",
     ),
   );
+  await db.exec(
+    await readFile(
+      new URL(
+        "../../../supabase/migrations/202610010003_threads_polls.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
+  await db.exec(
+    await readFile(
+      new URL(
+        "../../../supabase/migrations/202610010004_automod_actions.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
 });
 after(async () => {
   await db?.close();
 });
+
 test("legacy messages and channels retained without seeded defaults; root identity is immutable", async () => {
   assert.equal(
     (
@@ -510,4 +529,352 @@ test("private attachment access follows channel permissions, including with a br
   } finally {
     await db.exec("reset role");
   }
+});
+
+async function social(user, action, payload = {}) {
+  await db.query("select set_config('request.jwt.claim.sub',$1,false)", [user]);
+  return (
+    await db.query("select public.chat_social($1,$2::jsonb) result", [
+      action,
+      JSON.stringify(payload),
+    ])
+  ).rows[0].result;
+}
+
+test("threads inherit private parent permissions and remain readable when closed", async () => {
+  const parent = await call(root, "channel", {
+    name: "Thread permissions",
+    is_private: true,
+  });
+  await assert.rejects(
+    social(alice, "create_thread", {
+      channel_id: parent.id,
+      name: "No access",
+    }),
+    /cannot create/,
+  );
+  await call(root, "permission", {
+    channel_id: parent.id,
+    subject: "user:" + alice,
+    permission: "view",
+    value: true,
+  });
+  const thread = await social(alice, "create_thread", {
+    channel_id: parent.id,
+    name: "Project discussion",
+  });
+  assert.ok(thread.id);
+  await call(alice, "send", {
+    channel_id: thread.id,
+    text: "First thread message",
+  });
+  await assert.rejects(
+    call(bob, "send", { channel_id: thread.id, text: "Denied" }),
+    /cannot send/,
+  );
+  await assert.rejects(
+    social(alice, "create_thread", { channel_id: thread.id, name: "Nested" }),
+    /cannot create/,
+  );
+  const list = await social(alice, "threads", { channel_id: parent.id });
+  assert.equal(list[0].message_count, 1);
+  await social(alice, "archive_thread", { id: thread.id, archived: true });
+  await assert.rejects(
+    call(alice, "send", { channel_id: thread.id, text: "Closed" }),
+    /cannot send/,
+  );
+  assert.equal(
+    (await social(alice, "threads", { channel_id: parent.id }))[0].archived,
+    true,
+  );
+  await social(alice, "archive_thread", { id: thread.id, archived: false });
+  await call(root, "permission", {
+    channel_id: parent.id,
+    subject: "user:" + alice,
+    permission: "view",
+    value: false,
+  });
+  assert.equal(
+    (
+      await db.query("select public.cb_can($1,$2,'view') allowed", [
+        alice,
+        thread.id,
+      ])
+    ).rows[0].allowed,
+    false,
+  );
+});
+
+test("polls validate choices, replace votes atomically, remove votes and enforce deadlines", async () => {
+  const channel = await call(root, "channel", { name: "Poll tests" });
+  const created = await social(root, "create_poll", {
+    channel_id: channel.id,
+    question: "Pick one",
+    answers: [{ text: "Alpha", emoji: "✨" }, { text: "Beta" }],
+    duration_hours: 24,
+  });
+  const data = () =>
+    social(alice, "poll_data", { channel_id: channel.id, ids: [created.id] });
+  let p = (await data())[0],
+    ids = p.options.map((o) => o.id);
+  await assert.rejects(
+    social(alice, "vote", { id: p.id, choices: ids }),
+    /Invalid answer/,
+  );
+  await assert.rejects(
+    social(alice, "vote", { id: p.id, choices: ["invented"] }),
+    /Invalid answer/,
+  );
+  await social(alice, "vote", { id: p.id, choices: [ids[0]] });
+  await social(alice, "vote", { id: p.id, choices: [ids[1]] });
+  p = (await data())[0];
+  assert.equal(p.total, 1);
+  assert.equal(p.options[0].votes, 0);
+  assert.equal(p.options[1].votes, 1);
+  await social(alice, "vote", { id: p.id, choices: [] });
+  assert.equal((await data())[0].total, 0);
+  await social(root, "close_poll", { id: p.id });
+  await assert.rejects(
+    social(alice, "vote", { id: p.id, choices: [ids[0]] }),
+    /ended/,
+  );
+  assert.equal((await data())[0].ended, true);
+  const multi = await social(root, "create_poll", {
+    channel_id: channel.id,
+    question: "Pick several",
+    answers: [{ text: "One" }, { text: "Two" }],
+    multiple: true,
+    duration_hours: 1,
+  });
+  const m = (
+    await social(alice, "poll_data", {
+      channel_id: channel.id,
+      ids: [multi.id],
+    })
+  )[0];
+  await social(alice, "vote", {
+    id: m.id,
+    choices: m.options.map((o) => o.id),
+  });
+  const voted = (
+    await social(alice, "poll_data", {
+      channel_id: channel.id,
+      ids: [multi.id],
+    })
+  )[0];
+  assert.equal(voted.total, 1);
+  assert.deepEqual(
+    voted.options.map((o) => o.votes),
+    [1, 1],
+  );
+});
+
+test("polls and thread titles cannot bypass AutoMod or slowmode", async () => {
+  const ch = await call(root, "channel", {
+    name: "Social limits",
+    slowmode_seconds: 30,
+  });
+  await call(root, "automod", {
+    name: "Social rule",
+    words: ["socialblocked"],
+    patterns: [],
+    allowed_words: [],
+  });
+  assert.equal(
+    (
+      await social(root, "create_poll", {
+        channel_id: ch.id,
+        question: "Good question",
+        answers: [{ text: "socialblocked" }, { text: "Okay" }],
+      })
+    ).blocked,
+    true,
+  );
+  assert.equal(
+    (
+      await social(root, "create_thread", {
+        channel_id: ch.id,
+        name: "socialblocked",
+      })
+    ).blocked,
+    true,
+  );
+  const first = await social(bob, "create_poll", {
+    channel_id: ch.id,
+    question: "First",
+    answers: [{ text: "One" }, { text: "Two" }],
+  });
+  assert.ok(first.id);
+  assert.equal(
+    (
+      await social(bob, "create_thread", {
+        channel_id: ch.id,
+        name: "Too soon",
+      })
+    ).slowmode,
+    true,
+  );
+  await assert.rejects(
+    social(root, "create_poll", {
+      channel_id: ch.id,
+      question: "Invalid",
+      answers: [{ text: "Only" }],
+    }),
+    /2–10/,
+  );
+});
+
+test("private poll contents and other members' ballots are protected by RLS", async () => {
+  const ch = await call(root, "channel", {
+    name: "Private poll",
+    is_private: true,
+  });
+  const p = await social(root, "create_poll", {
+    channel_id: ch.id,
+    question: "Private",
+    answers: [{ text: "Yes" }, { text: "No" }],
+  });
+  await assert.rejects(
+    social(alice, "poll_data", { channel_id: ch.id, ids: [p.id] }),
+    /unavailable/,
+  );
+  await db.query("select set_config('request.jwt.claim.sub',$1,false)", [
+    alice,
+  ]);
+  await db.exec("set role authenticated");
+  try {
+    assert.equal(
+      (await db.query("select * from public.cb_polls where id=$1", [p.id])).rows
+        .length,
+      0,
+    );
+    assert.equal(
+      (
+        await db.query("select * from public.cb_poll_votes where user_id<>$1", [
+          alice,
+        ])
+      ).rows.length,
+      0,
+    );
+    await assert.rejects(
+      db.query("insert into public.cb_poll_votes values($1,$2,'{}')", [
+        p.id,
+        alice,
+      ]),
+      /permission denied/,
+    );
+  } finally {
+    await db.exec("reset role");
+  }
+});
+
+test("AutoMod applies warnings, mute, and bans atomically, logs privately, and protects root", async () => {
+  const log = await call(root, "channel", {
+    name: "mod-log",
+    is_private: true,
+  });
+  await assert.rejects(
+    call(alice, "automod", { name: "bad grant", actions: ["ban"] }),
+    /Administrator/,
+  );
+  await assert.rejects(
+    call(root, "automod", { name: "public log", log_channel_id: "lobby" }),
+    /private log/,
+  );
+  await assert.rejects(
+    call(root, "automod", { name: "duration", timeout_seconds: 0 }),
+    /duration/,
+  );
+  await call(root, "automod", {
+    id: "action-rule",
+    name: "Action rule",
+    words: ["actionblocked"],
+    actions: ["warning", "timeout"],
+    timeout_seconds: 120,
+    log_channel_id: log.id,
+  });
+  const result = await call(alice, "send", {
+    channel_id: "lobby",
+    text: "actionblocked evidence",
+  });
+  assert.equal(result.blocked, true);
+  assert.deepEqual([...result.actions].sort(), ["timeout", "warning"]);
+  const history = (
+    await db.query(
+      "select * from public.cb_moderation where user_id=$1 and reason='AutoMod: Action rule'",
+      [alice],
+    )
+  ).rows;
+  assert.equal(history.length, 2);
+  assert.equal(history[0].evidence, "actionblocked evidence");
+  await assert.rejects(
+    call(alice, "send", { channel_id: "lobby", text: "bypass" }),
+    /moderation notice/,
+  );
+  await call(alice, "acknowledge", {
+    id: history.find((x) => x.action === "warning").id,
+  });
+  await assert.rejects(
+    call(alice, "send", { channel_id: "lobby", text: "bypass" }),
+    /cannot send/,
+  );
+  await assert.rejects(
+    social(alice, "create_poll", {
+      channel_id: "lobby",
+      question: "bypass",
+      answers: [{ text: "a" }, { text: "b" }],
+      duration_hours: 1,
+    }),
+    /cannot send/,
+  );
+  const alert = (
+    await db.query("select * from public.cb_messages where room=$1", [log.id])
+  ).rows[0];
+  assert.equal(alert.automod_event.matched, "actionblocked");
+  assert.equal(
+    (
+      await db.query("select public.cb_can($1,$2,'view') allowed", [
+        bob,
+        log.id,
+      ])
+    ).rows[0].allowed,
+    false,
+  );
+  await assert.rejects(
+    call(alice, "edit", { id: alert.id, text: "forged" }),
+    /cannot be edited/,
+  );
+  await call(root, "moderate", {
+    user_id: alice,
+    action: "untimeout",
+    reason: "test completed",
+  });
+  await call(root, "automod", {
+    id: "action-rule",
+    name: "Action rule",
+    words: ["actionblocked"],
+    actions: ["ban"],
+    ban_seconds: 60,
+    log_channel_id: log.id,
+  });
+  assert.deepEqual(
+    (await call(root, "send", { channel_id: "lobby", text: "actionblocked" }))
+      .actions,
+    [],
+  );
+  assert.deepEqual(
+    (await call(bob, "send", { channel_id: "lobby", text: "actionblocked" }))
+      .actions,
+    ["ban"],
+  );
+  await assert.rejects(
+    call(bob, "send", { channel_id: "lobby", text: "bypass" }),
+    /moderation notice/,
+  );
+  await call(root, "moderate", {
+    user_id: bob,
+    action: "unban",
+    reason: "test completed",
+  });
+  await call(root, "delete_rule", { id: "action-rule" });
 });

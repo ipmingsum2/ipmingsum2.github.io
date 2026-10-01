@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check ../js/chat.js && node --check ../js/chat-core.js && node --check ../js/chat-audio.js && node --check ../js/chat-icons.js && node --check chatbox-bot.mjs && node --check example-bot.mjs",
+    "check": "node --check ../js/chat.js && node --check ../js/chat-core.js && node --check ../js/chat-audio.js && node --check ../js/chat-icons.js && node --check chatbox-bot.mjs && node --check example-bot.mjs && node --check ../js/chat-ui.js && node --check ../js/chat-social.js",
     "sync": "node sync-variants.mjs"
   },
   "devDependencies": {
