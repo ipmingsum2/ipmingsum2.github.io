@@ -70,10 +70,31 @@ insert into public.messages values('11111111-1111-4111-8111-111111111111','lobby
       "utf8",
     ),
   );
+  for (const name of [
+    "202610010005_bot_sdk_embeds.sql",
+    "202610020006_keywords_categories_nicknames.sql",
+  ]) {
+    await db.exec(
+      await readFile(
+        new URL("../../../supabase/migrations/" + name, import.meta.url),
+        "utf8",
+      ),
+    );
+  }
 });
 after(async () => {
   await db?.close();
 });
+
+async function botCall(token, action, payload = {}) {
+  return (
+    await db.query("select public.chat_bot($1,$2,$3::jsonb) result", [
+      action,
+      token,
+      JSON.stringify(payload),
+    ])
+  ).rows[0].result;
+}
 
 test("legacy messages and channels retained without seeded defaults; root identity is immutable", async () => {
   assert.equal(
@@ -877,4 +898,259 @@ test("AutoMod applies warnings, mute, and bans atomically, logs privately, and p
     reason: "test completed",
   });
   await call(root, "delete_rule", { id: "action-rule" });
+});
+
+test("plain AutoMod phrases split at commas, wildcard boundaries and regex commas are preserved", async () => {
+  await call(root, "automod", {
+    id: "wildcards",
+    name: "Wildcards",
+    words: ["cat, dog*\n*bird, *fox*, c++"],
+    allowed_words: ["cat nap, dogwood"],
+    patterns: ["a{2,3}z"],
+  });
+  const rule = (
+    await db.query("select * from public.cb_automod where id='wildcards'")
+  ).rows[0];
+  assert.deepEqual(
+    [...rule.words].sort(),
+    ["*bird", "*fox*", "c++", "cat", "dog*"].sort(),
+  );
+  assert.deepEqual(rule.patterns, ["a{2,3}z"]);
+  for (const [keyword, yes, no] of [
+    ["cat", "a cat!", "scatter"],
+    ["dog*", "doghouse", "underdog"],
+    ["*bird", "blackbird", "birdhouse"],
+    ["*fox*", "redfoxes", "fo x"],
+    ["c++", "use c++", "ccc"],
+    ["h*t", "heat", "has tea"],
+  ]) {
+    const rows = (
+      await db.query(
+        "select $2 ~* chat_private.keyword_pattern($1) yes,$3 ~* chat_private.keyword_pattern($1) no",
+        [keyword, yes, no],
+      )
+    ).rows[0];
+    assert.equal(rows.yes, true, keyword);
+    assert.equal(rows.no, false, keyword);
+  }
+  assert.equal(
+    (await call(root, "send", { channel_id: "lobby", text: "cat" })).blocked,
+    true,
+  );
+  assert.ok(
+    (
+      await call(root, "send", {
+        channel_id: "lobby",
+        text: "cat nap and dogwood",
+      })
+    ).id,
+  );
+  assert.equal(
+    (await call(root, "send", { channel_id: "lobby", text: "aaz" })).blocked,
+    true,
+  );
+  await call(root, "delete_rule", { id: "wildcards" });
+});
+
+test("category deletion keeps channels/messages; nicknames require moderator hierarchy and preserve account names", async () => {
+  await call(root, "category", { id: "remove-me", name: "Empty category" });
+  assert.equal(
+    (
+      await db.query(
+        "select count(*)::int n from public.cb_categories where id='remove-me' and deleted_at is null",
+      )
+    ).rows[0].n,
+    1,
+  );
+  const channel = await call(root, "channel", {
+    name: "Keep this channel",
+    category_id: "remove-me",
+  });
+  const message = await call(root, "send", {
+    channel_id: channel.id,
+    text: "Keep this message",
+  });
+  await assert.rejects(
+    call(mod, "delete_category", { id: "remove-me" }),
+    /Administrator/,
+  );
+  await call(root, "delete_category", { id: "remove-me" });
+  const saved = (
+    await db.query("select * from public.cb_channels where id=$1", [channel.id])
+  ).rows[0];
+  assert.equal(saved.category_id, null);
+  assert.equal(saved.archived, false);
+  assert.equal(
+    (
+      await db.query("select text from public.cb_messages where id=$1", [
+        message.id,
+      ])
+    ).rows[0].text,
+    "Keep this message",
+  );
+  await assert.rejects(
+    call(alice, "nickname", { user_id: bob, nickname: "Nope" }),
+    /cannot change/,
+  );
+  await assert.rejects(
+    call(mod, "nickname", { user_id: root, nickname: "Nope" }),
+    /cannot change/,
+  );
+  await call(mod, "nickname", { user_id: bob, nickname: "Community Bob" });
+  let p = (
+    await db.query("select * from public.cb_profiles where id=$1", [bob])
+  ).rows[0];
+  assert.equal(p.nickname, "Community Bob");
+  assert.equal(p.username, "bob");
+  assert.equal(p.display_name, "Bob");
+  await call(mod, "nickname", { user_id: bob, nickname: "" });
+  assert.equal(
+    (
+      await db.query("select nickname from public.cb_profiles where id=$1", [
+        bob,
+      ])
+    ).rows[0].nickname,
+    null,
+  );
+});
+
+test("bot embeds pass AutoMod, edit safely, clear on delete and DMs/events stay private", async () => {
+  const bot = await call(root, "create_bot", { name: "SDK test" });
+  const dm = await botCall(bot.token, "dm", { user_id: alice });
+  assert.equal((await botCall(bot.token, "dm", { user_id: alice })).id, dm.id);
+  assert.equal(
+    (await db.query("select public.cb_can($1,$2,'view') ok", [root, dm.id]))
+      .rows[0].ok,
+    false,
+  );
+  const embeds = [
+    {
+      title: "Hello",
+      description: "**Embed**",
+      color: 5793266,
+      fields: [{ name: "Status", value: "Ready", inline: true }],
+      image: { url: "https://example.com/image.png" },
+    },
+  ];
+  const sent = await botCall(bot.token, "send", { channel_id: dm.id, embeds });
+  assert.equal(sent.text, "");
+  assert.deepEqual(sent.embeds, embeds);
+  const edit = await botCall(bot.token, "edit", {
+    id: sent.id,
+    text: "New content",
+  });
+  assert.deepEqual(edit.embeds, embeds);
+  await assert.rejects(
+    botCall(bot.token, "send", {
+      channel_id: dm.id,
+      embeds: [{ url: "javascript:alert(1)" }],
+    }),
+    /HTTPS/,
+  );
+  await assert.rejects(
+    botCall(bot.token, "send", {
+      channel_id: dm.id,
+      embeds: [{ fields: [{ name: "", value: "x" }] }],
+    }),
+    /field/,
+  );
+  await call(root, "automod", {
+    id: "embed-rule",
+    name: "Embed filtering",
+    words: ["embeddanger"],
+  });
+  assert.equal(
+    (
+      await botCall(bot.token, "send", {
+        channel_id: "lobby",
+        embeds: [{ fields: [{ name: "Check", value: "embeddanger" }] }],
+      })
+    ).blocked,
+    true,
+  );
+  await call(root, "delete_rule", { id: "embed-rule" });
+  const events = await botCall(bot.token, "events", {
+    after: "1970-01-01",
+    after_id: "",
+  });
+  assert.ok(events.some((m) => m.id === sent.id && m.author.is_bot));
+  assert.ok(!events.some((m) => m.text === "private dm"));
+  await botCall(bot.token, "delete_message", { id: sent.id });
+  assert.deepEqual(
+    (
+      await db.query("select embeds from public.cb_messages where id=$1", [
+        sent.id,
+      ])
+    ).rows[0].embeds,
+    [],
+  );
+  await call(root, "revoke_bot", { id: bot.id });
+  await assert.rejects(botCall(bot.token, "events"), /Invalid bot token/);
+});
+
+test("bot moderation and rule management need root-granted scopes and never target staff", async () => {
+  const bot = await call(root, "create_bot", { name: "Moderation SDK test" });
+  const p = {
+    user_id: alice,
+    action: "timeout",
+    reason: "Test",
+    expires_at: new Date(Date.now() + 60000).toISOString(),
+  };
+  await assert.rejects(
+    botCall(bot.token, "moderate", p),
+    /permission required/,
+  );
+  await assert.rejects(
+    call(mod, "bot_scopes", { id: bot.id, scopes: ["moderate"] }),
+    /Only root/,
+  );
+  await call(root, "bot_scopes", {
+    id: bot.id,
+    scopes: ["moderate", "automod", "manage_messages"],
+  });
+  await assert.rejects(
+    botCall(bot.token, "moderate", { ...p, user_id: root }),
+    /staff or root/,
+  );
+  await assert.rejects(
+    botCall(bot.token, "moderate", { ...p, user_id: mod }),
+    /staff or root/,
+  );
+  await botCall(bot.token, "moderate", p);
+  await assert.rejects(
+    call(alice, "send", { channel_id: "lobby", text: "Restricted" }),
+    /cannot send/,
+  );
+  await botCall(bot.token, "moderate", {
+    user_id: alice,
+    action: "untimeout",
+    reason: "Done",
+  });
+  await botCall(bot.token, "automod", {
+    id: "bot-rule",
+    name: "Bot rule",
+    words: ["first, second"],
+  });
+  assert.equal(
+    (
+      await db.query(
+        "select cardinality(words) n from public.cb_automod where id='bot-rule'",
+      )
+    ).rows[0].n,
+    2,
+  );
+  await botCall(bot.token, "delete_rule", { id: "bot-rule" });
+  await call(root, "bot_scopes", { id: bot.id, scopes: [] });
+  await assert.rejects(
+    botCall(bot.token, "moderate", p),
+    /permission required/,
+  );
+  assert.equal(
+    (
+      await db.query(
+        "select has_function_privilege('authenticated','public.chat_bot(text,text,jsonb)','EXECUTE') allowed",
+      )
+    ).rows[0].allowed,
+    false,
+  );
 });

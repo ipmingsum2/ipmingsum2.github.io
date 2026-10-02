@@ -17,6 +17,31 @@ w.eval(
   await readFile(new URL("../../js/chat-core.js", import.meta.url), "utf8"),
 );
 const c = w.ChatCore;
+test("rich embeds render fields and Markdown without executable URLs or HTML", () => {
+  const html = c.embeds([
+    {
+      title: "<script>alert(1)</script>",
+      url: "javascript:alert(1)",
+      description: "**Safe**",
+      author: { name: "Bot" },
+      fields: [{ name: "Field", value: "`code`", inline: true }],
+      image: { url: "https://example.com/image.png" },
+      thumbnail: { url: "javascript:alert(1)" },
+      color: 0x5865f2,
+    },
+  ]);
+  const d = new JSDOM(html).window.document;
+  assert.equal(
+    d.querySelectorAll('script,iframe,[onerror],a[href^="javascript:"]').length,
+    0,
+  );
+  assert.equal(d.querySelectorAll("img").length, 1);
+  assert.equal(d.querySelector(".embed-field code").textContent, "code");
+  assert.equal(
+    d.querySelector(".embed-description strong").textContent,
+    "Safe",
+  );
+});
 test("Markdown headings, subtext, bold and inline code render safely", () => {
   const html = c.render(
     "# Title\n## Two\n### Three\n-# small\n\n**bold** *italic* `const x=1`",

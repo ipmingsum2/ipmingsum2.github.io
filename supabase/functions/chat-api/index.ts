@@ -194,7 +194,31 @@ Deno.serve(async (req) => {
       if (path === "/v1/me" && req.method === "GET") action = "me";
       else if (path === "/v1/channels" && req.method === "GET")
         action = "channels";
-      else if (/^\/v1\/channels\/[^/]+\/messages$/.test(path)) {
+      else if (path === "/v1/events" && req.method === "GET") {
+        action = "events";
+        payload = {
+          after: url.searchParams.get("after"),
+          after_id: url.searchParams.get("after_id"),
+        };
+      } else if (/^\/v1\/users\/[^/]+$/.test(path) && req.method === "GET") {
+        action = "user";
+        payload = { user_id: decodeURIComponent(path.split("/")[3]) };
+      } else if (path === "/v1/dms" && req.method === "POST") {
+        action = "dm";
+        payload = { user_id: (await boundedBody(req)).user_id };
+      } else if (path === "/v1/moderation" && req.method === "POST") {
+        action = "moderate";
+        payload = await boundedBody(req);
+      } else if (path === "/v1/automod" && req.method === "POST") {
+        action = "automod";
+        payload = await boundedBody(req);
+      } else if (
+        /^\/v1\/automod\/[^/]+$/.test(path) &&
+        req.method === "DELETE"
+      ) {
+        action = "delete_rule";
+        payload = { id: decodeURIComponent(path.split("/")[3]) };
+      } else if (/^\/v1\/channels\/[^/]+\/messages$/.test(path)) {
         payload.channel_id = decodeURIComponent(path.split("/")[3]);
         if (req.method === "GET") {
           action = "messages";
@@ -207,6 +231,7 @@ Deno.serve(async (req) => {
           const body = await boundedBody(req);
           payload = {
             text: body.text,
+            embeds: body.embeds,
             reply_to: body.reply_to,
             channel_id: payload.channel_id,
           };
@@ -217,7 +242,11 @@ Deno.serve(async (req) => {
       ) {
         action = req.method === "PATCH" ? "edit" : "delete_message";
         payload = { id: decodeURIComponent(path.split("/")[3]) };
-        if (action === "edit") payload.text = (await boundedBody(req)).text;
+        if (action === "edit") {
+          const body = await boundedBody(req);
+          payload.text = body.text;
+          payload.embeds = body.embeds;
+        }
       } else return reply({ error: "Endpoint not found" }, 404);
       const { data, error } = await admin.rpc("chat_bot", {
         action,
