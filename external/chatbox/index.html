@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>chatbox.js — Build your bot</title>
+    <link rel="stylesheet" href="docs.css" />
+  </head>
+  <body>
+    <aside>
+      <a class="brand" href="/external/chat.html"><span>C</span> CHATBOX</a>
+      <p class="label">DEVELOPER GUIDE</p>
+      <nav>
+        <a href="#start">Start here</a><a href="#messages">Messages & events</a
+        ><a href="#embeds">Rich embeds</a><a href="#dms">Direct messages</a
+        ><a href="#moderation">Moderation</a
+        ><a href="#words">Words, wildcards & AutoMod</a
+        ><a href="#reference">API reference</a
+        ><a href="#limits">Errors & compatibility</a>
+      </nav>
+      <a class="back" href="/external/chat.html">← Back to chat</a>
+    </aside>
+    <main>
+      <header>
+        <p class="eyebrow">YOUR COMMUNITY. YOUR CODE.</p>
+        <h1>Meet <span>chatbox.js</span></h1>
+        <p class="lead">
+          Give your community a bot with personality.<br />One import for
+          messages, embeds, DMs, and moderation.
+        </p>
+        <div class="pills">
+          <span>Node.js 20.3+</span><span>No dependencies</span
+          ><span>ES modules</span>
+        </div>
+      </header>
+      <section id="start">
+        <p class="section-number">01</p>
+        <h2>Start here</h2>
+        <p>
+          Create a bot in <b>Server settings → Apps &amp; Bots</b>. Save its
+          token in your environment. Run your bot with Node.js 20.3 or newer on
+          your computer or a server.
+        </p>
+        <div class="notice">
+          GitHub Pages hosts the chat UI and this guide. Your bot is a separate
+          Node process that stays running while you want it online.
+        </div>
+        <h3>1. Download three files</h3>
+        <div class="downloads">
+          <a download href="chatbox.js">↓ chatbox.js</a
+          ><a download href="example-bot.mjs">↓ example-bot.mjs</a
+          ><a download="package.json" href="sdk-package.json">↓ package.json</a>
+        </div>
+        <p>
+          Put them in the same folder. The package file contains
+          <code>"type": "module"</code>. No npm dependencies are required. This
+          is a local SDK download, not an npm package named chatbox.js.
+        </p>
+        <h3>2. Set your token and run</h3>
+        <div class="code-head">
+          <span>PowerShell</span
+          ><button class="copy" type="button">Copy</button>
+        </div>
+        <pre><code>$env:CHATBOX_BOT_TOKEN = "your-bot-token"
+node example-bot.mjs</code></pre>
+        <p>
+          Send <code>!ping</code>, <code>!embed</code>, or <code>!dm</code> in a
+          channel the bot can see.
+        </p>
+        <h3>3. Your first bot</h3>
+        <div class="code-head">
+          <span>JavaScript</span
+          ><button class="copy" type="button">Copy</button>
+        </div>
+        <pre><code>import { Client, Events, EmbedBuilder, Colors } from './chatbox.js';
+const client = new Client();
+client.once(Events.ClientReady, () =&gt; console.log(`Ready as ${client.user.displayName}`));
+client.on(Events.Error, error =&gt; console.error(error.message));
+client.on(Events.MessageCreate, async message =&gt; {
+  if (message.author.bot) return;
+  if (message.content === '!ping') await message.reply('Pong!');
+  if (message.content === '!embed') {
+    const embed = new EmbedBuilder().setColor(Colors.Blurple)
+      .setTitle('Hello from CHATBOX').setDescription('One import. Your own bot.')
+      .addFields({name:'Commands',value:'`!ping` · `!embed` · `!dm`'})
+      .setFooter({text:'Built with chatbox.js'}).setTimestamp();
+    await message.reply({embeds:[embed]});
+  }
+  if (message.content === '!dm') await message.author.send('You asked for a DM. Here it is!');
+});
+process.once('SIGINT', () =&gt; client.destroy());
+await client.login();
+</code></pre>
+      </section>
+      <section id="messages">
+        <p class="section-number">02</p>
+        <h2>Messages & events</h2>
+        <p>
+          <code>messageCreate</code> gives you a message with
+          <code>content</code>, <code>author</code>, <code>channel</code>,
+          <code>channelId</code>, <code>embeds</code>, <code>id</code>, and
+          <code>createdTimestamp</code>. Ignore bot authors to avoid reply
+          loops.
+        </p>
+        <div class="code-head">
+          <span>JavaScript</span
+          ><button class="copy" type="button">Copy</button>
+        </div>
+        <pre><code>client.on(Events.MessageCreate, async message =&gt; {
+  if (message.author.bot) return;
+  if (message.content === '!hello') {
+    const sent = await message.reply('Hello!');
+    await sent.edit('Hello, everyone!');
+    // await sent.delete();
+  }
+});
+
+// Send to a known channel ID (the ID is in the chat URL hash).
+const channel = await client.channels.fetch('YOUR_CHANNEL_ID');
+await channel.send('A new update is ready.');</code></pre>
+        <div class="notice">
+          <b>How events work:</b> one HTTP poll checks all channels the bot may
+          view, normally every 3 seconds. This is not Discord’s WebSocket
+          Gateway. New messages are delivered; edit/delete events, typing,
+          presence, voice, reactions, slash-command registration, and
+          interactive components are not implemented.
+        </div>
+        <p>
+          Use <code>client.once(Events.ClientReady, handler)</code>,
+          <code>client.on(Events.Error, handler)</code>, and
+          <code>client.destroy()</code> to manage the process. Channel fetch
+          returns a <code>Map</code> when no ID is provided.
+        </p>
+      </section>
+      <section id="embeds">
+        <p class="section-number">03</p>
+        <h2>Rich embeds</h2>
+        <p>
+          Use <code>EmbedBuilder</code> for colored cards with a title, Markdown
+          description, fields, author, footer, timestamp, thumbnail, and image.
+          The same embed renderer works in channels, threads, and DMs.
+        </p>
+        <div class="embed-preview">
+          <div class="embed-author">Orbit <span>APP</span></div>
+          <h3>Weekend build night</h3>
+          <p>Bring an idea. We’ll build it <b>together</b>.</p>
+          <div class="embed-columns">
+            <div>
+              <b>When</b>
+              <p>Saturday, 8 PM</p>
+            </div>
+            <div>
+              <b>Where</b>
+              <p>#dev-talk</p>
+            </div>
+          </div>
+          <small>Community events · Today</small>
+        </div>
+        <div class="code-head">
+          <span>JavaScript</span
+          ><button class="copy" type="button">Copy</button>
+        </div>
+        <pre><code>const embed = new EmbedBuilder()
+  .setColor(Colors.Blurple)
+  .setAuthor({ name: 'Orbit' })
+  .setTitle('Weekend build night')
+  .setURL('https://ipmingsum2.github.io/external/chat.html')
+  .setDescription('Bring an idea. We’ll build it **together**.')
+  .addFields(
+    { name: 'When', value: 'Saturday, 8 PM', inline: true },
+    { name: 'Where', value: '#dev-talk', inline: true }
+  )
+  .setFooter({ text: 'Community events' })
+  .setTimestamp();
+await channel.send({ content: 'You’re invited!', embeds: [embed] });
+// Optional: .setImage('https://...') or .setThumbnail('https://...')</code></pre>
+        <p>
+          Use HTTPS for links and images. Limits: 10 embeds per message; 25
+          fields per embed; title 256 characters; description 4096; field name
+          256; field value 1024; footer 2048; combined embed text and URLs 6000.
+          AutoMod checks embed content too. Raw HTML is not supported.
+        </p>
+      </section>
+      <section id="dms">
+        <p class="section-number">04</p>
+        <h2>Direct messages</h2>
+        <p>
+          Bots can open a DM with a member and send text or embeds. A bot only
+          sees DMs it participates in; it cannot inspect conversations between
+          other people.
+        </p>
+        <div class="code-head">
+          <span>JavaScript</span
+          ><button class="copy" type="button">Copy</button>
+        </div>
+        <pre><code>const user = await client.users.fetch('MEMBER_UUID');
+await user.send('Hello! Here is the update you requested.');
+
+// Or respond privately to someone who asks:
+client.on(Events.MessageCreate, async message =&gt; {
+  if (!message.author.bot &amp;&amp; message.content === '!helpme') {
+    await message.author.send({ embeds: [
+      new EmbedBuilder().setTitle('Help').setDescription('How can I help?')
+    ] });
+  }
+});</code></pre>
+        <p>
+          DM creation is limited to 10 requests per minute per bot. Reopening
+          the same conversation returns the same channel. Sending still follows
+          message rate limits and AutoMod.
+        </p>
+      </section>
+      <section id="moderation">
+        <p class="section-number">05</p>
+        <h2>Moderation</h2>
+        <p>
+          Messaging works by default. Root can grant optional permissions in
+          <b>Apps &amp; Bots → Permissions</b>. Bots never receive human staff
+          roles and cannot moderate staff or root.
+        </p>
+        <table>
+          <tr>
+            <th>Permission</th>
+            <th>Allows</th>
+          </tr>
+          <tr>
+            <td>moderate</td>
+            <td>
+              Warn, mute, ban, unban, remove mute. The bot owner must still be
+              Moderator or higher.
+            </td>
+          </tr>
+          <tr>
+            <td>manage_messages</td>
+            <td>
+              Delete another member’s message in a channel the bot can view.
+              AutoMod system alerts are protected.
+            </td>
+          </tr>
+          <tr>
+            <td>automod</td>
+            <td>
+              Create, edit, and delete AutoMod rules. The owner must still be
+              Administrator or higher.
+            </td>
+          </tr>
+        </table>
+        <div class="code-head">
+          <span>JavaScript</span
+          ><button class="copy" type="button">Copy</button>
+        </div>
+        <pre><code>await client.moderation.warn(userId, 'Please follow the rules.', 'Message evidence');
+await client.moderation.timeout(userId, 600, 'Repeated spam'); // seconds
+await client.moderation.untimeout(userId, 'Appeal accepted');
+await client.moderation.ban(userId, 'Spam', { seconds: 86400 });
+await client.moderation.unban(userId, 'Appeal accepted');
+// Omit seconds for a permanent ban. All actions require a reason.</code></pre>
+        <p>
+          Moderation actions are recorded in Account Standing. A revoked token
+          or permission takes effect on subsequent requests. Bots under a
+          warning, ban, or timeout cannot bypass their restriction.
+        </p>
+      </section>
+      <section id="words">
+        <p class="section-number">06</p>
+        <h2>Words, wildcards & AutoMod</h2>
+        <p>
+          Separate plain phrases with commas or new lines. Matching is
+          case-insensitive. <code>*</code> matches additional characters within
+          a word. Regex patterns are separate and stay one per line, so commas
+          inside regex are preserved.
+        </p>
+        <table>
+          <tr>
+            <th>Keyword</th>
+            <th>Matches</th>
+            <th>Does not match</th>
+          </tr>
+          <tr>
+            <td>cat</td>
+            <td>cat, cat!</td>
+            <td>cats, bobcat</td>
+          </tr>
+          <tr>
+            <td>cat*</td>
+            <td>cat, cats, caterpillar</td>
+            <td>bobcat</td>
+          </tr>
+          <tr>
+            <td>*cat</td>
+            <td>cat, bobcat</td>
+            <td>cats</td>
+          </tr>
+          <tr>
+            <td>*cat*</td>
+            <td>cats, bobcats</td>
+            <td>dog</td>
+          </tr>
+        </table>
+        <h3>Detect words in your Node bot</h3>
+        <div class="code-head">
+          <span>JavaScript</span
+          ><button class="copy" type="button">Copy</button>
+        </div>
+        <pre><code>import { matchesWords } from './chatbox.js';
+client.on(Events.MessageCreate, async message =&gt; {
+  if (message.author.bot) return;
+  if (matchesWords(message.content, ['spam*, unwanted phrase'], {
+    allowedWords: ['spamton'], patterns: [/repeat\d+/i]
+  })) {
+    // Requires root-granted moderate permission.
+    await client.moderation.warn(message.author.id, 'Please rephrase.', message.content);
+  }
+});</code></pre>
+        <p>
+          Bot handlers see messages after they are posted. Use server AutoMod to
+          block content <em>before</em> it appears.
+        </p>
+        <h3>Configure server AutoMod</h3>
+        <div class="code-head">
+          <span>JavaScript</span
+          ><button class="copy" type="button">Copy</button>
+        </div>
+        <pre><code>await client.automod.save({
+  id: 'my-bot-spam-rule', name: 'Spam phrases', enabled: true,
+  words: ['spam*, unwanted phrase'], allowed_words: ['spamton'],
+  patterns: ['repeat[0-9]+'], // PostgreSQL regex, not JavaScript RegExp
+  block_message: 'Please keep the conversation on topic.',
+  actions: ['warning', 'timeout'], timeout_seconds: 600,
+  log_channel_id: 'PRIVATE_LOG_CHANNEL_ID'
+});
+await client.automod.delete('my-bot-spam-rule');</code></pre>
+        <p>
+          Rules always block matches. Optional actions are <code>warning</code>,
+          <code>timeout</code>, and <code>ban</code>. Use
+          <code>ban_seconds</code> for a temporary ban, or null for permanent.
+          Omit the log channel to keep events staff-only. Plain keywords follow
+          <a
+            href="https://support.discord.com/hc/en-us/articles/4421269296535-AutoMod-FAQ"
+            >Discord’s wildcard approach</a
+          >; the regex engine here is PostgreSQL.
+        </p>
+      </section>
+      <section id="reference">
+        <p class="section-number">07</p>
+        <h2>API reference</h2>
+        <table>
+          <tr>
+            <th>SDK</th>
+            <th>Purpose</th>
+          </tr>
+          <tr>
+            <td><code>client.login(token?)</code></td>
+            <td>Authenticate and start new-message polling</td>
+          </tr>
+          <tr>
+            <td><code>client.channels.fetch(id?)</code></td>
+            <td>Fetch one channel or all visible channels</td>
+          </tr>
+          <tr>
+            <td><code>channel.send(string | {content, embeds})</code></td>
+            <td>Send a message</td>
+          </tr>
+          <tr>
+            <td><code>channel.messages.fetch({after, afterId})</code></td>
+            <td>Read up to 100 messages after a cursor</td>
+          </tr>
+          <tr>
+            <td><code>message.reply / edit / delete</code></td>
+            <td>Reply, update your own message, or delete</td>
+          </tr>
+          <tr>
+            <td><code>client.users.fetch(id)</code></td>
+            <td>Fetch a member profile</td>
+          </tr>
+          <tr>
+            <td><code>user.send(payload) / user.createDM()</code></td>
+            <td>Send a DM or return its channel</td>
+          </tr>
+          <tr>
+            <td><code>client.cursor</code></td>
+            <td>Current {after, afterId} polling cursor</td>
+          </tr>
+          <tr>
+            <td><code>client.destroy()</code></td>
+            <td>Stop polling</td>
+          </tr>
+        </table>
+        <h3>HTTP endpoints</h3>
+        <p>
+          Base:
+          <code
+            >https://lflkpziiwnoamvtrbcil.supabase.co/functions/v1/chat-api</code
+          >. Authenticate with <code>Authorization: Bot YOUR_TOKEN</code>.
+        </p>
+        <table>
+          <tr>
+            <th>Method</th>
+            <th>Path</th>
+          </tr>
+          <tr>
+            <td>GET</td>
+            <td><code>/v1/me</code></td>
+          </tr>
+          <tr>
+            <td>GET</td>
+            <td><code>/v1/channels</code></td>
+          </tr>
+          <tr>
+            <td>GET</td>
+            <td><code>/v1/events?after=ISO&amp;after_id=ID</code></td>
+          </tr>
+          <tr>
+            <td>GET, POST</td>
+            <td><code>/v1/channels/{id}/messages</code></td>
+          </tr>
+          <tr>
+            <td>PATCH, DELETE</td>
+            <td><code>/v1/messages/{id}</code></td>
+          </tr>
+          <tr>
+            <td>GET</td>
+            <td><code>/v1/users/{id}</code></td>
+          </tr>
+          <tr>
+            <td>POST</td>
+            <td><code>/v1/dms</code></td>
+          </tr>
+          <tr>
+            <td>POST</td>
+            <td><code>/v1/moderation</code></td>
+          </tr>
+          <tr>
+            <td>POST</td>
+            <td><code>/v1/automod</code></td>
+          </tr>
+          <tr>
+            <td>DELETE</td>
+            <td><code>/v1/automod/{id}</code></td>
+          </tr>
+        </table>
+        <p>
+          Message JSON uses <code>text</code>, <code>embeds</code>, and optional
+          <code>reply_to</code>. The SDK maps <code>content</code> to
+          <code>text</code>. DM JSON uses <code>user_id</code>. Moderation uses
+          <code>user_id</code>, <code>action</code>, <code>reason</code>,
+          optional <code>expires_at</code> (ISO date), and
+          <code>evidence</code>.
+        </p>
+      </section>
+      <section id="limits">
+        <p class="section-number">08</p>
+        <h2>Errors & compatibility</h2>
+        <p>
+          The API allows 60 requests/minute per bot and 30 message
+          mutations/minute. Moderation is limited to 10 actions/minute. Slowmode
+          applies unless the bot has Manage channel permission. Polling consumes
+          API requests.
+        </p>
+        <div class="code-head">
+          <span>JavaScript</span
+          ><button class="copy" type="button">Copy</button>
+        </div>
+        <pre><code>try {
+  await channel.send('Hello');
+} catch (error) {
+  if (error.status === 429) {
+    console.log('Wait', error.retryAfter || 60, 'seconds before retrying.');
+  } else if (error.blocked) {
+    console.log('AutoMod:', error.message);
+  } else {
+    console.error(error.message);
+  }
+}</code></pre>
+        <p>
+          <code>401</code>: invalid/revoked token. <code>403</code>: permission
+          or validation failure. <code>422</code>: AutoMod blocked the message.
+          <code>429</code>: rate limit or slowmode. Sends are not retried
+          automatically, preventing accidental duplicates.
+        </p>
+        <p>
+          Store <code>client.cursor</code> outside the process for restart
+          recovery, then pass it to <code>new Client({cursor})</code>. Message
+          handlers should be idempotent. A failed handler is reported through
+          the error event and the cursor advances; queue durable work yourself
+          if retries are required.
+        </p>
+        <div class="notice">
+          <b>Compatibility:</b> chatbox.js is a small SDK for this CHATBOX
+          server, with familiar Discord-style methods. It is not discord.js and
+          cannot connect to Discord. It does not claim complete Discord feature
+          parity. The older chatbox-bot.mjs helper remains supported.
+        </div>
+      </section>
+      <footer class="page-footer">
+        CHATBOX Developer Guide · Updated 2 October 2026
+      </footer>
+    </main>
+    <script src="docs.js"></script>
+  </body>
+</html>

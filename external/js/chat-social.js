@@ -363,7 +363,8 @@
       if (state.room !== t.parent_id) await openChannel(t.parent_id);
       closeModal();
       active = id;
-      messages = []; older = !preview;
+      messages = [];
+      older = !preview;
       reply = null;
       follow = true;
       panel.hidden = false;
@@ -417,12 +418,32 @@
         messages
           .map(
             (m) =>
-              `<article class="thread-message"><button class="text-button" data-profile="${m.user_id}" aria-label="View ${esc(profile(m.user_id).display_name)} profile">${avatar(profile(m.user_id))}</button><div><button class="message-author" data-profile="${m.user_id}">${esc(profile(m.user_id).display_name)}</button><time>${new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>${m.reply_to ? '<small class="thread-reply-label">↳ Reply</small>' : ""}<div class="body">${m.deleted ? '<i class="muted">Message deleted</i>' : m.poll_id ? "" : render(m.text, state.profiles, state.channels)}</div>${!m.deleted ? attachmentHTML(m) + messageExtra(m) : ""}${!m.deleted ? `<div class="thread-message-actions"><button class="text-button" data-thread-reply="${esc(m.id)}">Reply</button>${m.user_id === state.me.id ? `<button class="text-button" data-thread-delete="${esc(m.id)}">Delete</button>` : ""}</div>` : ""}</div></article>`,
+              `<article class="thread-message"><button class="text-button" data-profile="${m.user_id}" aria-label="View ${esc(profile(m.user_id).display_name)} profile">${avatar(profile(m.user_id))}</button><div><button class="message-author" data-profile="${m.user_id}">${esc(profile(m.user_id).display_name)}</button><time>${new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>${m.reply_to ? '<small class="thread-reply-label">↳ Reply</small>' : ""}<div class="body">${m.deleted ? '<i class="muted">Message deleted</i>' : m.poll_id ? "" : render(m.text, state.profiles, state.channels)}</div>${!m.deleted ? attachmentHTML(m) + window.ChatCore.embeds(m.embeds || [], state.profiles, state.channels) + messageExtra(m) : ""}${!m.deleted ? `<div class="thread-message-actions"><button class="text-button" data-thread-reply="${esc(m.id)}">Reply</button>${m.user_id === state.me.id ? `<button class="text-button" data-thread-delete="${esc(m.id)}">Delete</button>` : ""}</div>` : ""}</div></article>`,
           )
           .join("");
-      if(older && messages.length){
-        const more=document.createElement('button');more.className='load-older';more.textContent='Load earlier replies';
-        more.onclick=()=>safe(async()=>{const id=active,height=list.scrollHeight,top=list.scrollTop;more.disabled=true;const rows=await api.getMessages(id,messages[0]);if(active!==id)return;older=rows.length===100;const map=new Map([...rows,...messages].map(m=>[m.id,m]));messages=[...map.values()].sort((a,b)=>a.created_at.localeCompare(b.created_at)||a.id.localeCompare(b.id));follow=false;renderThread();list.scrollTop=top+list.scrollHeight-height;});
+      if (older && messages.length) {
+        const more = document.createElement("button");
+        more.className = "load-older";
+        more.textContent = "Load earlier replies";
+        more.onclick = () =>
+          safe(async () => {
+            const id = active,
+              height = list.scrollHeight,
+              top = list.scrollTop;
+            more.disabled = true;
+            const rows = await api.getMessages(id, messages[0]);
+            if (active !== id) return;
+            older = rows.length === 100;
+            const map = new Map([...rows, ...messages].map((m) => [m.id, m]));
+            messages = [...map.values()].sort(
+              (a, b) =>
+                a.created_at.localeCompare(b.created_at) ||
+                a.id.localeCompare(b.id),
+            );
+            follow = false;
+            renderThread();
+            list.scrollTop = top + list.scrollHeight - height;
+          });
         list.prepend(more);
       }
       list.scrollTop = stick ? list.scrollHeight : old;
@@ -439,7 +460,8 @@
           : "";
       decorate();
     }
-    let threadCooldown = 0, older = !preview;
+    let threadCooldown = 0,
+      older = !preview;
     async function refreshPane(forceBottom = false) {
       if (!active) return;
       const id = active,
@@ -450,9 +472,13 @@
       }
       const rows = await api.getMessages(id);
       if (id !== active || n !== request) return;
-      if(!messages.length)older=!preview&&rows.length===100;
-      const map=new Map(messages.map(m=>[m.id,m]));rows.forEach(m=>map.set(m.id,m));
-      messages = [...map.values()].sort((a,b)=>a.created_at.localeCompare(b.created_at)||a.id.localeCompare(b.id));
+      if (!messages.length) older = !preview && rows.length === 100;
+      const map = new Map(messages.map((m) => [m.id, m]));
+      rows.forEach((m) => map.set(m.id, m));
+      messages = [...map.values()].sort(
+        (a, b) =>
+          a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id),
+      );
       renderThread(forceBottom);
       if (document.hasFocus()) {
         await rpc("read", { channel_id: id });

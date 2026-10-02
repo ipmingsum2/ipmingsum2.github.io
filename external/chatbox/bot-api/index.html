@@ -4,15 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark">
-    <meta name="turbo-cache-control" content="no-cache" data-turbo-track="reload" data-track-token="4.6.0.844175319539">
+    <meta name="turbo-cache-control" content="no-cache" data-turbo-track="reload" data-track-token="4.6.0.844264960839">
 
     <!-- See retype.com -->
     <meta name="generator" content="Retype 4.6.0">
 
     <!-- Primary Meta Tags -->
-    <title>CHATBOX bot API</title>
-    <meta name="title" content="CHATBOX bot API">
-    <meta name="description" content="Create a bot in Server settings → Apps & Bots → Create Bot. An Administrator or higher can create bots; only root assigns human staff roles. Copy the token once and keep it in a server environment variable.">
+    <title>CHATBOX bot documentation</title>
+    <meta name="title" content="CHATBOX bot documentation">
+    <meta name="description" content="The readable HTML guide, examples, and chatbox.js download are at CHATBOX Developer Docs.">
 
     <!-- Canonical -->
     <link rel="canonical" href="https://ipmingsum2.github.io/external/chatbox/bot-api/">
@@ -21,16 +21,16 @@
     <!-- Open Graph -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://ipmingsum2.github.io/external/chatbox/bot-api/">
-    <meta property="og:title" content="CHATBOX bot API">
-    <meta property="og:description" content="Create a bot in Server settings → Apps & Bots → Create Bot. An Administrator or higher can create bots; only root assigns human staff roles. Copy the token once and keep it in a server environment variable.">
+    <meta property="og:title" content="CHATBOX bot documentation">
+    <meta property="og:description" content="The readable HTML guide, examples, and chatbox.js download are at CHATBOX Developer Docs.">
     <meta property="og:site_name" content="Alvin Solutions Documentation">
     <meta property="og:locale" content="en_US">
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:url" content="https://ipmingsum2.github.io/external/chatbox/bot-api/">
-    <meta name="twitter:title" content="CHATBOX bot API">
-    <meta name="twitter:description" content="Create a bot in Server settings → Apps & Bots → Create Bot. An Administrator or higher can create bots; only root assigns human staff roles. Copy the token once and keep it in a server environment variable.">
+    <meta name="twitter:title" content="CHATBOX bot documentation">
+    <meta name="twitter:description" content="The readable HTML guide, examples, and chatbox.js download are at CHATBOX Developer Docs.">
 
     <!-- Alternate Markdown -->
     <link rel="alternate" type="text/markdown" href="https://ipmingsum2.github.io/external/chatbox/bot-api.md">
@@ -38,12 +38,11 @@
     <script data-cfasync="false">(function(){var cl=document.documentElement.classList,ls=localStorage.getItem("retype_scheme"),hd=cl.contains("dark"),hl=cl.contains("light"),wm=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches;if(ls==="dark"||(!ls&&wm&&!hd&&!hl)){cl.remove("light");cl.add("dark")}else if(ls==="light"||(!ls&&!wm&&!hd&&!hl)){cl.remove("dark");cl.add("light")}})();</script>
 
     <link id="retype-favicon" rel="icon" href="../../../favicon.ico" />
-    <link href="../../../resources/css/retype.css?v=4.6.0.844175319539" rel="stylesheet">
+    <link href="../../../resources/css/retype.css?v=4.6.0.844264960839" rel="stylesheet">
 
-    <script data-cfasync="false" src="../../../resources/js/config.js?v=4.6.0.844175319539" data-turbo-eval="false" defer></script>
+    <script data-cfasync="false" src="../../../resources/js/config.js?v=4.6.0.844264960839" data-turbo-eval="false" defer></script>
     <script data-cfasync="false" src="../../../resources/js/retype.js?v=4.6.0" data-turbo-eval="false" defer></script>
-    <script id="lunr-js" data-cfasync="false" src="../../../resources/js/lunr.js?v=4.6.0.844175319539" data-turbo-eval="false" defer></script>
-    <script id="prism-js" data-cfasync="false" src="../../../resources/js/prism.js?v=4.6.0.844175319539" defer></script>
+    <script id="lunr-js" data-cfasync="false" src="../../../resources/js/lunr.js?v=4.6.0.844264960839" data-turbo-eval="false" defer></script>
 </head>
 <body>
     <div id="retype-app" class="relative text-base antialiased text-base-text bg-base-bg font-body">
@@ -184,7 +183,7 @@
                         </li>
                         <li class="pr-4">
                             <a href="../../../external/chatbox/bot-api/" class="pr-4">
-                                CHATBOX bot API
+                                CHATBOX bot documentation
                             </a>
                         </li>
                     </ol>
@@ -193,83 +192,8 @@
                 <doc-page-actions></doc-page-actions>
 
                 <!-- Page content  -->
-<h1 id="chatbox-bot-api">CHATBOX bot API</h1>
-<p>Create a bot in <strong>Server settings → Apps &amp; Bots → Create Bot</strong>. An Administrator or higher can create bots; only root assigns human staff roles. Copy the token once and keep it in a server environment variable. The token is stored as a hash in Supabase. Rotate or revoke it in the same panel.</p>
-<p>Bots run in your own Node.js process or a hosting service. GitHub Pages hosts the chat frontend; it cannot keep a Node.js bot process running.</p>
-<h2 id="nodejs-quick-start">Node.js quick start</h2>
-<p>Download <code translate="no" v-pre>chatbox-bot.mjs</code> and <code translate="no" v-pre>example-bot.mjs</code> into the same folder. Node.js 20+ is enough; no npm packages are required.</p>
-<div id="nodejs-quick-start-code-1" class="codeblock-wrapper"><doc-codeblock>
-<pre translate="no" class="language-powershell"><code v-pre class="language-powershell">$env:CHATBOX_BOT_TOKEN = 'your-token'
-$env:CHATBOX_CHANNEL_ID = 'lobby'
-node example-bot.mjs</code></pre>
-</doc-codeblock></div>
-<div id="nodejs-quick-start-code-2" class="codeblock-wrapper"><doc-codeblock>
-<pre translate="no" class="language-javascript"><code v-pre class="language-javascript">import { ChatboxBot } from &quot;./chatbox-bot.mjs&quot;;
-const bot = new ChatboxBot(); // reads CHATBOX_BOT_TOKEN
-console.log(await bot.channels());
-await bot.send(&quot;lobby&quot;, &quot;Hello from my bot!&quot;);</code></pre>
-</doc-codeblock></div>
-<h2 id="http">HTTP</h2>
-<p>Base URL: <code translate="no" v-pre>https://lflkpziiwnoamvtrbcil.supabase.co/functions/v1/chat-api</code></p>
-<p>Use <code translate="no" v-pre>Authorization: Bot YOUR_TOKEN</code>. JSON requests use <code translate="no" v-pre>Content-Type: application/json</code>.</p>
-<retype-table copy-text="| Method | Path                         | Body / query                                                                   |
-| ------ | ---------------------------- | ------------------------------------------------------------------------------ |
-| GET    | `/v1/me`                     | Bot profile                                                                    |
-| GET    | `/v1/channels`               | Channels the bot can view                                                      |
-| GET    | `/v1/channels/{id}/messages` | `?after=ISO_TIMESTAMP&amp;after_id=MESSAGE_ID`; at most 100 messages, oldest first |
-| POST   | `/v1/channels/{id}/messages` | `{ &quot;text&quot;: &quot;Hello&quot;, &quot;reply_to&quot;: &quot;optional-message-id&quot; }`                       |
-| PATCH  | `/v1/messages/{id}`          | `{ &quot;text&quot;: &quot;Updated&quot; }`; only the bot’s own messages                           |
-| DELETE | `/v1/messages/{id}`          | Soft deletes the bot’s own message                                             |">
-<div class="table-wrapper scrollbar overflow-hidden">
-<table class="comfortable">
-<thead>
-<tr>
-<th>Method</th>
-<th>Path</th>
-<th>Body / query</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>GET</td>
-<td><code translate="no" v-pre>/v1/me</code></td>
-<td>Bot profile</td>
-</tr>
-<tr>
-<td>GET</td>
-<td><code translate="no" v-pre>/v1/channels</code></td>
-<td>Channels the bot can view</td>
-</tr>
-<tr>
-<td>GET</td>
-<td><code translate="no" v-pre>/v1/channels/{id}/messages</code></td>
-<td><code translate="no" v-pre>?after=ISO_TIMESTAMP&amp;after_id=MESSAGE_ID</code>; at most 100 messages, oldest first</td>
-</tr>
-<tr>
-<td>POST</td>
-<td><code translate="no" v-pre>/v1/channels/{id}/messages</code></td>
-<td><code translate="no" v-pre>{ &quot;text&quot;: &quot;Hello&quot;, &quot;reply_to&quot;: &quot;optional-message-id&quot; }</code></td>
-</tr>
-<tr>
-<td>PATCH</td>
-<td><code translate="no" v-pre>/v1/messages/{id}</code></td>
-<td><code translate="no" v-pre>{ &quot;text&quot;: &quot;Updated&quot; }</code>; only the bot’s own messages</td>
-</tr>
-<tr>
-<td>DELETE</td>
-<td><code translate="no" v-pre>/v1/messages/{id}</code></td>
-<td>Soft deletes the bot’s own message</td>
-</tr>
-</tbody>
-</table>
-</div>
-</retype-table>
-<p>Success returns JSON (a profile, a list, or a message). Errors return <code translate="no" v-pre>{ &quot;error&quot;: &quot;description&quot; }</code>. <code translate="no" v-pre>401</code> means invalid/revoked token; <code translate="no" v-pre>403</code> means forbidden; <code translate="no" v-pre>429</code> means slow down. AutoMod responds with <code translate="no" v-pre>422</code> and <code translate="no" v-pre>{ &quot;blocked&quot;: true, &quot;message&quot;: &quot;custom block message&quot;, &quot;rule&quot;: &quot;rule name&quot; }</code>.</p>
-<p>There are 60 API requests and 30 message mutations per minute per bot. Bots cannot grant roles, moderate people, change channel permissions, or bypass AutoMod. They receive no access to human DMs. For a private channel, add a member override for the bot in Channel settings and allow <strong>View channel</strong> and <strong>Send messages</strong>.</p>
-<h2 id="receiving-messages">Receiving messages</h2>
-<p>The example uses polling. <code translate="no" v-pre>bot.listen()</code> checks one channel every three seconds using a timestamp-and-ID cursor, including when many messages share a timestamp. Handle your own bot’s messages explicitly to avoid reply loops. Save both the last message&#x27;s <code translate="no" v-pre>created_at</code> and <code translate="no" v-pre>id</code> durably; pass them back as <code translate="no" v-pre>after</code> and <code translate="no" v-pre>afterId</code> for restart recovery. Handlers should be idempotent. Polling covers new messages; edits and deletes require refreshing previously loaded messages.</p>
-<p>Slowmode also applies to bots unless they have Manage channel permission. A cooldown returns HTTP <code translate="no" v-pre>429</code> with <code translate="no" v-pre>slowmode: true</code> and <code translate="no" v-pre>retry_after</code> seconds. The SDK throws an error with <code translate="no" v-pre>status</code> and <code translate="no" v-pre>retryAfter</code>; wait before retrying the send. A <code translate="no" v-pre>30s</code> indicator appears beside the send button for people using the chat UI.</p>
-<p>Do not log bot tokens or paste them into the browser, HTML, or a GitHub repository.</p>
+<h1 id="chatbox-bot-documentation">CHATBOX bot documentation</h1>
+<p>The readable HTML guide, examples, and chatbox.js download are at <a href="https://ipmingsum2.github.io/external/chatbox/index.html" class="outbound" target="_blank"><span>CHATBOX Developer Docs</span><svg xmlns="http://www.w3.org/2000/svg" class="retype-outbound-trigger docs-icon ml-1" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="currentColor"><path d="M15.5 2.25a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 .75.75v5.5a.75.75 0 0 1-1.5 0V4.06l-6.22 6.22a.75.75 0 1 1-1.06-1.06L19.94 3h-3.69a.75.75 0 0 1-.75-.75Z"/><path d="M2.5 4.25c0-.966.784-1.75 1.75-1.75h8.5a.75.75 0 0 1 0 1.5h-8.5a.25.25 0 0 0-.25.25v15.5c0 .138.112.25.25.25h15.5a.25.25 0 0 0 .25-.25v-8.5a.75.75 0 0 1 1.5 0v8.5a1.75 1.75 0 0 1-1.75 1.75H4.25a1.75 1.75 0 0 1-1.75-1.75V4.25Z"/></g></svg></a>.</p>
 
                 
                 <!-- Required only on API pages -->
@@ -336,6 +260,6 @@ await bot.send(&quot;lobby&quot;, &quot;Hello from my bot!&quot;);</code></pre>
 
     <div id="retype-overlay-target"></div>
 
-        <script data-cfasync="false">window.__DOCS__ = { "title": "CHATBOX bot API", level: 3, icon: "file", hasPrism: true, hasInstagram: false, hasMermaid: false, hasMath: false, tocDepth: 23, "md": "/external/chatbox/bot-api.md" }</script>
+        <script data-cfasync="false">window.__DOCS__ = { "title": "CHATBOX bot documentation", level: 3, icon: "file", hasPrism: false, hasInstagram: false, hasMermaid: false, hasMath: false, tocDepth: 23, "md": "/external/chatbox/bot-api.md" }</script>
 </body>
 </html>

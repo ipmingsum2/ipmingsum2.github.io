@@ -22,7 +22,7 @@
 
 ### Chatbox
 
-- [CHATBOX bot API](https://ipmingsum2.github.io/external/chatbox/bot-api.md): Create a bot in Server settings → Apps & Bots → Create Bot. An Administrator or higher can create bots; only root assigns human staff roles. Copy the token once and keep it in a server environment variable.
+- [CHATBOX bot documentation](https://ipmingsum2.github.io/external/chatbox/bot-api.md): The readable HTML guide, examples, and chatbox.js download are at CHATBOX Developer Docs.
 - [CHATBOX deployment](https://ipmingsum2.github.io/external/chatbox/deployment.md): The frontend stays on GitHub Pages and uses the existing Supabase project. No database export is required. Deploy the database and Edge Function before publishing the frontend.
 
 ## Tests

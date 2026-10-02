@@ -1,0 +1,1 @@
+{"private":true,"type":"module","scripts":{"start":"node example-bot.mjs"},"engines":{"node":">=20.3"}}
