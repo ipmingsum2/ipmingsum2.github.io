@@ -1,11 +1,18 @@
-import {ChatboxBot} from './chatbox-bot.mjs';
-const bot=new ChatboxBot();
-const me=await bot.me();
-const channelId=process.env.CHATBOX_CHANNEL_ID;
-if(!channelId)throw new Error('Set CHATBOX_CHANNEL_ID to a channel returned by bot.channels().');
-console.log(`Connected as ${me.display_name}`);
-const stop=new AbortController();process.once('SIGINT',()=>stop.abort());
-await bot.listen(channelId,async message=>{
- if(message.user_id===me.id||message.deleted)return;
- if(message.text.trim()==='!ping')await bot.send(channelId,'Pong! 🏓',{replyTo:message.id});
-},{signal:stop.signal});
+import { Client, Events, EmbedBuilder, Colors } from './chatbox.js';
+const client = new Client();
+client.once(Events.ClientReady, () => console.log(`Ready as ${client.user.displayName}`));
+client.on(Events.Error, error => console.error(error.message));
+client.on(Events.MessageCreate, async message => {
+  if (message.author.bot) return;
+  if (message.content === '!ping') await message.reply('Pong!');
+  if (message.content === '!embed') {
+    const embed = new EmbedBuilder().setColor(Colors.Blurple)
+      .setTitle('Hello from CHATBOX').setDescription('One import. Your own bot.')
+      .addFields({name:'Commands',value:'`!ping` · `!embed` · `!dm`'})
+      .setFooter({text:'Built with chatbox.js'}).setTimestamp();
+    await message.reply({embeds:[embed]});
+  }
+  if (message.content === '!dm') await message.author.send('You asked for a DM. Here it is!');
+});
+process.once('SIGINT', () => client.destroy());
+await client.login();

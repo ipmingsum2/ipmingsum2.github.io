@@ -194,6 +194,16 @@
       .map((x) => x.trim())
       .filter(Boolean);
   }
+  function phrases(value) {
+    return [
+      ...new Set(
+        String(value || " ")
+          .split(/[,\r\n]+/)
+          .map((s) => s.trim())
+          .filter(Boolean),
+      ),
+    ];
+  }
   function rolePills(p, editable = false) {
     return (p.roles || [])
       .map(
@@ -345,6 +355,12 @@
       query("cb_channel_members"),
     ]);
     [state.profiles, state.channels, state.categories, state.members] = results;
+    state.categories = state.categories.filter((c) => !c.deleted_at);
+    state.profiles = state.profiles.map((p) => ({
+      ...p,
+      account_display_name: p.display_name,
+      display_name: p.nickname || p.display_name,
+    }));
     state.me = profile(state.user.id);
     state.mentions = preview
       ? state.mentions
@@ -379,7 +395,7 @@
       const items = list.filter(
         (c) => state.mode === "dm" || (c.category_id || null) === group.id,
       );
-      if (!items.length) continue;
+      if (!items.length && !group.id) continue;
       html += `<div class="category-heading">⌄ ${esc(group.name.toUpperCase())}</div>`;
       for (const ch of items) {
         const n =
@@ -498,7 +514,7 @@
     const p = profile(m.user_id),
       parent = state.messages.find((x) => x.id === m.reply_to),
       ping = m.text?.includes(`<@${state.me.id}>`);
-    return `<article class="message ${ping ? "pinged" : ""}" id="message-${esc(m.id)}">${m.reply_to ? `<div class="reply-context" data-jump="${esc(m.reply_to)}">${parent ? `${avatar(profile(parent.user_id))}<b>${esc(profile(parent.user_id).display_name)}</b> ${esc(parent.deleted ? "Message deleted" : parent.text.slice(0, 90))}` : "↳ Reply to an earlier message"}</div>` : ""}<button class="text-button" data-profile="${p.id}" aria-label="View ${esc(p.display_name)} profile">${avatar(p)}</button><div><div><button class="message-author ${p.roles?.length ? "staff" : ""}" data-profile="${p.id}">${esc(p.display_name)}</button>${p.is_bot ? '<span class="bot-label">APP</span>' : ""}<time datetime="${esc(m.created_at)}" title="${esc(new Date(m.created_at).toLocaleString())}">${new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>${m.edited_at ? '<small class="muted"> (edited)</small>' : ""}</div><div class="body">${m.deleted ? '<i class="muted">Message deleted</i>' : m.poll_id ? "" : m.thread_id ? "Started a thread" : C.render(m.text, state.profiles, state.channels)}</div>${!m.deleted ? attachmentHTML(m) + (social?.messageExtra(m) || "") : ""}<div class="embeds" data-embeds="${esc(m.id)}"></div></div>${!m.deleted ? `<div class="message-actions">${channel()?.kind !== "dm" ? `<button data-create-thread="${esc(m.id)}" title="Create thread">≋ Thread</button>` : ""}<button data-reply="${esc(m.id)}" title="Reply">↩ Reply</button>${m.user_id === state.me.id && !m.poll_id && !m.thread_id ? `<button data-edit="${esc(m.id)}">Edit</button>` : ""}${m.user_id === state.me.id || staff() ? `<button data-delete="${esc(m.id)}">Delete</button>` : ""}</div>` : ""}</article>`;
+    return `<article class="message ${ping ? "pinged" : ""}" id="message-${esc(m.id)}">${m.reply_to ? `<div class="reply-context" data-jump="${esc(m.reply_to)}">${parent ? `${avatar(profile(parent.user_id))}<b>${esc(profile(parent.user_id).display_name)}</b> ${esc(parent.deleted ? "Message deleted" : parent.text.slice(0, 90))}` : "↳ Reply to an earlier message"}</div>` : ""}<button class="text-button" data-profile="${p.id}" aria-label="View ${esc(p.display_name)} profile">${avatar(p)}</button><div><div><button class="message-author ${p.roles?.length ? "staff" : ""}" data-profile="${p.id}">${esc(p.display_name)}</button>${p.is_bot ? '<span class="bot-label">APP</span>' : ""}<time datetime="${esc(m.created_at)}" title="${esc(new Date(m.created_at).toLocaleString())}">${new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>${m.edited_at ? '<small class="muted"> (edited)</small>' : ""}</div><div class="body">${m.deleted ? '<i class="muted">Message deleted</i>' : m.poll_id ? "" : m.thread_id ? "Started a thread" : C.render(m.text, state.profiles, state.channels)}</div>${!m.deleted ? attachmentHTML(m) + C.embeds(m.embeds || [], state.profiles, state.channels) + (social?.messageExtra(m) || "") : ""}<div class="embeds" data-embeds="${esc(m.id)}"></div></div>${!m.deleted ? `<div class="message-actions">${channel()?.kind !== "dm" ? `<button data-create-thread="${esc(m.id)}" title="Create thread">≋ Thread</button>` : ""}<button data-reply="${esc(m.id)}" title="Reply">↩ Reply</button>${m.user_id === state.me.id && !m.poll_id && !m.thread_id ? `<button data-edit="${esc(m.id)}">Edit</button>` : ""}${m.user_id === state.me.id || staff() ? `<button data-delete="${esc(m.id)}">Delete</button>` : ""}</div>` : ""}</article>`;
   }
   function attachmentHTML(m) {
     const url = https(m.resolved_url || m.image_url);
@@ -1139,7 +1155,7 @@
       return;
     }
     if (tab === "profile") {
-      html = `<h2>Profiles</h2><form id="profileForm"><div class="field-row">${field("display_name", "Display name", p.display_name, "text", 'maxlength="64" required')}${field("username", "Username", p.username, "text", 'pattern="[a-z0-9_.-]{2,32}" required')}</div>${field("pronouns", "Pronouns", p.pronouns || "", "text", 'maxlength="60"')}${area("bio", "About me", p.bio || "")}${field("status", "Custom status", p.status || "", "text", 'maxlength="160"')}<div class="field-row">${field("banner_color", "Banner color", p.banner_color || "#5865f2", "color")}${field("avatar_url", "Avatar image URL", p.avatar_url || "", "url")}</div><label>Upload avatar<input id="avatarUpload" type="file" accept="image/png,image/jpeg,image/webp,image/gif"></label><p class="small-note">Make your profile feel like you.</p><button class="primary" type="submit">Save Changes</button></form>`;
+      html = `<h2>Profiles</h2><form id="profileForm"><div class="field-row">${field("display_name", "Display name", p.account_display_name || p.display_name, "text", 'maxlength="64" required')}${field("username", "Username", p.username, "text", 'pattern="[a-z0-9_.-]{2,32}" required')}</div>${field("pronouns", "Pronouns", p.pronouns || "", "text", 'maxlength="60"')}${area("bio", "About me", p.bio || "")}${field("status", "Custom status", p.status || "", "text", 'maxlength="160"')}<div class="field-row">${field("banner_color", "Banner color", p.banner_color || "#5865f2", "color")}${field("avatar_url", "Avatar image URL", p.avatar_url || "", "url")}</div><label>Upload avatar<input id="avatarUpload" type="file" accept="image/png,image/jpeg,image/webp,image/gif"></label><p class="small-note">Make your profile feel like you.</p><button class="primary" type="submit">Save Changes</button></form>`;
     }
     if (tab === "password")
       html = `<h2>Change Password</h2><p class="muted">Use your current password to set a new one.</p><form id="passwordForm">${field("current", "Current password", "", "password", 'autocomplete="current-password" required')}${field("password", "New password", "", "password", 'autocomplete="new-password" minlength="8" required')}${field("confirm", "Confirm new password", "", "password", 'autocomplete="new-password" minlength="8" required')}<button class="primary" type="submit">Update Password</button></form>`;
@@ -1327,7 +1343,7 @@
       html = `<div class="toolbar-row"><h2>AutoMod</h2><button class="primary" id="newRule">Create Rule</button></div><p class="muted">Let’s keep the conversation healthy.</p><p class="small-note">Add as many rules and word lists as you need. Each rule can include words, PostgreSQL regular expressions, allowed words, and its own block message.</p>${state.rules.map((r) => `<article class="rule-card"><div class="rule-top"><span class="rule-icon">⛨</span><div style="flex:1"><h3>${esc(r.name)}</h3><p>${r.enabled ? "Blocking matching messages" : "Paused"}</p></div><label class="check-label"><input type="checkbox" data-rule-toggle="${esc(r.id)}" ${r.enabled ? "checked" : ""} aria-label="Enable ${esc(r.name)}"></label></div><div class="rule-summary"><span>${r.words.length} words</span><span>${r.patterns.length} patterns</span><span>${r.allowed_words.length} allowed words</span></div><p>“${esc(r.block_message)}”</p><div class="rule-actions"><button class="secondary" data-rule-edit="${esc(r.id)}">Edit Rule</button><button class="danger" data-rule-delete="${esc(r.id)}">Delete</button></div></article>`).join("") || '<div class="empty-state">No rules yet. Create your first word list.</div>'}`;
     }
     if (tab === "channels")
-      html = `<div class="toolbar-row"><h2>Channels & Categories</h2><button class="primary" id="newAdminChannel">Create Channel</button></div><button class="secondary" id="newCategory">＋ Create Category</button>${state.channels
+      html = `<div class="toolbar-row"><h2>Channels & Categories</h2><button class="primary" id="newAdminChannel">Create Channel</button></div><button class="secondary" id="newCategory">＋ Create Category</button><div class="category-admin-list">${state.categories.map((c) => `<div class="account-row"><div><b>⌄ ${esc(c.name)}</b><small>${state.channels.filter((ch) => ch.category_id === c.id).length} channels</small></div><button class="danger" data-category-delete="${esc(c.id)}">Delete category</button></div>`).join("")}</div>${state.channels
         .filter((c) => c.kind !== "dm")
         .map(
           (c) =>
@@ -1343,9 +1359,9 @@
     }
     if (tab === "bots") {
       state.bots = await query("cb_bots", {
-        select: "id,owner_id,enabled,created_at",
+        select: "id,owner_id,enabled,created_at,scopes",
       });
-      html = `<div class="toolbar-row"><h2>Apps & Bots</h2><button class="primary" id="newBot">Create Bot</button></div><p class="small-note">Bots use the same channel permissions and AutoMod as members. Tokens are shown once. <a href="/external/chatbox/BOT-API.md" target="_blank">Read the Node.js API guide ↗</a></p>${state.bots.map((b) => `<article class="rule-card"><h3>${esc(profile(b.id).display_name)} <span class="bot-label">APP</span></h3><p>${b.enabled ? "Active" : "Revoked"} · ID: ${esc(b.id)}</p><div class="rule-actions"><button class="secondary" data-bot-rotate="${b.id}">Rotate token</button><button class="danger" data-bot-revoke="${b.id}">Revoke token</button></div></article>`).join("") || '<div class="empty-state">Your bots will appear here.</div>'}`;
+      html = `<div class="toolbar-row"><h2>Apps & Bots</h2><button class="primary" id="newBot">Create Bot</button></div><p class="small-note">Bots use the same channel permissions and AutoMod as members. Tokens are shown once. <a href="/external/chatbox/index.html" target="_blank">Read the Node.js API guide ↗</a></p>${state.bots.map((b) => `<article class="rule-card"><h3>${esc(profile(b.id).display_name)} <span class="bot-label">APP</span></h3><p>${b.enabled ? "Active" : "Revoked"} · ID: ${esc(b.id)}</p><p class="small-note">Permissions: ${esc((b.scopes || []).join(", ") || "Messaging only")}</p><div class="rule-actions">${state.root ? `<button class="secondary" data-bot-scopes="${b.id}">Permissions</button>` : ""}<button class="secondary" data-bot-rotate="${b.id}">Rotate token</button><button class="danger" data-bot-revoke="${b.id}">Revoke token</button></div></article>`).join("") || '<div class="empty-state">Your bots will appear here.</div>'}`;
     }
     $("modalContent").innerHTML =
       `<div class="settings-layout"><nav class="settings-nav"><small>CHATBOX SERVER</small>${[
@@ -1401,7 +1417,7 @@
                   .map((r) => `<option>${esc(r)}</option>`)
                   .join("")}</select>`
               : ""
-          }<button class="text-button" data-moderate="${p.id}">Moderate</button></div>`,
+          }<button class="text-button" data-nickname="${p.id}">Nickname</button><button class="text-button" data-moderate="${p.id}">Moderate</button></div>`,
       )
       .join("");
   }
@@ -1418,7 +1434,7 @@
     };
     modal(
       id ? "Edit AutoMod rule" : "Create AutoMod rule",
-      `<form id="ruleForm" class="rule-editor">${field("name", "Rule name", r.name, "text", "required")}${area("words", "Block words and phrases", r.words.join("\n"), "One word or phrase per line. Matching is case insensitive. No fixed list or rule count limit.")}${area("patterns", "Regular expression patterns", r.patterns.join("\n"), "One PostgreSQL regular expression per line. Invalid patterns cannot be saved.")}${area("allowed_words", "Allowed words", r.allowed_words.join("\n"), "Allowed phrases are removed before checking blocked words and patterns.")}${area("block_message", "Custom block message", r.block_message)}<h3>Actions</h3><p class="small-note">Matching messages are always blocked. Additional actions respect the rule creator’s role hierarchy; root cannot be punished automatically.</p><div class="automod-action-options">${[
+      `<form id="ruleForm" class="rule-editor">${field("name", "Rule name", r.name, "text", "required")}${area("words", "Block words and phrases", r.words.join("\n"), "Separate phrases with commas or new lines. Plain phrases match whole words; cat* matches prefixes, *cat suffixes, and *cat* matches anywhere. No fixed list or rule count limit.")}${area("patterns", "Regular expression patterns", r.patterns.join("\n"), "One PostgreSQL regular expression per line. Invalid patterns cannot be saved.")}${area("allowed_words", "Allowed words", r.allowed_words.join("\n"), "Separate allowed phrases with commas or new lines. Wildcards work here too. Regex patterns stay one per line.")}${area("block_message", "Custom block message", r.block_message)}<h3>Actions</h3><p class="small-note">Matching messages are always blocked. Additional actions respect the rule creator’s role hierarchy; root cannot be punished automatically.</p><div class="automod-action-options">${[
         ["warning", "Warn member"],
         ["timeout", "Mute / timeout member"],
         ["ban", "Ban member"],
@@ -1447,9 +1463,9 @@
         actions: ["warning", "timeout", "ban"].filter((a) => v["action_" + a]),
         timeout_seconds: Number(v.timeout_seconds),
         ban_seconds: v.ban_seconds ? Number(v.ban_seconds) : null,
-        words: lines(v.words),
+        words: phrases(v.words),
         patterns: lines(v.patterns),
-        allowed_words: lines(v.allowed_words),
+        allowed_words: phrases(v.allowed_words),
         exempt_channels: lines(v.exempt_channels),
         exempt_roles: lines(v.exempt_roles),
       });
@@ -1747,9 +1763,18 @@
       socialRPC: (action, payload) =>
         checked(client.rpc("chat_social", { action, payload })),
       getMessages: async (id, before) => {
-        if(preview)return state.demoMessages.filter(m=>m.room===id);
-        let q=client.from("cb_messages").select("*").eq("room",id).order("created_at",{ascending:false}).order("id",{ascending:false}).limit(100);
-        if(before)q=q.or(`created_at.lt.${before.created_at},and(created_at.eq.${before.created_at},id.lt.${before.id})`);
+        if (preview) return state.demoMessages.filter((m) => m.room === id);
+        let q = client
+          .from("cb_messages")
+          .select("*")
+          .eq("room", id)
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .limit(100);
+        if (before)
+          q = q.or(
+            `created_at.lt.${before.created_at},and(created_at.eq.${before.created_at},id.lt.${before.id})`,
+          );
         return signMedia((await checked(q)).reverse());
       },
     });
@@ -1836,6 +1861,54 @@
           );
         if (b.dataset.channelEdit) await channelForm(b.dataset.channelEdit);
         if (b.dataset.moderate) moderationForm(b.dataset.moderate);
+        if (b.dataset.nickname) {
+          const p = profile(b.dataset.nickname);
+          modal(
+            "Change nickname",
+            `<p class="muted">Set a community nickname for @${esc(p.username)}. Leave blank to use their display name.</p><form id="nicknameForm">${field("nickname", "Nickname", p.nickname || "", "text", 'maxlength="64"')}<button class="primary" type="submit">Save nickname</button></form>`,
+          );
+          formSave("nicknameForm", async (v) => {
+            await rpc("nickname", { user_id: p.id, nickname: v.nickname });
+            await refresh();
+            renderMessages();
+            await openAdmin("members");
+          });
+        }
+        if (b.dataset.categoryDelete) {
+          const id = b.dataset.categoryDelete;
+          modal(
+            "Delete category",
+            `<p>Channels in this category will move to the uncategorized list. Their messages and permissions are kept.</p><button class="danger" id="confirmCategoryDelete">Delete category</button>`,
+          );
+          $("confirmCategoryDelete").onclick = () =>
+            safe(async () => {
+              await rpc("delete_category", { id });
+              await refresh();
+              await openAdmin("channels");
+            });
+        }
+        if (b.dataset.botScopes) {
+          const bot = state.bots.find((x) => x.id === b.dataset.botScopes);
+          modal(
+            "Bot permissions",
+            `<form id="botScopeForm"><p>Only root can grant these permissions. The bot cannot moderate staff or assign roles.</p>${[
+              ["moderate", "Warn, mute and ban members"],
+              ["manage_messages", "Delete messages in accessible channels"],
+              ["automod", "Manage AutoMod rules"],
+            ]
+              .map(
+                ([key, label]) =>
+                  `<label class="check-label"><input type="checkbox" name="${key}" ${bot.scopes?.includes(key) ? "checked" : ""}> ${label}</label>`,
+              )
+              .join(
+                "",
+              )}<button class="primary" type="submit">Save permissions</button></form>`,
+          );
+          formSave("botScopeForm", async (v) => {
+            await rpc("bot_scopes", { id: bot.id, scopes: Object.keys(v) });
+            await openAdmin("bots");
+          });
+        }
         if (b.dataset.botRotate) {
           const r = await rpc("rotate_bot", { id: b.dataset.botRotate });
           showToken(r.token);
@@ -2038,6 +2111,7 @@
       { id: "community", name: "The community", sort_order: 0 },
       { id: "creative", name: "Make something", sort_order: 1 },
       { id: "staff", name: "Behind the scenes", sort_order: 2 },
+      { id: "empty", name: "Coming soon", sort_order: 3 },
     ];
     state.demoChannels = [
       {
@@ -2133,6 +2207,18 @@
       },
       {
         id: "demo6",
+        embeds: [
+          {
+            title: "Listening party",
+            description: "Bring your favorite track. **Everyone is welcome.**",
+            color: 5793266,
+            fields: [
+              { name: "When", value: "Tonight at 8", inline: true },
+              { name: "Where", value: "<#lobby>", inline: true },
+            ],
+            footer: { text: "Community events" },
+          },
+        ],
         room: "lobby",
         user_id: state.demoProfiles[1].id,
         text: "Okay, important question: what’s everyone listening to today? 🎧",
@@ -2192,6 +2278,27 @@
         });
       return {};
     }
+    if (action === "nickname") {
+      Object.assign(
+        state.demoProfiles.find((x) => x.id === p.user_id),
+        { nickname: p.nickname || null },
+      );
+      return {};
+    }
+    if (action === "delete_category") {
+      state.demoCategories = state.demoCategories.filter((x) => x.id !== p.id);
+      state.demoChannels.forEach((x) => {
+        if (x.category_id === p.id) x.category_id = null;
+      });
+      return {};
+    }
+    if (action === "bot_scopes") {
+      Object.assign(
+        state.demoBots.find((x) => x.id === p.id),
+        { scopes: p.scopes },
+      );
+      return {};
+    }
     if (action === "channel_status")
       return {
         seconds:
@@ -2217,9 +2324,10 @@
       const hit = state.demoRules.find(
         (r) =>
           r.enabled &&
-          r.words.some(
-            (w) => w && p.text.toLowerCase().includes(w.toLowerCase()),
-          ),
+          C.matchesWords(p.text, r.words, {
+            allowedWords: r.allowed_words,
+            patterns: r.patterns,
+          }),
       );
       if (hit) return { blocked: true, message: hit.block_message };
       if (action === "edit") {

@@ -195,7 +195,77 @@
     });
     return template.innerHTML;
   }
+  function embeds(items = [], profiles = [], channels = []) {
+    return (Array.isArray(items) ? items : [])
+      .slice(0, 10)
+      .filter((e) => e && typeof e === "object")
+      .map((e) => {
+        const link = (url, label) =>
+          https(url)
+            ? `<a href="${esc(https(url))}" target="_blank" rel="noopener noreferrer">${label}</a>`
+            : label;
+        const img = (url, cls) =>
+          https(url)
+            ? `<img class="${cls}" src="${esc(https(url))}" alt="" loading="lazy" referrerpolicy="no-referrer">`
+            : "";
+        const color =
+          Number.isInteger(e.color) && e.color >= 0 && e.color <= 0xffffff
+            ? "#" + e.color.toString(16).padStart(6, "0")
+            : "#5865f2";
+        return `<section class="rich-embed" style="--embed-color:${color}">${e.thumbnail ? img(e.thumbnail.url, "embed-thumbnail") : ""}${e.author ? `<div class="embed-author">${img(e.author.icon_url, "embed-icon")}${link(e.author.url, esc(e.author.name || ""))}</div>` : ""}${e.title ? `<h3>${link(e.url, esc(e.title))}</h3>` : ""}${e.description ? `<div class="embed-description">${render(e.description, profiles, channels)}</div>` : ""}${Array.isArray(e.fields) && e.fields.length ? `<div class="embed-fields">${e.fields.map((f) => `<div class="embed-field ${f.inline ? "inline" : ""}"><b>${esc(f.name)}</b><div>${render(f.value, profiles, channels)}</div></div>`).join("")}</div>` : ""}${e.image ? img(e.image.url, "embed-image") : ""}${e.footer || e.timestamp ? `<footer>${img(e.footer?.icon_url, "embed-icon")}${esc(e.footer?.text || "")}${e.timestamp && Number.isFinite(Date.parse(e.timestamp)) ? `<time> · ${esc(new Date(e.timestamp).toLocaleString())}</time>` : ""}</footer>` : ""}</section>`;
+      })
+      .join("");
+  }
+  function matchesWords(
+    content,
+    words,
+    { allowedWords = [], patterns = [] } = {},
+  ) {
+    let text = String(content);
+    for (const word of splitKeywords(allowedWords))
+      text = text.replace(keywordRegex(word, "giu"), " ");
+    return (
+      splitKeywords(words).some((word) =>
+        keywordRegex(word, "iu").test(text),
+      ) ||
+      patterns.some((pattern) => {
+        const re =
+          pattern instanceof RegExp
+            ? new RegExp(pattern.source, pattern.flags.replace(/[gy]/g, ""))
+            : new RegExp(pattern, "i");
+        return re.test(text);
+      })
+    );
+  }
+  function splitKeywords(words) {
+    return [
+      ...new Set(
+        (Array.isArray(words) ? words : [words])
+          .flatMap((s) => String(s).split(/[,\r\n]+/))
+          .map((s) => s.trim())
+          .filter(Boolean),
+      ),
+    ];
+  }
+  function keywordRegex(word, flags) {
+    const body = [...word]
+      .map((c) =>
+        c === "*"
+          ? "[^\\s]*"
+          : c.replace(/[.*+?^${}()|[\]\\]/g, "\\  root.ChatCore = {"),
+      )
+      .join("");
+    return new RegExp(
+      (word.startsWith("*") ? "" : "(^|[^\\p{L}\\p{N}_])") +
+        body +
+        (word.endsWith("*") ? "" : "($|[^\\p{L}\\p{N}_])"),
+      flags,
+    );
+  }
+
   root.ChatCore = {
+    matchesWords,
+    splitKeywords,
     roles,
     commands,
     esc,
@@ -204,5 +274,6 @@
     distance,
     suggest,
     render,
+    embeds,
   };
 })(typeof window !== "undefined" ? window : globalThis);

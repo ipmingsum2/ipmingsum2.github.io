@@ -168,6 +168,26 @@ test("metadata only accepts public HTTPS URLs; provider failures yield a link ca
   assert.equal(res.status, 200);
   assert.equal((await res.json()).title, "example.com");
 });
+test('bot HTTP routes forward DM, embed, event and moderation payloads to the authenticated dispatcher',async()=>{
+  const h=harness(),headers={Authorization:'Bot cb_'+'b'.repeat(64),'Content-Type':'application/json'};
+  for(const [path,method,body,action] of [
+    ['/v1/dms','POST',{user_id:'member'},'dm'],
+    ['/v1/moderation','POST',{user_id:'member',action:'warning',reason:'Test'},'moderate'],
+    ['/v1/automod','POST',{name:'Words',words:['one, two']},'automod'],
+    ['/v1/automod/rule-id','DELETE',undefined,'delete_rule'],
+    ['/v1/users/member','GET',undefined,'user'],
+    ['/v1/events?after=2026-01-01&after_id=last','GET',undefined,'events'],
+    ['/v1/channels/lobby/messages','POST',{embeds:[{title:'Hello'}]},'send'],
+    ['/v1/messages/message-id','PATCH',{embeds:[{description:'Edited'}]},'edit'],
+  ]){
+    const response=await h.request(path,{method,headers,body:body&&JSON.stringify(body)});
+    assert.equal(response.status,200,path);
+    const call=h.calls.at(-1);assert.equal(call.name,'chat_bot');assert.equal(call.args.action,action);
+    if(body?.embeds)assert.deepEqual(JSON.parse(JSON.stringify(call.args.payload.embeds)),body.embeds);
+    if(action==='events')assert.equal(call.args.payload.after_id,'last');
+  }
+});
+
 test("SDK preserves equal timestamp cursor IDs and exposes slowmode retry duration", async () => {
   const original = globalThis.fetch;
   let requested;
