@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Blacklist Admin Panel</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #020617;
+      --card: rgba(15, 23, 42, 0.94);
+      --card-soft: rgba(30, 41, 59, 0.72);
+      --border: rgba(148, 163, 184, 0.25);
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --blue: #38bdf8;
+      --blue-dark: #0369a1;
+      --red: #ef4444;
+      --red-dark: #991b1b;
+      --green: #22c55e;
+      --green-dark: #166534;
+      --yellow: #facc15;
+      --purple: #8b5cf6;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family:
+        Inter,
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+      background:
+        radial-gradient(circle at 15% 10%, rgba(56, 189, 248, 0.25), transparent 32%),
+        radial-gradient(circle at 85% 90%, rgba(139, 92, 246, 0.20), transparent 32%),
+        radial-gradient(circle at 50% 50%, rgba(34, 197, 94, 0.08), transparent 35%),
+        var(--bg);
+      color: var(--text);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .login-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 420px;
+      padding: 30px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.48);
+      backdrop-filter: blur(20px);
+    }
+
+    .logo {
+      width: 58px;
+      height: 58px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, var(--blue), var(--purple));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 26px;
+      margin-bottom: 22px;
+      box-shadow: 0 14px 34px rgba(56, 189, 248, 0.25);
+    }
+
+    h1,
+    h2 {
+      margin: 0;
+      letter-spacing: -0.04em;
+    }
+
+    .login-card h1 {
+      font-size: 34px;
+      line-height: 1;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      line-height: 1.6;
+      margin: 12px 0 24px;
+      font-size: 14px;
+    }
+
+    label {
+      display: block;
+      color: #cbd5e1;
+      font-weight: 800;
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+
+    input {
+      width: 100%;
+      padding: 15px 16px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: rgba(2, 6, 23, 0.78);
+      color: white;
+      outline: none;
+      font-size: 15px;
+      transition: 0.18s ease;
+    }
+
+    input::placeholder {
+      color: #64748b;
+    }
+
+    input:focus {
+      border-color: rgba(56, 189, 248, 0.9);
+      box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.14);
+    }
+
+    button {
+      border: 0;
+      border-radius: 16px;
+      padding: 14px 16px;
+      color: white;
+      font-weight: 900;
+      font-size: 15px;
+      cursor: pointer;
+      transition:
+        transform 0.15s ease,
+        filter 0.15s ease,
+        opacity 0.15s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.06);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .login-button {
+      width: 100%;
+      margin-top: 16px;
+      background: linear-gradient(135deg, var(--blue), var(--blue-dark));
+    }
+
+    .status {
+      margin-top: 16px;
+      padding: 13px 14px;
+      border-radius: 16px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--border);
+      color: #cbd5e1;
+      line-height: 1.5;
+      font-size: 14px;
+    }
+
+    .status.good {
+      border-color: rgba(34, 197, 94, 0.42);
+      color: #bbf7d0;
+    }
+
+    .status.bad {
+      border-color: rgba(239, 68, 68, 0.45);
+      color: #fecaca;
+    }
+
+    .status.warn {
+      border-color: rgba(250, 204, 21, 0.45);
+      color: #fef3c7;
+    }
+
+    .admin-page {
+      min-height: 100vh;
+      padding: 28px;
+    }
+
+    .admin-shell {
+      width: 100%;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-logo {
+      width: 48px;
+      height: 48px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, var(--blue), var(--purple));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 22px;
+    }
+
+    .brand h1 {
+      font-size: clamp(26px, 4vw, 42px);
+      line-height: 1;
+    }
+
+    .brand p {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .logout-button {
+      background: rgba(148, 163, 184, 0.16);
+      border: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 0.9fr 1.1fr;
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 26px;
+      padding: 24px;
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.36);
+      backdrop-filter: blur(18px);
+    }
+
+    .card h2 {
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+
+    .card-text {
+      margin: 0 0 20px;
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 14px;
+    }
+
+    .field {
+      margin-top: 16px;
+    }
+
+    .button-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .blacklist-button {
+      background: linear-gradient(135deg, var(--red), var(--red-dark));
+    }
+
+    .unblacklist-button {
+      background: linear-gradient(135deg, var(--green), var(--green-dark));
+    }
+
+    .refresh-button {
+      width: 100%;
+      margin-top: 12px;
+      background: linear-gradient(135deg, #6366f1, #2563eb);
+    }
+
+    pre {
+      margin: 0;
+      min-height: 430px;
+      max-height: 620px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: rgba(2, 6, 23, 0.74);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 18px;
+      color: #a7f3d0;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .info-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .info-box {
+      background: var(--card-soft);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 16px;
+    }
+
+    .info-box strong {
+      display: block;
+      font-size: 22px;
+      margin-bottom: 4px;
+    }
+
+    .info-box span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 860px) {
+      .dashboard-grid,
+      .info-row {
+        grid-template-columns: 1fr;
+      }
+
+      .admin-page {
+        padding: 18px;
+      }
+
+      pre {
+        min-height: 300px;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .logout-button {
+        width: 100%;
+      }
+
+      .button-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .login-card,
+      .card {
+        padding: 20px;
+        border-radius: 22px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <section id="loginPage" class="login-page">
+    <div class="login-card">
+      <div class="logo">A</div>
+
+      <h1>Admin Login</h1>
+
+      <p class="subtitle">
+        Enter the admin password to access blacklist controls.
+      </p>
+
+      <label for="password">Password</label>
+      <input
+        id="password"
+        type="password"
+        placeholder="Enter admin password"
+        autocomplete="current-password"
+      />
+
+      <button id="loginButton" class="login-button" onclick="login()">
+        Login
+      </button>
+
+      <div id="loginStatus" class="status">
+        Waiting for password.
+      </div>
+    </div>
+  </section>
+
+  <section id="adminPage" class="admin-page hidden">
+    <div class="admin-shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-logo">A</div>
+
+          <div>
+            <h1>Blacklist Admin</h1>
+            <p>Manage blocked user IDs and usernames.</p>
+          </div>
+        </div>
+
+        <button class="logout-button" onclick="logout()">
+          Logout
+        </button>
+      </header>
+
+      <div class="info-row">
+        <div class="info-box">
+          <strong id="uidCount">0</strong>
+          <span>Blacklisted User IDs</span>
+        </div>
+
+        <div class="info-box">
+          <strong id="unameCount">0</strong>
+          <span>Blacklisted Usernames</span>
+        </div>
+
+        <div class="info-box">
+          <strong>1h</strong>
+          <span>Session Duration</span>
+        </div>
+      </div>
+
+      <main class="dashboard-grid">
+        <section class="card">
+          <h2>Manage User</h2>
+
+          <p class="card-text">
+            Enter a user ID, username, or both. Then choose blacklist
+            or unblacklist.
+          </p>
+
+          <div class="field">
+            <label for="uid">User ID</label>
+            <input id="uid" type="text" placeholder="Example: 123456789" />
+          </div>
+
+          <div class="field">
+            <label for="uname">Username</label>
+            <input id="uname" type="text" placeholder="Example: BadUser" />
+          </div>
+
+          <div class="button-grid">
+            <button class="blacklist-button" onclick="sendAction('blacklist')">
+              Blacklist
+            </button>
+
+            <button class="unblacklist-button" onclick="sendAction('unblacklist')">
+              Unblacklist
+            </button>
+          </div>
+
+          <button class="refresh-button" onclick="loadBlacklist()">
+            Refresh
+          </button>
+
+          <div id="adminStatus" class="status">
+            OK.
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>Blacklist JSON</h2>
+
+          <p class="card-text">
+            This is the JSON used by live servers.s
+          </p>
+
+          <pre id="output">{
+  "uid": [],
+  "uname": []
+}</pre>
+        </section>
+      </main>
+    </div>
+  </section>
+
+  <script>
+    const WORKER_URL = "https://alvin-blacklist.ipmingsum5.workers.dev";
+
+    let adminToken = "";
+
+    const loginPage = document.getElementById("loginPage");
+    const adminPage = document.getElementById("adminPage");
+
+    const passwordInput = document.getElementById("password");
+    const loginButton = document.getElementById("loginButton");
+    const loginStatus = document.getElementById("loginStatus");
+
+    const uidInput = document.getElementById("uid");
+    const unameInput = document.getElementById("uname");
+    const adminStatus = document.getElementById("adminStatus");
+    const output = document.getElementById("output");
+
+    const uidCount = document.getElementById("uidCount");
+    const unameCount = document.getElementById("unameCount");
+
+    function setStatus(element, message, type) {
+      element.textContent = message;
+      element.className = "status";
+
+      if (type) {
+        element.classList.add(type);
+      }
+    }
+
+    function setOutput(data) {
+      output.textContent = JSON.stringify(data, null, 2);
+
+      if (data && Array.isArray(data.uid)) {
+        uidCount.textContent = data.uid.length;
+      }
+
+      if (data && Array.isArray(data.uname)) {
+        unameCount.textContent = data.uname.length;
+      }
+    }
+
+    function showLogin() {
+      adminToken = "";
+      adminPage.classList.add("hidden");
+      loginPage.classList.remove("hidden");
+      passwordInput.focus();
+    }
+
+    function showAdmin() {
+      loginPage.classList.add("hidden");
+      adminPage.classList.remove("hidden");
+    }
+
+    async function login() {
+      const password = passwordInput.value;
+
+      if (!password) {
+        setStatus(loginStatus, "Enter the password first.", "warn");
+        return;
+      }
+
+      loginButton.disabled = true;
+      setStatus(loginStatus, "Checking password on server...", "");
+
+      try {
+        const response = await fetch(WORKER_URL + "/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            password: password,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          let message = data.error || "Login failed.";
+
+          if (typeof data.attemptsLeftBeforeBlock === "number") {
+            message += " Attempts left before block: " + data.attemptsLeftBeforeBlock + ".";
+          }
+
+          if (data.remaining) {
+            message += " Remaining: " + data.remaining + ".";
+          }
+
+          setStatus(loginStatus, message, "bad");
+          return;
+        }
+
+        adminToken = data.token;
+        passwordInput.value = "";
+
+        showAdmin();
+        setStatus(adminStatus, "Login successful. Admin panel unlocked.", "good");
+
+        await loadBlacklist();
+      } catch (error) {
+        setStatus(loginStatus, "Network error: " + error.message, "bad");
+      } finally {
+        loginButton.disabled = false;
+      }
+    }
+
+    async function logout() {
+      if (adminToken) {
+        try {
+          await fetch(WORKER_URL + "/logout", {
+            method: "POST",
+            headers: {
+              "Authorization": "Bearer " + adminToken,
+            },
+          });
+        } catch (error) {
+          // Ignore logout errors.
+        }
+      }
+
+      showLogin();
+      setStatus(loginStatus, "Logged out.", "");
+    }
+
+    async function sendAction(action) {
+      if (!adminToken) {
+        showLogin();
+        setStatus(loginStatus, "Session missing. Login again.", "warn");
+        return;
+      }
+
+      const uid = uidInput.value.trim();
+      const uname = unameInput.value.trim();
+
+      if (!uid && !uname) {
+        setStatus(adminStatus, "Enter a user ID, username, or both.", "warn");
+        return;
+      }
+
+      setStatus(adminStatus, "Sending request...", "");
+
+      try {
+        const response = await fetch(WORKER_URL + "/admin", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + adminToken,
+          },
+          body: JSON.stringify({
+            action,
+            uid,
+            uname,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (data.blacklist) {
+          setOutput(data.blacklist);
+        } else {
+          setOutput(data);
+        }
+
+        if (!response.ok || !data.success) {
+          setStatus(adminStatus, data.error || "Request failed.", "bad");
+
+          if (response.status === 401) {
+            showLogin();
+            setStatus(loginStatus, "Session expired. Login again.", "warn");
+          }
+
+          return;
+        }
+
+        setStatus(adminStatus, data.message || "Action completed.", "good");
+      } catch (error) {
+        setStatus(adminStatus, "Network error: " + error.message, "bad");
+      }
+    }
+
+    async function loadBlacklist() {
+      setStatus(adminStatus, "Loading blacklist JSON...", "");
+
+      try {
+        const response = await fetch(WORKER_URL + "/blacklist", {
+          method: "GET",
+        });
+
+        const data = await response.json();
+        setOutput(data);
+
+        if (!response.ok) {
+          setStatus(adminStatus, "Failed to load blacklist JSON.", "bad");
+          return;
+        }
+
+        setStatus(adminStatus, "Blacklist JSON loaded.", "good");
+      } catch (error) {
+        setStatus(adminStatus, "Network error: " + error.message, "bad");
+      }
+    }
+
+    passwordInput.addEventListener("keydown", function(event) {
+      if (event.key === "Enter") {
+        login();
+      }
+    });
+
+    showLogin();
+  </script>
+</body>
+</html>
