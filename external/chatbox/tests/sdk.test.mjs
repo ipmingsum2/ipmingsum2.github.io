@@ -9,6 +9,54 @@ import {
   splitKeywords,
 } from "../chatbox.js";
 
+test("scheduled SDK mode has no polling loop and checkpoints events before handlers", async () => {
+  const client = new Client(),
+    sequence = [];
+  client.request = async (path) =>
+    path === "/v1/me"
+      ? { id: "bot", server_time: "2026-10-03T00:00:00Z" }
+      : path === "/v1/channels"
+        ? []
+        : [
+            {
+              id: "one",
+              room: "lobby",
+              text: "hello",
+              created_at: "2026-10-03T00:00:01Z",
+              author: { id: "alice" },
+            },
+          ];
+  client.on(Events.MessageCreate, (m) => sequence.push("handler:" + m.id));
+  await client.login("test-token", { poll: false });
+  assert.equal(client._task, undefined);
+  const n = await client.pollOnce({
+    beforeDispatch: async (cursor) => sequence.push("saved:" + cursor.afterId),
+  });
+  assert.equal(n, 1);
+  assert.deepEqual(sequence, ["saved:one", "handler:one"]);
+  assert.equal(client.cursor.afterId, "one");
+  client.destroy();
+});
+
+test("SDK deduplicates channel lookups and clears cached identities on logout", async () => {
+  const client = new Client();
+  let count = 0;
+  client.request = async () => {
+    count++;
+    return [{ id: "lobby", name: "Lobby" }];
+  };
+  await Promise.all([
+    client.channels.fetch("lobby"),
+    client.channels.fetch("lobby"),
+  ]);
+  assert.equal(count, 1);
+  await client.channels.fetch("lobby");
+  assert.equal(count, 1);
+  client.destroy();
+  await client.channels.fetch("lobby");
+  assert.equal(count, 2);
+});
+
 test("SDK keywords use comma phrases, literal punctuation, wildcard boundaries and allowlists", () => {
   assert.deepEqual(splitKeywords("first phrase, second\nthird"), [
     "first phrase",

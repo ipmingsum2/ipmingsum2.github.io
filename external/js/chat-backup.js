@@ -8,6 +8,12 @@
   const preview =
     new URLSearchParams(location.search).has("preview") &&
     ["localhost", "127.0.0.1"].includes(location.hostname);
+  const legacy = location.pathname.endsWith("/chat-legacy.html");
+  const cache = window.ChatCache ? new window.ChatCache() : null;
+  const cached = (key, loader, ttl) =>
+    cache ? cache.get(key, loader, ttl) : loader();
+  let realtimeReady = false,
+    lastSyncAt = 0;
   const register = location.pathname.endsWith("/register.html");
   const state = {
     user: null,
@@ -46,7 +52,8 @@
   const signedMedia = new Map();
   let passwordRecovery = false;
   let pendingRegistration = null;
-  let social = null;
+  let social = null,
+    interactions = null;
   let profilePopup = null,
     followMessages = true,
     scrollFrame = 0;
@@ -115,9 +122,46 @@
   }
   async function rpc(action, payload = {}) {
     if (preview) return demoAction(action, payload);
-    return checked(client.rpc("chat_action", { action, payload }));
+    const result = await checked(
+      client.rpc("chat_action", { action, payload }),
+    );
+    const table = {
+      profile: "cb_profiles",
+      role: "cb_profiles",
+      nickname: "cb_profiles",
+      automod: "cb_automod",
+      delete_rule: "cb_automod",
+      create_bot: "cb_bots",
+      bot_scopes: "cb_bots",
+      revoke_bot: "cb_bots",
+      rotate_bot: "cb_bots",
+      category: "cb_categories",
+    }[action];
+    if (table) cache?.invalidate("query:" + table + ":");
+    if (
+      [
+        "channel",
+        "delete_category",
+        "permission",
+        "archive_channel",
+        "dm",
+        "role",
+        "moderate",
+      ].includes(action)
+    )
+      cache?.invalidate();
+    if (["send", "edit", "delete_message"].includes(action))
+      cache?.invalidate("messages:");
+    return result;
   }
   async function query(table, options = {}) {
+    return cached(
+      "query:" + table + ":" + JSON.stringify(options),
+      () => queryUncached(table, options),
+      300000,
+    );
+  }
+  async function queryUncached(table, options = {}) {
     if (preview) return demoQuery(table, options);
     const rows = [];
     const keys = {
@@ -236,6 +280,9 @@
   function setAuth() {
     social?.closeThread();
     window.ChatUI?.closeAll();
+    cache?.invalidate();
+    signedMedia.clear();
+    embedCache.clear();
     state.user = null;
     state.me = null;
     $("appView").hidden = true;
@@ -493,6 +540,10 @@
     social?.onChannel();
   }
   async function loadMessages(id, before) {
+    if (before) return loadMessagesUncached(id, before);
+    return cached("messages:" + id, () => loadMessagesUncached(id), 60000);
+  }
+  async function loadMessagesUncached(id, before) {
     if (preview) return state.demoMessages.filter((m) => m.room === id);
     let q = client
       .from("cb_messages")
@@ -510,11 +561,12 @@
     return signMedia(rows.reverse());
   }
   function messageHTML(m) {
+    if(m.deleted)return "";
     if (m.automod_event && !m.deleted) return automodMessage(m);
     const p = profile(m.user_id),
       parent = state.messages.find((x) => x.id === m.reply_to),
       ping = m.text?.includes(`<@${state.me.id}>`);
-    return `<article class="message ${ping ? "pinged" : ""}" id="message-${esc(m.id)}">${m.reply_to ? `<div class="reply-context" data-jump="${esc(m.reply_to)}">${parent ? `${avatar(profile(parent.user_id))}<b>${esc(profile(parent.user_id).display_name)}</b> ${esc(parent.deleted ? "Message deleted" : parent.text.slice(0, 90))}` : "↳ Reply to an earlier message"}</div>` : ""}<button class="text-button" data-profile="${p.id}" aria-label="View ${esc(p.display_name)} profile">${avatar(p)}</button><div><div><button class="message-author ${p.roles?.length ? "staff" : ""}" data-profile="${p.id}">${esc(p.display_name)}</button>${p.is_bot ? '<span class="bot-label">APP</span>' : ""}<time datetime="${esc(m.created_at)}" title="${esc(new Date(m.created_at).toLocaleString())}">${new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>${m.edited_at ? '<small class="muted"> (edited)</small>' : ""}</div><div class="body">${m.deleted ? '<i class="muted">Message deleted</i>' : m.poll_id ? "" : m.thread_id ? "Started a thread" : C.render(m.text, state.profiles, state.channels)}</div>${!m.deleted ? attachmentHTML(m) + C.embeds(m.embeds || [], state.profiles, state.channels) + (social?.messageExtra(m) || "") : ""}<div class="embeds" data-embeds="${esc(m.id)}"></div></div>${!m.deleted ? `<div class="message-actions">${channel()?.kind !== "dm" ? `<button data-create-thread="${esc(m.id)}" title="Create thread">≋ Thread</button>` : ""}<button data-reply="${esc(m.id)}" title="Reply">↩ Reply</button>${m.user_id === state.me.id && !m.poll_id && !m.thread_id ? `<button data-edit="${esc(m.id)}">Edit</button>` : ""}${m.user_id === state.me.id || staff() ? `<button data-delete="${esc(m.id)}">Delete</button>` : ""}</div>` : ""}</article>`;
+    return `<article class="message ${ping ? "pinged" : ""}" id="message-${esc(m.id)}">${m.reply_to && !parent?.deleted ? `<div class="reply-context" data-jump="${esc(m.reply_to)}">${parent ? `${avatar(profile(parent.user_id))}<b>${esc(profile(parent.user_id).display_name)}</b> ${esc(parent.deleted ? "Message deleted" : parent.text.slice(0, 90))}` : "↳ Reply to an earlier message"}</div>` : ""}<button class="text-button" data-profile="${p.id}" aria-label="View ${esc(p.display_name)} profile">${avatar(p)}</button><div><div><button class="message-author ${p.roles?.length ? "staff" : ""}" data-profile="${p.id}">${esc(p.display_name)}</button>${p.is_bot ? '<span class="bot-label">APP</span>' : ""}<time datetime="${esc(m.created_at)}" title="${esc(new Date(m.created_at).toLocaleString())}">${new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>${m.edited_at ? '<small class="muted"> (edited)</small>' : ""}</div><div class="body">${m.deleted ? '<i class="muted">Message deleted</i>' : m.poll_id ? (legacy ? `<a href="/external/chat.html#${encodeURIComponent(m.room)}">View poll in full chat ↗</a>` : "") : m.thread_id ? (legacy ? `<a href="/external/chat.html#${encodeURIComponent(m.room)}">View thread in full chat ↗</a>` : "Started a thread") : C.render(m.text, state.profiles, state.channels)}</div>${!m.deleted ? attachmentHTML(m) + (interactions?.render(m) || "") + C.embeds(m.embeds || [], state.profiles, state.channels) + (social?.messageExtra(m) || "") : ""}<div class="embeds" data-embeds="${esc(m.id)}"></div></div>${!m.deleted ? `<div class="message-actions">${!legacy && channel()?.kind !== "dm" ? `<button data-create-thread="${esc(m.id)}" title="Create thread">≋ Thread</button>` : ""}<button data-reply="${esc(m.id)}" title="Reply">↩ Reply</button>${m.user_id === state.me.id && !m.poll_id && !m.thread_id ? `<button data-edit="${esc(m.id)}">Edit</button>` : ""}${m.user_id === state.me.id || staff() ? `<button data-delete="${esc(m.id)}">Delete</button>` : ""}</div>` : ""}</article>`;
   }
   function attachmentHTML(m) {
     const url = https(m.resolved_url || m.image_url);
@@ -549,7 +601,7 @@
     }
     const filter = $("searchMessages").value.toLowerCase();
     const messages = state.messages.filter(
-      (m) => !filter || m.text?.toLowerCase().includes(filter),
+      (m) => !m.deleted && (!filter || m.text?.toLowerCase().includes(filter)),
     );
     let html =
       state.older && !preview
@@ -649,24 +701,81 @@
       .channel("chatbox-" + state.user.id)
       .on("postgres_changes", { event: "*", schema: "public" }, (payload) => {
         if (payload.table === "cb_reads") return;
+        cache?.invalidate("query:" + payload.table + ":");
+        if (payload.table === "cb_messages") {
+          cache?.invalidate("messages:" + (payload.new?.room || ""));
+          if (payload.new?.id && payload.new.room === state.room) {
+            safe(async () => {
+              const room = state.room,
+                oldTop = $("messages").scrollTop;
+              const [message] = await signMedia([payload.new]);
+              if (state.room !== room) return;
+              const map = new Map(state.messages.map((m) => [m.id, m]));
+              map.set(message.id, message);
+              state.messages = [...map.values()].sort(
+                (a, b) =>
+                  a.created_at.localeCompare(b.created_at) ||
+                  a.id.localeCompare(b.id),
+              );
+              renderMessages();
+              if (followMessages) scrollBottom();
+              else $("messages").scrollTop = oldTop;
+              if (document.visibilityState === "visible" && document.hasFocus())
+                await rpc("read", { channel_id: room });
+            });
+          } else if (
+            payload.new?.text?.includes("<@" + state.user.id + ">") ||
+            payload.new?.text?.includes("@everyone")
+          ) {
+            state.mentions[payload.new.room] =
+              (state.mentions[payload.new.room] || 0) + 1;
+            renderSidebar();
+          }
+          safe(() => social?.onRealtime(payload));
+          return;
+        }
+        safe(() => social?.onRealtime(payload));
+        if (
+          [
+            "cb_overwrites",
+            "cb_profiles",
+            "cb_channels",
+            "cb_channel_members",
+            "cb_moderation",
+          ].includes(payload.table)
+        )
+          cache?.invalidate();
         clearTimeout(refreshTimer);
         refreshTimer = setTimeout(() => safe(sync), 350);
       })
       .subscribe((status) => {
+        const wasReady = realtimeReady;
+        realtimeReady = status === "SUBSCRIBED";
         setConnected(
-          status === "SUBSCRIBED"
+          realtimeReady
             ? ""
             : "Reconnecting… your messages will refresh automatically.",
         );
+        if (realtimeReady && !wasReady && lastSyncAt) {
+          cache?.invalidate();
+          safe(sync);
+        }
       });
     clearInterval(poll);
     poll = setInterval(() => {
-      if (document.visibilityState === "visible") safe(sync);
-    }, 20000);
+      if (
+        document.visibilityState === "visible" &&
+        (!realtimeReady || Date.now() - lastSyncAt > 300000)
+      ) {
+        cache?.invalidate();
+        safe(sync);
+      }
+    }, 30000);
   }
   async function sync() {
     if (!state.user || state.loading) return;
     state.loading = true;
+    lastSyncAt = Date.now();
     try {
       await refreshGate();
       if (state.gate) return;
@@ -911,6 +1020,12 @@
       if (command === "/me") text = "*" + arg + "*";
       else if (command === "/shrug") text = arg + " ¯\\_(ツ)_/¯";
       else {
+        if (await interactions?.command(command.slice(1), arg)) {
+          $("messageText").value = "";
+          state.suggestions=[];
+          renderSuggestions();
+          return;
+        }
         const suggestions = C.suggest(command);
         if (suggestions.length) {
           updateSuggestions();
@@ -1011,6 +1126,37 @@
     );
     state.suggestion = 0;
     renderSuggestions();
+    const prefix = input.value.slice(0, input.selectionStart),
+      room = state.room;
+    if (/^\/[\w-]*$/.test(prefix))
+      interactions
+        ?.commands()
+        .then((rows) => {
+          if (
+            input.value.slice(0, input.selectionStart) !== prefix ||
+            state.room !== room
+          )
+            return;
+          const builtins = new Set(state.suggestions.map((s) => s.name));
+          state.suggestions.push(
+            ...rows
+              .filter(
+                (c) =>
+                  ("/" + c.name).startsWith(prefix) &&
+                  !builtins.has("/" + c.name),
+              )
+              .slice(0, 10)
+              .map((c) => ({
+                name: "/" + c.name,
+                value: "/" + c.name + " ",
+                length: prefix.length,
+                description:
+                  profile(c.bot_id).display_name + " · " + c.description,
+              })),
+          );
+          renderSuggestions();
+        })
+        .catch(() => {});
     input.style.height = "auto";
     input.style.height = Math.min(150, input.scrollHeight) + "px";
   }
@@ -1361,7 +1507,7 @@
       state.bots = await query("cb_bots", {
         select: "id,owner_id,enabled,created_at,scopes",
       });
-      html = `<div class="toolbar-row"><h2>Apps & Bots</h2><button class="primary" id="newBot">Create Bot</button></div><p class="small-note">Bots use the same channel permissions and AutoMod as members. Tokens are shown once. <a href="/external/chatbox/index.html" target="_blank">Read the Node.js API guide ↗</a></p>${state.bots.map((b) => `<article class="rule-card"><h3>${esc(profile(b.id).display_name)} <span class="bot-label">APP</span></h3><p>${b.enabled ? "Active" : "Revoked"} · ID: ${esc(b.id)}</p><p class="small-note">Permissions: ${esc((b.scopes || []).join(", ") || "Messaging only")}</p><div class="rule-actions">${state.root ? `<button class="secondary" data-bot-scopes="${b.id}">Permissions</button>` : ""}<button class="secondary" data-bot-rotate="${b.id}">Rotate token</button><button class="danger" data-bot-revoke="${b.id}">Revoke token</button></div></article>`).join("") || '<div class="empty-state">Your bots will appear here.</div>'}`;
+      html = `<div class="toolbar-row"><h2>Apps & Bots</h2><button class="primary" id="newBot">Create Bot</button></div><p class="small-note">Bots use the same channel permissions and AutoMod as members. Tokens are shown once. <a href="/external/chatbox/index.html" target="_blank">Read the Node.js API guide ↗</a></p>${state.bots.map((b) => `<article class="rule-card"><h3>${esc(profile(b.id).display_name)} <span class="bot-label">APP</span></h3><p>${b.enabled ? "Active" : "Revoked"} · ID: ${esc(b.id)}</p><p class="small-note">Permissions: ${esc((b.scopes || []).join(", ") || "Messaging only")}</p><div class="rule-actions"><button class="primary" data-bot-studio="${b.id}">Open Bot Studio</button>${state.root ? `<button class="secondary" data-bot-scopes="${b.id}">Permissions</button>` : ""}<button class="secondary" data-bot-rotate="${b.id}">Rotate token</button><button class="danger" data-bot-revoke="${b.id}">Revoke token</button></div></article>`).join("") || '<div class="empty-state">Your bots will appear here.</div>'}`;
     }
     $("modalContent").innerHTML =
       `<div class="settings-layout"><nav class="settings-nav"><small>CHATBOX SERVER</small>${[
@@ -1745,39 +1891,53 @@
     $("conversationQuery").focus();
   }
   function wire() {
-    social = window.ChatSocial?.({
+    interactions = window.ChatInteractions?.({
       state,
-      rpc,
-      refresh,
-      sync,
       modal,
       closeModal,
       profile,
-      avatar,
-      attachmentHTML,
-      openChannel,
       toast,
       safe,
       preview,
-      scrollBottom,
-      socialRPC: (action, payload) =>
-        checked(client.rpc("chat_social", { action, payload })),
-      getMessages: async (id, before) => {
-        if (preview) return state.demoMessages.filter((m) => m.room === id);
-        let q = client
-          .from("cb_messages")
-          .select("*")
-          .eq("room", id)
-          .order("created_at", { ascending: false })
-          .order("id", { ascending: false })
-          .limit(100);
-        if (before)
-          q = q.or(
-            `created_at.lt.${before.created_at},and(created_at.eq.${before.created_at},id.lt.${before.id})`,
-          );
-        return signMedia((await checked(q)).reverse());
-      },
+      rpc: (action, payload) =>
+        checked(client.rpc("chat_interact", { action, payload })),
     });
+    social = legacy
+      ? null
+      : window.ChatSocial?.({
+          state,
+          rpc,
+          refresh,
+          sync,
+          modal,
+          closeModal,
+          profile,
+          avatar,
+          attachmentHTML,
+          componentHTML: (m) => interactions?.render(m) || "",
+          openChannel,
+          toast,
+          safe,
+          preview,
+          scrollBottom,
+          socialRPC: (action, payload) =>
+            checked(client.rpc("chat_social", { action, payload })),
+          getMessages: async (id, before) => {
+            if (preview) return state.demoMessages.filter((m) => m.room === id);
+            let q = client
+              .from("cb_messages")
+              .select("*")
+              .eq("room", id)
+              .order("created_at", { ascending: false })
+              .order("id", { ascending: false })
+              .limit(100);
+            if (before)
+              q = q.or(
+                `created_at.lt.${before.created_at},and(created_at.eq.${before.created_at},id.lt.${before.id})`,
+              );
+            return signMedia((await checked(q)).reverse());
+          },
+        });
     const icons = {
       settingsButton: "settings",
       channelSettingsButton: "settings",
@@ -1819,7 +1979,7 @@
         if (b.dataset.delete)
           confirmAction(
             "Delete message?",
-            "The message will be replaced with a deleted message notice.",
+            "This message will disappear from the conversation.",
             async () => {
               await rpc("delete_message", { id: b.dataset.delete });
               closeModal();
@@ -1887,6 +2047,46 @@
               await openAdmin("channels");
             });
         }
+        if (b.dataset.botStudio) {
+          const bot = state.bots.find((x) => x.id === b.dataset.botStudio);
+          await window.ChatBotStudio({
+            bot,
+            userId: state.user.id,
+            modal,
+            esc,
+            toast,
+            request: async (action, payload) => {
+              if (!preview)
+                return checked(client.rpc("chat_hosted", { action, payload }));
+              state.demoPrograms ||= {};
+              if (action === "logs") return [];
+              if (action === "commands")
+                return state.demoPrograms[bot.id]?.commands || [];
+              if (action === "commands_set") {
+                state.demoPrograms[bot.id] = {
+                  ...state.demoPrograms[bot.id],
+                  commands: payload.commands,
+                };
+                return payload.commands;
+              }
+              if (action === "save")
+                state.demoPrograms[bot.id] = { ...payload };
+              if (action === "draft")
+                state.demoPrograms[bot.id] = {
+                  ...state.demoPrograms[bot.id],
+                  draft_source: payload.source,
+                };
+              if (action === "stop")
+                state.demoPrograms[bot.id] = {
+                  ...state.demoPrograms[bot.id],
+                  enabled: false,
+                };
+              return (
+                state.demoPrograms[bot.id] || { source: "", enabled: false }
+              );
+            },
+          });
+        }
         if (b.dataset.botScopes) {
           const bot = state.bots.find((x) => x.id === b.dataset.botScopes);
           modal(
@@ -1894,6 +2094,11 @@
             `<form id="botScopeForm"><p>Only root can grant these permissions. The bot cannot moderate staff or assign roles.</p>${[
               ["moderate", "Warn, mute and ban members"],
               ["manage_messages", "Delete messages in accessible channels"],
+              [
+                "manage_channels",
+                "Manage channels and categories (administrator owner required)",
+              ],
+              ["manage_members", "Change nicknames (moderator owner required)"],
               ["automod", "Manage AutoMod rules"],
             ]
               .map(
@@ -2243,7 +2448,15 @@
     state.demoAnnouncements = [];
     state.demoHistory = [];
     state.demoMembers = [];
-    state.demoBots = [];
+    state.demoBots = [
+      {
+        id: state.demoProfiles.at(-1).id,
+        owner_id: demoId,
+        enabled: true,
+        scopes: [],
+        created_at: time(0),
+      },
+    ];
     state.demoOverwrites = [];
     state.mentions = { announcements: 3, "dev-talk": 1 };
   }

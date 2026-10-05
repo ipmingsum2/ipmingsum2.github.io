@@ -1,4 +1,11 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+import {
+  newQuickJSWASMModuleFromVariant,
+  newVariant,
+} from "npm:quickjs-emscripten-core@0.31.0";
+import RELEASE_SYNC from "npm:@jitl/quickjs-singlefile-browser-release-sync@0.31.0";
+import { runHosted, HOSTED_SDK } from "./hosted-bundle.ts";
+let hostedEngine;
 
 const env = (name: string) => Deno.env.get(name) || "";
 const site = env("CHATBOX_SITE_URL") || "https://ipmingsum2.github.io";
@@ -184,6 +191,79 @@ Deno.serve(async (req) => {
       env("SUPABASE_SERVICE_ROLE_KEY"),
       { auth: { persistSession: false, autoRefreshToken: false } },
     );
+    if (
+      url.pathname.endsWith("/chat-api/hosted/run") &&
+      req.method === "POST"
+    ) {
+      const secret = req.headers.get("x-chatbox-runner");
+      if (!secret)
+        return reply({ error: "Runner authorization required" }, 401);
+      const claim = await admin.rpc("chat_hosted_claim", {
+        runner_secret: secret,
+      });
+      if (claim.error)
+        return reply({ error: "Runner authorization failed" }, 401);
+      const jobs = claim.data || [];
+      hostedEngine ||= newQuickJSWASMModuleFromVariant(
+        newVariant(RELEASE_SYNC, {
+          wasmMemory: new WebAssembly.Memory({ initial: 256, maximum: 1024 }),
+        }),
+      ).catch((e) => {
+        hostedEngine = null;
+        throw e;
+      });
+      const engine = await hostedEngine;
+      if (!jobs.length)
+        await runHosted(
+          engine,
+          "import {Client} from 'chatbox.js';await new Client().login();",
+          HOSTED_SDK,
+          { bot: { id: "health" }, message: {} },
+          async () => {
+            throw Error("Health check cannot call API");
+          },
+        );
+      if (jobs.length) {
+        for (const job of jobs) {
+          let outcome;
+          try {
+            outcome = await runHosted(
+              engine,
+              job.source,
+              HOSTED_SDK,
+              job.event,
+              async (action, payload) => {
+                const r = await admin
+                  .rpc("chat_hosted_action", {
+                    job_id: job.id,
+                    job_lease: job.lease,
+                    action,
+                    payload,
+                  })
+                  .abortSignal(AbortSignal.timeout(6000));
+                if (r.error) throw Error(r.error.message);
+                if (r.data?.blocked || r.data?.slowmode)
+                  throw Error(r.data.message || "Message blocked");
+                return r.data;
+              },
+            );
+          } catch (error) {
+            outcome = {
+              error: String(error.message || error).slice(0, 1000),
+              logs: [],
+            };
+          }
+          const finished = await admin.rpc("chat_hosted_finish", {
+            job_id: job.id,
+            job_lease: job.lease,
+            outcome,
+          });
+          if (finished.error)
+            console.error("Hosted completion could not be recorded");
+        }
+      }
+      return reply({ processed: jobs.length });
+    }
     if (auth.startsWith("Bot ")) {
       const token = auth.slice(4);
       if (!/^cb_[a-f0-9]{64}$/.test(token))
@@ -192,7 +272,18 @@ Deno.serve(async (req) => {
       let action: string,
         payload: any = {};
       if (path === "/v1/me" && req.method === "GET") action = "me";
-      else if (path === "/v1/channels" && req.method === "GET")
+      else if (path === "/v1/actions" && req.method === "POST") {
+        const body = await boundedBody(req);
+        if (
+          typeof body.action !== "string" ||
+          !body.payload ||
+          typeof body.payload !== "object" ||
+          Array.isArray(body.payload)
+        )
+          return reply({ error: "Action and payload object required" }, 400);
+        action = body.action;
+        payload = body.payload;
+      } else if (path === "/v1/channels" && req.method === "GET")
         action = "channels";
       else if (path === "/v1/events" && req.method === "GET") {
         action = "events";
@@ -232,6 +323,9 @@ Deno.serve(async (req) => {
           payload = {
             text: body.text,
             embeds: body.embeds,
+            ...(body.components !== undefined
+              ? { components: body.components }
+              : {}),
             reply_to: body.reply_to,
             channel_id: payload.channel_id,
           };
@@ -246,6 +340,8 @@ Deno.serve(async (req) => {
           const body = await boundedBody(req);
           payload.text = body.text;
           payload.embeds = body.embeds;
+          if (body.components !== undefined)
+            payload.components = body.components;
         }
       } else return reply({ error: "Endpoint not found" }, 404);
       const { data, error } = await admin.rpc("chat_bot", {

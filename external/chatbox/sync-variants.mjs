@@ -3,7 +3,7 @@ const root = new URL("../", import.meta.url);
 const html = await readFile(new URL("chat.html", root), "utf8");
 const js = await readFile(new URL("js/chat.js", root), "utf8");
 const css = await readFile(new URL("css/chat.css", root), "utf8");
-for (const name of ["backup", "beta"]) {
+for (const name of ["backup", "beta", "legacy"]) {
   await writeFile(new URL(`js/chat-${name}.js`, root), js);
   await writeFile(new URL(`css/chat-${name}.css`, root), css);
   const variant = html
@@ -13,5 +13,5 @@ for (const name of ["backup", "beta"]) {
   if (name === "beta") await writeFile(new URL("chatbeta.html", root), variant);
 }
 console.log(
-  "Updated chat-backup, chat-beta, and existing chatbeta alias. Legacy was not modified.",
+  "Updated chat-backup, chat-beta, and existing chatbeta alias. Legacy uses the current basic client; original source is archived.",
 );

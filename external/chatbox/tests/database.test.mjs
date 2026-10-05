@@ -73,6 +73,8 @@ insert into public.messages values('11111111-1111-4111-8111-111111111111','lobby
   for (const name of [
     "202610010005_bot_sdk_embeds.sql",
     "202610020006_keywords_categories_nicknames.sql",
+    "202610020007_hosted_bots.sql",
+    "202610040009_bot_interactions.sql",
   ]) {
     await db.exec(
       await readFile(
@@ -1153,4 +1155,338 @@ test("bot moderation and rule management need root-granted scopes and never targ
     ).rows[0].allowed,
     false,
   );
+});
+
+test("hosted queue dispatches visible human events once and protects source, leases, and bot permissions", async () => {
+  const bot = await call(root, "create_bot", { name: "Hosted test" });
+  const hosted = async (user, action, payload) => {
+    await db.query("select set_config('request.jwt.claim.sub',$1,false)", [
+      user,
+    ]);
+    return (
+      await db.query("select public.chat_hosted($1,$2::jsonb) result", [
+        action,
+        JSON.stringify(payload),
+      ])
+    ).rows[0].result;
+  };
+  await assert.rejects(
+    hosted(alice, "save", { bot_id: bot.id, source: "test", enabled: true }),
+    /owner permission/,
+  );
+  await hosted(root, "save", { bot_id: bot.id, source: "test", enabled: true });
+  const draft = await hosted(root, "draft", {
+    bot_id: bot.id,
+    source: "unpublished draft",
+  });
+  assert.equal(draft.source, "test");
+  assert.equal(draft.draft_source, "unpublished draft");
+  assert.equal(draft.enabled, true);
+  const message = await call(root, "send", {
+    channel_id: "lobby",
+    text: "Hosted event",
+  });
+  await botCall(bot.token, "send", {
+    channel_id: "lobby",
+    text: "Bot messages must not recurse",
+  });
+  const secret = (
+    await db.query("select secret from chat_private.bot_runner_config")
+  ).rows[0].secret;
+  await assert.rejects(
+    db.query("select public.chat_hosted_claim($1)", ["wrong"]),
+    /authorization/,
+  );
+  const jobs = (
+    await db.query("select public.chat_hosted_claim($1) jobs", [secret])
+  ).rows[0].jobs;
+  assert.equal(jobs.length, 1);
+  assert.equal(jobs[0].event.message.id, message.id);
+  assert.equal(jobs[0].source, "test");
+  const j = jobs[0];
+  const action = async (name, payload) =>
+    (
+      await db.query(
+        "select public.chat_hosted_action($1,$2,$3,$4::jsonb) result",
+        [j.id, j.lease, name, JSON.stringify(payload)],
+      )
+    ).rows[0].result;
+  assert.equal(
+    (await db.query("select public.chat_hosted_claim($1) jobs", [secret]))
+      .rows[0].jobs.length,
+    0,
+  );
+  await assert.rejects(
+    action("moderate", {
+      user_id: alice,
+      action: "warning",
+      reason: "No scope",
+    }),
+    /permission/,
+  );
+  assert.ok(
+    (await action("send", { channel_id: "lobby", text: "Hosted reply" })).id,
+  );
+  await db.query("select public.chat_hosted_finish($1,$2,$3::jsonb)", [
+    j.id,
+    j.lease,
+    '{"logs":["done"]}',
+  ]);
+  await assert.rejects(
+    action("send", { channel_id: "lobby", text: "Replay" }),
+    /expired/,
+  );
+  const logs = await hosted(root, "logs", { bot_id: bot.id });
+  assert.equal(logs[0].status, "done");
+  assert.equal(
+    (
+      await db.query(
+        "select has_function_privilege('authenticated','public.chat_hosted_action(bigint,uuid,text,jsonb)','execute') ok",
+      )
+    ).rows[0].ok,
+    false,
+  );
+  const stopped = await hosted(root, "stop", { bot_id: bot.id });
+  assert.equal(stopped.enabled, false);
+  assert.equal(stopped.source, "test");
+});
+
+test("hosted wakeup is idle without jobs, throttles bursts, and marks abandoned runs without replay", async () => {
+  await db.exec(`create schema net;create schema cron;create table net.test_requests(id bigint generated always as identity,url text);
+ create function net.http_post(url text,headers jsonb,body jsonb,timeout_milliseconds integer) returns bigint language plpgsql as $$declare n bigint;begin insert into net.test_requests(url) values(url) returning id into n;return n;end $$;
+ create function cron.schedule(name text,schedule text,command text) returns bigint language sql as $$select 1::bigint$$;`);
+  const sql = await readFile(
+    new URL(
+      "../../../supabase/migrations/202610020008_hosted_bot_wakeup.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  await db.exec(sql.replace(/^create extension.*;\r?\n/gm, ""));
+  await db.exec("select chat_private.hosted_maintenance()");
+  assert.equal(
+    (await db.query("select count(*)::int n from net.test_requests")).rows[0].n,
+    0,
+  );
+  const bot = await call(root, "create_bot", { name: "Wakeup test" });
+  await db.query("select public.chat_hosted($1,$2::jsonb)", [
+    "save",
+    JSON.stringify({ bot_id: bot.id, source: "test", enabled: true }),
+  ]);
+  await call(root, "send", { channel_id: "lobby", text: "Wake test event" });
+  assert.equal(
+    (await db.query("select count(*)::int n from net.test_requests")).rows[0].n,
+    1,
+  );
+  await db.exec("select chat_private.wake_bots()");
+  assert.equal(
+    (await db.query("select count(*)::int n from net.test_requests")).rows[0].n,
+    1,
+  );
+  await db.exec(
+    "update chat_private.bot_jobs set status='running',started_at=now()-interval '3 minutes' where status='pending';select chat_private.hosted_maintenance()",
+  );
+  assert.equal(
+    (
+      await db.query(
+        "select count(*)::int n from chat_private.bot_jobs where status='running'",
+      )
+    ).rows[0].n,
+    0,
+  );
+  assert.equal(
+    (await db.query("select count(*)::int n from net.test_requests")).rows[0].n,
+    1,
+  );
+});
+
+test("bot forms bind the actor, validate fields, deliver once, and hide private replies", async () => {
+  const bot = await call(root, "create_bot", { name: "Forms test" });
+  const token = bot.token;
+  const channel = await call(root, "channel", { name: "forms-test" });
+  const interact = async (user, action, payload) => {
+    await db.query("select set_config('request.jwt.claim.sub',$1,false)", [
+      user,
+    ]);
+    return (
+      await db.query("select public.chat_interact($1,$2::jsonb) result", [
+        action,
+        JSON.stringify(payload),
+      ])
+    ).rows[0].result;
+  };
+  await botCall(token, "commands_set", {
+    commands: [{ name: "apply", description: "Apply to join" }],
+  });
+  const ticket = await interact(alice, "command", {
+    bot_id: bot.id,
+    channel_id: channel.id,
+    name: "apply",
+  });
+  assert.equal((await botCall(token, "interactions"))[0].id, ticket.id);
+  assert.deepEqual(await botCall(token, "interactions"), []);
+  await assert.rejects(
+    interact(bob, "status", { id: ticket.id }),
+    /unavailable/,
+  );
+  await botCall(token, "interaction_reply", {
+    id: ticket.id,
+    modal: {
+      title: "Apply",
+      custom_id: "application",
+      fields: [
+        {
+          custom_id: "reason",
+          label: "Reason",
+          required: true,
+          max_length: 10,
+        },
+      ],
+    },
+  });
+  await assert.rejects(
+    interact(bob, "submit", { id: ticket.id, fields: { reason: "hello" } }),
+    /expired/,
+  );
+  await assert.rejects(
+    interact(alice, "submit", { id: ticket.id, fields: { reason: "" } }),
+    /required/,
+  );
+  await assert.rejects(
+    interact(alice, "submit", {
+      id: ticket.id,
+      fields: { reason: "too many characters" },
+    }),
+    /limits/,
+  );
+  const child = await interact(alice, "submit", {
+    id: ticket.id,
+    fields: { reason: "hello", undeclared: "discard" },
+  });
+  await assert.rejects(
+    interact(alice, "submit", { id: ticket.id, fields: { reason: "again" } }),
+    /already submitted/,
+  );
+  const event = (await botCall(token, "interactions"))[0];
+  assert.deepEqual(event.fields, { reason: "hello" });
+  await botCall(token, "interaction_reply", {
+    id: child.id,
+    text: "Received privately",
+    ephemeral: true,
+  });
+  assert.equal(
+    (await interact(alice, "status", { id: child.id })).response.text,
+    "Received privately",
+  );
+  assert.equal(
+    (
+      await db.query(
+        "select count(*)::int n from public.cb_messages where room=$1",
+        [channel.id],
+      )
+    ).rows[0].n,
+    0,
+  );
+  await assert.rejects(
+    botCall(token, "interaction_reply", { id: child.id, text: "twice" }),
+    /already answered/,
+  );
+  const message = await botCall(token, "send", {
+    channel_id: channel.id,
+    text: "Click",
+    components: [
+      {
+        components: [{ type: 2, style: 1, label: "Apply", custom_id: "apply" }],
+      },
+    ],
+  });
+  const click = await interact(alice, "button", {
+    message_id: message.id,
+    custom_id: "apply",
+  });
+  assert.ok(click.id);
+  await assert.rejects(
+    interact(alice, "button", { message_id: message.id, custom_id: "forged" }),
+    /Button unavailable/,
+  );
+  await botCall(token, "delete_message", { id: message.id });
+  await assert.rejects(
+    interact(alice, "button", { message_id: message.id, custom_id: "apply" }),
+    /Message unavailable/,
+  );
+  await assert.rejects(
+    botCall(token, "channel", { name: "unauthorized" }),
+    /permission required/,
+  );
+  await assert.rejects(
+    botCall(token, "role", { user_id: alice, role: "Owner" }),
+    /Unsupported|Unknown|not supported/i,
+  );
+  await call(root, "bot_scopes", {
+    id: bot.id,
+    scopes: ["manage_channels", "manage_members"],
+  });
+  const managed = await botCall(token, "channel", {
+    name: "bot-managed",
+    is_private: true,
+  });
+  await botCall(token, "channel", {
+    channel_id: managed.id,
+    slowmode_seconds: 7,
+  });
+  assert.equal(
+    (
+      await db.query(
+        "select is_private,slowmode_seconds from public.cb_channels where id=$1",
+        [managed.id],
+      )
+    ).rows[0].is_private,
+    true,
+  );
+  await assert.rejects(
+    interact(alice, "command", {
+      bot_id: bot.id,
+      channel_id: managed.id,
+      name: "apply",
+    }),
+    /permission denied/,
+  );
+  const thread = await botCall(token, "create_thread", {
+    channel_id: channel.id,
+    name: "Bot thread",
+  });
+  assert.ok(thread.id);
+  const poll = await botCall(token, "create_poll", {
+    channel_id: channel.id,
+    question: "Bot poll?",
+    answers: [{ text: "Yes" }, { text: "No" }],
+  });
+  assert.ok(poll.id);
+  await botCall(token, "close_poll", { id: poll.id });
+  await db.query("select set_config('request.jwt.claim.sub',$1,false)", [
+    alice,
+  ]);
+  await assert.rejects(
+    db.query("select public.chat_hosted('commands_set',$1::jsonb)", [
+      JSON.stringify({ bot_id: bot.id, commands: [] }),
+    ]),
+    /owner permission/,
+  );
+  await db.query("select set_config('request.jwt.claim.sub',$1,false)", [root]);
+  await db.query("select public.chat_hosted('save',$1::jsonb)", [
+    JSON.stringify({ bot_id: bot.id, source: "test", enabled: true }),
+  ]);
+  const hostedTicket = await interact(alice, "command", {
+    bot_id: bot.id,
+    channel_id: channel.id,
+    name: "apply",
+  });
+  assert.deepEqual(await botCall(token, "interactions"), []);
+  const secret = (
+    await db.query("select secret from chat_private.bot_runner_config")
+  ).rows[0].secret;
+  const jobs = (
+    await db.query("select public.chat_hosted_claim($1) jobs", [secret])
+  ).rows[0].jobs;
+  assert.ok(jobs.some((j) => j.event.interaction?.id === hostedTicket.id));
 });
