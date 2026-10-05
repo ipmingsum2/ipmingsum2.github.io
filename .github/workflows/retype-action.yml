@@ -25,6 +25,13 @@ jobs:
           RETYPE_KEY: ${{ secrets.RETYPE_KEY }}
           RETYPE_PASSWORD: ${{ secrets.RETYPE_PASSWORD }}
 
+      - name: Include downloadable CHATBOX examples
+        run: |
+          mkdir -p .retype/external/chatbox
+          for file in chatbox-bot.mjs example-bot.mjs interaction-example.mjs cloudflare-worker.mjs cloudflare-wrangler.jsonc; do
+            cp "external/chatbox/$file" ".retype/external/chatbox/$file"
+          done
+
       - uses: retypeapp/action-github-pages@latest
         with:
           update-branch: true
