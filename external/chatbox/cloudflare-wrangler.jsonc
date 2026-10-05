@@ -1,0 +1,10 @@
+{
+  "name": "my-chatbox-bot",
+  "main": "cloudflare-worker.mjs",
+  "compatibility_date": "2026-10-03",
+  "compatibility_flags": ["nodejs_compat"],
+  "durable_objects": {"bindings": [{"name": "CHATBOX_RUNNER", "class_name": "ChatboxRunner"}]},
+  "migrations": [{"tag": "v1", "new_sqlite_classes": ["ChatboxRunner"]}],
+  "triggers": {"crons": ["* * * * *"]},
+  "observability": {"enabled": true, "head_sampling_rate": 1}
+}

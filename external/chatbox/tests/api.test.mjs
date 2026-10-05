@@ -10,7 +10,7 @@ const source = stripTypeScriptTypes(
       new URL("../../../supabase/functions/chat-api/index.ts", import.meta.url),
       "utf8",
     )
-  ).replace(/^import .*?;\s*/, ""),
+  ).replace(/^import[\s\S]*?;\s*/gm, ""),
 );
 function harness({
   result = {},
@@ -91,6 +91,43 @@ test("bot endpoint propagates slowmode as 429 and forwards timestamp plus ID cur
   assert.equal(h.calls[0].args.payload.channel_id, "my channel");
   assert.equal(h.calls[0].args.payload.after_id, "last");
 });
+test("generic bot actions pass through checked dispatcher and preserve component payloads", async () => {
+  const h = harness(),
+    headers = {
+      Authorization: "Bot cb_" + "a".repeat(64),
+      "Content-Type": "application/json",
+    };
+  const response = await h.request("/v1/actions", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      action: "interaction_reply",
+      payload: { id: "ticket", text: "done", ephemeral: true },
+    }),
+  });
+  assert.equal(response.status, 200);
+  assert.equal(h.calls[0].name, "chat_bot");
+  assert.equal(h.calls[0].args.action, "interaction_reply");
+  assert.equal(h.calls[0].args.payload.ephemeral, true);
+  const bad = await h.request("/v1/actions", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ action: "send", payload: [] }),
+  });
+  assert.equal(bad.status, 400);
+  const components = [
+    { components: [{ custom_id: "apply", label: "Apply", style: 1 }] },
+  ];
+  await h.request("/v1/channels/lobby/messages", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ text: "apply", components }),
+  });
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(h.calls.at(-1).args.payload.components)),
+    components,
+  );
+});
 
 test("invitations use a fixed callback and report delivery failures without claiming success", async () => {
   const request = (h) =>
@@ -168,23 +205,52 @@ test("metadata only accepts public HTTPS URLs; provider failures yield a link ca
   assert.equal(res.status, 200);
   assert.equal((await res.json()).title, "example.com");
 });
-test('bot HTTP routes forward DM, embed, event and moderation payloads to the authenticated dispatcher',async()=>{
-  const h=harness(),headers={Authorization:'Bot cb_'+'b'.repeat(64),'Content-Type':'application/json'};
-  for(const [path,method,body,action] of [
-    ['/v1/dms','POST',{user_id:'member'},'dm'],
-    ['/v1/moderation','POST',{user_id:'member',action:'warning',reason:'Test'},'moderate'],
-    ['/v1/automod','POST',{name:'Words',words:['one, two']},'automod'],
-    ['/v1/automod/rule-id','DELETE',undefined,'delete_rule'],
-    ['/v1/users/member','GET',undefined,'user'],
-    ['/v1/events?after=2026-01-01&after_id=last','GET',undefined,'events'],
-    ['/v1/channels/lobby/messages','POST',{embeds:[{title:'Hello'}]},'send'],
-    ['/v1/messages/message-id','PATCH',{embeds:[{description:'Edited'}]},'edit'],
-  ]){
-    const response=await h.request(path,{method,headers,body:body&&JSON.stringify(body)});
-    assert.equal(response.status,200,path);
-    const call=h.calls.at(-1);assert.equal(call.name,'chat_bot');assert.equal(call.args.action,action);
-    if(body?.embeds)assert.deepEqual(JSON.parse(JSON.stringify(call.args.payload.embeds)),body.embeds);
-    if(action==='events')assert.equal(call.args.payload.after_id,'last');
+test("bot HTTP routes forward DM, embed, event and moderation payloads to the authenticated dispatcher", async () => {
+  const h = harness(),
+    headers = {
+      Authorization: "Bot cb_" + "b".repeat(64),
+      "Content-Type": "application/json",
+    };
+  for (const [path, method, body, action] of [
+    ["/v1/dms", "POST", { user_id: "member" }, "dm"],
+    [
+      "/v1/moderation",
+      "POST",
+      { user_id: "member", action: "warning", reason: "Test" },
+      "moderate",
+    ],
+    ["/v1/automod", "POST", { name: "Words", words: ["one, two"] }, "automod"],
+    ["/v1/automod/rule-id", "DELETE", undefined, "delete_rule"],
+    ["/v1/users/member", "GET", undefined, "user"],
+    ["/v1/events?after=2026-01-01&after_id=last", "GET", undefined, "events"],
+    [
+      "/v1/channels/lobby/messages",
+      "POST",
+      { embeds: [{ title: "Hello" }] },
+      "send",
+    ],
+    [
+      "/v1/messages/message-id",
+      "PATCH",
+      { embeds: [{ description: "Edited" }] },
+      "edit",
+    ],
+  ]) {
+    const response = await h.request(path, {
+      method,
+      headers,
+      body: body && JSON.stringify(body),
+    });
+    assert.equal(response.status, 200, path);
+    const call = h.calls.at(-1);
+    assert.equal(call.name, "chat_bot");
+    assert.equal(call.args.action, action);
+    if (body?.embeds)
+      assert.deepEqual(
+        JSON.parse(JSON.stringify(call.args.payload.embeds)),
+        body.embeds,
+      );
+    if (action === "events") assert.equal(call.args.payload.after_id, "last");
   }
 });
 
