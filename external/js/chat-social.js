@@ -24,7 +24,8 @@
       results = new Set(),
       threadInfo = new Map(),
       pending = new Map();
-    const demoPolls = new Map();
+    const demoPolls = new Map(),
+      pollFetched = new Map();
     let active = null,
       messages = [],
       reply = null,
@@ -165,7 +166,10 @@
           el.innerHTML = pollHTML(p);
         });
     }
-    async function loadPolls(room, ids) {
+    async function loadPolls(room, ids, force = false) {
+      ids = ids.filter(
+        (id) => force || Date.now() - (pollFetched.get(id) || 0) > 30000,
+      );
       if (!ids.length) return;
       const key = room + ids.join(",");
       if (pending.has(key)) return pending.get(key);
@@ -173,6 +177,7 @@
         .then((rows) => {
           for (const p of rows) {
             polls.set(p.id, p);
+            pollFetched.set(p.id, Date.now());
             paintPoll(p.id);
           }
         })
@@ -416,9 +421,10 @@
       list.innerHTML =
         `<div class="thread-welcome"><span>≋</span><h2>${esc(t.name)}</h2><p>Started by ${esc(profile(t.created_by).display_name)}</p></div>` +
         messages
+          .filter((m) => !m.deleted)
           .map(
             (m) =>
-              `<article class="thread-message"><button class="text-button" data-profile="${m.user_id}" aria-label="View ${esc(profile(m.user_id).display_name)} profile">${avatar(profile(m.user_id))}</button><div><button class="message-author" data-profile="${m.user_id}">${esc(profile(m.user_id).display_name)}</button><time>${new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>${m.reply_to ? '<small class="thread-reply-label">↳ Reply</small>' : ""}<div class="body">${m.deleted ? '<i class="muted">Message deleted</i>' : m.poll_id ? "" : render(m.text, state.profiles, state.channels)}</div>${!m.deleted ? attachmentHTML(m) + window.ChatCore.embeds(m.embeds || [], state.profiles, state.channels) + messageExtra(m) : ""}${!m.deleted ? `<div class="thread-message-actions"><button class="text-button" data-thread-reply="${esc(m.id)}">Reply</button>${m.user_id === state.me.id ? `<button class="text-button" data-thread-delete="${esc(m.id)}">Delete</button>` : ""}</div>` : ""}</div></article>`,
+              `<article class="thread-message"><button class="text-button" data-profile="${m.user_id}" aria-label="View ${esc(profile(m.user_id).display_name)} profile">${avatar(profile(m.user_id))}</button><div><button class="message-author" data-profile="${m.user_id}">${esc(profile(m.user_id).display_name)}</button><time>${new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>${m.reply_to ? '<small class="thread-reply-label">↳ Reply</small>' : ""}<div class="body">${m.deleted ? '<i class="muted">Message deleted</i>' : m.poll_id ? "" : render(m.text, state.profiles, state.channels)}</div>${!m.deleted ? attachmentHTML(m) + (api.componentHTML?.(m) || "") + window.ChatCore.embeds(m.embeds || [], state.profiles, state.channels) + messageExtra(m) : ""}${!m.deleted ? `<div class="thread-message-actions"><button class="text-button" data-thread-reply="${esc(m.id)}">Reply</button>${m.user_id === state.me.id ? `<button class="text-button" data-thread-delete="${esc(m.id)}">Delete</button>` : ""}</div>` : ""}</div></article>`,
           )
           .join("");
       if (older && messages.length) {
@@ -612,7 +618,7 @@
             choices.delete(id);
             results.delete(id);
             const room = b.closest("[data-poll-room]").dataset.pollRoom;
-            await loadPolls(room, [id]);
+            await loadPolls(room, [id], true);
           } finally {
             b.disabled = false;
           }
@@ -664,6 +670,19 @@
       safe(refreshThreads);
     }
     return {
+      onRealtime: async (payload) => {
+        if (payload.table === "cb_poll_votes" || payload.table === "cb_polls") {
+          pollFetched.clear();
+          decorate();
+        }
+        if (payload.table === "cb_messages") {
+          const room = payload.new?.room;
+          if (room === active) await refreshPane();
+          const parent = state.channels.find((c) => c.id === room)?.parent_id;
+          if (parent === state.room || payload.new?.thread_id)
+            await refreshThreads();
+        }
+      },
       messageExtra,
       decorate,
       composerMenu,
