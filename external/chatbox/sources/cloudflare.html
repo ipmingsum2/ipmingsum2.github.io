@@ -3,167 +3,17 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Host a CHATBOX bot on Cloudflare Workers</title>
-    <link rel="stylesheet" href="docs.css" />
+    <meta http-equiv="refresh" content="0;url=index.html#cloudflare" />
+    <link
+      rel="canonical"
+      href="https://ipmingsum2.github.io/external/chatbox/index.html#cloudflare"
+    />
+    <title>Cloudflare hosting · CHATBOX</title>
   </head>
   <body>
-    <aside>
-      <a class="brand" href="index.html"><span>C</span> CHATBOX</a>
-      <p class="label">CLOUDFLARE HOSTING</p>
-      <nav>
-        <a href="#files">Download</a><a href="#setup">Set up</a
-        ><a href="#deploy">Deploy</a><a href="#test">Test &amp; troubleshoot</a
-        ><a href="#behavior">How it runs</a>
-      </nav>
-      <a class="back" href="index.html">← SDK guide</a>
-    </aside>
-    <main>
-      <header>
-        <p class="eyebrow">YOUR BOT. YOUR ACCOUNT.</p>
-        <h1>Host on <span>Cloudflare Workers</span></h1>
-        <p class="lead">
-          A ready-to-edit example using chatbox.js, a scheduled Worker, and a
-          Durable Object for its cursor.
-        </p>
-      </header>
-      <section id="files">
-        <h2>1. Download the files</h2>
-        <p>
-          Create an empty folder for this bot. Save these three files together.
-          Rename <code>cloudflare-wrangler.jsonc</code> to
-          <code>wrangler.jsonc</code>.
-        </p>
-        <div class="downloads">
-          <a href="chatbox.js" download>chatbox.js</a
-          ><a href="cloudflare-worker.mjs" download>cloudflare-worker.mjs</a
-          ><a href="cloudflare-wrangler.jsonc" download="wrangler.jsonc"
-            >wrangler.jsonc</a
-          >
-        </div>
-        <p>
-          Use a current Node.js LTS release and your own Cloudflare account.
-          This guide does not require exporting or moving your CHATBOX database.
-          Check your Cloudflare plan's Workers and Durable Objects limits before
-          deploying.
-        </p>
-      </section>
-      <section id="setup">
-        <h2>2. Install Wrangler and sign in</h2>
-        <div class="code-head">
-          <span>Terminal · in your bot folder</span
-          ><button class="copy">Copy</button>
-        </div>
-        <pre><code>npm init -y
-npm install --save-dev wrangler
-npx wrangler login</code></pre>
-        <p>
-          Open <code>wrangler.jsonc</code> and change <code>name</code> to a
-          unique Worker name. Keep <code>nodejs_compat</code>: chatbox.js uses
-          Node's EventEmitter. The configuration creates a SQLite-backed Durable
-          Object and a once-per-minute schedule. No KV namespace IDs need to be
-          copied.
-        </p>
-        <p>
-          In CHATBOX, open <b>Server settings → Apps &amp; Bots</b>. Create a
-          bot and copy its token. Give it access only to the channels it needs.
-          Stop Bot Studio hosting if this is the same bot you previously hosted
-          there.
-        </p>
-      </section>
-      <section id="deploy">
-        <h2>3. Add the secret and deploy</h2>
-        <div class="code-head">
-          <span>Terminal</span><button class="copy">Copy</button>
-        </div>
-        <pre><code>npx wrangler deploy
-npx wrangler secret put CHATBOX_BOT_TOKEN
-npx wrangler types</code></pre>
-        <p>
-          Paste the bot token into Wrangler's secret prompt. Never put it in
-          source code, a public repository, or <code>wrangler.jsonc</code>. If a
-          scheduled run happens before the secret is set, it fails without
-          sending messages; the next run will try again.
-        </p>
-        <p>
-          The default example replies to <code>!ping</code> and
-          <code>!embed</code>. Edit its
-          <code>Events.MessageCreate</code> handler to add your commands, then
-          run <code>npx wrangler deploy</code> again. Keep the scheduled entry
-          point and <code>poll: false</code> setting; a Worker does not run a
-          permanent Node polling loop.
-        </p>
-      </section>
-      <section id="test">
-        <h2>4. Verify your bot</h2>
-        <p>
-          Allow the schedule to initialize, then send <code>!ping</code> in a
-          channel your bot can read and send to. Responses normally arrive on
-          the next minute's run; new cron schedules can take several minutes to
-          propagate.
-        </p>
-        <div class="code-head">
-          <span>Live logs</span><button class="copy">Copy</button>
-        </div>
-        <pre><code>npx wrangler tail</code></pre>
-        <p>
-          Look for <code>chatbox.batch</code> and a processed count. An initial
-          count of zero is normal: the bot starts at the current server time
-          instead of replaying old messages. If it cannot reply, check its
-          channel permissions, slowmode, AutoMod, token, and Supabase
-          availability.
-        </p>
-        <p>
-          To pause it, remove the cron entry from the config and deploy again.
-          To revoke its access immediately, revoke the bot token in CHATBOX. A
-          public request to the Worker URL only displays a status message; it
-          cannot trigger a bot run.
-        </p>
-      </section>
-      <section id="behavior">
-        <h2>What this example does</h2>
-        <p>
-          Cloudflare calls the scheduled handler once a minute. One Durable
-          Object prevents overlapping batches and stores the last message
-          cursor. Each run handles at most 25 events. A busy channel can build a
-          backlog; adjust <code>maxEvents</code> only after considering API and
-          runtime limits.
-        </p>
-        <p>
-          The cursor is saved before each handler runs. A crash or failed action
-          can skip that event, but the example will not replay it automatically
-          and duplicate a reply or moderation action. It is an at-most-once
-          example, not an exactly-once job system.
-        </p>
-        <p>
-          This host checks the API even while chat is idle. Dashboard hosting on
-          Supabase wakes on new messages and avoids that idle polling. Use the
-          option that suits your bot. Both hosts enforce the same CHATBOX
-          permissions and moderation rules.
-        </p>
-        <p>
-          Official references:
-          <a
-            href="https://developers.cloudflare.com/workers/configuration/cron-triggers/"
-            >Cron triggers</a
-          >,
-          <a
-            href="https://developers.cloudflare.com/workers/configuration/secrets/"
-            >secrets</a
-          >,
-          <a
-            href="https://developers.cloudflare.com/workers/runtime-apis/nodejs/"
-            >Node compatibility</a
-          >, and
-          <a
-            href="https://developers.cloudflare.com/durable-objects/api/namespace/"
-            >Durable Object namespaces</a
-          >.
-        </p>
-      </section>
-      <footer class="page-footer">
-        CHATBOX Hosting Guide · Updated 3 October 2026
-      </footer>
-    </main>
-    <script src="docs.js"></script>
+    <p>
+      The Cloudflare guide is now part of the main documentation.
+      <a href="index.html#cloudflare">Go to Cloudflare hosting</a>.
+    </p>
   </body>
 </html>
