@@ -14,6 +14,35 @@ const allowedOrigins = new Set([
   ...env("CHATBOX_ALLOWED_ORIGINS").split(",").filter(Boolean),
 ]);
 const cache = new Map<string, { until: number; value: unknown }>();
+const CAPTCHA_ACTIONS = new Set([
+  "moderate",
+  "role",
+  "nickname",
+  "automod",
+  "delete_rule",
+  "permission",
+  "bot_scopes",
+  "delete_message",
+]);
+async function verifyCaptcha(token: unknown) {
+  if (!env("HCAPTCHA_SECRET"))
+    throw new Error(
+      "Verification is not configured. Contact the server owner.",
+    );
+  if (typeof token !== "string" || !token || token.length > 16000)
+    throw new Error("Complete hCaptcha verification and try again.");
+  const result = await jsonFetch("https://api.hcaptcha.com/siteverify", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      secret: env("HCAPTCHA_SECRET"),
+      response: token,
+      sitekey: "0d2e5bd6-b20c-4fa0-a824-abb2f40e9eb8",
+    }).toString(),
+  });
+  if (result.success !== true)
+    throw new Error("Verification failed or expired. Please try again.");
+}
 function publicURL(value: unknown): string {
   const u = new URL(String(value));
   if (
@@ -362,6 +391,12 @@ Deno.serve(async (req) => {
     }
     if (req.method !== "POST")
       return reply({ error: "Method not allowed" }, 405);
+    if (!auth && !req.body) return reply({ error: "Sign in required" }, 401);
+    const body = await boundedBody(req);
+    if (body.action === "verify_visitor") {
+      await verifyCaptcha(body.captchaToken);
+      return reply({ verified: true });
+    }
     const token = auth.replace(/^Bearer /, "");
     if (!token || token === auth)
       return reply({ error: "Sign in required" }, 401);
@@ -372,7 +407,6 @@ Deno.serve(async (req) => {
       global: { headers: { Authorization: auth } },
       auth: { persistSession: false, autoRefreshToken: false },
     });
-    const body = await boundedBody(req);
     const { error: limit } = await client.rpc("chat_action", {
       action: body.action === "invite" ? "invite_rate" : "api_rate",
       payload: {},
@@ -382,6 +416,109 @@ Deno.serve(async (req) => {
         { error: limit.message },
         /Slow down/.test(limit.message) ? 429 : 403,
       );
+    if (
+      body.action === "root_reset_password" ||
+      body.action === "root_wipe_account"
+    ) {
+      await verifyCaptcha(body.captchaToken);
+      const target = String(body.user_id || "");
+      const account = async (operation: string) => {
+        const result = await admin.rpc("chat_root_account", {
+          actor: user.user.id,
+          target,
+          operation,
+          confirmation: String(body.confirmation || ""),
+        });
+        if (result.error) throw new Error(result.error.message);
+        return result.data;
+      };
+      if (body.action === "root_reset_password") {
+        await account("check");
+        const password = body.password;
+        if (
+          typeof password !== "string" ||
+          password.length < 12 ||
+          password.length > 128
+        )
+          return reply(
+            { error: "Use a new password between 12 and 128 characters." },
+            400,
+          );
+        const result = await admin.auth.admin.updateUserById(target, {
+          password,
+        });
+        if (result.error)
+          throw new Error("Password reset failed: " + result.error.message);
+        return reply({
+          message:
+            "Password reset. The password is never returned or displayed.",
+        });
+      }
+      const job = await account("prepare");
+      const frozen = await admin.auth.admin.updateUserById(target, {
+        ban_duration: "876000h",
+      });
+      if (frozen.error && frozen.error.status !== 404)
+        throw new Error(
+          "Deletion paused while disabling sign-in. Retry this operation.",
+        );
+      const buckets = new Map<string, string[]>();
+      for (const asset of job.assets || []) {
+        if (!buckets.has(asset.bucket)) buckets.set(asset.bucket, []);
+        buckets.get(asset.bucket)!.push(asset.name);
+      }
+      for (const [bucket, names] of buckets)
+        for (let offset = 0; offset < names.length; offset += 500) {
+          const result = await admin.storage
+            .from(bucket)
+            .remove(names.slice(offset, offset + 500));
+          if (result.error)
+            throw new Error(
+              "Deletion paused while removing uploads. Retry this operation.",
+            );
+        }
+      await account("purge");
+      const deleted = await admin.auth.admin.deleteUser(target);
+      if (deleted.error && deleted.error.status !== 404)
+        throw new Error(
+          "Chat data removed, but login deletion needs a retry. Keep this dialog open and retry.",
+        );
+      await account("finish");
+      return reply({
+        message: "Account and associated chat data permanently deleted.",
+      });
+    }
+    if (body.action === "verified_action" || body.action === "verify_session") {
+      if (
+        body.action === "verified_action" &&
+        !CAPTCHA_ACTIONS.has(body.operation)
+      )
+        return reply({ error: "Unsupported verified action" }, 400);
+      await verifyCaptcha(body.captchaToken);
+      if (body.action === "verify_session") {
+        const claims = JSON.parse(
+          atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")),
+        );
+        if (
+          typeof claims.session_id !== "string" ||
+          !/^[0-9a-f-]{36}$/i.test(claims.session_id)
+        )
+          return reply({ error: "Sign in again to verify this session." }, 401);
+        const result = await admin.rpc("chat_verify_session", {
+          actor: user.user.id,
+          auth_session: claims.session_id,
+        });
+        if (result.error) return reply({ error: result.error.message }, 403);
+        return reply(result.data);
+      }
+      const result = await admin.rpc("chat_verified_action", {
+        actor: user.user.id,
+        action: body.operation,
+        payload: body.payload || {},
+      });
+      if (result.error) return reply({ error: result.error.message }, 403);
+      return reply(result.data);
+    }
     if (body.action === "embed") return reply(await embed(body.url));
     if (body.action === "gifs") return reply(await gifs(String(body.q || "")));
     if (body.action === "invite") {

@@ -309,3 +309,106 @@ td {
     padding: 9px;
   }
 }
+
+/* Discord-style component colors, scoped so app controls retain their theme. */
+.bot-style-1 {
+  --button-color: #5865f2;
+}
+.bot-style-2,
+.bot-style-5 {
+  --button-color: #4e5058;
+}
+.bot-style-3 {
+  --button-color: #248046;
+}
+.bot-style-4 {
+  --button-color: #da373c;
+}
+
+pre code.hljs {
+  color: #d5d9e5;
+}
+.hljs-keyword,
+.hljs-selector-tag {
+  color: #c792ea;
+}
+.hljs-string,
+.hljs-template-tag {
+  color: #a5d6a7;
+}
+.hljs-number,
+.hljs-literal {
+  color: #f7b267;
+}
+.hljs-comment {
+  color: #929bb0;
+  font-style: italic;
+}
+.hljs-title,
+.hljs-title.function_ {
+  color: #82cfff;
+}
+.hljs-built_in,
+.hljs-type {
+  color: #ffcb8b;
+}
+.hljs-property,
+.hljs-attr,
+.hljs-variable {
+  color: #f1c879;
+}
+.hljs-subst {
+  color: #d5d9e5;
+}
+.button-demo {
+  background: #20222d;
+  border: 1px solid #353744;
+  border-radius: 9px;
+  padding: 20px;
+}
+.button-demo small {
+  color: #adb4c8;
+}
+.demo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.demo-button {
+  background: var(--button-color);
+  color: white;
+  border: 0;
+  border-radius: 5px;
+  padding: 9px 16px;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+.demo-button:hover {
+  filter: brightness(1.12);
+}
+.demo-button:focus-visible,
+.dismiss-demo:focus-visible {
+  outline: 2px solid #bbc2ff;
+  outline-offset: 3px;
+}
+.ephemeral-demo {
+  margin-top: 18px;
+  border-left: 3px solid #5865f2;
+  background: #272b42;
+  padding: 12px 16px;
+  border-radius: 4px;
+}
+.ephemeral-demo p {
+  margin: 0 0 8px;
+}
+.dismiss-demo {
+  background: transparent;
+  border: 0;
+  color: #b4c6ff;
+  padding: 0;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}

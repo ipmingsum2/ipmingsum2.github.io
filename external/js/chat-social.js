@@ -26,6 +26,7 @@
       pending = new Map();
     const demoPolls = new Map(),
       pollFetched = new Map();
+    let threadCanSend = false;
     let active = null,
       messages = [],
       reply = null,
@@ -368,6 +369,7 @@
       if (state.room !== t.parent_id) await openChannel(t.parent_id);
       closeModal();
       active = id;
+      threadCanSend = false;
       messages = [];
       older = !preview;
       reply = null;
@@ -456,14 +458,22 @@
       follow = stick;
       const muted =
         state.timeout && new Date(state.timeout.expires_at) > Date.now();
-      $("threadText").disabled = !!t.archived || muted;
-      $("threadSend").disabled = !!t.archived || sending || muted;
-      $("threadAdd").disabled = !!t.archived || muted;
+      $("threadText").disabled = !!t.archived || muted || !threadCanSend;
+      $("threadSend").disabled =
+        !!t.archived || sending || muted || !threadCanSend;
+      $("threadAdd").disabled = !!t.archived || muted || !threadCanSend;
       $("threadNotice").textContent = muted
         ? "You are timed out. You can read this thread, but cannot reply."
         : t.archived
           ? "This thread is closed. Reopen it to continue."
-          : "";
+          : !threadCanSend
+            ? "You do not have permission to send messages in this channel."
+            : "";
+      $("threadForm").hidden = !threadCanSend || muted || !!t.archived;
+      $("threadNotice").classList.toggle(
+        "send-permission-notice",
+        !threadCanSend && !muted && !t.archived,
+      );
       decorate();
     }
     let threadCooldown = 0,
@@ -492,6 +502,8 @@
       }
       const status = await rpc("channel_status", { channel_id: id });
       if (id !== active) return;
+      threadCanSend = status.can_send === true;
+      renderThread(false);
       threadCooldown = status.bypass
         ? 0
         : Date.now() + Number(status.retry_after || 0) * 1000;
@@ -510,17 +522,19 @@
       el.textContent = "◷ " + (seconds || el.dataset.seconds || 0) + "s";
       $("threadSend").disabled =
         sending ||
+        !threadCanSend ||
         seconds > 0 ||
         !!state.channels.find((c) => c.id === active)?.archived ||
         !!(state.timeout && new Date(state.timeout.expires_at) > Date.now());
       const blocked =
+        !threadCanSend ||
         !!state.channels.find((c) => c.id === active)?.archived ||
         !!(state.timeout && new Date(state.timeout.expires_at) > Date.now());
       $("threadText").disabled = blocked;
       $("threadAdd").disabled = blocked;
     }, 500);
     async function sendThread() {
-      if (sending || !active) return;
+      if (sending || !active || !threadCanSend) return;
       const id = active,
         text = $("threadText").value.trim();
       if (!text) return;

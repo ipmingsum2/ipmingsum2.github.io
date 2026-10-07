@@ -97,6 +97,20 @@ test("bot buttons escape labels and forms submit privately with required field l
     );
     assert.match(d.getElementById("modal").textContent, /Private reply/);
     assert.deepEqual(errors, []);
+    d.querySelector("main").innerHTML = api.render({
+      id: "colors",
+      components: [{ components: [1, 2, 3, 4, 5].map(style => ({
+        style, label: `Style ${style}`, custom_id: `button-${style}`,
+        url: "https://example.com", disabled: style === 5
+      })) }]
+    });
+    for (const style of [1, 2, 3, 4, 5]) {
+      assert.ok(d.querySelector(`.bot-style-${style}`));
+    }
+    const disabledLink = d.querySelector('.bot-style-5');
+    assert.equal(disabledLink.hasAttribute('href'), false);
+    assert.equal(disabledLink.getAttribute('aria-disabled'), 'true');
+
   } finally {
     w.close();
   }

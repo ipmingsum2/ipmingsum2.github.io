@@ -3613,3 +3613,58 @@ input::file-selector-button {
 .required {
   color: #f28b94;
 }
+
+/* Discord-style component colors, scoped so app controls retain their theme. */
+.bot-style-1 {
+  --button-color: #5865f2;
+}
+.bot-style-2,
+.bot-style-5 {
+  --button-color: #4e5058;
+}
+.bot-style-3 {
+  --button-color: #248046;
+}
+.bot-style-4 {
+  --button-color: #da373c;
+}
+
+.bot-component {
+  background: var(--button-color, #4e5058);
+  border: 0;
+  border-radius: 5px;
+  color: #fff;
+  font-weight: 600;
+  transition:
+    filter 0.15s ease,
+    transform 0.15s ease;
+}
+.bot-component:hover {
+  filter: brightness(1.12);
+}
+.bot-component:active {
+  transform: translateY(1px);
+}
+.bot-component:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+.bot-component:disabled,
+.bot-component[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: none;
+  transform: none;
+}
+
+.send-permission-notice {
+  background: #24252b;
+  color: #9699a5;
+  border-radius: 7px;
+  padding: 17px 16px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.captcha-dialog::backdrop {
+  background: #000a;
+}

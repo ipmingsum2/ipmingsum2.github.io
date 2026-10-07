@@ -40,57 +40,20 @@ const guard = await readFile(
   new URL("../../js/chat-guard.js", import.meta.url),
   "utf8",
 );
-test("VPN guard waits ten seconds, requires matching digest, and rejects late overrides", async () => {
-  for (const bypass of [false, true]) {
-    const dom = new JSDOM("", {
-        url: "https://ipmingsum2.github.io/external/chat.html",
-        runScripts: "outside-only",
-      }),
-      w = dom.window;
-    let timer, delay;
-    try {
-      w.TextEncoder = TextEncoder;
-      w.crypto.subtle = {
-        digest: async (_, data) =>
-          new Uint8Array(
-            Buffer.from(
-              data[0] === 65
-                ? guard.match(/expectedHash\s*=\s*["']([a-f0-9]+)["']/)[1]
-                : "0".repeat(64),
-              "hex",
-            ),
-          ).buffer,
-      };
-      w.setTimeout = (f, t) => {
-        timer = f;
-        delay = t;
-      };
-      w.eval(guard);
-      assert.equal(delay, 10000);
-      assert.equal(w.document.scripts.length, 0);
-      w.dispatchEvent(
-        new w.CustomEvent("chatbox:vpn-bypass:7b36a92e", {
-          detail: "B".repeat(64),
-        }),
-      );
-      await new Promise((r) => setImmediate(r));
-      assert.equal(w.sessionStorage.length, 0);
-      if (bypass) {
-        w.dispatchEvent(
-          new w.CustomEvent("chatbox:vpn-bypass:7b36a92e", {
-            detail: "A".repeat(64),
-          }),
-        );
-        await new Promise((r) => setImmediate(r));
-      }
-      timer();
-      assert.equal(w.document.scripts.length, bypass ? 0 : 1);
-      if (!bypass) {
-        w.dispatchEvent(new w.Event("chatbox:vpn-bypass:7b36a92e"));
-        assert.equal(w.sessionStorage.length, 0);
-      }
-    } finally {
-      w.close();
-    }
-  }
+test("VPN guard activates at midnight Hong Kong on October 20 and ignores old overrides", () => {
+  const dom = new JSDOM('', {url:'https://ipmingsum2.github.io/external/chat.html', runScripts:'outside-only'});
+  const w=dom.window;
+  try {
+    let now=Date.parse('2026-10-19T15:59:59Z'), timer, delay;
+    w.Date.now=()=>now;
+    w.setTimeout=(fn, ms)=>{timer=fn;delay=ms;};
+    w.sessionStorage.setItem('chatbox:vpn-bypass:7b36a92e','1');
+    w.eval(guard);
+    assert.equal(w.document.scripts.length,0);
+    assert.equal(delay,1000);
+    now=Date.parse('2026-10-19T16:00:00Z');
+    timer();
+    assert.equal(w.document.scripts.length,1);
+    assert.match(w.document.scripts[0].src,/anti-vpn\.js$/);
+  } finally {w.close();}
 });

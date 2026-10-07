@@ -38,6 +38,7 @@
     loading: false,
     gate: null,
     timeout: null,
+    canSend: false,
   };
   let client = null,
     live = null,
@@ -120,11 +121,72 @@
       ids.map((id) => profile(id).display_name).join(", ") || "Direct message"
     );
   }
+  const captchaActions = new Set([
+    "moderate",
+    "role",
+    "nickname",
+    "automod",
+    "delete_rule",
+    "permission",
+    "bot_scopes",
+    "delete_message",
+  ]);
+  let humanUntil = 0,
+    humanRequest = null;
+  async function verifyHuman() {
+    if (humanRequest) return humanRequest;
+    humanRequest = (async () => {
+      const captchaToken = await window.ChatCaptcha.request(
+        "Verify your chat session",
+      );
+      const result = await edge({ action: "verify_session", captchaToken });
+      humanUntil = Date.parse(result.expires_at);
+    })();
+    try {
+      await humanRequest;
+    } finally {
+      humanRequest = null;
+    }
+  }
+  async function checkedChat(name, args) {
+    if (
+      !preview &&
+      Date.now() >= Date.parse("2026-10-20T00:00:00+08:00") &&
+      Date.now() >= humanUntil &&
+      ![
+        "bootstrap",
+        "channel_status",
+        "api_rate",
+        "invite_rate",
+        "read",
+        "acknowledge",
+        "commands",
+        "status",
+        "threads",
+        "poll_data",
+      ].includes(args.action)
+    )
+      await verifyHuman();
+    const result = await client.rpc(name, args);
+    if (result.error?.message?.includes("CHATBOX_VERIFICATION_REQUIRED")) {
+      humanUntil = 0;
+      await verifyHuman();
+      return checked(client.rpc(name, args));
+    }
+    return checked(Promise.resolve(result));
+  }
   async function rpc(action, payload = {}) {
     if (preview) return demoAction(action, payload);
-    const result = await checked(
-      client.rpc("chat_action", { action, payload }),
-    );
+    const result = captchaActions.has(action)
+      ? await edge({
+          action: "verified_action",
+          operation: action,
+          payload,
+          captchaToken: await window.ChatCaptcha.request(
+            "Verify this moderation action",
+          ),
+        })
+      : await checkedChat("chat_action", { action, payload });
     const table = {
       profile: "cb_profiles",
       role: "cb_profiles",
@@ -325,6 +387,11 @@
           );
         const email = $("email").value.trim(),
           password = $("password").value;
+        const captchaToken = pendingRegistration
+          ? null
+          : await window.ChatCaptcha.request(
+              register ? "Verify to create your account" : "Verify to sign in",
+            );
         let result;
         if (register && pendingRegistration) {
           result = { data: { session: { user: pendingRegistration } } };
@@ -333,6 +400,7 @@
             email,
             password,
             options: {
+              captchaToken,
               data: {
                 display_name:
                   $("displayName").value.trim() || $("username").value.trim(),
@@ -340,7 +408,11 @@
             },
           });
         } else
-          result = await client.auth.signInWithPassword({ email, password });
+          result = await client.auth.signInWithPassword({
+            email,
+            password,
+            options: { captchaToken },
+          });
         if (result.error) throw result.error;
         if (!result.data.session) {
           $("authError").textContent =
@@ -371,6 +443,7 @@
     };
   }
   async function start(user) {
+    if (state.user?.id !== user.id) humanUntil = 0;
     state.user = user;
     const boot = await rpc("bootstrap");
     state.me = boot.profile;
@@ -490,6 +563,8 @@
       return social.openThread(id);
     if (!id) {
       state.room = null;
+      state.canSend = false;
+      renderTimeout();
       renderMessages();
       $("channelTitle").textContent = "Your conversations";
       $("channelTopic").textContent = "Choose an existing channel";
@@ -498,6 +573,8 @@
     }
     const request = ++roomRequest;
     state.room = id;
+    state.canSend = false;
+    renderTimeout();
     state.reply = null;
     state.edit = null;
     state.older = true;
@@ -561,7 +638,7 @@
     return signMedia(rows.reverse());
   }
   function messageHTML(m) {
-    if(m.deleted)return "";
+    if (m.deleted) return "";
     if (m.automod_event && !m.deleted) return automodMessage(m);
     const p = profile(m.user_id),
       parent = state.messages.find((x) => x.id === m.reply_to),
@@ -816,6 +893,8 @@
     if (!id) return;
     const status = await rpc("channel_status", { channel_id: id });
     if (state.room !== id) return;
+    state.canSend = status.can_send === true;
+    renderTimeout();
     slowmode = {
       seconds: Number(status.seconds) || 0,
       bypass: !!status.bypass,
@@ -842,7 +921,7 @@
         : "Slowmode: " + slowmode.seconds + " seconds between messages";
     el.setAttribute("aria-label", el.title);
     $("sendButton").disabled =
-      sending || waiting || !state.room || isTimedOut();
+      sending || waiting || !state.room || !state.canSend || isTimedOut();
   }
   setInterval(() => {
     if (state.me && !document.hidden) {
@@ -867,14 +946,32 @@
     }
     const muted = isTimedOut();
     bar.hidden = !muted;
-    $("messageForm").hidden = muted;
+    const unavailable = !state.room || !state.canSend;
+    let notice = $("sendPermissionNotice");
+    if (!notice) {
+      notice = document.createElement("div");
+      notice.id = "sendPermissionNotice";
+      notice.className = "send-permission-notice";
+      notice.setAttribute("role", "status");
+      $("messageForm").before(notice);
+    }
+    notice.textContent = state.room
+      ? "You do not have permission to send messages in this channel."
+      : "Choose a channel to start chatting.";
+    notice.hidden = muted || !unavailable;
+    $("messageForm").hidden = muted || unavailable;
+    document.querySelector(".composer-hint").hidden = muted || unavailable;
+    if (muted || unavailable) {
+      $("autocomplete").hidden = true;
+      $("replyBar").hidden = true;
+    }
     for (const id of [
       "messageText",
       "attachButton",
       "gifButton",
       "emojiButton",
     ])
-      $(id).disabled = muted;
+      $(id).disabled = muted || unavailable;
     if (muted) {
       const n = Math.max(
         0,
@@ -971,6 +1068,11 @@
         .pop()
         .replace(/[^a-z0-9]/gi, "")
         .slice(0, 12) || "bin";
+    if (
+      Date.now() >= Date.parse("2026-10-20T00:00:00+08:00") &&
+      Date.now() >= humanUntil
+    )
+      await verifyHuman();
     const path = `${state.me.id}/${isAvatar ? "avatar" : state.room}/${crypto.randomUUID()}.${ext}`;
     const bucket = isAvatar ? "chat-media" : "chatbox-private";
     await checked(
@@ -983,7 +1085,7 @@
       : "cb-media:" + path;
   }
   async function sendMessage(imageUrl = null, name = null) {
-    if (!state.room || sending) return;
+    if (!state.room || sending || !state.canSend || isTimedOut()) return;
     const sendRoom = state.room,
       editId = state.edit,
       replyId = state.reply?.id || null;
@@ -1022,7 +1124,7 @@
       else {
         if (await interactions?.command(command.slice(1), arg)) {
           $("messageText").value = "";
-          state.suggestions=[];
+          state.suggestions = [];
           renderSuggestions();
           return;
         }
@@ -1331,6 +1433,9 @@
             throw new Error("Password resets need a connected account.");
           await checked(
             client.auth.resetPasswordForEmail(state.user.email, {
+              captchaToken: await window.ChatCaptcha.request(
+                "Verify password recovery",
+              ),
               redirectTo: new URL("/external/chat.html", location.origin).href,
             }),
           );
@@ -1363,6 +1468,11 @@
         const auth = await client.auth.signInWithPassword({
           email: state.user.email,
           password: v.current,
+          options: {
+            captchaToken: await window.ChatCaptcha.request(
+              "Verify your password change",
+            ),
+          },
         });
         if (auth.error) throw new Error("Current password is incorrect.");
         await checked(client.auth.updateUser({ password: v.password }));
@@ -1563,9 +1673,55 @@
                   .map((r) => `<option>${esc(r)}</option>`)
                   .join("")}</select>`
               : ""
-          }<button class="text-button" data-nickname="${p.id}">Nickname</button><button class="text-button" data-moderate="${p.id}">Moderate</button></div>`,
+          }<button class="text-button" data-nickname="${p.id}">Nickname</button><button class="text-button" data-moderate="${p.id}">Moderate</button>${state.root && !p.is_bot && p.id !== state.me.id ? `<button class="text-button" data-root-reset="${p.id}">Reset password</button><button class="text-button danger-text" data-root-wipe="${p.id}">Delete account</button>` : ""}</div>`,
       )
       .join("");
+  }
+  function rootAccountForm(id, wipe) {
+    if (!state.root || id === state.me.id) return;
+    const p = profile(id);
+    modal(
+      wipe ? "Permanently delete account" : "Reset member password",
+      `<p><b>@${esc(p.username)}</b> · ${esc(p.id)}</p><form id="rootAccountForm">${
+        wipe
+          ? `<p>This permanently deletes this login account, its messages, uploads, profile, moderation history, votes, polls, and owned bots (including their messages and scripts). Other members’ messages and shared channels remain. This cannot be undone from CHATBOX.</p>${field("confirmation", "Type DELETE " + esc(p.username), "", "text", 'required autocomplete="off"')}`
+          : `${field("password", "New password", "", "password", 'required minlength="12" maxlength="128" autocomplete="new-password"')}${field("confirm", "Confirm new password", "", "password", 'required minlength="12" maxlength="128" autocomplete="new-password"')}<p class="small-note">No current password is retrieved or shown. Share the new password securely with the member.</p>`
+      }
+        <p id="rootAccountError" class="form-error" role="alert"></p><button type="submit" class="${wipe ? "danger" : "primary"}">${wipe ? "Delete account permanently" : "Reset password"}</button></form>`,
+    );
+    formSave("rootAccountForm", async (v, form) => {
+      if (preview) throw Error("Account actions require a live root account.");
+      if (wipe && v.confirmation !== "DELETE " + p.username)
+        throw Error("Type the exact confirmation shown above.");
+      if (!wipe && v.password !== v.confirm)
+        throw Error("The new passwords do not match.");
+      try {
+        const captchaToken = await window.ChatCaptcha.request(
+          wipe ? "Verify account deletion" : "Verify password reset",
+        );
+        const result = await edge({
+          action: wipe ? "root_wipe_account" : "root_reset_password",
+          user_id: id,
+          captchaToken,
+          ...(wipe
+            ? { confirmation: v.confirmation }
+            : { password: v.password }),
+        });
+        form.reset();
+        closeModal();
+        cache?.invalidate();
+        await refresh();
+        toast(result.message);
+        await openAdmin("members");
+      } catch (error) {
+        $("rootAccountError").textContent = error.message;
+      } finally {
+        if (!wipe && form.isConnected) {
+          form.elements.password.value = "";
+          form.elements.confirm.value = "";
+        }
+      }
+    });
   }
   function ruleForm(id) {
     const r = state.rules.find((r) => r.id === id) || {
@@ -1900,7 +2056,7 @@
       safe,
       preview,
       rpc: (action, payload) =>
-        checked(client.rpc("chat_interact", { action, payload })),
+        checkedChat("chat_interact", { action, payload }),
     });
     social = legacy
       ? null
@@ -1921,7 +2077,7 @@
           preview,
           scrollBottom,
           socialRPC: (action, payload) =>
-            checked(client.rpc("chat_social", { action, payload })),
+            checkedChat("chat_social", { action, payload }),
           getMessages: async (id, before) => {
             if (preview) return state.demoMessages.filter((m) => m.room === id);
             let q = client
@@ -2020,6 +2176,10 @@
             },
           );
         if (b.dataset.channelEdit) await channelForm(b.dataset.channelEdit);
+        if (b.dataset.rootReset)
+          return rootAccountForm(b.dataset.rootReset, false);
+        if (b.dataset.rootWipe)
+          return rootAccountForm(b.dataset.rootWipe, true);
         if (b.dataset.moderate) moderationForm(b.dataset.moderate);
         if (b.dataset.nickname) {
           const p = profile(b.dataset.nickname);
@@ -2057,7 +2217,7 @@
             toast,
             request: async (action, payload) => {
               if (!preview)
-                return checked(client.rpc("chat_hosted", { action, payload }));
+                return checkedChat("chat_hosted", { action, payload });
               state.demoPrograms ||= {};
               if (action === "logs") return [];
               if (action === "commands")
@@ -2514,6 +2674,7 @@
     }
     if (action === "channel_status")
       return {
+        can_send: !new URLSearchParams(location.search).has("readonly"),
         seconds:
           state.demoChannels.find((c) => c.id === p.channel_id)
             ?.slowmode_seconds || 0,

@@ -20,12 +20,14 @@ test("registration profile errors remain visible and retry does not create anoth
     publishableKey: "public",
   };
   w.ChatIcons = () => "";
+  w.ChatCaptcha = {request: async () => "test-captcha-token"};
   w.supabase = {
     createClient: () => ({
       auth: {
         onAuthStateChange() {},
         getSession: async () => ({ data: { session: null } }),
-        signUp: async () => {
+        signUp: async (input) => {
+          assert.equal(input.options.captchaToken, "test-captcha-token");
           signups++;
           return { data: { session: { user: { id: "new-user" } } } };
         },
@@ -96,6 +98,7 @@ test("settings requests a reset for the signed-in email and displays provider fa
     publishableKey: "public",
   };
   w.ChatIcons = () => "";
+  w.ChatCaptcha = {request: async () => "test-captcha-token"};
   w.HTMLDialogElement.prototype.showModal = function () {
     this.open = true;
   };
