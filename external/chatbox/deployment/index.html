@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark">
-    <meta name="turbo-cache-control" content="no-cache" data-turbo-track="reload" data-track-token="4.6.0.844594223554">
+    <meta name="turbo-cache-control" content="no-cache" data-turbo-track="reload" data-track-token="4.6.0.844693090123">
 
     <!-- See retype.com -->
     <meta name="generator" content="Retype 4.6.0">
@@ -38,11 +38,11 @@
     <script data-cfasync="false">(function(){var cl=document.documentElement.classList,ls=localStorage.getItem("retype_scheme"),hd=cl.contains("dark"),hl=cl.contains("light"),wm=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches;if(ls==="dark"||(!ls&&wm&&!hd&&!hl)){cl.remove("light");cl.add("dark")}else if(ls==="light"||(!ls&&!wm&&!hd&&!hl)){cl.remove("dark");cl.add("light")}})();</script>
 
     <link id="retype-favicon" rel="icon" href="../../../favicon.ico" />
-    <link href="../../../resources/css/retype.css?v=4.6.0.844594223554" rel="stylesheet">
+    <link href="../../../resources/css/retype.css?v=4.6.0.844693090123" rel="stylesheet">
 
-    <script data-cfasync="false" src="../../../resources/js/config.js?v=4.6.0.844594223554" data-turbo-eval="false" defer></script>
+    <script data-cfasync="false" src="../../../resources/js/config.js?v=4.6.0.844693090123" data-turbo-eval="false" defer></script>
     <script data-cfasync="false" src="../../../resources/js/retype.js?v=4.6.0" data-turbo-eval="false" defer></script>
-    <script id="lunr-js" data-cfasync="false" src="../../../resources/js/lunr.js?v=4.6.0.844594223554" data-turbo-eval="false" defer></script>
+    <script id="lunr-js" data-cfasync="false" src="../../../resources/js/lunr.js?v=4.6.0.844693090123" data-turbo-eval="false" defer></script>
 </head>
 <body>
     <div id="retype-app" class="relative text-base antialiased text-base-text bg-base-bg font-body">
@@ -253,11 +253,16 @@
 </retype-table>
 <p>Link cards use YouTube oEmbed or Microlink with a plain link-card fallback. No arbitrary user URL is fetched directly by the Edge Function and no old iframe embedding is used. External fonts use the supplied Apple font stylesheet&#x27;s SF font sources with system fallbacks. These external services must be reachable for their enhancements to load.</p>
 <h2 id="publish-and-verify">Publish and verify</h2>
-<p>Canonical sources are <code translate="no" v-pre>external/chat.html</code>, <code translate="no" v-pre>external/js/chat.js</code>, and <code translate="no" v-pre>external/css/chat.css</code>. Run <code translate="no" v-pre>npm run sync</code> from <code translate="no" v-pre>external/chatbox</code> after editing them. It updates <code translate="no" v-pre>chat-backup</code>, <code translate="no" v-pre>chat-beta</code>, and the existing <code translate="no" v-pre>chatbeta.html</code> alias. Shared helpers and font CSS are loaded by all new variants. <code translate="no" v-pre>register.html</code> is a separate page using the shared authentication code.</p>
+<p>Canonical HTML sources are in <code translate="no" v-pre>external/chatbox/sources</code>; edit shared JavaScript in <code translate="no" v-pre>external/js</code> and styles in <code translate="no" v-pre>external/css/chat.css</code>. Run <code translate="no" v-pre>npm run build</code> from <code translate="no" v-pre>external/chatbox</code> to minify, generate highlighted documentation, and synchronize <code translate="no" v-pre>chat-backup</code>, <code translate="no" v-pre>chat-beta</code>, <code translate="no" v-pre>chat-legacy</code>, and the <code translate="no" v-pre>chatbeta.html</code> alias. <code translate="no" v-pre>register.html</code> is a separate page using the shared authentication code.</p>
 <p>Run <code translate="no" v-pre>npm ci</code>, <code translate="no" v-pre>npm run check</code>, and <code translate="no" v-pre>npm test</code> in <code translate="no" v-pre>external/chatbox</code>. The tests use an isolated PGlite database and mocked Auth/Storage/provider boundaries. They do not modify production or prove live email delivery. Preview with a static server at <code translate="no" v-pre>http://127.0.0.1:4173/external/chat.html?preview=1</code>; preview is disabled on public hosts.</p>
 <p>After deployment, verify with real accounts: login/register, root role assignment/removal, private-channel denial, participant-only DMs, AutoMod send/edit blocks, slowmode countdown, warning acknowledgement, private attachment playback, and an invitation to an explicitly chosen test inbox. Credential entry/password changes should be completed by the account owner. Check Edge Function and database logs for errors.</p>
 <p>AutoMod has no fixed number of lists, words, allowed words, or regex patterns. Resource safeguards remain: RPC statement timeouts, message/API rate limits, 20,000-character messages, and 12 MB uploads. Patterns use PostgreSQL regex syntax. Slowmode accepts 0–21,600 seconds, and Manage Channel permission bypasses it. Bots run in a separate Node.js process, not GitHub Pages; see <code translate="no" v-pre>BOT-API.md</code>.</p>
 <h2 id="recovery">Recovery</h2>
+<h3 id="october-7-verification-and-account-tools-upgrade">October 7 verification and account tools upgrade</h3>
+<p>For installations already through migration 009, apply only <code translate="no" v-pre>202610070010_verification.sql</code> and <code translate="no" v-pre>202610070011_root_accounts.sql</code>, in that order. Neither migration deletes user data when installed. Keep existing channels and message counts as a deployment baseline. Deploy the updated <code translate="no" v-pre>chat-api</code> function with <code translate="no" v-pre>HCAPTCHA_SECRET</code> configured privately, then publish the generated frontend. Migration 010 makes direct moderation RPC calls unavailable, so complete the frontend cutover promptly.</p>
+<p>After the new login/register frontend is live, configure Supabase Authentication → Bot and Abuse Protection → hCaptcha with the same secret. This is separate from the Edge Function secret and is required to enforce CAPTCHA against direct Auth API requests. Never place the secret in HTML, JavaScript, screenshots, source control, or chat. Confirm the public sitekey permits the production hostname. A real account owner should verify sign-in; automated tests mock provider responses.</p>
+<p>Moderation and root account actions verify a fresh token on the server. The all-network session gate starts at midnight Hong Kong time on <strong>20 October 2026</strong>. It binds a 15-minute verification grant to the authenticated session, including uploads. Bots retain their scoped token API. Static public files on GitHub Pages remain public; a browser overlay cannot secure those files.</p>
+<p>Root can set a new member password without retrieving the current one. Permanent deletion requires <code translate="no" v-pre>DELETE username</code>, disables the account and owned bots, removes uploads through Storage, purges associated chat data, then deletes the Auth account. An interrupted operation retains a private job for retry. Shared channels and other members&#x27; messages remain; root accounts are protected. External backups and downloaded copies are outside this operation. Do not validate these controls against a real user without a specifically authorized target.</p>
 <p>If the migration fails before commit, PostgreSQL rolls it back. If frontend deployment fails after database cutover, finish publishing the new frontend rather than sending users back to a writable old client.</p>
 <p>For an intentional rollback, stop new <code translate="no" v-pre>cb_*</code> writes, reconcile any new messages/accounts/changes, then have the database administrator review and run <code translate="no" v-pre>supabase/rollback-legacy-access.sql</code> and restore the old frontend. That script restores the saved legacy grants without deleting either dataset. It does not merge new data backward. Do not leave both schemas accepting writes.</p>
 
