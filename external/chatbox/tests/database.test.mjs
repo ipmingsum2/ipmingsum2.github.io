@@ -9,6 +9,28 @@ const root = "00000000-0000-4000-8000-000000000001",
   mod = "00000000-0000-4000-8000-000000000004";
 async function call(user, action, payload = {}) {
   await db.query("select set_config('request.jwt.claim.sub',$1,false)", [user]);
+  await db.query("select set_config('request.jwt.claims',$1,false)", [
+    JSON.stringify({ session_id: user }),
+  ]);
+  await db.query("select public.chat_verify_session($1,$1)", [user]);
+  if (
+    [
+      "moderate",
+      "role",
+      "nickname",
+      "automod",
+      "delete_rule",
+      "permission",
+      "bot_scopes",
+      "delete_message",
+    ].includes(action)
+  )
+    return (
+      await db.query(
+        "select public.chat_verified_action($1,$2,$3::jsonb) result",
+        [user, action, JSON.stringify(payload)],
+      )
+    ).rows[0].result;
   return (
     await db.query("select public.chat_action($1,$2::jsonb) result", [
       action,
@@ -75,6 +97,8 @@ insert into public.messages values('11111111-1111-4111-8111-111111111111','lobby
     "202610020006_keywords_categories_nicknames.sql",
     "202610020007_hosted_bots.sql",
     "202610040009_bot_interactions.sql",
+    "202610070010_verification.sql",
+    "202610070011_root_accounts.sql",
   ]) {
     await db.exec(
       await readFile(
@@ -1489,4 +1513,179 @@ test("bot forms bind the actor, validate fields, deliver once, and hide private 
     await db.query("select public.chat_hosted_claim($1) jobs", [secret])
   ).rows[0].jobs;
   assert.ok(jobs.some((j) => j.event.interaction?.id === hostedTicket.id));
+});
+
+test("CAPTCHA-protected operations reject direct RPC and session gates use the server launch date", async () => {
+  await db.query("select set_config('request.jwt.claim.sub',$1,false)", [root]);
+  await assert.rejects(
+    db.query("select public.chat_action('moderate','{}')"),
+    /CAPTCHA_ACTION_REQUIRED/,
+  );
+  for (const name of [
+    "chat_verified_action(uuid,text,jsonb)",
+    "chat_verify_session(uuid,uuid)",
+    "chat_root_account(uuid,uuid,text,text)",
+  ]) {
+    assert.equal(
+      (
+        await db.query(
+          "select has_function_privilege('authenticated',$1,'EXECUTE') ok",
+          ["public." + name],
+        )
+      ).rows[0].ok,
+      false,
+    );
+  }
+  await db.query("select set_config('request.jwt.claims','{}',false)");
+  await db.query(
+    "select chat_private.require_human($1,'2026-10-19T15:59:59Z')",
+    [root],
+  );
+  await assert.rejects(
+    db.query("select chat_private.require_human($1,'2026-10-19T16:00:00Z')", [
+      root,
+    ]),
+    /VERIFICATION_REQUIRED/,
+  );
+  await db.query(
+    "insert into chat_private.human_sessions values($1,$1,'2026-10-20T01:00:00+08') on conflict on constraint human_sessions_pkey do update set expires_at=excluded.expires_at",
+    [root],
+  );
+  await db.query("select set_config('request.jwt.claims',$1,false)", [
+    JSON.stringify({ session_id: root }),
+  ]);
+  await db.query(
+    "select chat_private.require_human($1,'2026-10-20T00:30:00+08')",
+    [root],
+  );
+  await assert.rejects(
+    db.query("select chat_private.require_human($1,'2026-10-20T01:00:00+08')", [
+      root,
+    ]),
+    /VERIFICATION_REQUIRED/,
+  );
+  await db.query("select set_config('request.jwt.claims',$1,false)", [
+    JSON.stringify({ session_id: alice }),
+  ]);
+  await assert.rejects(
+    db.query("select chat_private.require_human($1,'2026-10-20T00:30:00+08')", [
+      root,
+    ]),
+    /VERIFICATION_REQUIRED/,
+  );
+});
+
+test("root wipe checks confirmation, supports retries and preserves other members and shared channels", async () => {
+  const victim = "00000000-0000-4000-8000-000000000011";
+  await db.query(
+    "insert into auth.users(id,email) values($1,'wipe@example.test')",
+    [victim],
+  );
+  await call(victim, "bootstrap");
+  await call(victim, "profile", {
+    username: "wipe_test",
+    display_name: "Wipe test",
+  });
+  const channel = await call(root, "channel", { name: "wipe-room" });
+  const mine = await call(victim, "send", {
+    channel_id: channel.id,
+    text: "Private data to wipe",
+  });
+  const theirs = await call(root, "send", {
+    channel_id: channel.id,
+    text: "Other member stays",
+    reply_to: mine.id,
+  });
+  await call(root, "role", {
+    user_id: victim,
+    role: "Administrator",
+    remove: false,
+  });
+  const bot = await call(victim, "create_bot", { name: "Owned bot" });
+  await botCall(bot.token, "send", {
+    channel_id: channel.id,
+    text: "Owned bot data",
+  });
+  await db.query(
+    "insert into public.messages(id,room,user_id,text,created_at) values(gen_random_uuid(),'lobby',$1,'Archived original',now())",
+    [victim],
+  );
+  await db.query(
+    "insert into storage.objects values('wipe-asset','chat-media',$1)",
+    [victim + "/avatar/a.png"],
+  );
+  const op = async (actor, operation, confirmation = "DELETE wipe_test") =>
+    (
+      await db.query("select public.chat_root_account($1,$2,$3,$4) result", [
+        actor,
+        victim,
+        operation,
+        confirmation,
+      ])
+    ).rows[0].result;
+  await assert.rejects(op(alice, "check"), /Root permission/);
+  await assert.rejects(
+    db.query("select public.chat_root_account($1,$1,'check','')", [root]),
+    /Root accounts/,
+  );
+  await assert.rejects(
+    op(root, "prepare", "wipe_test"),
+    /exact deletion confirmation/,
+  );
+  const job = await op(root, "prepare");
+  assert.equal(job.assets[0].name, victim + "/avatar/a.png");
+  assert.equal(job.identities.length, 2);
+  assert.equal((await op(root, "prepare")).created_at, job.created_at);
+  await assert.rejects(call(victim, "bootstrap"), /deletion is in progress/);
+  assert.equal(
+    (
+      await db.query("select public.cb_can($1,$2,'send') ok", [
+        victim,
+        channel.id,
+      ])
+    ).rows[0].ok,
+    false,
+  );
+  await assert.rejects(op(root, "purge"), /Uploads remain/);
+  await db.query("delete from storage.objects where id='wipe-asset'");
+  assert.equal((await op(root, "purge")).purged, true);
+  assert.equal((await op(root, "purge")).purged, true);
+  assert.equal(
+    (
+      await db.query(
+        "select count(*)::int n from public.cb_messages where id=$1",
+        [theirs.id],
+      )
+    ).rows[0].n,
+    1,
+  );
+  assert.equal(
+    (
+      await db.query("select reply_to from public.cb_messages where id=$1", [
+        theirs.id,
+      ])
+    ).rows[0].reply_to,
+    null,
+  );
+  assert.equal(
+    (
+      await db.query(
+        "select count(*)::int n from public.cb_profiles where id=any($1::uuid[])",
+        [job.identities],
+      )
+    ).rows[0].n,
+    0,
+  );
+  assert.equal(
+    (
+      await db.query(
+        "select count(*)::int n from public.messages where user_id=$1",
+        [victim],
+      )
+    ).rows[0].n,
+    0,
+  );
+  await assert.rejects(op(root, "finish"), /Delete the login account first/);
+  await db.query("delete from auth.users where id=$1", [victim]);
+  assert.equal((await op(root, "finish")).deleted, true);
 });

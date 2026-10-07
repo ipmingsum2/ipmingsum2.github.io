@@ -2,6 +2,7 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { transform } from "esbuild";
 import { minify } from "html-minifier-terser";
 import { createHash } from "node:crypto";
+import { highlightDocs } from "./highlight-docs.mjs";
 const root = new URL("../", import.meta.url),
   sources = new URL("sources/", import.meta.url);
 const read = (path) => readFile(new URL(path, root), "utf8");
@@ -22,6 +23,7 @@ for (const name of [
   "chat-bot-studio",
   "chat-config",
   "chat-guard",
+  "chat-captcha",
 ]) {
   const input = await read(`js/${name}.js`);
   const { code } = await transform(input, {
@@ -57,11 +59,17 @@ for (const name of ["chat", "register"]) {
     removeComments: true,
     collapseBooleanAttributes: true,
   });
-  await write(`${name}.html`, html);
+  await write(`${name}.html`, html.trim() + "\n");
   after += Buffer.byteLength(html);
 }
 await import("./sync-variants.mjs");
-const docs = await readFile(new URL("docs.html", sources), "utf8");
+let docs = highlightDocs(await readFile(new URL("docs.html", sources), "utf8"));
+for (const asset of ["docs.css", "docs.js"]) {
+  docs = docs.replaceAll(
+    `"${asset}"`,
+    `"${asset}?v=${hash(await read(`chatbox/${asset}`))}"`,
+  );
+}
 await write(
   "chatbox/index.html",
   await minify(docs, {

@@ -17,10 +17,14 @@ function harness({
   auth = true,
   inviteError = null,
   secrets = {},
+  captcha = null,
+  rpcError = null,
+  storageError = null,
 } = {}) {
   let handler;
   const calls = [];
   const sandbox = {
+    atob,
     URL,
     URLSearchParams,
     Request,
@@ -44,12 +48,28 @@ function harness({
       serve: (fn) => (handler = fn),
     },
     createClient: () => ({
+      storage: {
+        from: (bucket) => ({
+          remove: async (names) => {
+            calls.push({ name: "removeStorage", bucket, names });
+            return { error: storageError };
+          },
+        }),
+      },
       rpc: async (name, args) => {
         calls.push({ name, args });
-        return { data: result, error: null };
+        return { data: result, error: rpcError };
       },
       auth: {
         admin: {
+          updateUserById: async (id, attributes) => {
+            calls.push({ name: "updateUser", id, attributes });
+            return { error: null };
+          },
+          deleteUser: async (id) => {
+            calls.push({ name: "deleteUser", id });
+            return { error: null };
+          },
           inviteUserByEmail: async (email, options) => {
             calls.push({ name: "invite", email, options });
             return { error: inviteError };
@@ -61,7 +81,13 @@ function harness({
         }),
       },
     }),
-    fetch: async () => {
+    fetch: async (url, options) => {
+      if (captcha !== null && url === "https://api.hcaptcha.com/siteverify") {
+        calls.push({ name: "siteverify", options });
+        return new Response(JSON.stringify(captcha), {
+          headers: { "Content-Type": "application/json" },
+        });
+      }
       throw Error("Unexpected external fetch");
     },
   };
@@ -282,4 +308,165 @@ test("SDK preserves equal timestamp cursor IDs and exposes slowmode retry durati
   } finally {
     globalThis.fetch = original;
   }
+});
+
+test("human moderation verifies single-use hCaptcha server-side and binds actor to the JWT", async () => {
+  const headers = {
+    Authorization: "Bearer test-token",
+    "Content-Type": "application/json",
+  };
+  const input = {
+    action: "verified_action",
+    operation: "moderate",
+    payload: { user_id: "target", action: "warning" },
+    actor: "forged",
+    captchaToken: "valid-token",
+  };
+  const h = harness({
+    secrets: { HCAPTCHA_SECRET: "server-only-test" },
+    captcha: { success: true },
+    result: { ok: true },
+  });
+  const response = await h.request("", {
+    method: "POST",
+    headers,
+    body: JSON.stringify(input),
+  });
+  assert.equal(response.status, 200);
+  const verify = h.calls.find((x) => x.name === "siteverify");
+  const params = new URLSearchParams(verify.options.body);
+  assert.equal(params.get("sitekey"), "0d2e5bd6-b20c-4fa0-a824-abb2f40e9eb8");
+  assert.equal(params.get("response"), "valid-token");
+  assert.equal(
+    h.calls.find((x) => x.name === "chat_verified_action").args.actor,
+    "user",
+  );
+  assert.doesNotMatch(await response.text(), /server-only-test/);
+  for (const captcha of [{ success: false }, { success: "true" }]) {
+    const denied = harness({ secrets: { HCAPTCHA_SECRET: "test" }, captcha });
+    const res = await denied.request("", {
+      method: "POST",
+      headers,
+      body: JSON.stringify(input),
+    });
+    assert.notEqual(res.status, 200);
+    assert.equal(
+      denied.calls.some((x) => x.name === "chat_verified_action"),
+      false,
+    );
+  }
+  const missing = harness();
+  assert.notEqual(
+    (
+      await missing.request("", {
+        method: "POST",
+        headers,
+        body: JSON.stringify(input),
+      })
+    ).status,
+    200,
+  );
+});
+
+test("root password resets never return passwords and stop on failed root authorization", async () => {
+  const options = {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer test",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      action: "root_reset_password",
+      user_id: "target",
+      password: "not-a-real-password",
+      captchaToken: "valid",
+    }),
+  };
+  const h = harness({
+    secrets: { HCAPTCHA_SECRET: "test" },
+    captcha: { success: true },
+  });
+  const res = await h.request("", options);
+  assert.equal(res.status, 200);
+  assert.doesNotMatch(await res.text(), /not-a-real-password/);
+  assert.equal(
+    h.calls.find((x) => x.name === "chat_root_account").args.actor,
+    "user",
+  );
+  assert.equal(h.calls.find((x) => x.name === "updateUser").id, "target");
+  const denied = harness({
+    secrets: { HCAPTCHA_SECRET: "test" },
+    captcha: { success: true },
+    rpcError: { message: "Root permission required" },
+  });
+  assert.notEqual((await denied.request("", options)).status, 200);
+  assert.equal(
+    denied.calls.some((x) => x.name === "updateUser"),
+    false,
+  );
+});
+
+test("root deletion removes uploads before data and login, and stops safely on storage failure", async () => {
+  const options = {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer test",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      action: "root_wipe_account",
+      user_id: "target",
+      confirmation: "DELETE member",
+      captchaToken: "valid",
+    }),
+  };
+  const setup = {
+    secrets: { HCAPTCHA_SECRET: "test" },
+    captcha: { success: true },
+    result: {
+      assets: [{ bucket: "chatbox-private", name: "target/file.png" }],
+    },
+  };
+  const h = harness(setup);
+  assert.equal((await h.request("", options)).status, 200);
+  const operations = h.calls
+    .filter((x) =>
+      [
+        "chat_root_account",
+        "updateUser",
+        "removeStorage",
+        "deleteUser",
+      ].includes(x.name),
+    )
+    .map((x) => x.args?.operation || x.name);
+  assert.deepEqual(operations, [
+    "prepare",
+    "updateUser",
+    "removeStorage",
+    "purge",
+    "deleteUser",
+    "finish",
+  ]);
+  const failed = harness({
+    ...setup,
+    storageError: { message: "Storage unavailable" },
+  });
+  assert.notEqual((await failed.request("", options)).status, 200);
+  assert.equal(
+    failed.calls.some(
+      (x) => x.name === "deleteUser" || x.args?.operation === "purge",
+    ),
+    false,
+  );
+  const denied = harness({
+    ...setup,
+    rpcError: { message: "Root permission required" },
+  });
+  assert.notEqual((await denied.request("", options)).status, 200);
+  assert.equal(
+    denied.calls.some((x) =>
+      ["updateUser", "removeStorage", "deleteUser"].includes(x.name),
+    ),
+    false,
+  );
 });

@@ -46,7 +46,7 @@ Link cards use YouTube oEmbed or Microlink with a plain link-card fallback. No a
 
 ## Publish and verify
 
-Canonical sources are `external/chat.html`, `external/js/chat.js`, and `external/css/chat.css`. Run `npm run sync` from `external/chatbox` after editing them. It updates `chat-backup`, `chat-beta`, and the existing `chatbeta.html` alias. Shared helpers and font CSS are loaded by all new variants. `register.html` is a separate page using the shared authentication code.
+Canonical HTML sources are in `external/chatbox/sources`; edit shared JavaScript in `external/js` and styles in `external/css/chat.css`. Run `npm run build` from `external/chatbox` to minify, generate highlighted documentation, and synchronize `chat-backup`, `chat-beta`, `chat-legacy`, and the `chatbeta.html` alias. `register.html` is a separate page using the shared authentication code.
 
 Run `npm ci`, `npm run check`, and `npm test` in `external/chatbox`. The tests use an isolated PGlite database and mocked Auth/Storage/provider boundaries. They do not modify production or prove live email delivery. Preview with a static server at `http://127.0.0.1:4173/external/chat.html?preview=1`; preview is disabled on public hosts.
 
@@ -55,6 +55,16 @@ After deployment, verify with real accounts: login/register, root role assignmen
 AutoMod has no fixed number of lists, words, allowed words, or regex patterns. Resource safeguards remain: RPC statement timeouts, message/API rate limits, 20,000-character messages, and 12 MB uploads. Patterns use PostgreSQL regex syntax. Slowmode accepts 0–21,600 seconds, and Manage Channel permission bypasses it. Bots run in a separate Node.js process, not GitHub Pages; see `BOT-API.md`.
 
 ## Recovery
+
+### October 7 verification and account tools upgrade
+
+For installations already through migration 009, apply only `202610070010_verification.sql` and `202610070011_root_accounts.sql`, in that order. Neither migration deletes user data when installed. Keep existing channels and message counts as a deployment baseline. Deploy the updated `chat-api` function with `HCAPTCHA_SECRET` configured privately, then publish the generated frontend. Migration 010 makes direct moderation RPC calls unavailable, so complete the frontend cutover promptly.
+
+After the new login/register frontend is live, configure Supabase Authentication → Bot and Abuse Protection → hCaptcha with the same secret. This is separate from the Edge Function secret and is required to enforce CAPTCHA against direct Auth API requests. Never place the secret in HTML, JavaScript, screenshots, source control, or chat. Confirm the public sitekey permits the production hostname. A real account owner should verify sign-in; automated tests mock provider responses.
+
+Moderation and root account actions verify a fresh token on the server. The all-network session gate starts at midnight Hong Kong time on **20 October 2026**. It binds a 15-minute verification grant to the authenticated session, including uploads. Bots retain their scoped token API. Static public files on GitHub Pages remain public; a browser overlay cannot secure those files.
+
+Root can set a new member password without retrieving the current one. Permanent deletion requires `DELETE username`, disables the account and owned bots, removes uploads through Storage, purges associated chat data, then deletes the Auth account. An interrupted operation retains a private job for retry. Shared channels and other members' messages remain; root accounts are protected. External backups and downloaded copies are outside this operation. Do not validate these controls against a real user without a specifically authorized target.
 
 If the migration fails before commit, PostgreSQL rolls it back. If frontend deployment fails after database cutover, finish publishing the new frontend rather than sending users back to a writable old client.
 

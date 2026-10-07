@@ -27,3 +27,16 @@ const observer = new IntersectionObserver(
 document
   .querySelectorAll("section[id]")
   .forEach((section) => observer.observe(section));
+
+const privatePreview = document.querySelector(".ephemeral-demo");
+document.querySelectorAll("[data-demo-button]").forEach((button) => {
+  button.addEventListener("click", () => {
+    privatePreview.hidden = false;
+    privatePreview.querySelector('[role="status"]').textContent =
+      `${button.dataset.demoButton} callback: this is your private reply.`;
+  });
+});
+document.querySelector(".dismiss-demo")?.addEventListener("click", () => {
+  privatePreview.hidden = true;
+  privatePreview.querySelector('[role="status"]').textContent = "";
+});
