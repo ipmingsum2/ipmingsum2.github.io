@@ -25,6 +25,10 @@
 - [CHATBOX bot documentation](https://ipmingsum2.github.io/external/chatbox/bot-api.md): The readable HTML guide, examples, and chatbox.js download are at CHATBOX Developer Docs.
 - [CHATBOX deployment](https://ipmingsum2.github.io/external/chatbox/deployment.md): The frontend stays on GitHub Pages and uses the existing Supabase project. No database export is required. Deploy the database and Edge Function before publishing the frontend.
 
+## Obfuscator
+
+- [Public UI corresponding source](https://ipmingsum2.github.io/obfuscator/source/readme.md): These files are the GPL-3.0 corresponding source for the public HTML/CSS/JS interface. With Node 24+, run npm ci and npm run build in this directory. The frontend requests the private engine from the Cloudflare backend only after Discord authentication.
+
 ## Tests
 
 - [Test Page](https://ipmingsum2.github.io/tests/test.md): This is a test page.
