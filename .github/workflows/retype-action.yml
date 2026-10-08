@@ -33,6 +33,12 @@ jobs:
             cp "external/chatbox/$file" "$RETYPE_OUTPUT_PATH/external/chatbox/$file"
           done
 
+      - name: Include standalone obfuscator UI
+        run: |
+          test -n "$RETYPE_OUTPUT_PATH"
+          mkdir -p "$RETYPE_OUTPUT_PATH/obfuscator"
+          cp -a obfuscator/. "$RETYPE_OUTPUT_PATH/obfuscator/"
+
       - uses: retypeapp/action-github-pages@latest
         with:
           update-branch: true
