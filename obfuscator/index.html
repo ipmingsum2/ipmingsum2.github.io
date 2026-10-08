@@ -25,6 +25,7 @@
             <label class="preset-label">Protection preset<select id="preset"><option value="Studio">Studio</option><option value="StudioStrong" selected>Studio Strong</option><option value="StudioMax">Studio Max</option><option value="StudioLegacyTamper">Legacy Tamper</option></select></label>
             <div class="preset-description"><span id="stage-count" class="badge">10 stages</span><p id="preset-detail">One VM layer · recommended starting point</p></div>
             <label class="pretty-toggle"><input id="pretty" type="checkbox">Formatted output</label>
+            <label class="pretty-toggle" title="Inject an uncalled decoy VM containing a harmless print payload."><input id="lolvm" type="checkbox">LOLvm <span class="subtle">decoy</span></label>
             <button id="obfuscate" class="primary">Obfuscate →</button><button id="cancel" class="primary stop" hidden>■ Cancel build</button>
           </section>
           <div class="mobile-tabs"><button id="source-pane" class="active">Source</button><button id="output-pane">Output</button></div>

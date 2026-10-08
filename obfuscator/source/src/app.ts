@@ -57,7 +57,7 @@ function pane(name: "source" | "output") {
 }
 function setBusy(value: boolean) {
   busy = value; hide("obfuscate", value); hide("cancel", !value)
-  for (const id of ["preset", "pretty", "import"]) disable(id, value)
+  for (const id of ["preset", "pretty", "lolvm", "import"]) disable(id, value)
   for (const id of ["copy", "download"]) disable(id, value || !output)
   sourceEditor.dispatch({ effects: editable.reconfigure(EditorView.editable.of(!value)) })
   if (!output) { text("output-empty-title", value ? "Building your protection…" : "A fresh build starts here."); text("output-empty-message", value ? "The engine is working locally. You can cancel at any time." : "Choose a preset, then obfuscate. Junk code is generated and injected automatically.") }
@@ -106,7 +106,7 @@ async function build() {
       text("output-stats", `${size(bytes(output))}${output.length > 64000 ? " · preview limited" : ""}`)
       text("build-summary", `${size(bytes(input))} → ${size(bytes(output))} · seed ${seed}`); pane("output")
     }
-    worker.postMessage({ id, action: "obfuscate", options: { source: input, filename, preset, luaVersion: "LuaU", prettyPrint, seed } })
+    worker.postMessage({ id, action: "obfuscate", options: { source: input, filename, preset, luaVersion: "LuaU", prettyPrint, seed, lolvm: element<HTMLInputElement>("lolvm").checked } })
   } catch (failure) { if (id === generation) { stop(); error((failure as Error).message) } }
 }
 async function refreshAccess() {
@@ -140,7 +140,9 @@ element("source-pane").onclick = () => pane("source")
 element("output-pane").onclick = () => pane("output")
 element("editor-tab").onclick = () => showTab(false)
 element("access-tab").onclick = () => showTab(true)
-element("preset").onchange = () => { const preset = presets[element<HTMLSelectElement>("preset").value]; text("stage-count", `${preset.stages} stages`); text("preset-detail", preset.detail) }
+const updatePreset = () => { const preset = presets[element<HTMLSelectElement>("preset").value], lolvm = element<HTMLInputElement>("lolvm").checked; text("stage-count", `${preset.stages + (lolvm ? 1 : 0)} stages`); text("preset-detail", preset.detail + (lolvm ? " · Uncalled LOLvm decoy" : "")) }
+element("preset").onchange = updatePreset
+element("lolvm").onchange = updatePreset
 element("import").onclick = () => element<HTMLInputElement>("file-upload").click()
 element("file-upload").onchange = async () => {
   const upload = element<HTMLInputElement>("file-upload"), file = upload.files?.[0]; upload.value = ""
