@@ -7,6 +7,7 @@
 - [FAQ](https://ipmingsum2.github.io/faq.md): Check out our frequently asked questions, the answer you're looking for might already be here.
 - [Games](https://ipmingsum2.github.io/my-games.md): Play games that I made!
 - [JavaScript Site Tricks](https://ipmingsum2.github.io/sitetricks/sitetricks.md): Welcome to the main menu of JavaScript site tricks. In this documentation, you will to have dev tools. If you're on mobile, don't worry, there's another way.
+- [Alvin's Obfuscator](https://ipmingsum2.github.io/obfuscator/readme.md): Based on Prometheus by Elias Oelschner, https://github.com/prometheus-lua/Prometheus
 
 ## Ad Board
 
@@ -24,10 +25,6 @@
 
 - [CHATBOX bot documentation](https://ipmingsum2.github.io/external/chatbox/bot-api.md): The readable HTML guide, examples, and chatbox.js download are at CHATBOX Developer Docs.
 - [CHATBOX deployment](https://ipmingsum2.github.io/external/chatbox/deployment.md): The frontend stays on GitHub Pages and uses the existing Supabase project. No database export is required. Deploy the database and Edge Function before publishing the frontend.
-
-## Obfuscator
-
-- [Public UI corresponding source](https://ipmingsum2.github.io/obfuscator/source/readme.md): These files are the GPL-3.0 corresponding source for the public HTML/CSS/JS interface. With Node 24+, run npm ci and npm run build in this directory. The frontend requests the private engine from the Cloudflare backend only after Discord authentication.
 
 ## Tests
 

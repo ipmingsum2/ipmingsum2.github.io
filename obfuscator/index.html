@@ -3,17 +3,17 @@
   <head>
     <meta charset="UTF-8" /><meta name="referrer" content="no-referrer"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; worker-src blob:; connect-src 'self' https://obfuscator-backend.ipmingsum5.workers.dev data:; img-src 'self' data:; base-uri 'self'; form-action 'none'">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ProductGuard · Luau Obfuscator</title>
+    <title>Alvin's Obfuscator · Roblox Luau</title>
     <meta name="description" content="Private Roblox Luau obfuscation, processed on your device." />
     <link rel="icon" href="/obfuscator/favicon.svg" />
-    <script type="module" crossorigin src="/obfuscator/js/index.js?v=81a52b609ef1"></script>
-    <link rel="stylesheet" crossorigin href="/obfuscator/css/index.css?v=530f2e9eee3a">
+    <script type="module" crossorigin src="/obfuscator/js/index.js?v=5aedf578f737"></script>
+    <link rel="stylesheet" crossorigin href="/obfuscator/css/index.css?v=b592d751e1f2">
   </head>
   <body>
-    <main id="auth-state" class="auth-state"><span class="brand-mark">pg</span><h1 id="auth-title">Opening your workspace…</h1><p id="auth-message" role="status"></p><a id="login-link" class="primary" href="https://obfuscator-backend.ipmingsum5.workers.dev/auth/discord" hidden>Continue with Discord →</a></main>
+    <main id="auth-state" class="auth-state"><span class="brand-mark">ao</span><h1>Alvin's Obfuscator</h1><h2 id="auth-title">Opening your workspace…</h2><p id="auth-message" role="status"></p><a id="login-link" class="primary" href="https://obfuscator-backend.ipmingsum5.workers.dev/auth/discord" hidden>Continue with Discord →</a><p class="attribution">Based on Prometheus by Elias Oelschner, <a href="https://github.com/prometheus-lua/Prometheus" target="_blank" rel="noreferrer">https://github.com/prometheus-lua/Prometheus</a></p></main>
     <div id="workspace" class="workspace" hidden>
       <header class="site-header">
-        <a class="brand" href="/obfuscator/" aria-label="ProductGuard home"><span class="brand-mark">pg</span><span>ProductGuard<span class="brand-caption">LUAU WORKSPACE</span></span></a>
+        <a class="brand" href="/obfuscator/" aria-label="Alvin's Obfuscator home"><span class="brand-mark">ao</span><span>Alvin's Obfuscator<span class="brand-caption">ROBLOX LUAU</span></span></a>
         <nav aria-label="Workspace"><button id="editor-tab" class="nav-item active">Obfuscator</button><button id="access-tab" class="nav-item" hidden>Access</button></nav>
         <div class="account"><span id="avatar" class="avatar"></span><span class="account-name"><span id="account-name"></span><small id="account-role"></small></span><button id="logout" class="icon-button" aria-label="Sign out">↪</button></div>
       </header>
@@ -22,7 +22,7 @@
         <section id="editor-section">
           <div class="section-heading intro"><div><span class="eyebrow">Build with confidence</span><h1>Your code. A little harder to read.</h1><p>Layered protection for Roblox Luau, processed on your device.</p></div><span class="local-badge"><span class="status-dot"></span>Local browser processing</span></div>
           <section class="build-bar" aria-label="Build settings">
-            <label class="preset-label">Protection preset<select id="preset"><option value="Studio">Studio</option><option value="StudioStrong" selected>Studio Strong</option><option value="StudioMax">Studio Max</option><option value="StudioLegacyTamper">Legacy Tamper</option></select></label>
+            <label class="preset-label">Protection preset<select id="preset"><option value="Studio">Studio</option><option value="StudioStrong" selected>Studio Strong</option><option value="StudioMax">Studio Max</option><option value="Super">Super</option><option value="StudioLegacyTamper">Legacy Tamper</option></select></label>
             <div class="preset-description"><span id="stage-count" class="badge">10 stages</span><p id="preset-detail">One VM layer · recommended starting point</p></div>
             <label class="pretty-toggle"><input id="pretty" type="checkbox">Formatted output</label>
             <label class="pretty-toggle" title="Inject an uncalled decoy VM containing a harmless print payload."><input id="lolvm" type="checkbox">LOLvm <span class="subtle">decoy</span></label>
@@ -44,7 +44,7 @@
           <div id="access-list" class="access-list"></div><p id="access-notice" role="status" class="success"></p>
         </section>
       </main>
-      <footer class="site-footer"><span><span class="status-dot"></span>Private workspace · Discord verified</span><span>Based on <a href="https://github.com/prometheus-lua/Prometheus" target="_blank" rel="noreferrer">Prometheus</a> · GPL-3.0 · <a id="source-link" href="/source.zip">Engine source</a> · <a href="/obfuscator/source/README.md">UI source</a></span></footer>
+      <footer class="site-footer"><span><span class="status-dot"></span>Private workspace · Discord verified</span><span class="attribution">Based on Prometheus by Elias Oelschner, <a href="https://github.com/prometheus-lua/Prometheus" target="_blank" rel="noreferrer">https://github.com/prometheus-lua/Prometheus</a> · <a href="/obfuscator/THIRD-PARTY-NOTICES.txt">Licenses</a></span></footer>
     </div>
   </body>
 </html>
