@@ -6,8 +6,8 @@
     <title>Alvin's Obfuscator · Roblox Luau</title>
     <meta name="description" content="Private Roblox Luau obfuscation, processed on your device." />
     <link rel="icon" href="/obfuscator/favicon.svg" />
-    <script type="module" crossorigin src="/obfuscator/js/index.js?v=5aedf578f737"></script>
-    <link rel="stylesheet" crossorigin href="/obfuscator/css/index.css?v=b592d751e1f2">
+    <script type="module" crossorigin src="/obfuscator/js/index.js?v=0b1d919c69ff"></script>
+    <link rel="stylesheet" crossorigin href="/obfuscator/css/index.css?v=751936e7c5b2">
   </head>
   <body>
     <main id="auth-state" class="auth-state"><span class="brand-mark">ao</span><h1>Alvin's Obfuscator</h1><h2 id="auth-title">Opening your workspace…</h2><p id="auth-message" role="status"></p><a id="login-link" class="primary" href="https://obfuscator-backend.ipmingsum5.workers.dev/auth/discord" hidden>Continue with Discord →</a><p class="attribution">Based on Prometheus by Elias Oelschner, <a href="https://github.com/prometheus-lua/Prometheus" target="_blank" rel="noreferrer">https://github.com/prometheus-lua/Prometheus</a></p></main>
@@ -24,6 +24,9 @@
           <section class="build-bar" aria-label="Build settings">
             <label class="preset-label">Protection preset<select id="preset"><option value="Studio">Studio</option><option value="StudioStrong" selected>Studio Strong</option><option value="StudioMax">Studio Max</option><option value="Super">Super</option><option value="StudioLegacyTamper">Legacy Tamper</option></select></label>
             <div class="preset-description"><span id="stage-count" class="badge">10 stages</span><p id="preset-detail">One VM layer · recommended starting point</p></div>
+            <label class="preset-label">Variable names<select id="names"><option value="single">Single letters</option><option value="random" selected>Random</option><option value="Il1">Il1</option><option value="custom">Custom + Il1</option></select></label>
+            <label id="prefix-label" class="preset-label" hidden>Custom prefix<input id="name-prefix" maxlength="32" placeholder="Alvin_" autocomplete="off" spellcheck="false"></label>
+            <label class="pretty-toggle" title="Random Unicode keys and chunked packed data; your product keys keep their original values."><input id="unicode" type="checkbox">Unicode</label>
             <label class="pretty-toggle"><input id="pretty" type="checkbox">Formatted output</label>
             <label class="pretty-toggle" title="Inject an uncalled decoy VM containing a harmless print payload."><input id="lolvm" type="checkbox">LOLvm <span class="subtle">decoy</span></label>
             <button id="obfuscate" class="primary">Obfuscate →</button><button id="cancel" class="primary stop" hidden>■ Cancel build</button>
@@ -46,5 +49,6 @@
       </main>
       <footer class="site-footer"><span><span class="status-dot"></span>Private workspace · Discord verified</span><span class="attribution">Based on Prometheus by Elias Oelschner, <a href="https://github.com/prometheus-lua/Prometheus" target="_blank" rel="noreferrer">https://github.com/prometheus-lua/Prometheus</a> · <a href="/obfuscator/THIRD-PARTY-NOTICES.txt">Licenses</a></span></footer>
     </div>
+
   </body>
 </html>
