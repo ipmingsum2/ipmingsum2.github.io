@@ -3665,6 +3665,3 @@ input::file-selector-button {
   font-size: 14px;
   line-height: 1.5;
 }
-.captcha-dialog::backdrop {
-  background: #000a;
-}
