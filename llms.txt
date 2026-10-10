@@ -16,6 +16,7 @@
 
 ## Alvin's Obfuscator
 
+- [Alvin's Obfuscator changelog](https://ipmingsum2.github.io/obfuscator/changelog.md): Based on Prometheus by Elias Oelschner, https://github.com/prometheus-lua/Prometheus
 - [Editing interface text](https://ipmingsum2.github.io/obfuscator/strings.md): Based on Prometheus by Elias Oelschner, https://github.com/prometheus-lua/Prometheus
 
 ## Chat System

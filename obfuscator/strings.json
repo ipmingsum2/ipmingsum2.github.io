@@ -1,11 +1,11 @@
 {
-  "page.title": "Alvin's Obfuscator v{version},
+  "page.title": "Alvin's Obfuscator v{version}",
   "page.description": "Private Roblox Luau obfuscation, processed on your device.",
   "brand.monogram": "ao",
   "brand.name": "Alvin's Obfuscator",
   "auth.opening": "Loading...",
   "auth.continue": "Continue with Discord",
-  "ui.based_on_prometheus_by_elias_oelschner": "Based on Prometheus,",
+  "ui.based_on_prometheus_by_elias_oelschner": "Based on Prometheus by Elias Oelschner,",
   "ui.https_github_com_prometheus_lua_prometheus": "https://github.com/prometheus-lua/Prometheus",
   "labels.alvin_s_obfuscator_home": "Alvin's Obfuscator Home",
   "brand.caption": "ROBLOX LUAU",
@@ -144,7 +144,7 @@
   "auth.loginExpired": "Login expired. Try again.",
   "errors.engineDownload": "The private engine could not be downloaded.",
   "_help": "Edit values, keep keys and {placeholders}. Refresh the page to load changes. HTML is displayed as plain text. Keep Prometheus attribution visible. Engine/server diagnostics originate outside this file.",
-  "product.version": "1.5.7",
+  "product.version": "1.6.0",
   "logs.info": "info",
   "logs.warn": "warn",
   "logs.debug": "debug",
@@ -157,5 +157,6 @@
   "backend.expired": "Your login attempt expired. Please try again.",
   "backend.cancelled": "Discord login was cancelled.",
   "backend.error": "Discord login could not be completed. Please try again.",
-  "backend.limited": "Access is limited to approved Discord accounts."
+  "backend.limited": "Access is limited to approved Discord accounts.",
+  "ui.changelog": "Changelog"
 }
