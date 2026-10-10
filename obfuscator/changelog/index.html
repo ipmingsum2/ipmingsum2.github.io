@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark">
-    <meta name="turbo-cache-control" content="no-cache" data-turbo-track="reload" data-track-token="4.6.0.844951538459">
+    <meta name="turbo-cache-control" content="no-cache" data-turbo-track="reload" data-track-token="4.6.0.844959048535">
 
     <!-- See retype.com -->
     <meta name="generator" content="Retype 4.6.0">
@@ -38,11 +38,11 @@
     <script data-cfasync="false">(function(){var cl=document.documentElement.classList,ls=localStorage.getItem("retype_scheme"),hd=cl.contains("dark"),hl=cl.contains("light"),wm=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches;if(ls==="dark"||(!ls&&wm&&!hd&&!hl)){cl.remove("light");cl.add("dark")}else if(ls==="light"||(!ls&&!wm&&!hd&&!hl)){cl.remove("dark");cl.add("light")}})();</script>
 
     <link id="retype-favicon" rel="icon" href="../../favicon.ico" />
-    <link href="../../resources/css/retype.css?v=4.6.0.844951538459" rel="stylesheet">
+    <link href="../../resources/css/retype.css?v=4.6.0.844959048535" rel="stylesheet">
 
-    <script data-cfasync="false" src="../../resources/js/config.js?v=4.6.0.844951538459" data-turbo-eval="false" defer></script>
+    <script data-cfasync="false" src="../../resources/js/config.js?v=4.6.0.844959048535" data-turbo-eval="false" defer></script>
     <script data-cfasync="false" src="../../resources/js/retype.js?v=4.6.0" data-turbo-eval="false" defer></script>
-    <script id="lunr-js" data-cfasync="false" src="../../resources/js/lunr.js?v=4.6.0.844951538459" data-turbo-eval="false" defer></script>
+    <script id="lunr-js" data-cfasync="false" src="../../resources/js/lunr.js?v=4.6.0.844959048535" data-turbo-eval="false" defer></script>
 </head>
 <body>
     <div id="retype-app" class="relative text-base antialiased text-base-text bg-base-bg font-body">
@@ -188,21 +188,34 @@
 <p>Based on Prometheus by Elias Oelschner, <a href="https://github.com/prometheus-lua/Prometheus" class="outbound" target="_blank"><span>https://github.com/prometheus-lua/Prometheus</span><svg xmlns="http://www.w3.org/2000/svg" class="retype-outbound-trigger docs-icon ml-1" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="currentColor"><path d="M15.5 2.25a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 .75.75v5.5a.75.75 0 0 1-1.5 0V4.06l-6.22 6.22a.75.75 0 1 1-1.06-1.06L19.94 3h-3.69a.75.75 0 0 1-.75-.75Z"/><path d="M2.5 4.25c0-.966.784-1.75 1.75-1.75h8.5a.75.75 0 0 1 0 1.5h-8.5a.25.25 0 0 0-.25.25v15.5c0 .138.112.25.25.25h15.5a.25.25 0 0 0 .25-.25v-8.5a.75.75 0 0 1 1.5 0v8.5a1.75 1.75 0 0 1-1.75 1.75H4.25a1.75 1.75 0 0 1-1.75-1.75V4.25Z"/></g></svg></a></p>
 <p>Versioning starts at v1.5.7. Very major changes bump major, normal changes bump
 minor, and small changes bump patch; lower numbers reset after major/minor bumps.</p>
-<h2 id="160--2026-10-10">[1.6.0] — 2026-10-10</h2>
+<h2 id="170--2026-10-10">[1.7.0] — 2026-10-10</h2>
 <h3 id="changed">Changed</h3>
 <ul>
 <li>
-<p>Compile PayloadVault&#x27;s records, decoder and calls inside the final VM in
-StudioStrong, StudioMax, Super and StudioLegacyTamper, removing the previous
-standalone outer-vault placement. Unicode reuses that vault.</p>
+<p>Strengthen automatic obfuscation so injected guards resist common static
+deobfuscators. Generated output stays functionally identical for your scripts.</p>
 </li>
 <li>
-<p>Replace the vault&#x27;s affine byte formula with a per-build permutation and two
-feedback states. This remains reversible obfuscation, not confidential encryption.</p>
+<p><strong>Confidential</strong> — withheld to avoid aiding deobfuscation.</p>
 </li>
 <li>
-<p>Replace generated validator messages and their weak decoder with opaque
-build-local error codes. Preserve product-owned errors and error levels.</p>
+<p>Present the changelog as a styled in-app tab alongside Obfuscator and Access.
+The owner sees full release notes; others see a redacted copy from the Worker.</p>
+</li>
+</ul>
+<h3 id="security-findings">Security findings</h3>
+<ul>
+<li><strong>Confidential</strong> — withheld to avoid aiding deobfuscation.</li>
+</ul>
+<h2 id="160--2026-10-10">[1.6.0] — 2026-10-10</h2>
+<h3 id="changed-1">Changed</h3>
+<ul>
+<li>
+<p>Integrate the payload vault into the final VM and refresh string protection
+across the Studio presets and Super.</p>
+</li>
+<li>
+<p><strong>Confidential</strong> — withheld to avoid aiding deobfuscation.</p>
 </li>
 <li>
 <p>Correct preset stage counts and publish a changelog with a footer link.</p>
@@ -214,27 +227,20 @@ package metadata, with a build check to catch mismatches.</p>
 </ul>
 <h3 id="fixed">Fixed</h3>
 <ul>
-<li>Initialize permutation tables in bounded loops to avoid Luau&#x27;s register limit.</li>
-<li>Preserve selected Unicode transport through VM compilation and later string passes.</li>
-<li>Repair the published text catalog&#x27;s missing quote while preserving customized
-copy and the required Prometheus attribution.</li>
+<li>
+<p>Repair the published text catalog&#x27;s missing quote while preserving customized
+copy and the required Prometheus attribution.</p>
+</li>
+<li>
+<p><strong>Confidential</strong> — withheld to avoid aiding deobfuscation.</p>
+</li>
 </ul>
-<h3 id="security-findings">Security findings</h3>
+<h3 id="security-findings-1">Security findings</h3>
 <ul>
-<li>
-<p>The audit lifted 378 intermediate constants from the previous standalone vault.
-That particular extractor no longer recognizes the updated Super vault.</p>
-</li>
-<li>
-<p>Runtime interception still recovered all three synthetic product/license strings
-from both versions. Distributed keys and decoding logic do not provide secrecy;
-authoritative licensing must remain server-side. See SECURITY-AUDIT.md.</p>
-</li>
-<li>
-<p>The engine changes were originally validated under the v1.5.7 label, then issued
+<li><strong>Confidential</strong> — withheld to avoid aiding deobfuscation.</li>
+<li>The engine changes were originally validated under the v1.5.7 label, then issued
 as v1.6.0 under the new policy. Earlier raw results keep their original version
-identifiers. This is a minor release, rather than a full architecture replacement.</p>
-</li>
+identifiers. This is a minor release, rather than a full architecture replacement.</li>
 </ul>
 <h2 id="157--2026-10-10">[1.5.7] — 2026-10-10</h2>
 <p>Initial recorded baseline, before the VM-integrated vault changes above:</p>
@@ -244,23 +250,20 @@ identifiers. This is a minor release, rather than a full architecture replacemen
 SVG icons, editable filenames and an editable strings.json catalog.</p>
 </li>
 <li>
-<p>Typed Luau parsing, variable naming modes, Unicode transport, Super, enhanced VM
-structure and an optional uncalled LOLvm decoy.</p>
+<p>Typed Luau parsing, variable naming modes, Unicode transport and Super.</p>
 </li>
 <li>
-<p>UTF-8 output-size ceilings with bounded rebuilds; LOLvm disabled below 1 MiB.</p>
+<p>UTF-8 output-size ceilings with bounded rebuilds.</p>
 </li>
 <li>
-<p>Generated scripts include the release version header and mixed hexadecimal /
-binary integer literals, preserving exact values where supported.</p>
+<p>Generated scripts include the release version header.</p>
 </li>
 <li>
 <p>Discord login and owner-managed access, authenticated engine delivery and local
 browser processing through WASM. Prometheus attribution retained on the platform.</p>
 </li>
 <li>
-<p>The final string vault and diagnostic decoder remained reversible, motivating
-the subsequent audit and v1.6.0 changes.</p>
+<p><strong>Confidential</strong> — withheld to avoid aiding deobfuscation.</p>
 </li>
 </ul>
 

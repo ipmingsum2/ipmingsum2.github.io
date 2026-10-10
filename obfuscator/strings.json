@@ -144,7 +144,7 @@
   "auth.loginExpired": "Login expired. Try again.",
   "errors.engineDownload": "The private engine could not be downloaded.",
   "_help": "Edit values, keep keys and {placeholders}. Refresh the page to load changes. HTML is displayed as plain text. Keep Prometheus attribution visible. Engine/server diagnostics originate outside this file.",
-  "product.version": "1.6.0",
+  "product.version": "1.7.0",
   "logs.info": "info",
   "logs.warn": "warn",
   "logs.debug": "debug",
