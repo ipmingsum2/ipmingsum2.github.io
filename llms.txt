@@ -14,6 +14,10 @@
 - [Ad Board Installation](https://ipmingsum2.github.io/adboard/installation.md): Before getting started, insert the latest version of this product from our Discord into your game.
 - [Configuring Your Ad Board](https://ipmingsum2.github.io/adboard/config.md): Need your ads switch faster? Yes, we have that.
 
+## Alvin's Obfuscator
+
+- [Editing interface text](https://ipmingsum2.github.io/obfuscator/strings.md): Based on Prometheus by Elias Oelschner, https://github.com/prometheus-lua/Prometheus
+
 ## Chat System
 
 - [Chat System Installation](https://ipmingsum2.github.io/chat/installation.md): Before getting started, insert the latest version of this product from our Discord into your game.
