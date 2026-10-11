@@ -5,6 +5,17 @@ Based on Prometheus by Elias Oelschner, https://github.com/prometheus-lua/Promet
 Versioning starts at v1.5.7. Very major changes bump major, normal changes bump
 minor, and small changes bump patch; lower numbers reset after major/minor bumps.
 
+## [1.8.0] — 2026-10-11
+
+### Changed
+
+- Strengthen the automatic obfuscation further. Generated output stays
+  functionally identical for your scripts.
+- **Confidential** — withheld to avoid aiding deobfuscation.
+- Show the changelog's confidential sections to the owner as redacted by default
+  with per-item Reveal/Hide controls, instead of returning the full text inline.
+  Other approved users still see the redacted copy.
+
 ## [1.7.0] — 2026-10-10
 
 ### Changed
