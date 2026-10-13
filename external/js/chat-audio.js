@@ -6,14 +6,23 @@ class ChatAudio extends HTMLElement {
     try {
       if (
         new URL(source, location.href).protocol !== "https:" &&
-        !(["localhost", "127.0.0.1"].includes(location.hostname) && source.startsWith("/"))
+        !(
+          ["localhost", "127.0.0.1"].includes(location.hostname) &&
+          source.startsWith("/")
+        )
       )
         return;
     } catch {
       return;
     }
     this.innerHTML =
-      '<div class="audio-file"><span class="audio-file-icon">♫</span><div><a class="audio-filename" target="_blank" rel="noopener noreferrer"></a><small class="audio-meta">Audio attachment</small></div></div><div class="audio-controls"><button class="audio-play" aria-label="Play audio">▶</button><span class="audio-time">0:00 / –:–</span><input class="audio-seek" aria-label="Seek audio" type="range" min="0" max="100" value="0" step="0.1" disabled><button class="audio-mute" aria-label="Mute audio">◖))</button><input class="audio-volume" aria-label="Audio volume" type="range" min="0" max="1" value="1" step="0.05"></div>';
+      '<div class="audio-file"><span class="audio-file-icon">' +
+      window.ChatIcons("audio") +
+      '</span><div><a class="audio-filename" target="_blank" rel="noopener noreferrer"></a><small class="audio-meta">Audio attachment</small></div></div><div class="audio-controls"><button class="audio-play" aria-label="Play audio">' +
+      window.ChatIcons("play") +
+      '</button><span class="audio-time">0:00 / –:–</span><input class="audio-seek" aria-label="Seek audio" type="range" min="0" max="100" value="0" step="0.1" disabled><button class="audio-mute" aria-label="Mute audio">' +
+      window.ChatIcons("volume") +
+      '</button><input class="audio-volume" aria-label="Audio volume" type="range" min="0" max="1" value="1" step="0.05"></div>';
     const audio = document.createElement("audio");
     audio.src = source;
     audio.preload = "metadata";
@@ -48,7 +57,9 @@ class ChatAudio extends HTMLElement {
         "aria-valuetext",
         `${fmt(audio.currentTime)} of ${fmt(audio.duration)}`,
       );
-      play.textContent = audio.paused ? "▶" : "Ⅱ";
+      play.innerHTML = audio.paused
+        ? window.ChatIcons("play")
+        : window.ChatIcons("pause");
       play.setAttribute(
         "aria-label",
         audio.paused ? "Play audio" : "Pause audio",
@@ -72,12 +83,14 @@ class ChatAudio extends HTMLElement {
     volume.oninput = () => {
       audio.volume = Number(volume.value);
       audio.muted = false;
-      mute.textContent = "◖))";
+      mute.innerHTML = window.ChatIcons("volume");
       mute.setAttribute("aria-label", "Mute audio");
     };
     mute.onclick = () => {
       audio.muted = !audio.muted;
-      mute.textContent = audio.muted ? "×" : "◖))";
+      mute.innerHTML = audio.muted
+        ? window.ChatIcons("muted")
+        : window.ChatIcons("volume");
       mute.setAttribute(
         "aria-label",
         audio.muted ? "Unmute audio" : "Mute audio",

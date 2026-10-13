@@ -412,3 +412,5 @@ pre code.hljs {
   font-size: 12px;
   cursor: pointer;
 }
+
+.ui-icon { width: 18px; height: 18px; vertical-align: middle; flex-shrink: 0; }

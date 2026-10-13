@@ -3,6 +3,10 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 import { JSDOM } from "jsdom";
+const icons = await readFile(
+  new URL("../../js/chat-icons.js", import.meta.url),
+  "utf8",
+);
 const pause = () => new Promise((r) => setTimeout(r, 10));
 const esc = (s) =>
   String(s ?? "").replace(
@@ -68,6 +72,7 @@ test("account switcher keeps separate sessions, never stores passwords and clear
     location: { reload: () => reloads++ },
   };
   context.window.ChatCaptcha = { request: async () => "verified-on-server" };
+  vm.runInNewContext(icons, context);
   vm.runInNewContext(
     await readFile(
       new URL("../../js/chat-accounts.js", import.meta.url),
@@ -139,6 +144,7 @@ test("Developer Portal has identity, credentials, API commands and hosting outsi
     this.open = false;
   };
   try {
+    w.eval(icons);
     w.eval(
       await readFile(
         new URL("../../js/chat-developers.js", import.meta.url),
@@ -191,6 +197,7 @@ test("typed slash UI submits named values, nested commands, false booleans and c
     render: esc,
     embeds: () => "",
   };
+  w.eval(icons);
   w.eval(
     await readFile(
       new URL("../../js/chat-interactions.js", import.meta.url),
@@ -360,6 +367,7 @@ test("Developer Portal renews expired human verification for command and hosting
     }),
   };
   try {
+    w.eval(icons);
     w.eval(
       await readFile(
         new URL("../../js/chat-developers.js", import.meta.url),

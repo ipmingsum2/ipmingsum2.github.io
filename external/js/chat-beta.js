@@ -282,7 +282,7 @@
     window.ChatUI?.closeAll();
     modalReturnFocus = document.activeElement;
     $("modalContent").innerHTML =
-      `<header class="modal-heading"><div><h2>${esc(title)}</h2>${subtitle ? `<p>${esc(subtitle)}</p>` : ""}</div><button class="icon-button" data-close aria-label="Close dialog">×</button></header><div class="modal-body">${body}</div>${footer ? `<footer class="modal-footer">${footer}</footer>` : ""}`;
+      `<header class="modal-heading"><div><h2>${esc(title)}</h2>${subtitle ? `<p>${esc(subtitle)}</p>` : ""}</div><button class="icon-button" data-close aria-label="Close dialog">${window.ChatIcons("close")}</button></header><div class="modal-body">${body}</div>${footer ? `<footer class="modal-footer">${footer}</footer>` : ""}`;
     if (!$("modal").open) $("modal").showModal();
   }
   function closeModal() {
@@ -318,7 +318,7 @@
     return (p.roles || [])
       .map(
         (r) =>
-          `<span class="role-pill">${esc(r)}${editable ? `<button data-remove-role="${esc(r)}" data-user="${p.id}" aria-label="Remove ${esc(r)} role">×</button>` : ""}</span>`,
+          `<span class="role-pill">${esc(r)}${editable ? `<button data-remove-role="${esc(r)}" data-user="${p.id}" aria-label="Remove ${esc(r)} role">${window.ChatIcons("close")}</button>` : ""}</span>`,
       )
       .join("");
   }
@@ -365,7 +365,8 @@
       $("registrationFields").hidden = false;
       $("username").required = true;
       $("password").autocomplete = "new-password";
-      $("authSubmit").innerHTML = "Create Account <span>→</span>";
+      $("authSubmit").innerHTML =
+        "Create Account <span>" + window.ChatIcons("forward") + "</span>";
       $("authSwitch").innerHTML =
         'Already have an account? <a href="/external/chat.html">Log in</a>';
       $("authNote").textContent =
@@ -525,7 +526,7 @@
         (c) => state.mode === "dm" || (c.category_id || null) === group.id,
       );
       if (!items.length && !group.id) continue;
-      html += `<div class="category-heading">⌄ ${esc(group.name.toUpperCase())}</div>`;
+      html += `<div class="category-heading">${window.ChatIcons("chevron")} ${esc(group.name.toUpperCase())}</div>`;
       for (const ch of items) {
         const n =
           (state.mentions[ch.id] || 0) +
@@ -652,7 +653,7 @@
     const p = profile(m.user_id),
       parent = state.messages.find((x) => x.id === m.reply_to),
       ping = m.text?.includes(`<@${state.me.id}>`);
-    return `<article class="message ${ping ? "pinged" : ""}" id="message-${esc(m.id)}">${m.reply_to && !parent?.deleted ? `<div class="reply-context" data-jump="${esc(m.reply_to)}">${parent ? `${avatar(profile(parent.user_id))}<b>${esc(profile(parent.user_id).display_name)}</b> ${esc(parent.deleted ? "Message deleted" : parent.text.slice(0, 90))}` : "↳ Reply to an earlier message"}</div>` : ""}<button class="text-button" data-profile="${p.id}" aria-label="View ${esc(p.display_name)} profile">${avatar(p)}</button><div><div><button class="message-author ${p.roles?.length ? "staff" : ""}" data-profile="${p.id}">${esc(p.display_name)}</button>${p.is_bot ? '<span class="bot-label">APP</span>' : ""}<time datetime="${esc(m.created_at)}" title="${esc(new Date(m.created_at).toLocaleString())}">${new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>${m.edited_at ? '<small class="muted"> (edited)</small>' : ""}</div><div class="body">${m.deleted ? '<i class="muted">Message deleted</i>' : m.poll_id ? (legacy ? `<a href="/external/chat.html#${encodeURIComponent(m.room)}">View poll in full chat ↗</a>` : "") : m.thread_id ? (legacy ? `<a href="/external/chat.html#${encodeURIComponent(m.room)}">View thread in full chat ↗</a>` : "Started a thread") : C.render(m.text, state.profiles, state.channels)}</div>${!m.deleted ? attachmentHTML(m) + (interactions?.render(m) || "") + C.embeds(m.embeds || [], state.profiles, state.channels) + (social?.messageExtra(m) || "") : ""}<div class="embeds" data-embeds="${esc(m.id)}"></div></div>${!m.deleted ? `<div class="message-actions">${!legacy && channel()?.kind !== "dm" ? `<button data-create-thread="${esc(m.id)}" title="Create thread">≋ Thread</button>` : ""}<button data-reply="${esc(m.id)}" title="Reply">↩ Reply</button>${m.user_id === state.me.id && !m.poll_id && !m.thread_id ? `<button data-edit="${esc(m.id)}">Edit</button>` : ""}${m.user_id === state.me.id || staff() ? `<button data-delete="${esc(m.id)}">Delete</button>` : ""}</div>` : ""}</article>`;
+    return `<article class="message ${ping ? "pinged" : ""}" id="message-${esc(m.id)}">${m.reply_to && !parent?.deleted ? `<div class="reply-context" data-jump="${esc(m.reply_to)}">${parent ? `${avatar(profile(parent.user_id))}<b>${esc(profile(parent.user_id).display_name)}</b> ${esc(parent.deleted ? "Message deleted" : parent.text.slice(0, 90))}` : window.ChatIcons("reply") + " Reply to an earlier message"}</div>` : ""}<button class="text-button" data-profile="${p.id}" aria-label="View ${esc(p.display_name)} profile">${avatar(p)}</button><div><div><button class="message-author ${p.roles?.length ? "staff" : ""}" data-profile="${p.id}">${esc(p.display_name)}</button>${p.is_bot ? '<span class="bot-label">APP</span>' : ""}<time datetime="${esc(m.created_at)}" title="${esc(new Date(m.created_at).toLocaleString())}">${new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>${m.edited_at ? '<small class="muted"> (edited)</small>' : ""}</div><div class="body">${m.deleted ? '<i class="muted">Message deleted</i>' : m.poll_id ? (legacy ? `<a href="/external/chat.html#${encodeURIComponent(m.room)}">View poll in full chat ${window.ChatIcons("external")}</a>` : "") : m.thread_id ? (legacy ? `<a href="/external/chat.html#${encodeURIComponent(m.room)}">View thread in full chat ${window.ChatIcons("external")}</a>` : "Started a thread") : C.render(m.text, state.profiles, state.channels)}</div>${!m.deleted ? attachmentHTML(m) + (interactions?.render(m) || "") + C.embeds(m.embeds || [], state.profiles, state.channels) + (social?.messageExtra(m) || "") : ""}<div class="embeds" data-embeds="${esc(m.id)}"></div></div>${!m.deleted ? `<div class="message-actions">${!legacy && channel()?.kind !== "dm" ? `<button data-create-thread="${esc(m.id)}" title="Create thread">${window.ChatIcons("thread")} Thread</button>` : ""}<button data-reply="${esc(m.id)}" title="Reply">${window.ChatIcons("reply")} Reply</button>${m.user_id === state.me.id && !m.poll_id && !m.thread_id ? `<button data-edit="${esc(m.id)}">Edit</button>` : ""}${m.user_id === state.me.id || staff() ? `<button data-delete="${esc(m.id)}">Delete</button>` : ""}</div>` : ""}</article>`;
   }
   function attachmentHTML(m) {
     const url = https(m.resolved_url || m.image_url);
@@ -667,7 +668,7 @@
       return `<video class="attachment-video" src="${esc(url)}" controls preload="metadata"></video>`;
     if (/\.(mp3|wav|ogg|m4a)$/.test(path))
       return `<chat-audio src="${esc(url)}" filename="${esc(m.attachment_name || new URL(url).pathname.split("/").pop())}" bytes="${Number(m.attachment_bytes) || 0}"></chat-audio>`;
-    return `<a class="attachment-file" href="${esc(url)}" target="_blank" rel="noopener noreferrer">↓ ${esc(m.attachment_name || "Download attachment")}</a>`;
+    return `<a class="attachment-file" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${window.ChatIcons("download")} ${esc(m.attachment_name || "Download attachment")}</a>`;
   }
   function renderMessages() {
     const priorIds = new Set(
@@ -694,7 +695,7 @@
         ? '<button class="load-older" id="loadOlder">Load earlier messages</button>'
         : "";
     if (!filter)
-      html += `<section class="channel-welcome"><div class="welcome-icon">${ch.kind === "dm" ? "↗" : "#"}</div><div class="eyebrow">${ch.kind === "dm" ? "A CONVERSATION, JUST FOR YOU" : "YOU’RE IN GOOD COMPANY"}</div><h2>${ch.kind === "dm" ? esc(channelName(ch)) : `Welcome to #${esc(ch.name)}.`}</h2><p>${esc(ch.topic || "This is the beginning of something good. Start a conversation.")}</p></section>`;
+      html += `<section class="channel-welcome"><div class="welcome-icon">${window.ChatIcons(ch.kind === "dm" ? "dm" : ch.is_private ? "channel-private" : "channel")}</div><div class="eyebrow">${ch.kind === "dm" ? "A CONVERSATION, JUST FOR YOU" : "YOU’RE IN GOOD COMPANY"}</div><h2>${ch.kind === "dm" ? esc(channelName(ch)) : `Welcome to #${esc(ch.name)}.`}</h2><p>${esc(ch.topic || "This is the beginning of something good. Start a conversation.")}</p></section>`;
     let date = "";
     for (const m of messages) {
       const d = new Date(m.created_at).toLocaleDateString([], {
@@ -922,7 +923,11 @@
     const el = $("slowmodeStatus");
     el.hidden = !slowmode.seconds;
     el.classList.toggle("waiting", waiting);
-    el.textContent = "◷ " + (waiting ? seconds : slowmode.seconds) + "s";
+    el.innerHTML =
+      window.ChatIcons("clock") +
+      " " +
+      (waiting ? seconds : slowmode.seconds) +
+      "s";
     el.title = waiting
       ? "You can send again in " + seconds + " seconds"
       : slowmode.bypass
@@ -990,7 +995,9 @@
         h = Math.floor((n % 86400) / 3600),
         m = Math.floor((n % 3600) / 60);
       bar.innerHTML =
-        '<span class="timeout-symbol">◷</span><div><b>Timed Out</b><small>You cannot chat, reply, or vote during this timeout.</small></div><strong>' +
+        '<span class="timeout-symbol">' +
+        window.ChatIcons("clock") +
+        "</span><div><b>Timed Out</b><small>You cannot chat, reply, or vote during this timeout.</small></div><strong>" +
         [d + "d", h + "h", m + "m", (n % 60) + "s"].join(" ") +
         "</strong>";
     }
@@ -1004,7 +1011,9 @@
       esc(m.id) +
       '"><span class="automod-avatar">' +
       window.ChatIcons("shield") +
-      '</span><div><header><b>AutoMod</b> <span class="bot-label">✓ SYSTEM</span> has blocked a message in <button class="mention" data-channel="' +
+      ('</span><div><header><b>AutoMod</b> <span class="bot-label">' +
+        window.ChatIcons("check") +
+        ' SYSTEM</span> has blocked a message in <button class="mention" data-channel="') +
       esc(e.channel_id) +
       '"># ' +
       esc(ch?.name || "channel") +
@@ -1199,7 +1208,7 @@
         await refreshGate();
         $("blockedNotice").hidden = false;
         $("blockedNotice").innerHTML =
-          `<strong>⛨ This content is blocked by this server.</strong><p>From server moderators: “${esc(result.message)}”</p><small>Only you can see this · </small><button class="text-button" data-dismiss-block>Dismiss message</button>`;
+          `<strong>${window.ChatIcons("shield")} This content is blocked by this server.</strong><p>From server moderators: “${esc(result.message)}”</p><small>Only you can see this · </small><button class="text-button" data-dismiss-block>Dismiss message</button>`;
         return;
       }
       $("blockedNotice").hidden = true;
@@ -1298,7 +1307,7 @@
     if (edit) $("messageText").value = m.text;
     $("replyBar").hidden = false;
     $("replyBar").innerHTML =
-      `<span>${edit ? "Editing your message" : "Replying to <b>" + esc(profile(m.user_id).display_name) + "</b>"}</span><button class="text-button" data-cancel-reply aria-label="Cancel reply">×</button>`;
+      `<span>${edit ? "Editing your message" : "Replying to <b>" + esc(profile(m.user_id).display_name) + "</b>"}</span><button class="text-button" data-cancel-reply aria-label="Cancel reply">${window.ChatIcons("close")}</button>`;
     $("messageText").focus();
   }
   async function showProfile(id, anchor = null, full = false) {
@@ -1309,7 +1318,7 @@
       el.className = "profile-card profile-popout";
       el.setAttribute("role", "dialog");
       el.setAttribute("aria-label", p.display_name + " profile");
-      el.innerHTML = `<div class="profile-banner" style="background-color:${/^#[0-9a-f]{6}$/i.test(p.banner_color) ? p.banner_color : "#5865f2"}">${https(p.banner_url) ? `<img class="profile-banner-image" src="${esc(https(p.banner_url))}" alt="" referrerpolicy="no-referrer">` : ""}</div><button class="profile-popout-close icon-button" aria-label="Close profile">×</button><div class="profile-inner">${avatar(p)}<h2>${esc(p.display_name)}${p.is_bot ? '<span class="bot-label">APP</span>' : ""}</h2><small class="muted">${esc(p.username)}${p.pronouns ? " · " + esc(p.pronouns) : ""}</small>${p.status ? `<p class="profile-status">● ${esc(p.status)}</p>` : ""}<p class="profile-bio profile-bio-preview">${esc(p.bio || "This member hasn’t written a bio yet.")}</p><button class="text-button profile-expand">View Full Profile</button><div class="profile-role-list">${rolePills(p)}</div><div class="profile-actions">${id === state.me.id ? '<button class="primary" data-profile-edit>Edit Profile</button>' : !p.is_bot ? '<button class="primary" data-profile-message>Message</button>' : ""}</div></div>`;
+      el.innerHTML = `<div class="profile-banner" style="background-color:${/^#[0-9a-f]{6}$/i.test(p.banner_color) ? p.banner_color : "#5865f2"}">${https(p.banner_url) ? `<img class="profile-banner-image" src="${esc(https(p.banner_url))}" alt="" referrerpolicy="no-referrer">` : ""}</div><button class="profile-popout-close icon-button" aria-label="Close profile">${window.ChatIcons("close")}</button><div class="profile-inner">${avatar(p)}<h2>${esc(p.display_name)}${p.is_bot ? '<span class="bot-label">APP</span>' : ""}</h2><small class="muted">${esc(p.username)}${p.pronouns ? " · " + esc(p.pronouns) : ""}</small>${p.status ? `<p class="profile-status">${window.ChatIcons("active")} ${esc(p.status)}</p>` : ""}<p class="profile-bio profile-bio-preview">${esc(p.bio || "This member hasn’t written a bio yet.")}</p><button class="text-button profile-expand">View Full Profile</button><div class="profile-role-list">${rolePills(p)}</div><div class="profile-actions">${id === state.me.id ? '<button class="primary" data-profile-edit>Edit Profile</button>' : !p.is_bot ? '<button class="primary" data-profile-message>Message</button>' : ""}</div></div>`;
       const trigger = anchor || $("selfProfile");
       profilePopup = window.ChatUI.floating(el, trigger, () => {
         profilePopup = null;
@@ -1336,7 +1345,7 @@
     }
     modal(
       "",
-      `<article class="profile-card"><div class="profile-banner" style="background:${/^#[0-9a-f]{6}$/i.test(p.banner_color) ? p.banner_color : "#5865f2"}">${https(p.banner_url) ? `<img class="profile-banner-image" src="${esc(https(p.banner_url))}" alt="" referrerpolicy="no-referrer">` : ""}</div><div class="profile-inner">${avatar(p)}<h2>${esc(p.display_name)}${p.is_bot ? '<span class="bot-label">APP</span>' : ""}</h2><small class="muted">${esc(p.username)} ${p.pronouns ? " · " + esc(p.pronouns) : ""}</small><div class="status-line">${p.status ? "● " + esc(p.status) : ""}</div><div>${rolePills(p, state.root)}</div><p class="profile-bio">${esc(p.bio || "This member hasn’t written a bio yet.")}</p>${state.root && !p.is_bot ? select("profileRole", "Add a role", [["", "Choose a role"], ...C.roles.map((r) => [r, r])], "") : ""}<div class="profile-actions">${id === state.me.id ? '<button class="primary" id="profileEdit">Edit profile</button>' : !p.is_bot ? '<button class="primary" id="profileMessage">Message</button>' : ""}${staff() && id !== state.me.id ? '<button class="secondary" id="profileModerate">Moderate</button>' : ""}</div></div></article>`,
+      `<article class="profile-card"><div class="profile-banner" style="background:${/^#[0-9a-f]{6}$/i.test(p.banner_color) ? p.banner_color : "#5865f2"}">${https(p.banner_url) ? `<img class="profile-banner-image" src="${esc(https(p.banner_url))}" alt="" referrerpolicy="no-referrer">` : ""}</div><div class="profile-inner">${avatar(p)}<h2>${esc(p.display_name)}${p.is_bot ? '<span class="bot-label">APP</span>' : ""}</h2><small class="muted">${esc(p.username)} ${p.pronouns ? " · " + esc(p.pronouns) : ""}</small><div class="status-line">${p.status ? window.ChatIcons("active") + " " + esc(p.status) : ""}</div><div>${rolePills(p, state.root)}</div><p class="profile-bio">${esc(p.bio || "This member hasn’t written a bio yet.")}</p>${state.root && !p.is_bot ? select("profileRole", "Add a role", [["", "Choose a role"], ...C.roles.map((r) => [r, r])], "") : ""}<div class="profile-actions">${id === state.me.id ? '<button class="primary" id="profileEdit">Edit profile</button>' : !p.is_bot ? '<button class="primary" id="profileMessage">Message</button>' : ""}${staff() && id !== state.me.id ? '<button class="secondary" id="profileModerate">Moderate</button>' : ""}</div></div></article>`,
     );
     if ($("profileEdit"))
       $("profileEdit").onclick = () => openSettings("profile");
@@ -1380,7 +1389,7 @@
         )
         .join(
           "",
-        )}<button data-switch-accounts>Switch accounts</button><a href="/external/developers.html">Developer Portal ↗</a><button data-logout>Log Out</button><button data-close>← Back to chat</button></nav><section class="settings-content">${content}</section></div>`;
+        )}<button data-switch-accounts>Switch accounts</button><a href="/external/developers.html">Developer Portal ${window.ChatIcons("external")}</a><button data-logout>Log Out</button><button data-close>${window.ChatIcons("back")} Back to chat</button></nav><section class="settings-content">${content}</section></div>`;
     if (!$("modal").open) $("modal").showModal();
   }
   async function openSettings(tab = "account") {
@@ -1389,7 +1398,7 @@
     if (tab === "account") {
       const email = state.user.email || "preview@example.com",
         masked = email.replace(/^(.)(.*)(@.*)$/, "$1********$3");
-      html = `<h2>My Account</h2><div class="account-card"><div class="account-banner" style="background:${/^#[0-9a-f]{6}$/i.test(p.banner_color) ? p.banner_color : "#5865f2"}">${https(p.banner_url) ? `<img class="profile-banner-image" src="${esc(https(p.banner_url))}" alt="" referrerpolicy="no-referrer">` : ""}</div><div class="account-person">${avatar(p)}<div><h3>${esc(p.display_name)}</h3>${rolePills(p)}</div></div></div><h3>Account Info</h3><div class="account-row"><div><b>Username</b><small>${esc(p.username)}</small></div><button class="secondary" data-settings="profile">Edit</button></div><div class="account-row"><div><b>Email</b><small><span id="maskedEmail">${esc(masked)}</span> <button class="text-button" id="revealEmail">Reveal</button></small></div><button class="secondary" id="editEmail">Edit</button></div><div class="account-row"><b>Password</b><button class="secondary" data-settings="password">Edit</button></div><button class="standing-row" data-settings="standing"><span class="standing-icon">✓</span><div><strong>Account Standing</strong><p>Review your moderation history and account status.</p></div><span>View →</span></button>`;
+      html = `<h2>My Account</h2><div class="account-card"><div class="account-banner" style="background:${/^#[0-9a-f]{6}$/i.test(p.banner_color) ? p.banner_color : "#5865f2"}">${https(p.banner_url) ? `<img class="profile-banner-image" src="${esc(https(p.banner_url))}" alt="" referrerpolicy="no-referrer">` : ""}</div><div class="account-person">${avatar(p)}<div><h3>${esc(p.display_name)}</h3>${rolePills(p)}</div></div></div><h3>Account Info</h3><div class="account-row"><div><b>Username</b><small>${esc(p.username)}</small></div><button class="secondary" data-settings="profile">Edit</button></div><div class="account-row"><div><b>Email</b><small><span id="maskedEmail">${esc(masked)}</span> <button class="text-button" id="revealEmail">Reveal</button></small></div><button class="secondary" id="editEmail">Edit</button></div><div class="account-row"><b>Password</b><button class="secondary" data-settings="password">Edit</button></div><button class="standing-row" data-settings="standing"><span class="standing-icon">${window.ChatIcons("check")}</span><div><strong>Account Standing</strong><p>Review your moderation history and account status.</p></div><span>View ${window.ChatIcons("forward")}</span></button>`;
       settingsFrame(tab, html);
       $("revealEmail").onclick = () => {
         $("maskedEmail").textContent = email;
@@ -1425,7 +1434,7 @@
         ascending: false,
       });
       const active = state.history.filter(activeCase);
-      html = `<h2>Account Standing</h2><div class="standing-row"><span class="standing-icon">${active.length ? "!" : "✓"}</span><div><strong>${active.length ? "Your account has active restrictions" : "All good"}</strong><p>${active.length ? "See the details below." : "Thank you for keeping CHATBOX welcoming."}</p></div></div><h3>Moderation history</h3>${historyHTML(state.history)}`;
+      html = `<h2>Account Standing</h2><div class="standing-row"><span class="standing-icon">${window.ChatIcons(active.length ? "warning" : "check")}</span><div><strong>${active.length ? "Your account has active restrictions" : "All good"}</strong><p>${active.length ? "See the details below." : "Thank you for keeping CHATBOX welcoming."}</p></div></div><h3>Moderation history</h3>${historyHTML(state.history)}`;
     }
     settingsFrame(tab, html);
     if (tab === "password") {
@@ -1570,7 +1579,7 @@
     rows.sort((a, b) => Number(b.is_pinned) - Number(a.is_pinned));
     modal(
       "Announcements",
-      `<p class="muted">Updates from your community.</p>${admin() ? '<button class="primary" id="newAnnouncement">Write announcement</button>' : ""}${rows.map((a) => `<article class="history-card"><small class="muted">${a.is_pinned ? "◆ PINNED · " : ""}${esc(new Date(a.created_at).toLocaleDateString())}</small><h3>${esc(a.title)}</h3><div class="body">${C.render(a.body, state.profiles, state.channels)}</div>${admin() ? `<button class="secondary" data-announcement-edit="${esc(a.id)}">Edit</button>` : ""}</article>`).join("") || '<div class="empty-state">No announcements yet.</div>'}`,
+      `<p class="muted">Updates from your community.</p>${admin() ? '<button class="primary" id="newAnnouncement">Write announcement</button>' : ""}${rows.map((a) => `<article class="history-card"><small class="muted">${a.is_pinned ? window.ChatIcons("pin") + " PINNED · " : ""}${esc(new Date(a.created_at).toLocaleDateString())}</small><h3>${esc(a.title)}</h3><div class="body">${C.render(a.body, state.profiles, state.channels)}</div>${admin() ? `<button class="secondary" data-announcement-edit="${esc(a.id)}">Edit</button>` : ""}</article>`).join("") || '<div class="empty-state">No announcements yet.</div>'}`,
     );
     if ($("newAnnouncement"))
       $("newAnnouncement").onclick = () => announcementForm();
@@ -1599,16 +1608,16 @@
     if (!staff()) throw new Error("Staff access required.");
     let html = "";
     if (tab === "overview")
-      html = `<h2>Server settings</h2><p class="muted">A welcoming community starts with good tools.</p><div class="field-row"><article class="rule-card"><h3>${state.profiles.length} members</h3><p>Profiles, roles, and moderation.</p><button class="secondary" data-admin="members">Manage members</button></article><article class="rule-card"><h3>${state.channels.filter((c) => c.kind !== "dm").length} channels</h3><p>Spaces for every conversation.</p><button class="secondary" data-admin="channels">Manage channels</button></article></div><article class="rule-card"><div class="rule-top"><span class="rule-icon">⛨</span><div><h3>AutoMod</h3><p>Block unwanted content before it reaches your community.</p></div></div><button class="primary" data-admin="automod">Configure AutoMod</button></article>`;
+      html = `<h2>Server settings</h2><p class="muted">A welcoming community starts with good tools.</p><div class="field-row"><article class="rule-card"><h3>${state.profiles.length} members</h3><p>Profiles, roles, and moderation.</p><button class="secondary" data-admin="members">Manage members</button></article><article class="rule-card"><h3>${state.channels.filter((c) => c.kind !== "dm").length} channels</h3><p>Spaces for every conversation.</p><button class="secondary" data-admin="channels">Manage channels</button></article></div><article class="rule-card"><div class="rule-top"><span class="rule-icon">${window.ChatIcons("shield")}</span><div><h3>AutoMod</h3><p>Block unwanted content before it reaches your community.</p></div></div><button class="primary" data-admin="automod">Configure AutoMod</button></article>`;
     if (tab === "members")
       html = `<h2>Members & Roles</h2><p class="small-note">Only root can assign or remove roles. Owners cannot grant roles.</p><input id="memberSearch" placeholder="Search members" aria-label="Search members"><div id="adminMemberList">${adminMembersHTML()}</div>`;
     if (tab === "automod") {
       if (!admin()) throw new Error("Administrator permission required.");
       state.rules = await query("cb_automod", { order: "created_at" });
-      html = `<div class="toolbar-row"><h2>AutoMod</h2><button class="primary" id="newRule">Create Rule</button></div><p class="muted">Let’s keep the conversation healthy.</p><p class="small-note">Add as many rules and word lists as you need. Each rule can include words, PostgreSQL regular expressions, allowed words, and its own block message.</p>${state.rules.map((r) => `<article class="rule-card"><div class="rule-top"><span class="rule-icon">⛨</span><div style="flex:1"><h3>${esc(r.name)}</h3><p>${r.enabled ? "Blocking matching messages" : "Paused"}</p></div><label class="check-label"><input type="checkbox" data-rule-toggle="${esc(r.id)}" ${r.enabled ? "checked" : ""} aria-label="Enable ${esc(r.name)}"></label></div><div class="rule-summary"><span>${r.words.length} words</span><span>${r.patterns.length} patterns</span><span>${r.allowed_words.length} allowed words</span></div><p>“${esc(r.block_message)}”</p><div class="rule-actions"><button class="secondary" data-rule-edit="${esc(r.id)}">Edit Rule</button><button class="danger" data-rule-delete="${esc(r.id)}">Delete</button></div></article>`).join("") || '<div class="empty-state">No rules yet. Create your first word list.</div>'}`;
+      html = `<div class="toolbar-row"><h2>AutoMod</h2><button class="primary" id="newRule">Create Rule</button></div><p class="muted">Let’s keep the conversation healthy.</p><p class="small-note">Add as many rules and word lists as you need. Each rule can include words, PostgreSQL regular expressions, allowed words, and its own block message.</p>${state.rules.map((r) => `<article class="rule-card"><div class="rule-top"><span class="rule-icon">${window.ChatIcons("shield")}</span><div style="flex:1"><h3>${esc(r.name)}</h3><p>${r.enabled ? "Blocking matching messages" : "Paused"}</p></div><label class="check-label"><input type="checkbox" data-rule-toggle="${esc(r.id)}" ${r.enabled ? "checked" : ""} aria-label="Enable ${esc(r.name)}"></label></div><div class="rule-summary"><span>${r.words.length} words</span><span>${r.patterns.length} patterns</span><span>${r.allowed_words.length} allowed words</span></div><p>“${esc(r.block_message)}”</p><div class="rule-actions"><button class="secondary" data-rule-edit="${esc(r.id)}">Edit Rule</button><button class="danger" data-rule-delete="${esc(r.id)}">Delete</button></div></article>`).join("") || '<div class="empty-state">No rules yet. Create your first word list.</div>'}`;
     }
     if (tab === "channels")
-      html = `<div class="toolbar-row"><h2>Channels & Categories</h2><button class="primary" id="newAdminChannel">Create Channel</button></div><button class="secondary" id="newCategory">＋ Create Category</button><div class="category-admin-list">${state.categories.map((c) => `<div class="account-row"><div><b>⌄ ${esc(c.name)}</b><small>${state.channels.filter((ch) => ch.category_id === c.id).length} channels</small></div><button class="danger" data-category-delete="${esc(c.id)}">Delete category</button></div>`).join("")}</div>${state.channels
+      html = `<div class="toolbar-row"><h2>Channels & Categories</h2><button class="primary" id="newAdminChannel">Create Channel</button></div><button class="secondary" id="newCategory">${window.ChatIcons("plus")} Create Category</button><div class="category-admin-list">${state.categories.map((c) => `<div class="account-row"><div><b>${window.ChatIcons("chevron")} ${esc(c.name)}</b><small>${state.channels.filter((ch) => ch.category_id === c.id).length} channels</small></div><button class="danger" data-category-delete="${esc(c.id)}">Delete category</button></div>`).join("")}</div>${state.channels
         .filter((c) => c.kind !== "dm")
         .map(
           (c) =>
@@ -1623,7 +1632,7 @@
       html = `<div class="toolbar-row"><h2>Moderation History</h2><button class="primary" id="newModeration">Moderate member</button></div>${historyHTML(state.history)}`;
     }
     if (tab === "bots")
-      html = `<h2>Developer Portal</h2><p class="muted">Manage your applications, bot identity, tokens, command API, and hosting in the dedicated portal.</p><a class="primary" href="/external/developers.html">Open Developer Portal ↗</a>`;
+      html = `<h2>Developer Portal</h2><p class="muted">Manage your applications, bot identity, tokens, command API, and hosting in the dedicated portal.</p><a class="primary" href="/external/developers.html">Open Developer Portal ${window.ChatIcons("external")}</a>`;
     $("modalContent").innerHTML =
       `<div class="settings-layout"><nav class="settings-nav"><small>CHATBOX SERVER</small>${[
         ["overview", "Overview"],
@@ -1639,7 +1648,7 @@
         )
         .join(
           "",
-        )}<button data-close>← Back to chat</button></nav><section class="settings-content">${html}</section></div>`;
+        )}<button data-close>${window.ChatIcons("back")} Back to chat</button></nav><section class="settings-content">${html}</section></div>`;
     if (!$("modal").open) $("modal").showModal();
     if ($("memberSearch"))
       $("memberSearch").oninput = (e) =>
@@ -1661,7 +1670,7 @@
         (p) =>
           `<div class="member-admin">${avatar(p)}<div class="member-detail"><button class="message-author" data-profile="${p.id}">${esc(p.display_name)}</button><small>@${esc(p.username)}</small>${rolePills(p, state.root)}</div>${
             state.root && !p.is_bot
-              ? `<select data-add-role="${p.id}" aria-label="Add role to ${esc(p.display_name)}"><option value="">＋ Add role</option>${C.roles
+              ? `<select data-add-role="${p.id}" aria-label="Add role to ${esc(p.display_name)}"><option value="">Add role</option>${C.roles
                   .filter((r) => !p.roles.includes(r))
                   .map((r) => `<option>${esc(r)}</option>`)
                   .join("")}</select>`
@@ -1801,7 +1810,7 @@
           ["announcement", "Announcements"],
         ],
         ch.kind,
-      )}</div>${field("topic", "Topic", ch.topic)}<div class="slowmode-setting"><h3>◷ Slowmode</h3><p class="small-note">Give conversations room to breathe. Set the time each member waits between messages. Members who can manage this channel bypass slowmode.</p>${field("slowmode_seconds", "Seconds between messages", ch.slowmode_seconds || 0, "number", 'min="0" max="21600" step="1" required')}<div class="slowmode-presets">${[0, 5, 10, 30, 60, 300, 600, 3600, 21600].map((s) => `<button type="button" class="secondary" data-slowmode="${s}">${s === 0 ? "Off" : s < 60 ? s + "s" : s < 3600 ? s / 60 + "m" : s / 3600 + "h"}</button>`).join("")}</div></div><div class="field-row">${select("category_id", "Category", [["", "No category"], ...state.categories.map((c) => [c.id, c.name])], ch.category_id || "")}${field("sort_order", "Position", ch.sort_order, "number")}</div><label class="check-label"><input name="is_private" type="checkbox" ${ch.is_private ? "checked" : ""}> Private channel</label><label class="check-label"><input name="is_locked" type="checkbox" ${ch.is_locked ? "checked" : ""}> Lock channel (read only for members)</label><button class="primary" type="submit">Save Channel</button></form>${id ? `<h3 style="margin-top:30px">Permissions</h3><p class="small-note">Set each permission separately. Individual member overrides take priority over role overrides. Inherit uses the channel defaults.</p>${select("subject", "Role or member", [["everyone", "Everyone"], ...C.roles.map((r) => ["role:" + r, r]), ...state.profiles.map((p) => ["user:" + p.id, "@" + p.username])], "everyone")}<div id="permissionEditor"></div><div style="margin-top:30px"><button class="danger" id="archiveChannel">Archive Channel</button><p class="small-note">Archiving hides the channel and keeps its messages.</p></div>` : ""}`,
+      )}</div>${field("topic", "Topic", ch.topic)}<div class="slowmode-setting"><h3>${window.ChatIcons("clock")} Slowmode</h3><p class="small-note">Give conversations room to breathe. Set the time each member waits between messages. Members who can manage this channel bypass slowmode.</p>${field("slowmode_seconds", "Seconds between messages", ch.slowmode_seconds || 0, "number", 'min="0" max="21600" step="1" required')}<div class="slowmode-presets">${[0, 5, 10, 30, 60, 300, 600, 3600, 21600].map((s) => `<button type="button" class="secondary" data-slowmode="${s}">${s === 0 ? "Off" : s < 60 ? s + "s" : s < 3600 ? s / 60 + "m" : s / 3600 + "h"}</button>`).join("")}</div></div><div class="field-row">${select("category_id", "Category", [["", "No category"], ...state.categories.map((c) => [c.id, c.name])], ch.category_id || "")}${field("sort_order", "Position", ch.sort_order, "number")}</div><label class="check-label"><input name="is_private" type="checkbox" ${ch.is_private ? "checked" : ""}> Private channel</label><label class="check-label"><input name="is_locked" type="checkbox" ${ch.is_locked ? "checked" : ""}> Lock channel (read only for members)</label><button class="primary" type="submit">Save Channel</button></form>${id ? `<h3 style="margin-top:30px">Permissions</h3><p class="small-note">Set each permission separately. Individual member overrides take priority over role overrides. Inherit uses the channel defaults.</p>${select("subject", "Role or member", [["everyone", "Everyone"], ...C.roles.map((r) => ["role:" + r, r]), ...state.profiles.map((p) => ["user:" + p.id, "@" + p.username])], "everyone")}<div id="permissionEditor"></div><div style="margin-top:30px"><button class="danger" id="archiveChannel">Archive Channel</button><p class="small-note">Archiving hides the channel and keeps its messages.</p></div>` : ""}`,
     );
     document.querySelectorAll("[data-slowmode]").forEach(
       (b) =>
@@ -1839,8 +1848,8 @@
             );
             return `<div class="permission-grid"><p>${{ view: "View channel", send: "Send messages", attach: "Attach files", manage: "Manage channel", mention_everyone: "Mention everyone" }[perm]}</p><select data-permission="${perm}" aria-label="${perm}">${[
               ["inherit", "/ Inherit"],
-              ["true", "✓ Allow"],
-              ["false", "× Deny"],
+              ["true", "Allow"],
+              ["false", "Deny"],
             ]
               .map(
                 ([v, t]) =>
@@ -2099,6 +2108,7 @@
       sendButton: "send",
       mobileMenu: "menu",
       addChannel: "plus",
+      helpButton: "help",
     };
     for (const [id, name] of Object.entries(icons))
       $(id).innerHTML = window.ChatIcons(name);

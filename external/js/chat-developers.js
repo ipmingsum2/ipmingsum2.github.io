@@ -48,7 +48,7 @@
   function modal(title, html) {
     window.ChatUI?.closeAll();
     $("modalContent").innerHTML =
-      `<button class="modal-close icon-button" aria-label="Close">×</button><h2>${esc(title)}</h2>${html}`;
+      `<button class="modal-close icon-button" aria-label="Close">${window.ChatIcons("close")}</button><h2>${esc(title)}</h2>${html}`;
     $("modalContent").querySelector(".modal-close").onclick = closeModal;
     if (!$("modal").open) $("modal").showModal();
   }
@@ -164,7 +164,7 @@
     selected = null;
     history.replaceState(null, "", location.pathname + location.search);
     $("developerMain").innerHTML =
-      `<div class="developer-title"><div><p class="eyebrow">DEVELOPER PORTAL ${preview ? "· LOCAL PREVIEW" : ""}</p><h1>Applications</h1><p class="muted">Create a little personality for your community.</p></div><button class="primary" id="createApplication">＋ New application</button></div><div class="developer-grid">${bots.map((b) => `<button class="developer-app-card" data-open-app="${esc(b.id)}">${image(b.profile)}<h2>${esc(b.profile.display_name)}</h2><p>${esc(b.profile.bio || "Your next great idea starts here.")}</p><span class="status-pill">${b.enabled ? "● Active" : "○ Token revoked"}</span></button>`).join("") || '<div class="developer-empty"><span>✦</span><h2>Good ideas deserve a bot.</h2><p>Build commands, send rich replies, and make your community your own.</p></div>'}</div><p class="small-note">Only applications you own are shown. Root can manage every application.</p>`;
+      `<div class="developer-title"><div><p class="eyebrow">DEVELOPER PORTAL ${preview ? "· LOCAL PREVIEW" : ""}</p><h1>Applications</h1><p class="muted">Create a little personality for your community.</p></div><button class="primary" id="createApplication">${window.ChatIcons("plus")} New application</button></div><div class="developer-grid">${bots.map((b) => `<button class="developer-app-card" data-open-app="${esc(b.id)}">${image(b.profile)}<h2>${esc(b.profile.display_name)}</h2><p>${esc(b.profile.bio || "Your next great idea starts here.")}</p><span class="status-pill">${b.enabled ? window.ChatIcons("active") + " Active" : window.ChatIcons("inactive") + " Token revoked"}</span></button>`).join("") || '<div class="developer-empty"><span>' + window.ChatIcons("sparkle") + "</span><h2>Good ideas deserve a bot.</h2><p>Build commands, send rich replies, and make your community your own.</p></div>"}</div><p class="small-note">Only applications you own are shown. Root can manage every application.</p>`;
     $("createApplication").onclick = () =>
       modal(
         "New application",
@@ -181,7 +181,7 @@
     history.replaceState(null, "", "#" + encodeURIComponent(id));
     const p = selected.profile;
     $("developerMain").innerHTML =
-      `<button class="text-button" id="backApplications">← All applications</button><div class="developer-title"><div class="developer-app-heading">${image(p)}<div><p class="eyebrow">APPLICATION</p><h1>${esc(p.display_name)}</h1><p class="muted">@${esc(p.username)}</p></div></div><span class="status-pill">${selected.enabled ? "● Active" : "○ Token revoked"}</span></div><nav class="developer-tabs" aria-label="Application settings">${[["overview", "General information"], ["bot", "Bot & token"], ["commands", "Commands"], ["hosting", "Hosting"], ...(root ? [["permissions", "Permissions"]] : [])].map(([key, label]) => `<button class="${tab === key ? "active" : ""}" data-app-tab="${key}">${label}</button>`).join("")}</nav><section id="applicationPanel"></section>`;
+      `<button class="text-button" id="backApplications">${window.ChatIcons("back")} All applications</button><div class="developer-title"><div class="developer-app-heading">${image(p)}<div><p class="eyebrow">APPLICATION</p><h1>${esc(p.display_name)}</h1><p class="muted">@${esc(p.username)}</p></div></div><span class="status-pill">${selected.enabled ? window.ChatIcons("active") + " Active" : window.ChatIcons("inactive") + " Token revoked"}</span></div><nav class="developer-tabs" aria-label="Application settings">${[["overview", "General information"], ["bot", "Bot & token"], ["commands", "Commands"], ["hosting", "Hosting"], ...(root ? [["permissions", "Permissions"]] : [])].map(([key, label]) => `<button class="${tab === key ? "active" : ""}" data-app-tab="${key}">${label}</button>`).join("")}</nav><section id="applicationPanel"></section>`;
     $("backApplications").onclick = grid;
     document
       .querySelectorAll("[data-app-tab]")
@@ -207,7 +207,9 @@
         );
     } else if (tab === "commands") {
       $("applicationPanel").innerHTML =
-        '<div class="developer-panel"><h2>Application commands</h2><p class="muted">Define commands and arguments through chatbox.js. The chat interface is generated from your API definitions.</p><a class="primary" href="/external/chatbox/index.html#slash-commands">Command API examples ↗</a><div id="registeredCommands"><p class="muted">Loading registered commands…</p></div></div>';
+        '<div class="developer-panel"><h2>Application commands</h2><p class="muted">Define commands and arguments through chatbox.js. The chat interface is generated from your API definitions.</p><a class="primary" href="/external/chatbox/index.html#slash-commands">Command API examples ' +
+        window.ChatIcons("external") +
+        '</a><div id="registeredCommands"><p class="muted">Loading registered commands…</p></div></div>';
       const rows = preview
         ? [
             {
@@ -228,7 +230,9 @@
         '<p class="muted">No commands registered yet. Publish a script with client.commands.set() in ClientReady, or register them from your own host.</p>';
     } else if (tab === "hosting") {
       $("applicationPanel").innerHTML =
-        '<div class="developer-panel"><p class="eyebrow">PICK YOUR HOME</p><h2>Always around. Your way.</h2><p class="muted">Run on the dashboard 24/7, or use Node.js or Cloudflare on your own host.</p><div class="developer-hosting-grid"><article><h3>Dashboard hosting</h3><p>Upload or write JavaScript. Publish once and keep running when this browser closes.</p><button class="primary" id="openApplicationStudio">Open Bot Studio</button></article><article><h3>Bring your own host</h3><p>Use the same chatbox.js API with Node.js packages, or run on Cloudflare Workers.</p><a class="secondary" href="/external/chatbox/index.html#start">Self-hosting guide ↗</a></article></div></div>';
+        '<div class="developer-panel"><p class="eyebrow">PICK YOUR HOME</p><h2>Always around. Your way.</h2><p class="muted">Run on the dashboard 24/7, or use Node.js or Cloudflare on your own host.</p><div class="developer-hosting-grid"><article><h3>Dashboard hosting</h3><p>Upload or write JavaScript. Publish once and keep running when this browser closes.</p><button class="primary" id="openApplicationStudio">Open Bot Studio</button></article><article><h3>Bring your own host</h3><p>Use the same chatbox.js API with Node.js packages, or run on Cloudflare Workers.</p><a class="secondary" href="/external/chatbox/index.html#start">Self-hosting guide ' +
+        window.ChatIcons("external") +
+        "</a></article></div></div>";
       $("openApplicationStudio").onclick = () =>
         safe(() =>
           window.ChatBotStudio({
@@ -399,7 +403,9 @@
     session = (await checked(client.auth.getSession())).session;
     if (!session) {
       $("developerMain").innerHTML =
-        '<div class="developer-empty"><span>⌘</span><h1>Your next great bot starts here.</h1><p>Sign in to your CHATBOX account to manage applications.</p><a class="primary" href="/external/chat.html?next=/external/developers.html">Sign in to CHATBOX</a></div>';
+        '<div class="developer-empty"><span>' +
+        window.ChatIcons("terminal") +
+        '</span><h1>Your next great bot starts here.</h1><p>Sign in to your CHATBOX account to manage applications.</p><a class="primary" href="/external/chat.html?next=/external/developers.html">Sign in to CHATBOX</a></div>';
       return;
     }
     accounts = window.ChatAccounts({

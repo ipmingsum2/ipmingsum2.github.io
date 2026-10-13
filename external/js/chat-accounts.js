@@ -88,7 +88,7 @@
         rows = read();
       modal(
         "Switch accounts",
-        `<p class="muted">Your signed-in accounts on this device.</p><div class="account-switch-list">${rows.map((x) => `<div class="account-switch-row"><button class="text-button" data-switch-account="${esc(x.id)}" ${x.id === current ? "disabled" : ""}><b>${esc(x.name)}</b><small>${esc(x.email.replace(/^(.).*(@.*)$/, "$1••••$2"))}</small></button>${x.id === current ? '<span class="status-pill">Active</span>' : `<button class="secondary" data-forget-account="${esc(x.id)}" aria-label="Remove ${esc(x.name)} from this device">×</button>`}</div>`).join("")}</div><button class="primary" id="addChatAccount">Add an account</button><p class="small-note">Use this on a trusted device. Saved sessions let anyone using this browser switch accounts. Passwords are never saved by CHATBOX.</p>`,
+        `<p class="muted">Your signed-in accounts on this device.</p><div class="account-switch-list">${rows.map((x) => `<div class="account-switch-row"><button class="text-button" data-switch-account="${esc(x.id)}" ${x.id === current ? "disabled" : ""}><b>${esc(x.name)}</b><small>${esc(x.email.replace(/^(.).*(@.*)$/, "$1••••$2"))}</small></button>${x.id === current ? '<span class="status-pill">Active</span>' : `<button class="secondary" data-forget-account="${esc(x.id)}" aria-label="Remove ${esc(x.name)} from this device">${window.ChatIcons("close")}</button>`}</div>`).join("")}</div><button class="primary" id="addChatAccount">Add an account</button><p class="small-note">Use this on a trusted device. Saved sessions let anyone using this browser switch accounts. Passwords are never saved by CHATBOX.</p>`,
       );
       document.querySelectorAll("[data-switch-account]").forEach(
         (button) =>
