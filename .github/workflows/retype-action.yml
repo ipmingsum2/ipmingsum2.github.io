@@ -29,7 +29,7 @@ jobs:
         run: |
           test -n "$RETYPE_OUTPUT_PATH"
           mkdir -p "$RETYPE_OUTPUT_PATH/external/chatbox"
-          for file in chatbox-bot.mjs example-bot.mjs interaction-example.mjs cloudflare-worker.mjs cloudflare-wrangler.jsonc; do
+          for file in chatbox-bot.mjs example-bot.mjs interaction-example.mjs command-example.mjs cloudflare-worker.mjs cloudflare-wrangler.jsonc; do
             cp "external/chatbox/$file" "$RETYPE_OUTPUT_PATH/external/chatbox/$file"
           done
 

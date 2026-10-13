@@ -40,6 +40,7 @@
     timeout: null,
     canSend: false,
   };
+  let accounts = null;
   let client = null,
     live = null,
     refreshTimer = null,
@@ -130,6 +131,9 @@
     "permission",
     "bot_scopes",
     "delete_message",
+    "create_bot",
+    "rotate_bot",
+    "revoke_bot",
   ]);
   let humanUntil = 0,
     humanRequest = null;
@@ -431,7 +435,12 @@
               $("displayName").value.trim() || $("username").value.trim(),
           });
           location.replace("/external/chat.html");
-        } else await start(result.data.session.user);
+        } else if (
+          new URLSearchParams(location.search).get("next") ===
+          "/external/developers.html"
+        )
+          location.replace("/external/developers.html");
+        else await start(result.data.session.user);
       } catch (e) {
         $("authError").textContent = pendingRegistration
           ? "Your account was created. Update the profile details below and try again: " +
@@ -1300,7 +1309,7 @@
       el.className = "profile-card profile-popout";
       el.setAttribute("role", "dialog");
       el.setAttribute("aria-label", p.display_name + " profile");
-      el.innerHTML = `<div class="profile-banner" style="background-color:${/^#[0-9a-f]{6}$/i.test(p.banner_color) ? p.banner_color : "#5865f2"}"></div><button class="profile-popout-close icon-button" aria-label="Close profile">×</button><div class="profile-inner">${avatar(p)}<h2>${esc(p.display_name)}${p.is_bot ? '<span class="bot-label">APP</span>' : ""}</h2><small class="muted">${esc(p.username)}${p.pronouns ? " · " + esc(p.pronouns) : ""}</small>${p.status ? `<p class="profile-status">● ${esc(p.status)}</p>` : ""}<p class="profile-bio profile-bio-preview">${esc(p.bio || "This member hasn’t written a bio yet.")}</p><button class="text-button profile-expand">View Full Profile</button><div class="profile-role-list">${rolePills(p)}</div><div class="profile-actions">${id === state.me.id ? '<button class="primary" data-profile-edit>Edit Profile</button>' : !p.is_bot ? '<button class="primary" data-profile-message>Message</button>' : ""}</div></div>`;
+      el.innerHTML = `<div class="profile-banner" style="background-color:${/^#[0-9a-f]{6}$/i.test(p.banner_color) ? p.banner_color : "#5865f2"}">${https(p.banner_url) ? `<img class="profile-banner-image" src="${esc(https(p.banner_url))}" alt="" referrerpolicy="no-referrer">` : ""}</div><button class="profile-popout-close icon-button" aria-label="Close profile">×</button><div class="profile-inner">${avatar(p)}<h2>${esc(p.display_name)}${p.is_bot ? '<span class="bot-label">APP</span>' : ""}</h2><small class="muted">${esc(p.username)}${p.pronouns ? " · " + esc(p.pronouns) : ""}</small>${p.status ? `<p class="profile-status">● ${esc(p.status)}</p>` : ""}<p class="profile-bio profile-bio-preview">${esc(p.bio || "This member hasn’t written a bio yet.")}</p><button class="text-button profile-expand">View Full Profile</button><div class="profile-role-list">${rolePills(p)}</div><div class="profile-actions">${id === state.me.id ? '<button class="primary" data-profile-edit>Edit Profile</button>' : !p.is_bot ? '<button class="primary" data-profile-message>Message</button>' : ""}</div></div>`;
       const trigger = anchor || $("selfProfile");
       profilePopup = window.ChatUI.floating(el, trigger, () => {
         profilePopup = null;
@@ -1327,7 +1336,7 @@
     }
     modal(
       "",
-      `<article class="profile-card"><div class="profile-banner" style="background:${/^#[0-9a-f]{6}$/i.test(p.banner_color) ? p.banner_color : "#5865f2"}"></div><div class="profile-inner">${avatar(p)}<h2>${esc(p.display_name)}${p.is_bot ? '<span class="bot-label">APP</span>' : ""}</h2><small class="muted">${esc(p.username)} ${p.pronouns ? " · " + esc(p.pronouns) : ""}</small><div class="status-line">${p.status ? "● " + esc(p.status) : ""}</div><div>${rolePills(p, state.root)}</div><p class="profile-bio">${esc(p.bio || "This member hasn’t written a bio yet.")}</p>${state.root && !p.is_bot ? select("profileRole", "Add a role", [["", "Choose a role"], ...C.roles.map((r) => [r, r])], "") : ""}<div class="profile-actions">${id === state.me.id ? '<button class="primary" id="profileEdit">Edit profile</button>' : !p.is_bot ? '<button class="primary" id="profileMessage">Message</button>' : ""}${staff() && id !== state.me.id ? '<button class="secondary" id="profileModerate">Moderate</button>' : ""}</div></div></article>`,
+      `<article class="profile-card"><div class="profile-banner" style="background:${/^#[0-9a-f]{6}$/i.test(p.banner_color) ? p.banner_color : "#5865f2"}">${https(p.banner_url) ? `<img class="profile-banner-image" src="${esc(https(p.banner_url))}" alt="" referrerpolicy="no-referrer">` : ""}</div><div class="profile-inner">${avatar(p)}<h2>${esc(p.display_name)}${p.is_bot ? '<span class="bot-label">APP</span>' : ""}</h2><small class="muted">${esc(p.username)} ${p.pronouns ? " · " + esc(p.pronouns) : ""}</small><div class="status-line">${p.status ? "● " + esc(p.status) : ""}</div><div>${rolePills(p, state.root)}</div><p class="profile-bio">${esc(p.bio || "This member hasn’t written a bio yet.")}</p>${state.root && !p.is_bot ? select("profileRole", "Add a role", [["", "Choose a role"], ...C.roles.map((r) => [r, r])], "") : ""}<div class="profile-actions">${id === state.me.id ? '<button class="primary" id="profileEdit">Edit profile</button>' : !p.is_bot ? '<button class="primary" id="profileMessage">Message</button>' : ""}${staff() && id !== state.me.id ? '<button class="secondary" id="profileModerate">Moderate</button>' : ""}</div></div></article>`,
     );
     if ($("profileEdit"))
       $("profileEdit").onclick = () => openSettings("profile");
@@ -1371,7 +1380,7 @@
         )
         .join(
           "",
-        )}<button data-logout>Log Out</button><button data-close>← Back to chat</button></nav><section class="settings-content">${content}</section></div>`;
+        )}<button data-switch-accounts>Switch accounts</button><a href="/external/developers.html">Developer Portal ↗</a><button data-logout>Log Out</button><button data-close>← Back to chat</button></nav><section class="settings-content">${content}</section></div>`;
     if (!$("modal").open) $("modal").showModal();
   }
   async function openSettings(tab = "account") {
@@ -1380,7 +1389,7 @@
     if (tab === "account") {
       const email = state.user.email || "preview@example.com",
         masked = email.replace(/^(.)(.*)(@.*)$/, "$1********$3");
-      html = `<h2>My Account</h2><div class="account-card"><div class="account-banner" style="background:${/^#[0-9a-f]{6}$/i.test(p.banner_color) ? p.banner_color : "#5865f2"}"></div><div class="account-person">${avatar(p)}<div><h3>${esc(p.display_name)}</h3>${rolePills(p)}</div></div></div><h3>Account Info</h3><div class="account-row"><div><b>Username</b><small>${esc(p.username)}</small></div><button class="secondary" data-settings="profile">Edit</button></div><div class="account-row"><div><b>Email</b><small><span id="maskedEmail">${esc(masked)}</span> <button class="text-button" id="revealEmail">Reveal</button></small></div><button class="secondary" id="editEmail">Edit</button></div><div class="account-row"><b>Password</b><button class="secondary" data-settings="password">Edit</button></div><button class="standing-row" data-settings="standing"><span class="standing-icon">✓</span><div><strong>Account Standing</strong><p>Review your moderation history and account status.</p></div><span>View →</span></button>`;
+      html = `<h2>My Account</h2><div class="account-card"><div class="account-banner" style="background:${/^#[0-9a-f]{6}$/i.test(p.banner_color) ? p.banner_color : "#5865f2"}">${https(p.banner_url) ? `<img class="profile-banner-image" src="${esc(https(p.banner_url))}" alt="" referrerpolicy="no-referrer">` : ""}</div><div class="account-person">${avatar(p)}<div><h3>${esc(p.display_name)}</h3>${rolePills(p)}</div></div></div><h3>Account Info</h3><div class="account-row"><div><b>Username</b><small>${esc(p.username)}</small></div><button class="secondary" data-settings="profile">Edit</button></div><div class="account-row"><div><b>Email</b><small><span id="maskedEmail">${esc(masked)}</span> <button class="text-button" id="revealEmail">Reveal</button></small></div><button class="secondary" id="editEmail">Edit</button></div><div class="account-row"><b>Password</b><button class="secondary" data-settings="password">Edit</button></div><button class="standing-row" data-settings="standing"><span class="standing-icon">✓</span><div><strong>Account Standing</strong><p>Review your moderation history and account status.</p></div><span>View →</span></button>`;
       settingsFrame(tab, html);
       $("revealEmail").onclick = () => {
         $("maskedEmail").textContent = email;
@@ -1613,12 +1622,8 @@
       });
       html = `<div class="toolbar-row"><h2>Moderation History</h2><button class="primary" id="newModeration">Moderate member</button></div>${historyHTML(state.history)}`;
     }
-    if (tab === "bots") {
-      state.bots = await query("cb_bots", {
-        select: "id,owner_id,enabled,created_at,scopes",
-      });
-      html = `<div class="toolbar-row"><h2>Apps & Bots</h2><button class="primary" id="newBot">Create Bot</button></div><p class="small-note">Bots use the same channel permissions and AutoMod as members. Tokens are shown once. <a href="/external/chatbox/index.html" target="_blank">Read the Node.js API guide ↗</a></p>${state.bots.map((b) => `<article class="rule-card"><h3>${esc(profile(b.id).display_name)} <span class="bot-label">APP</span></h3><p>${b.enabled ? "Active" : "Revoked"} · ID: ${esc(b.id)}</p><p class="small-note">Permissions: ${esc((b.scopes || []).join(", ") || "Messaging only")}</p><div class="rule-actions"><button class="primary" data-bot-studio="${b.id}">Open Bot Studio</button>${state.root ? `<button class="secondary" data-bot-scopes="${b.id}">Permissions</button>` : ""}<button class="secondary" data-bot-rotate="${b.id}">Rotate token</button><button class="danger" data-bot-revoke="${b.id}">Revoke token</button></div></article>`).join("") || '<div class="empty-state">Your bots will appear here.</div>'}`;
-    }
+    if (tab === "bots")
+      html = `<h2>Developer Portal</h2><p class="muted">Manage your applications, bot identity, tokens, command API, and hosting in the dedicated portal.</p><a class="primary" href="/external/developers.html">Open Developer Portal ↗</a>`;
     $("modalContent").innerHTML =
       `<div class="settings-layout"><nav class="settings-nav"><small>CHATBOX SERVER</small>${[
         ["overview", "Overview"],
@@ -1644,18 +1649,6 @@
       $("newAdminChannel").onclick = () => channelForm();
     if ($("newCategory")) $("newCategory").onclick = categoryForm;
     if ($("newModeration")) $("newModeration").onclick = () => moderationForm();
-    if ($("newBot"))
-      $("newBot").onclick = () => {
-        modal(
-          "Create a bot",
-          `<form id="botForm">${field("name", "Bot name", "", "text", 'required maxlength="64"')}<p class="small-note">The bot will start with member permissions. Use channel permission overrides to give it access to private channels.</p><button class="primary" type="submit">Create Bot</button></form>`,
-        );
-        formSave("botForm", async (v) => {
-          const r = await rpc("create_bot", v);
-          await refresh();
-          showToken(r.token);
-        });
-      };
   }
   function adminMembersHTML(filter = "") {
     return state.profiles
@@ -2055,6 +2048,7 @@
       toast,
       safe,
       preview,
+      upload,
       rpc: (action, payload) =>
         checkedChat("chat_interact", { action, payload }),
     });
@@ -2118,10 +2112,15 @@
       safe(async () => {
         if (b.hasAttribute("data-close")) return closeModal();
         if (b.hasAttribute("data-logout")) {
-          if (!preview) await client.auth.signOut();
+          if (!preview) await client.auth.signOut({ scope: "local" });
           closeModal();
           setAuth();
           return;
+        }
+        if (b.hasAttribute("data-switch-accounts")) {
+          if (!accounts)
+            throw Error("Account switching needs a connected account.");
+          return accounts.show();
         }
         if (b.dataset.channel) {
           closeModal();
@@ -2812,6 +2811,14 @@
       return;
     }
     client = window.supabase.createClient(cfg.supabaseUrl, cfg.publishableKey);
+    accounts = window.ChatAccounts?.({
+      client,
+      config: cfg,
+      modal,
+      closeModal,
+      esc,
+      toast,
+    });
     client.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_OUT") setAuth();
       if (event === "PASSWORD_RECOVERY") {
@@ -2821,6 +2828,11 @@
     });
     const { data, error } = await client.auth.getSession();
     if (error) throw error;
+    try {
+      accounts?.remember(data.session);
+    } catch (error) {
+      toast(error.message, true);
+    }
     if (data.session && !register) await start(data.session.user);
   }
   safe(init);

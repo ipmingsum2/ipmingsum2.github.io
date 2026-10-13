@@ -16,6 +16,9 @@
         <a href="#cloudflare">Cloudflare hosting</a>
         <a href="#buttons">Buttons &amp; ephemeral replies</a>
         <a href="#interactions">Buttons, commands &amp; forms</a>
+        <a href="#slash-commands">Typed slash commands</a>
+        <a href="#message-management">Bulk deletion, pins &amp; reactions</a>
+        <a href="#developer-portal">Developer Portal &amp; accounts</a>
         <a href="#community">Channels, members &amp; polls</a>
         <a href="#messages">Messages &amp; events</a>
         <a href="#embeds">Rich embeds</a><a href="#dms">Direct messages</a>
@@ -43,10 +46,11 @@
       <section id="hosting">
         <h2>Dashboard hosting</h2>
         <p>
-          Open <b>Server settings → Apps &amp; Bots → Open Bot Studio</b>.
-          Upload a JavaScript file or type in the editor. It includes
-          highlighting, line numbers, and autocomplete. <b>Save draft</b> saves
-          your work without changing the running bot.
+          Open the <a href="/external/developers.html">Developer Portal</a>,
+          select your application, then <b>Hosting → Open Bot Studio</b>. Upload
+          a JavaScript file or type in the editor. It includes highlighting,
+          line numbers, and autocomplete. <b>Save draft</b> saves your work
+          without changing the running bot.
           <b>Publish &amp; run 24/7</b> activates it. You can close your
           browser; Supabase handles new messages for you.
         </p>
@@ -456,6 +460,316 @@ await client.login();</code></pre>
           supported yet.
         </p>
       </section>
+      <section id="developer-portal">
+        <h2>Your application, in its own space</h2>
+        <p>
+          <a href="/external/developers.html">Open the Developer Portal ↗</a>.
+          Sign in with your CHATBOX account. Administrators can create
+          applications; owners manage their applications and root can manage all
+          of them.
+        </p>
+        <ul>
+          <li>
+            <b>General information:</b> change the bot username, display name,
+            description, status, avatar, banner image, and banner color. Upload
+            PNG, JPEG, WebP, GIF or AVIF images up to 4 MB, or use HTTPS image
+            URLs.
+          </li>
+          <li>
+            <b>Bot &amp; token:</b> create, reset or revoke a token with
+            server-verified hCaptcha. A new token is shown once. Resetting
+            invalidates the previous token immediately.
+          </li>
+          <li>
+            <b>Commands:</b> inspect registered definitions. Register and update
+            them through the API in your script.
+          </li>
+          <li>
+            <b>Hosting:</b> upload/write JavaScript in Bot Studio for 24/7
+            execution, or follow the Node.js and Cloudflare sections on this
+            page.
+          </li>
+          <li>
+            <b>Permissions:</b> root grants API scopes. Bots cannot assign staff
+            roles, change passwords, or delete user accounts.
+          </li>
+        </ul>
+        <div class="code-head">
+          <span>Bot identity API</span><button class="copy">Copy</button>
+        </div>
+        <pre><code data-language="javascript">await client.user.setUsername('orbit_bot');
+await client.user.setAvatar('https://example.com/avatar.png');
+await client.user.setBanner('https://example.com/banner.png');
+await client.application.edit({ description: 'Your helpful community bot' });
+await client.profile.edit({ display_name: 'Orbit', status: 'Ready to help',
+  banner_color: '#7867ed' });</code></pre>
+        <h3>Switch CHATBOX accounts</h3>
+        <p>
+          Open <b>User Settings → Switch accounts</b> or the portal’s
+          <b>Switch accounts</b> button. Add another account with email,
+          password and hCaptcha, then switch without signing in again. Remove
+          inactive accounts with ×. Log Out signs out the active account only.
+        </p>
+        <p>
+          Sessions are saved on this device, like the existing Supabase sign-in
+          session; passwords are never saved. Anyone with access to this browser
+          profile can switch saved accounts. Switching reloads the page to clear
+          the previous account’s cached data and subscriptions. Expired or
+          revoked sessions require sign-in again.
+        </p>
+      </section>
+      <section id="slash-commands">
+        <h2>Slash commands with real arguments</h2>
+        <p>
+          Define commands with <code>SlashCommandBuilder</code>, then register
+          them with <code>client.commands.set()</code>. CHATBOX generates named
+          inputs and selectors from the schema. The server validates the values,
+          choices, references, required fields, and limits before the bot
+          receives the interaction.
+        </p>
+        <p>
+          <a href="command-example.mjs" download
+            >Download a complete typed-command and autocomplete bot</a
+          >. Use it on Node.js, or change the import to
+          <code>'chatbox.js'</code> for dashboard hosting.
+        </p>
+        <div class="code-head">
+          <span>Register and handle /purge count</span
+          ><button class="copy">Copy</button>
+        </div>
+        <pre><code data-language="javascript">import { Client, Events, SlashCommandBuilder } from 'chatbox.js';
+const client = new Client();
+const purge = new SlashCommandBuilder().setName('purge')
+  .setDescription('Remove recent messages')
+  .setRequiredRole('Moderator') // CHATBOX: enforced on the invoking member.
+  .addIntegerOption(o =&gt; o.setName('count').setDescription('How many?')
+    .setRequired(true).setMinValue(1).setMaxValue(100));
+client.once(Events.ClientReady, async () =&gt; {
+  await client.commands.set([purge]);
+});
+client.on(Events.InteractionCreate, async interaction =&gt; {
+  if (!interaction.isChatInputCommand() || interaction.commandName !== 'purge') return;
+  const count = interaction.options.getInteger('count', true);
+  const deleted = await interaction.channel.bulkDelete(count);
+  await interaction.reply({ content: `Removed ${deleted.size} messages.`, ephemeral: true });
+});
+await client.login();</code></pre>
+        <p>
+          Root must grant this bot <code>manage_messages</code> and the owner
+          must remain Moderator or higher.
+          <code>setRequiredRole()</code> restricts who can run the command.
+          Without it, a command is available to members who can send in its
+          channel, so check the invoking member before performing privileged
+          operations.
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>Argument</th>
+              <th>Builder method</th>
+              <th>Interaction getter</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>String</td>
+              <td><code>addStringOption</code></td>
+              <td><code>getString</code></td>
+            </tr>
+            <tr>
+              <td>Integer</td>
+              <td><code>addIntegerOption</code></td>
+              <td><code>getInteger</code></td>
+            </tr>
+            <tr>
+              <td>Boolean</td>
+              <td><code>addBooleanOption</code></td>
+              <td><code>getBoolean</code></td>
+            </tr>
+            <tr>
+              <td>User</td>
+              <td><code>addUserOption</code></td>
+              <td><code>getUser</code> / <code>getMember</code></td>
+            </tr>
+            <tr>
+              <td>Channel or category</td>
+              <td><code>addChannelOption</code></td>
+              <td><code>getChannel</code></td>
+            </tr>
+            <tr>
+              <td>Role</td>
+              <td><code>addRoleOption</code></td>
+              <td><code>getRole</code></td>
+            </tr>
+            <tr>
+              <td>User or role</td>
+              <td><code>addMentionableOption</code></td>
+              <td><code>getMentionable</code></td>
+            </tr>
+            <tr>
+              <td>Decimal number</td>
+              <td><code>addNumberOption</code></td>
+              <td><code>getNumber</code></td>
+            </tr>
+            <tr>
+              <td>File attachment</td>
+              <td><code>addAttachmentOption</code></td>
+              <td><code>getAttachment</code></td>
+            </tr>
+            <tr>
+              <td>Subcommand</td>
+              <td><code>addSubcommand</code></td>
+              <td><code>getSubcommand</code></td>
+            </tr>
+            <tr>
+              <td>Subcommand group</td>
+              <td><code>addSubcommandGroup</code></td>
+              <td><code>getSubcommandGroup</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          These correspond to
+          <a
+            href="https://docs.discord.com/developers/interactions/application-commands#application-command-option-type"
+            >Discord’s argument types</a
+          >. CHATBOX references its own users, roles, channels and files. Voice
+          channels, Discord IDs, localization, OAuth installations and Discord
+          permission bitfields do not exist here. Command and argument names use
+          lowercase letters, numbers, underscores and hyphens.
+        </p>
+        <h3>Choices, limits and nested commands</h3>
+        <div class="code-head">
+          <span>Builder options</span><button class="copy">Copy</button>
+        </div>
+        <pre><code data-language="javascript">const tools = new SlashCommandBuilder().setName('tools').setDescription('Tools')
+  .addSubcommandGroup(group =&gt; group.setName('profile').setDescription('Profiles')
+    .addSubcommand(sub =&gt; sub.setName('inspect').setDescription('Inspect a member')
+      .addUserOption(o =&gt; o.setName('member').setDescription('Who?').setRequired(true))
+      .addStringOption(o =&gt; o.setName('detail').setDescription('Detail level')
+        .addChoices({name:'Short',value:'short'}, {name:'Full',value:'full'}))));
+// Inside the handler:
+const group = interaction.options.getSubcommandGroup(); // 'profile'
+const sub = interaction.options.getSubcommand(); // 'inspect'
+const member = interaction.options.getUser('member', true); // User with send()/createDM()
+const detail = interaction.options.getString('detail') ?? 'short';</code></pre>
+        <p>
+          Use <code>setMinValue</code>/<code>setMaxValue</code> for numbers,
+          <code>setMinLength</code>/<code>setMaxLength</code> for strings,
+          <code
+            >addChannelTypes(ChannelType.GuildText,
+            ChannelType.GuildCategory)</code
+          >
+          for channels, and <code>setFileTypes('image', '.pdf')</code> for
+          attachments. Required arguments come before optional ones. Use up to
+          25 options per level, 25 choices per option, and 100 commands per bot.
+          Nest groups → subcommands → arguments; do not mix subcommands with
+          ordinary arguments at the same level.
+        </p>
+        <h3>CHATBOX custom inputs</h3>
+        <div class="code-head">
+          <span>More than plain text</span><button class="copy">Copy</button>
+        </div>
+        <pre><code data-language="javascript">const reminder = new SlashCommandBuilder().setName('reminder').setDescription('Capture details')
+  .addDurationOption(o =&gt; o.setName('wait').setDescription('For example 5m or 2h'))
+  .addDateOption(o =&gt; o.setName('day').setDescription('Calendar date'))
+  .addColorOption(o =&gt; o.setName('color').setDescription('Hex color'))
+  .addMultilineOption(o =&gt; o.setName('note').setDescription('Longer note').setMaxLength(1000))
+  .addURLOption(o =&gt; o.setName('link').setDescription('HTTPS link'));
+// These are string options with a server-checked CHATBOX format.
+const seconds = interaction.options.getDuration('wait'); // '5m' → 300
+const date = interaction.options.getDate('day'); // Date at midnight UTC
+const color = interaction.options.getColor('color'); // '#5865f2' → integer
+const note = interaction.options.getString('note');
+const file = interaction.options.getAttachment('file');
+if (file) console.log(await file.getURL()); // Authorized download link, valid for 5 minutes.</code></pre>
+        <p>
+          Duration units: s, m, h, d, w. Date uses YYYY-MM-DD. Colors use
+          #RRGGBB. Attachment uploads stay private to their channel; the API
+          authorizes a short-lived download URL. A form does not schedule work
+          by itself: timers or persistent scheduling need your host’s
+          implementation.
+        </p>
+        <h3>Dynamic autocomplete callbacks</h3>
+        <div class="code-head">
+          <span>App-provided suggestions</span
+          ><button class="copy">Copy</button>
+        </div>
+        <pre><code data-language="javascript">const search = new SlashCommandBuilder().setName('search').setDescription('Search topics')
+  .addStringOption(o =&gt; o.setName('topic').setDescription('Topic')
+    .setRequired(true).setAutocomplete(true));
+client.on(Events.InteractionCreate, async interaction =&gt; {
+  if (!interaction.isAutocomplete()) return;
+  const prefix = String(interaction.options.getFocused()).toLowerCase();
+  await interaction.respond(['Luau', 'JavaScript', 'TypeScript']
+    .filter(name =&gt; name.toLowerCase().includes(prefix))
+    .map(name =&gt; ({name, value:name})));
+});</code></pre>
+        <p>
+          Autocomplete supports string, integer and number options; use it
+          instead of fixed choices. It is debounced in chat, private to the
+          requesting member and limited to 25 results. Keep callbacks fast. A
+          once-per-minute Worker may respond too slowly for live autocomplete;
+          use dashboard hosting or a continuously running Node process. Typed
+          values still pass full validation on submission.
+        </p>
+        <p>
+          <code>client.commands.create(builder)</code>,
+          <code>edit(name, builder)</code>, <code>delete(name)</code>, and
+          <code>fetch(name?)</code> manage one command at a time.
+          <code>set([...])</code> replaces the whole list. Registration is
+          idempotent when definitions are unchanged. Hosted
+          <code>ClientReady</code> runs on publish/startup; regular message
+          executions do not register commands again.
+        </p>
+      </section>
+      <section id="message-management">
+        <h2>Bulk deletion, pins &amp; reactions</h2>
+        <div class="code-head">
+          <span>Message management API</span><button class="copy">Copy</button>
+        </div>
+        <pre><code data-language="javascript">const channel = await client.channels.fetch(channelId);
+const recent = await channel.messages.fetch({limit:25}); // Newest first, returns an array.
+const older = await channel.messages.fetch({limit:25, before:recent.at(-1).id});
+const newer = await channel.messages.fetch({afterId:recent[0].id, limit:25});
+const message = await channel.messages.fetch(messageId); // One Message.
+await message.pin();
+await message.unpin();
+await message.react('👍');
+const reactions = await message.reactions.fetch(); // [{emoji, count, me}]
+await message.reactions.remove('👍'); // Remove this bot’s reaction.
+await message.reactions.removeAll(); // Requires manage_messages.
+const pins = await channel.messages.fetchPinned();
+const deleted = await channel.bulkDelete(20); // One API call, 1–100 recent messages.
+// Or use IDs, an array of Message objects, or a Collection:
+const removed = await channel.bulkDelete([messageId, anotherMessageId]);
+console.log(removed.size); // Collection of the IDs removed.</code></pre>
+        <p>
+          Bulk deletion is atomic and restricted to one visible channel. It
+          removes content, attachments, embeds, components, pins and reactions
+          from the selected conversation messages. No “message deleted”
+          placeholder appears in chat. Already deleted IDs are not counted
+          again. CHATBOX keeps its internal deletion markers for synchronization
+          and has no Discord two-week age restriction.
+        </p>
+        <p>
+          A bot can delete its own messages. Deleting other members’ messages,
+          pinning, or clearing all reactions requires
+          <code>manage_messages</code> and a Moderator-or-higher owner. Timeouts
+          prevent writes. Private-channel checks apply to fetches, cursors,
+          pins, reactions and attachment links.
+        </p>
+        <p>
+          REST routes include
+          <code>POST /v1/channels/{id}/messages/bulk-delete</code> with
+          <code>{messages:[id1,id2]}</code> or <code>{count:20}</code>,
+          <code>GET /v1/channels/{id}/pins</code>,
+          <code>GET /v1/messages/{id}</code>, and
+          <code>GET|PUT|POST /v1/commands</code>. Command updates/deletes use
+          <code>PATCH|DELETE /v1/commands/{name}</code>. Pins/reactions and
+          other SDK actions also work through <code>POST /v1/actions</code>.
+        </p>
+      </section>
       <section id="interactions">
         <h2>Buttons, commands &amp; forms</h2>
         <p>
@@ -466,10 +780,9 @@ await client.login();</code></pre>
         <p>
           <a href="interaction-example.mjs" download
             >Download a complete application-form bot</a
-          >. Upload it in Bot Studio. Under <b>Slash commands</b>, enter
-          <code>apply | Open an application form</code> and save. Type
-          <code>/apply</code> in chat, or send <code>!apply</code> to get a
-          button.
+          >. Upload it in Bot Studio and publish. The script registers its
+          commands through the API on startup. Type <code>/apply</code> in chat,
+          or send <code>!apply</code> to get a button.
         </p>
         <div class="code-head">
           <span>Form handler</span
@@ -500,16 +813,18 @@ await client.login();</code></pre>
             >await client.commands.set([{name:'apply',description:'Open an
             application form'}])</code
           >
-          after login, or use Studio. Registration replaces that bot’s command
-          list. Do not register again on every message.
+          in a <code>ClientReady</code> handler. Registration replaces that
+          bot’s command list. Hosted publishing queues a startup event; no
+          manual command menu is needed.
         </p>
         <p>
-          Commands accept optional free text after the name: read it with
-          <code>interaction.options.getString('input')</code>. Typed Discord
-          command options are not implemented. Buttons use
-          <code>ButtonBuilder</code>, <code>ButtonStyle</code>, and
-          <code>ActionRowBuilder</code>; send rows in the message’s
-          <code>components</code> array. Link buttons require HTTPS.
+          Commands declare typed named arguments through the
+          <a href="#slash-commands">command API</a>. Older commands without an
+          argument schema retain <code>getString('input')</code> for
+          compatibility. Buttons use <code>ButtonBuilder</code>,
+          <code>ButtonStyle</code>, and <code>ActionRowBuilder</code>; send rows
+          in the message’s <code>components</code> array. Link buttons require
+          HTTPS.
         </p>
         <p>
           Forms support 1–5 text fields, required/optional fields, placeholders,
@@ -570,9 +885,9 @@ await client.polls.close(poll.id);</code></pre>
           CHATBOX has no voice/video gateway, Discord servers, Discord OAuth,
           billing, external app installation, or Discord moderation
           infrastructure. Those Discord APIs cannot be provided by this app.
-          Components currently support buttons and text-input forms; select
-          menus, follow-up interaction webhooks, and typed slash-command options
-          are not implemented.
+          Components currently support buttons and text-input forms. Message
+          component select menus and follow-up interaction webhooks are not
+          implemented.
         </div>
       </section>
 
@@ -938,10 +1253,10 @@ await client.automod.delete('my-bot-spam-rule');</code></pre>
       <section id="security">
         <h2>Verification &amp; root tools</h2>
         <p>
-          Sign-in, registration, password recovery, and human moderation actions
-          use hCaptcha. The widget uses the site’s theme. Tokens are verified by
-          Supabase Auth or the chat-api Edge Function; client-side checks alone
-          never authorize moderation.
+          Sign-in, registration, password recovery, human moderation, and bot
+          creation/token reset/revocation use hCaptcha. The widget uses the
+          site’s theme. Tokens are verified by Supabase Auth or the chat-api
+          Edge Function; client-side checks alone never authorize moderation.
         </p>
         <p>
           Owners configure <code>HCAPTCHA_SECRET</code> in Supabase Edge

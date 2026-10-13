@@ -24,6 +24,8 @@ for (const name of [
   "chat-config",
   "chat-guard",
   "chat-captcha",
+  "chat-accounts",
+  "chat-developers",
 ]) {
   const input = await read(`js/${name}.js`);
   const { code } = await transform(input, {
@@ -49,7 +51,7 @@ refs.set(
 );
 before += Buffer.byteLength(css);
 after += Buffer.byteLength(cssMin);
-for (const name of ["chat", "register"]) {
+for (const name of ["chat", "register", "developers"]) {
   let html = await readFile(new URL(`${name}.html`, sources), "utf8");
   before += Buffer.byteLength(html);
   for (const [from, to] of refs) html = html.replaceAll(from, to);

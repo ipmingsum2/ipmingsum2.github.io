@@ -25,6 +25,63 @@ const event = {
     created_at: "2026-01-01",
   },
 };
+test("hosted startup runs API command registration and typed handlers share the Node SDK", async () => {
+  const calls = [];
+  const source = `import {Client,Events,SlashCommandBuilder} from 'chatbox.js';const c=new Client();c.once(Events.ClientReady,async()=>{await c.commands.set([new SlashCommandBuilder().setName('purge').setDescription('Purge').addIntegerOption(o=>o.setName('count').setDescription('Count').setRequired().setMinValue(1))]);});c.on(Events.InteractionCreate,async i=>{if(i.isAutocomplete())return i.respond([{name:'Five',value:5}]);const count=i.options.getInteger('count',true);const removed=await i.channel.bulkDelete(count);await i.reply({content:String(removed.size),ephemeral:true});});await c.login();`;
+  const invoke = async (action, payload) => {
+    calls.push({ action, payload });
+    return action === "bulk_delete" ? { ids: ["first", "second"] } : {};
+  };
+  await runHosted(
+    await getQuickJS(),
+    source,
+    sdk,
+    { bot: { id: "bot" }, startup: true },
+    invoke,
+  );
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].action, "commands_set");
+  assert.equal(calls[0].payload.commands[0].options[0].type, 4);
+  calls.length = 0;
+  await runHosted(
+    await getQuickJS(),
+    source,
+    sdk,
+    {
+      bot: { id: "bot" },
+      interaction: {
+        id: "ticket",
+        kind: "command",
+        channel_id: "lobby",
+        fields: { options: [{ name: "count", type: 4, value: 2 }] },
+      },
+    },
+    invoke,
+  );
+  assert.deepEqual(
+    calls.map((x) => x.action),
+    ["bulk_delete", "interaction_reply"],
+  );
+  assert.equal(calls[1].payload.text, "2");
+  calls.length = 0;
+  await runHosted(
+    await getQuickJS(),
+    source,
+    sdk,
+    {
+      bot: { id: "bot" },
+      interaction: {
+        id: "ticket",
+        kind: "autocomplete",
+        custom_id: "purge",
+        channel_id: "lobby",
+        fields: { focused: { name: "count", value: "5" } },
+      },
+    },
+    invoke,
+  );
+  assert.equal(calls[0].action, "autocomplete_reply");
+});
 test("hosted interaction handler creates a validated-shape modal without a token", async () => {
   const calls = [];
   await runHosted(
