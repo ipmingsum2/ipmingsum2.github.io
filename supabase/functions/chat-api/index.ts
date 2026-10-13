@@ -23,7 +23,18 @@ const CAPTCHA_ACTIONS = new Set([
   "permission",
   "bot_scopes",
   "delete_message",
+  "create_bot",
+  "rotate_bot",
+  "revoke_bot",
 ]);
+async function botResult(admin: any, action: string, data: any) {
+  if (action !== "attachment") return data;
+  const signed = await admin.storage
+    .from(data.bucket)
+    .createSignedUrl(data.path, 300);
+  if (signed.error) throw Error("Attachment is unavailable");
+  return { url: signed.data.signedUrl, expires_in: 300 };
+}
 async function verifyCaptcha(token: unknown) {
   if (!env("HCAPTCHA_SECRET"))
     throw new Error(
@@ -273,7 +284,7 @@ Deno.serve(async (req) => {
                 if (r.error) throw Error(r.error.message);
                 if (r.data?.blocked || r.data?.slowmode)
                   throw Error(r.data.message || "Message blocked");
-                return r.data;
+                return await botResult(admin, action, r.data);
               },
             );
           } catch (error) {
@@ -332,6 +343,54 @@ Deno.serve(async (req) => {
       } else if (path === "/v1/automod" && req.method === "POST") {
         action = "automod";
         payload = await boundedBody(req);
+      } else if (path === "/v1/automod" && req.method === "GET") {
+        action = "automod_rules";
+      } else if (
+        path === "/v1/commands" &&
+        ["GET", "PUT", "POST"].includes(req.method)
+      ) {
+        action =
+          req.method === "GET"
+            ? "commands"
+            : req.method === "PUT"
+              ? "commands_set"
+              : "command_create";
+        if (req.method !== "GET") {
+          const body = await boundedBody(req);
+          payload =
+            action === "commands_set"
+              ? { commands: body.commands }
+              : { command: body };
+        }
+      } else if (
+        /^\/v1\/commands\/[^/]+$/.test(path) &&
+        ["PATCH", "DELETE"].includes(req.method)
+      ) {
+        action = req.method === "PATCH" ? "command_edit" : "command_delete";
+        payload = {
+          name: decodeURIComponent(path.split("/")[3]),
+          ...(req.method === "PATCH"
+            ? { command: await boundedBody(req) }
+            : {}),
+        };
+      } else if (
+        /^\/v1\/channels\/[^/]+\/messages\/bulk-delete$/.test(path) &&
+        req.method === "POST"
+      ) {
+        action = "bulk_delete";
+        const body = await boundedBody(req);
+        payload = {
+          channel_id: decodeURIComponent(path.split("/")[3]),
+          ...(body.count !== undefined
+            ? { count: body.count }
+            : { ids: body.messages || body.ids }),
+        };
+      } else if (
+        /^\/v1\/channels\/[^/]+\/pins$/.test(path) &&
+        req.method === "GET"
+      ) {
+        action = "pins";
+        payload = { channel_id: decodeURIComponent(path.split("/")[3]) };
       } else if (
         /^\/v1\/automod\/[^/]+$/.test(path) &&
         req.method === "DELETE"
@@ -346,6 +405,10 @@ Deno.serve(async (req) => {
             payload.after = url.searchParams.get("after");
           if (url.searchParams.has("after_id"))
             payload.after_id = url.searchParams.get("after_id");
+          if (url.searchParams.has("limit"))
+            payload.limit = url.searchParams.get("limit");
+          if (url.searchParams.has("before"))
+            payload.before = url.searchParams.get("before");
         } else if (req.method === "POST") {
           action = "send";
           const body = await boundedBody(req);
@@ -361,9 +424,14 @@ Deno.serve(async (req) => {
         } else return reply({ error: "Method not allowed" }, 405);
       } else if (
         /^\/v1\/messages\/[^/]+$/.test(path) &&
-        ["PATCH", "DELETE"].includes(req.method)
+        ["GET", "PATCH", "DELETE"].includes(req.method)
       ) {
-        action = req.method === "PATCH" ? "edit" : "delete_message";
+        action =
+          req.method === "GET"
+            ? "message"
+            : req.method === "PATCH"
+              ? "edit"
+              : "delete_message";
         payload = { id: decodeURIComponent(path.split("/")[3]) };
         if (action === "edit") {
           const body = await boundedBody(req);
@@ -387,7 +455,10 @@ Deno.serve(async (req) => {
               ? 429
               : 403,
         );
-      return reply(data, data?.blocked ? 422 : data?.slowmode ? 429 : 200);
+      return reply(
+        await botResult(admin, action, data),
+        data?.blocked ? 422 : data?.slowmode ? 429 : 200,
+      );
     }
     if (req.method !== "POST")
       return reply({ error: "Method not allowed" }, 405);

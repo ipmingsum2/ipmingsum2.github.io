@@ -1,6 +1,113 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  SlashCommandBuilder,
+  ApplicationCommandOptionType,
+  CommandInteractionOptionResolver,
+  Interaction,
+  Collection,
+} from "../chatbox.js";
+
+test("SDK builds typed commands, resolves references and exposes bulk message operations", async () => {
+  const command = new SlashCommandBuilder()
+    .setName("tools")
+    .setDescription("Tools")
+    .setRequiredRole("Moderator")
+    .addSubcommandGroup((group) =>
+      group
+        .setName("messages")
+        .setDescription("Messages")
+        .addSubcommand((sub) =>
+          sub
+            .setName("purge")
+            .setDescription("Purge")
+            .addIntegerOption((o) =>
+              o
+                .setName("count")
+                .setDescription("Count")
+                .setRequired()
+                .setMinValue(1)
+                .setMaxValue(100),
+            )
+            .addBooleanOption((o) =>
+              o.setName("confirm").setDescription("Confirm"),
+            ),
+        ),
+    );
+  assert.equal(
+    command.toJSON().options[0].type,
+    ApplicationCommandOptionType.SubcommandGroup,
+  );
+  assert.equal(command.toJSON().options[0].options[0].options[0].min_value, 1);
+  const client = new Client();
+  client.token = "test";
+  const calls = [];
+  client.action = async (action, payload) => {
+    calls.push({ action, payload });
+    return action === "bulk_delete"
+      ? { ids: ["one", "two"], count: 2 }
+      : action === "messages"
+        ? [{ id: "one", room: "lobby", user_id: "user", text: "hello" }]
+        : action === "message"
+          ? { id: payload.id, room: "lobby", user_id: "user" }
+          : {};
+  };
+  const resolver = new CommandInteractionOptionResolver(client, {
+    options: [
+      {
+        type: 2,
+        name: "messages",
+        options: [
+          {
+            type: 1,
+            name: "purge",
+            options: [
+              { type: 4, name: "count", value: 5 },
+              { type: 5, name: "confirm", value: false },
+            ],
+          },
+        ],
+      },
+    ],
+  });
+  assert.equal(resolver.getSubcommandGroup(), "messages");
+  assert.equal(resolver.getSubcommand(), "purge");
+  assert.equal(resolver.getInteger("count", true), 5);
+  assert.equal(resolver.getBoolean("confirm"), false);
+  assert.throws(() => resolver.getString("count"), /type/);
+  assert.throws(() => resolver.getString("missing", true), /required/);
+  const i = new Interaction(client, {
+    kind: "command",
+    channel_id: "lobby",
+    fields: {
+      options: [
+        { name: "user", type: 6, value: "alice" },
+        { name: "duration", type: 3, value: "5m" },
+      ],
+      resolved: { users: { alice: { id: "alice", username: "alice" } } },
+    },
+  });
+  assert.equal(i.options.getUser("user").username, "alice");
+  assert.equal(i.options.getDuration("duration"), 300);
+  const messages = await i.channel.messages.fetch({
+    limit: 2,
+    before: "cursor",
+  });
+  await messages[0].pin();
+  await messages[0].react("👍");
+  const deleted = await i.channel.bulkDelete(messages);
+  assert.ok(deleted instanceof Collection);
+  assert.equal(deleted.size, 2);
+  assert.deepEqual(calls.find((x) => x.action === "bulk_delete").payload, {
+    channel_id: "lobby",
+    ids: ["one"],
+  });
+  await i.channel.bulkDelete(5);
+  assert.equal(calls.at(-1).payload.count, 5);
+  await assert.rejects(i.channel.bulkDelete(101), /1–100/);
+  assert.equal((await i.channel.messages.fetch("one")).id, "one");
+});
+import {
   Client,
   Events,
   EmbedBuilder,

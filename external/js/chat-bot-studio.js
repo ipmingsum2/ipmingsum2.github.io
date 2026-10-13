@@ -30,7 +30,7 @@ await client.login(); // Hosting supplies this bot's identity. No token here.
     } catch {}
     modal(
       "Bot Studio",
-      `<div class="bot-studio"><div class="studio-summary"><span class="status-pill" id="studioStatus">${program.enabled ? "● Hosted · 24/7" : "○ Hosting stopped"}</span><a href="/external/chatbox/index.html#hosting" target="_blank">Hosting guide ↗</a></div><p class="muted">Upload or write JavaScript. Publish to run on new messages even when this browser is closed. Your bot keeps its existing permissions.</p><div class="studio-toolbar"><label class="secondary upload-script">Upload .js<input type="file" id="studioUpload" accept=".js,.mjs,text/javascript" hidden></label><button class="secondary" id="studioDownload">Download script</button><span class="muted" id="studioDraft">Drafts save on this device as you type.</span></div><div id="studioEditor"><textarea aria-label="Bot JavaScript" id="studioFallback" spellcheck="false">${esc(source)}</textarea></div><div class="studio-toolbar"><button class="secondary" id="studioSave">Save draft</button><button class="primary" id="studioPublish">Publish & run 24/7</button><button class="danger" id="studioStop">Stop hosting</button></div><p class="small-note">Use <code>import { Client } from 'chatbox.js'</code>. Hosted scripts support message handlers and the CHATBOX API. Node packages, external fetch, timers, and persistent global variables require the self-hosted option.</p><details class="studio-commands"><summary>Slash commands</summary><p class="small-note">One command per line: name | description. Register here once, then handle InteractionCreate in your script.</p><textarea id="studioCommands" aria-label="Slash command definitions" rows="4" placeholder="apply | Open an application form"></textarea><button class="secondary" id="studioSaveCommands">Save commands</button></details><div class="toolbar-row"><h3>Recent executions</h3><button class="secondary" id="studioLogs">Refresh logs</button></div><div id="studioLogList" class="studio-logs">${program.last_error ? esc(program.last_error) : "Load logs to see replies, errors, and console output."}</div></div>`,
+      `<div class="bot-studio"><div class="studio-summary"><span class="status-pill" id="studioStatus">${program.enabled ? "● Hosted · 24/7" : "○ Hosting stopped"}</span><a href="/external/chatbox/index.html#hosting" target="_blank">Hosting guide ↗</a></div><p class="muted">Upload or write JavaScript. Publish to run on new messages even when this browser is closed. Your bot keeps its existing permissions.</p><div class="studio-toolbar"><label class="secondary upload-script">Upload .js<input type="file" id="studioUpload" accept=".js,.mjs,text/javascript" hidden></label><button class="secondary" id="studioDownload">Download script</button><span class="muted" id="studioDraft">Drafts save on this device as you type.</span></div><div id="studioEditor"><textarea aria-label="Bot JavaScript" id="studioFallback" spellcheck="false">${esc(source)}</textarea></div><div class="studio-toolbar"><button class="secondary" id="studioSave">Save draft</button><button class="primary" id="studioPublish">Publish & run 24/7</button><button class="danger" id="studioStop">Stop hosting</button></div><p class="small-note">Use <code>import { Client } from 'chatbox.js'</code>. Hosted scripts support message handlers and the CHATBOX API. Node packages, external fetch, timers, and persistent global variables require the self-hosted option.</p><p class="small-note">Register slash commands and typed arguments in your script with <code>client.commands.set([...])</code> inside <code>ClientReady</code>. Publishing runs registration automatically. <a href="/external/chatbox/index.html#slash-commands" target="_blank">Command API examples ↗</a></p><div class="toolbar-row"><h3>Recent executions</h3><button class="secondary" id="studioLogs">Refresh logs</button></div><div id="studioLogList" class="studio-logs">${program.last_error ? esc(program.last_error) : "Load logs to see replies, errors, and console output."}</div></div>`,
     );
     const $ = (id) => document.getElementById(id),
       container = $("studioEditor");
@@ -140,35 +140,6 @@ await client.login(); // Hosting supplies this bot's identity. No token here.
     $("studioSave").onclick = () => save("draft");
     $("studioPublish").onclick = () => save("save");
     $("studioStop").onclick = () => save("stop");
-    try {
-      const rows = await request("commands", { bot_id: bot.id });
-      if ($("studioCommands"))
-        $("studioCommands").value = rows
-          .map((c) => c.name + " | " + c.description)
-          .join("\n");
-    } catch (e) {
-      toast(e.message, true);
-    }
-    $("studioSaveCommands").onclick = async () => {
-      try {
-        const commands = $("studioCommands")
-          .value.split(/\r?\n/)
-          .map((x) => x.trim())
-          .filter(Boolean)
-          .map((line) => {
-            const split = line.indexOf("|");
-            if (split < 1) throw Error("Use name | description on each line");
-            return {
-              name: line.slice(0, split).trim(),
-              description: line.slice(split + 1).trim(),
-            };
-          });
-        await request("commands_set", { bot_id: bot.id, commands });
-        toast("Commands saved. They appear in chat within a minute.");
-      } catch (e) {
-        toast(e.message, true);
-      }
-    };
     $("studioLogs").onclick = async () => {
       try {
         const logs = await request("logs", { bot_id: bot.id });

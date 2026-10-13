@@ -1,12 +1,22 @@
 # CHATBOX deployment
 
+## October 13 API and Developer Portal upgrade
+
+For the existing installation through migration 011, apply only `202610130012_api_commands_portal.sql`, deploy the rebuilt `chat-api` (including the generated hosted SDK), then publish the minified frontend and `/external/developers.html`. Do not rerun earlier migrations. Existing commands retain their names/descriptions and receive empty option schemas; messages, users and channels are preserved.
+
+The migration adds owner-managed bot identity, typed command definitions/validation, private pins/reactions, atomic bounded bulk deletion, and a startup job when a hosted script is published. The startup job is queued after old jobs are cancelled, so `ClientReady` can register commands through the API without a manual dashboard menu. `create_bot`, `rotate_bot` and `revoke_bot` now require the existing service-only verified-action path and a fresh hCaptcha token. Existing bot tokens and root-granted scopes are retained.
+
+The Developer Portal replaces the server settings bot manager. Account switching saves separate Supabase sessions locally without passwords and reloads on switch to clear subscriptions and cached data. Log Out uses the active session only. Existing session CAPTCHA enforcement and the 20 October Hong Kong activation date remain in place.
+
+Check the pre/post counts and installed functions. Verify typed command schemas and permissions locally before using real moderation actions. Deployment does not execute bulk deletion or rotate any live token.
+
 The frontend stays on GitHub Pages and uses the existing Supabase project. No database export is required. Deploy the database and Edge Function before publishing the frontend. The legacy frontend stops working at database cutover, so schedule these steps together.
 
 ## Preserved data
 
 The first migration copies the existing accounts/profiles, channel IDs/names/order/privacy/locks, channel memberships, lock bypasses, messages, announcements/pins, user bans/mutes, and word filters into `cb_*` tables within the same database. It creates **no default channels or categories**. Localhost preview conversations are browser-only fixtures.
 
-The migration locks the original tables, saves their client grants, revokes legacy client access, validates root and message references, and imports within one transaction. A failure rolls back the transaction. Original tables and rows remain as an archive. `chat-legacy.html` preserves the original frontend source; it is an archive, not a second writable client after cutover. Legacy IP bans/mutes and audit records remain in their original tables; IP-based enforcement is not part of this release.
+The migration locks the original tables, saves their client grants, revokes legacy client access, validates root and message references, and imports within one transaction. A failure rolls back the transaction. Original tables and rows remain as an archive. `chat-legacy.html` uses the current basic client, roles and message format; the original frontend source is retained under `external/chatbox/archive/`. Legacy IP bans/mutes and audit records remain in their original tables; IP-based enforcement is not part of this release.
 
 New message attachments use private storage with channel permission checks and five-minute signed links. Existing attachments remain at their original public URLs. This upgrade does not retroactively make those URLs private.
 
@@ -18,7 +28,7 @@ For an existing v2 deployment, apply `202610010003_threads_polls.sql`, then `202
 
 Threads inherit their parent channel's current permissions. Poll voting is authorized on the server and expires at the configured deadline. AutoMod rules always block matching content and can additionally warn, mute, or ban. The rule creator's current role limits automated punishment; root is protected. Duration fields use seconds (blank ban duration is permanent). Select a private log channel that you can manage. If that channel is subsequently made public or archived, alerts remain in the staff-only event table instead of being published there. Existing rules keep their original block-only behavior until configured.
 
-The release also includes compact profile popouts, corrected avatar stacking, accessible custom dropdowns, supplied normal/private channel icons, and send-to-bottom scrolling. `chat-backup`, `chat-beta`, and `chatbeta` share this release; legacy remains archived.
+The release also includes compact profile popouts, corrected avatar stacking, accessible custom dropdowns, supplied normal/private channel icons, and send-to-bottom scrolling. `chat-backup`, `chat-beta`, and `chatbeta` share this release; legacy uses the current basic client.
 
 1. Confirm a normal project backup is available and choose a short maintenance window. Keep the existing project; do not create a replacement database.
 2. In the project's SQL Editor, run `supabase/migrations/202609280001_chatbox_v2.sql` as one complete script, then `202609280002_chatbox_private_media.sql`. Alternatively, apply both through an authenticated Supabase CLI migration workflow. Stop if either fails. Do not partially execute statements to bypass a validation error.

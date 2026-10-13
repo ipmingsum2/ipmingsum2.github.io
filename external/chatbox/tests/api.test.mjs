@@ -50,6 +50,13 @@ function harness({
     createClient: () => ({
       storage: {
         from: (bucket) => ({
+          createSignedUrl: async (path, seconds) => {
+            calls.push({ name: "signAttachment", bucket, path, seconds });
+            return {
+              data: { signedUrl: "https://storage.example.test/signed" },
+              error: storageError,
+            };
+          },
           remove: async (names) => {
             calls.push({ name: "removeStorage", bucket, names });
             return { error: storageError };
@@ -103,6 +110,126 @@ function harness({
     calls,
   };
 }
+test("command and bulk REST routes forward typed definitions and CAPTCHA protects bot lifecycle actions", async () => {
+  const h = harness(),
+    headers = {
+      Authorization: "Bot cb_" + "a".repeat(64),
+      "Content-Type": "application/json",
+    };
+  const command = {
+    name: "purge",
+    description: "Purge",
+    options: [
+      {
+        type: 4,
+        name: "count",
+        description: "Count",
+        required: true,
+        min_value: 1,
+        max_value: 100,
+      },
+    ],
+  };
+  for (const [path, method, body, action] of [
+    ["/v1/commands", "POST", command, "command_create"],
+    ["/v1/commands", "PUT", { commands: [command] }, "commands_set"],
+    ["/v1/commands/purge", "PATCH", command, "command_edit"],
+    ["/v1/commands/purge", "DELETE", undefined, "command_delete"],
+    [
+      "/v1/channels/room/messages/bulk-delete",
+      "POST",
+      { messages: ["one", "two"] },
+      "bulk_delete",
+    ],
+    ["/v1/channels/room/pins", "GET", undefined, "pins"],
+    ["/v1/messages/id", "GET", undefined, "message"],
+  ]) {
+    assert.equal(
+      (
+        await h.request(path, {
+          method,
+          headers,
+          body: body && JSON.stringify(body),
+        })
+      ).status,
+      200,
+    );
+    assert.equal(h.calls.at(-1).args.action, action);
+    if (action === "command_create")
+      assert.equal(h.calls.at(-1).args.payload.command.options[0].type, 4);
+    if (action === "bulk_delete")
+      assert.deepEqual(Array.from(h.calls.at(-1).args.payload.ids), [
+        "one",
+        "two",
+      ]);
+  }
+  for (const action of ["create_bot", "rotate_bot", "revoke_bot"]) {
+    const denied = harness({
+      secrets: { HCAPTCHA_SECRET: "test" },
+      captcha: { success: false },
+    });
+    const response = await denied.request("", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer test",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        action: "verified_action",
+        operation: action,
+        payload: { id: "bot", name: "Bot" },
+        captchaToken: "invalid",
+      }),
+    });
+    assert.notEqual(response.status, 200);
+    assert.equal(
+      denied.calls.some((x) => x.name === "chat_verified_action"),
+      false,
+    );
+    const allowed = harness({
+      secrets: { HCAPTCHA_SECRET: "test" },
+      captcha: { success: true },
+    });
+    assert.equal(
+      (
+        await allowed.request("", {
+          method: "POST",
+          headers: {
+            Authorization: "Bearer test",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            action: "verified_action",
+            operation: action,
+            payload: { id: "bot", name: "Bot" },
+            captchaToken: "valid",
+          }),
+        })
+      ).status,
+      200,
+    );
+    assert.equal(
+      allowed.calls.find((x) => x.name === "chat_verified_action").args.actor,
+      "user",
+    );
+  }
+  const attachment = harness({
+    result: { bucket: "chatbox-private", path: "actor/channel/file.png" },
+  });
+  const res = await attachment.request("/v1/actions", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      action: "attachment",
+      payload: { url: "cb-media:actor/channel/file.png" },
+    }),
+  });
+  assert.equal((await res.json()).url, "https://storage.example.test/signed");
+  assert.equal(
+    attachment.calls.find((x) => x.name === "signAttachment").seconds,
+    300,
+  );
+});
 test("bot endpoint propagates slowmode as 429 and forwards timestamp plus ID cursors", async () => {
   const h = harness({
     result: { slowmode: true, retry_after: 27, message: "Wait" },
