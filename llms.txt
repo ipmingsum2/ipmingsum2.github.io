@@ -29,7 +29,7 @@
 ### Chatbox
 
 - [CHATBOX bot documentation](https://ipmingsum2.github.io/external/chatbox/bot-api.md): The readable HTML guide, examples, and chatbox.js download are at CHATBOX Developer Docs.
-- [CHATBOX deployment](https://ipmingsum2.github.io/external/chatbox/deployment.md): The frontend stays on GitHub Pages and uses the existing Supabase project. No database export is required. Deploy the database and Edge Function before publishing the frontend.
+- [CHATBOX deployment](https://ipmingsum2.github.io/external/chatbox/deployment.md): For the existing installation through migration 011, apply only 202610130012_api_commands_portal.sql, deploy the rebuilt chat-api (including the generated hosted SDK), then publish the minified frontend and /external/developers.html.
 
 ## Tests
 

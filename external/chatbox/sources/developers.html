@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#17181f" />
+    <title>Developer Portal · CHATBOX</title>
+    <link rel="stylesheet" href="/external/css/chat.css" />
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"
+    ></script>
+    <script defer src="/external/js/chat-config.js"></script>
+    <script defer src="/external/js/chat-captcha.js"></script>
+    <script defer src="/external/js/chat-accounts.js"></script>
+    <script defer src="/external/js/chat-ui.js"></script>
+    <script defer src="/external/js/chat-bot-studio.js"></script>
+    <script defer src="/external/js/chat-developers.js"></script>
+    <script defer src="/external/js/noembed.js"></script>
+    <script src="/external/js/chat-guard.js"></script>
+  </head>
+  <body class="developer-page">
+    <header class="developer-header">
+      <a class="brand" href="/external/developers.html"
+        ><span>C</span> CHATBOX <small>DEVELOPERS</small></a
+      >
+      <nav>
+        <a href="/external/chatbox/index.html">Documentation ↗</a
+        ><a href="/external/chat.html">Open chat</a
+        ><button class="secondary" id="developerAccount" hidden>
+          Switch accounts
+        </button>
+      </nav>
+    </header>
+    <div class="developer-layout">
+      <aside class="developer-sidebar">
+        <p class="eyebrow">BUILD SOMETHING GOOD</p>
+        <a href="/external/developers.html" class="developer-nav-active"
+          >▦ Applications</a
+        ><a href="/external/chatbox/index.html#slash-commands">⌘ Command API</a
+        ><a href="/external/chatbox/index.html#hosting">◉ Hosting guide</a>
+        <div class="developer-sidebar-note">
+          <b>Your bot. Your personality.</b>
+          <p>Give your community an app that feels at home.</p>
+        </div>
+      </aside>
+      <main id="developerMain" class="developer-main">
+        <p class="muted">Loading your applications…</p>
+      </main>
+    </div>
+    <dialog id="modal" class="modal" aria-label="Developer actions">
+      <div id="modalContent"></div>
+    </dialog>
+    <div id="toasts" class="toasts" aria-live="polite"></div>
+  </body>
+</html>

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark">
-    <meta name="turbo-cache-control" content="no-cache" data-turbo-track="reload" data-track-token="4.6.0.845018085706">
+    <meta name="turbo-cache-control" content="no-cache" data-turbo-track="reload" data-track-token="4.6.0.845215002504">
 
     <!-- See retype.com -->
     <meta name="generator" content="Retype 4.6.0">
@@ -12,7 +12,7 @@
     <!-- Primary Meta Tags -->
     <title>CHATBOX deployment</title>
     <meta name="title" content="CHATBOX deployment">
-    <meta name="description" content="The frontend stays on GitHub Pages and uses the existing Supabase project. No database export is required. Deploy the database and Edge Function before publishing the frontend.">
+    <meta name="description" content="For the existing installation through migration 011, apply only 202610130012_api_commands_portal.sql, deploy the rebuilt chat-api (including the generated hosted SDK), then publish the minified frontend and /external/developers.html.">
 
     <!-- Canonical -->
     <link rel="canonical" href="https://ipmingsum2.github.io/external/chatbox/deployment/">
@@ -22,7 +22,7 @@
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://ipmingsum2.github.io/external/chatbox/deployment/">
     <meta property="og:title" content="CHATBOX deployment">
-    <meta property="og:description" content="The frontend stays on GitHub Pages and uses the existing Supabase project. No database export is required. Deploy the database and Edge Function before publishing the frontend.">
+    <meta property="og:description" content="For the existing installation through migration 011, apply only 202610130012_api_commands_portal.sql, deploy the rebuilt chat-api (including the generated hosted SDK), then publish the minified frontend and /external/developers.html.">
     <meta property="og:site_name" content="Alvin Solutions Documentation">
     <meta property="og:locale" content="en_US">
 
@@ -30,7 +30,7 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:url" content="https://ipmingsum2.github.io/external/chatbox/deployment/">
     <meta name="twitter:title" content="CHATBOX deployment">
-    <meta name="twitter:description" content="The frontend stays on GitHub Pages and uses the existing Supabase project. No database export is required. Deploy the database and Edge Function before publishing the frontend.">
+    <meta name="twitter:description" content="For the existing installation through migration 011, apply only 202610130012_api_commands_portal.sql, deploy the rebuilt chat-api (including the generated hosted SDK), then publish the minified frontend and /external/developers.html.">
 
     <!-- Alternate Markdown -->
     <link rel="alternate" type="text/markdown" href="https://ipmingsum2.github.io/external/chatbox/deployment.md">
@@ -38,11 +38,11 @@
     <script data-cfasync="false">(function(){var cl=document.documentElement.classList,ls=localStorage.getItem("retype_scheme"),hd=cl.contains("dark"),hl=cl.contains("light"),wm=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches;if(ls==="dark"||(!ls&&wm&&!hd&&!hl)){cl.remove("light");cl.add("dark")}else if(ls==="light"||(!ls&&!wm&&!hd&&!hl)){cl.remove("dark");cl.add("light")}})();</script>
 
     <link id="retype-favicon" rel="icon" href="../../../favicon.ico" />
-    <link href="../../../resources/css/retype.css?v=4.6.0.845018085706" rel="stylesheet">
+    <link href="../../../resources/css/retype.css?v=4.6.0.845215002504" rel="stylesheet">
 
-    <script data-cfasync="false" src="../../../resources/js/config.js?v=4.6.0.845018085706" data-turbo-eval="false" defer></script>
+    <script data-cfasync="false" src="../../../resources/js/config.js?v=4.6.0.845215002504" data-turbo-eval="false" defer></script>
     <script data-cfasync="false" src="../../../resources/js/retype.js?v=4.6.0" data-turbo-eval="false" defer></script>
-    <script id="lunr-js" data-cfasync="false" src="../../../resources/js/lunr.js?v=4.6.0.845018085706" data-turbo-eval="false" defer></script>
+    <script id="lunr-js" data-cfasync="false" src="../../../resources/js/lunr.js?v=4.6.0.845215002504" data-turbo-eval="false" defer></script>
 </head>
 <body>
     <div id="retype-app" class="relative text-base antialiased text-base-text bg-base-bg font-body">
@@ -193,16 +193,21 @@
 
                 <!-- Page content  -->
 <h1 id="chatbox-deployment">CHATBOX deployment</h1>
+<h2 id="october-13-api-and-developer-portal-upgrade">October 13 API and Developer Portal upgrade</h2>
+<p>For the existing installation through migration 011, apply only <code translate="no" v-pre>202610130012_api_commands_portal.sql</code>, deploy the rebuilt <code translate="no" v-pre>chat-api</code> (including the generated hosted SDK), then publish the minified frontend and <code translate="no" v-pre>/external/developers.html</code>. Do not rerun earlier migrations. Existing commands retain their names/descriptions and receive empty option schemas; messages, users and channels are preserved.</p>
+<p>The migration adds owner-managed bot identity, typed command definitions/validation, private pins/reactions, atomic bounded bulk deletion, and a startup job when a hosted script is published. The startup job is queued after old jobs are cancelled, so <code translate="no" v-pre>ClientReady</code> can register commands through the API without a manual dashboard menu. <code translate="no" v-pre>create_bot</code>, <code translate="no" v-pre>rotate_bot</code> and <code translate="no" v-pre>revoke_bot</code> now require the existing service-only verified-action path and a fresh hCaptcha token. Existing bot tokens and root-granted scopes are retained.</p>
+<p>The Developer Portal replaces the server settings bot manager. Account switching saves separate Supabase sessions locally without passwords and reloads on switch to clear subscriptions and cached data. Log Out uses the active session only. Existing session CAPTCHA enforcement and the 20 October Hong Kong activation date remain in place.</p>
+<p>Check the pre/post counts and installed functions. Verify typed command schemas and permissions locally before using real moderation actions. Deployment does not execute bulk deletion or rotate any live token.</p>
 <p>The frontend stays on GitHub Pages and uses the existing Supabase project. No database export is required. Deploy the database and Edge Function before publishing the frontend. The legacy frontend stops working at database cutover, so schedule these steps together.</p>
 <h2 id="preserved-data">Preserved data</h2>
 <p>The first migration copies the existing accounts/profiles, channel IDs/names/order/privacy/locks, channel memberships, lock bypasses, messages, announcements/pins, user bans/mutes, and word filters into <code translate="no" v-pre>cb_*</code> tables within the same database. It creates <strong>no default channels or categories</strong>. Localhost preview conversations are browser-only fixtures.</p>
-<p>The migration locks the original tables, saves their client grants, revokes legacy client access, validates root and message references, and imports within one transaction. A failure rolls back the transaction. Original tables and rows remain as an archive. <code translate="no" v-pre>chat-legacy.html</code> preserves the original frontend source; it is an archive, not a second writable client after cutover. Legacy IP bans/mutes and audit records remain in their original tables; IP-based enforcement is not part of this release.</p>
+<p>The migration locks the original tables, saves their client grants, revokes legacy client access, validates root and message references, and imports within one transaction. A failure rolls back the transaction. Original tables and rows remain as an archive. <code translate="no" v-pre>chat-legacy.html</code> uses the current basic client, roles and message format; the original frontend source is retained under <code translate="no" v-pre>external/chatbox/archive/</code>. Legacy IP bans/mutes and audit records remain in their original tables; IP-based enforcement is not part of this release.</p>
 <p>New message attachments use private storage with channel permission checks and five-minute signed links. Existing attachments remain at their original public URLs. This upgrade does not retroactively make those URLs private.</p>
 <h2 id="apply-the-backend">Apply the backend</h2>
 <h3 id="october-conversation-update">October conversation update</h3>
 <p>For an existing v2 deployment, apply <code translate="no" v-pre>202610010003_threads_polls.sql</code>, then <code translate="no" v-pre>202610010004_automod_actions.sql</code> before publishing the updated frontend. Do not rerun migrations 001/002. These additive migrations preserve existing channels and messages; no default channels or rules are created. No Edge Function update is required.</p>
 <p>Threads inherit their parent channel&#x27;s current permissions. Poll voting is authorized on the server and expires at the configured deadline. AutoMod rules always block matching content and can additionally warn, mute, or ban. The rule creator&#x27;s current role limits automated punishment; root is protected. Duration fields use seconds (blank ban duration is permanent). Select a private log channel that you can manage. If that channel is subsequently made public or archived, alerts remain in the staff-only event table instead of being published there. Existing rules keep their original block-only behavior until configured.</p>
-<p>The release also includes compact profile popouts, corrected avatar stacking, accessible custom dropdowns, supplied normal/private channel icons, and send-to-bottom scrolling. <code translate="no" v-pre>chat-backup</code>, <code translate="no" v-pre>chat-beta</code>, and <code translate="no" v-pre>chatbeta</code> share this release; legacy remains archived.</p>
+<p>The release also includes compact profile popouts, corrected avatar stacking, accessible custom dropdowns, supplied normal/private channel icons, and send-to-bottom scrolling. <code translate="no" v-pre>chat-backup</code>, <code translate="no" v-pre>chat-beta</code>, and <code translate="no" v-pre>chatbeta</code> share this release; legacy uses the current basic client.</p>
 <ol>
 <li>Confirm a normal project backup is available and choose a short maintenance window. Keep the existing project; do not create a replacement database.</li>
 <li>In the project&#x27;s SQL Editor, run <code translate="no" v-pre>supabase/migrations/202609280001_chatbox_v2.sql</code> as one complete script, then <code translate="no" v-pre>202609280002_chatbox_private_media.sql</code>. Alternatively, apply both through an authenticated Supabase CLI migration workflow. Stop if either fails. Do not partially execute statements to bypass a validation error.</li>

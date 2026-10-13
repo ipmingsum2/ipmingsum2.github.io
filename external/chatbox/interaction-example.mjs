@@ -9,8 +9,11 @@ import {
   ButtonStyle,
 } from "./chatbox.js";
 const client = new Client();
-// Hosted Studio: register "apply | Open an application form" in Slash commands.
-// Self-hosted: run await client.commands.set([{name:'apply',description:'Open an application form'}]) once after login.
+client.once(Events.ClientReady, async () => {
+  await client.commands.set([
+    { name: "apply", description: "Open an application form" },
+  ]);
+});
 client.on(Events.MessageCreate, async (message) => {
   if (message.author.bot || message.content !== "!apply") return;
   await message.reply({
