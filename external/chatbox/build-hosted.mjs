@@ -1,7 +1,10 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("../../", import.meta.url));
-const node = readFileSync(root + "external/chatbox/chatbox.js", "utf8");
+const node = readFileSync(
+  root + "external/chatbox/chatbox.js",
+  "utf8",
+).replaceAll("\r\n", "\n");
 const builder = node
   .slice(
     node.indexOf("export const Events"),

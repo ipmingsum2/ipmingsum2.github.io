@@ -285,3 +285,101 @@ test("typed slash UI submits named values, nested commands, false booleans and c
     w.close();
   }
 });
+test("Developer Portal renews expired human verification for command and hosting reads", async () => {
+  const html = await readFile(
+    new URL("../sources/developers.html", import.meta.url),
+    "utf8",
+  );
+  const dom = new JSDOM(html, {
+      url: "https://chat.example/external/developers.html#bot",
+      runScripts: "outside-only",
+    }),
+    w = dom.window;
+  const calls = [];
+  let verified = false;
+  w.CHATBOX_CONFIG = {
+    supabaseUrl: "https://project.supabase.co",
+    publishableKey: "public",
+    functionName: "chat-api",
+  };
+  w.ChatCaptcha = {
+    request: async (label) => {
+      calls.push({ captcha: label });
+      return "single-use-test-token";
+    },
+  };
+  w.ChatAccounts = () => ({ remember() {}, show() {} });
+  w.fetch = async (_url, options) => {
+    calls.push(JSON.parse(options.body));
+    verified = true;
+    return {
+      ok: true,
+      json: async () => ({
+        expires_at: new Date(Date.now() + 900000).toISOString(),
+      }),
+    };
+  };
+  w.supabase = {
+    createClient: () => ({
+      auth: {
+        getSession: async () => ({
+          data: {
+            session: {
+              user: { id: "owner" },
+              access_token: "fake-test-session",
+            },
+          },
+        }),
+      },
+      rpc: async (name, args) => {
+        calls.push({ name, args });
+        if (name === "chat_hosted" && !verified)
+          return { error: { message: "CHATBOX_VERIFICATION_REQUIRED" } };
+        if (name === "chat_hosted")
+          return {
+            data: [{ name: "hello", description: "Hello", options: [] }],
+          };
+        return {
+          data:
+            args.action === "bootstrap"
+              ? { root: false }
+              : [
+                  {
+                    id: "bot",
+                    owner_id: "owner",
+                    enabled: true,
+                    profile: {
+                      display_name: "Bot",
+                      username: "bot",
+                      banner_color: "#5865f2",
+                    },
+                  },
+                ],
+        };
+      },
+    }),
+  };
+  try {
+    w.eval(
+      await readFile(
+        new URL("../../js/chat-developers.js", import.meta.url),
+        "utf8",
+      ),
+    );
+    await pause();
+    w.document.querySelector('[data-app-tab="commands"]').click();
+    await pause();
+    assert.equal(calls.filter((x) => x.captcha).length, 1);
+    assert.equal(calls.filter((x) => x.name === "chat_hosted").length, 2);
+    assert.equal(
+      calls.find((x) => x.action === "verify_session").captchaToken,
+      "single-use-test-token",
+    );
+    assert.match(
+      w.document.getElementById("registeredCommands").textContent,
+      /hello/,
+    );
+  } finally {
+    w.close();
+  }
+});
