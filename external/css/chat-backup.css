@@ -2100,7 +2100,13 @@ button:active:not(:disabled) {
   pointer-events: none;
 }
 .server-header:after {
-  content: "✦";
+  content: "";
+  display: inline-block;
+  width: 25px;
+  height: 25px;
+  background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20class%3D%22ui-icon%22%20aria-hidden%3D%22true%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%221.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m12%203%202.6%206.4L21%2012l-6.4%202.6L12%2021l-2.6-6.4L3%2012l6.4-2.6Z%22%2F%3E%3C%2Fsvg%3E")
+    center / contain no-repeat;
   position: absolute;
   right: 68px;
   top: 16px;
@@ -2402,7 +2408,13 @@ button:active:not(:disabled) {
   box-shadow: 0 10px 25px #10131e22;
 }
 .community-card:after {
-  content: "✧";
+  content: "";
+  display: inline-block;
+  width: 60px;
+  height: 60px;
+  background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20class%3D%22ui-icon%22%20aria-hidden%3D%22true%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%221.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m12%203%202.6%206.4L21%2012l-6.4%202.6L12%2021l-2.6-6.4L3%2012l6.4-2.6Z%22%2F%3E%3C%2Fsvg%3E")
+    center / contain no-repeat;
   position: absolute;
   right: 18px;
   top: 11px;
@@ -2895,7 +2907,13 @@ chat-audio {
   background: #39334f;
 }
 .select-options [aria-selected="true"]:after {
-  content: "✓";
+  content: "";
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20class%3D%22ui-icon%22%20aria-hidden%3D%22true%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%221.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m5%2012%204%204L19%206%22%2F%3E%3C%2Fsvg%3E")
+    center / contain no-repeat;
   float: right;
   margin-left: 18px;
 }
@@ -2924,7 +2942,13 @@ input[type="radio"]:checked {
   border-color: #a294ff;
 }
 input[type="checkbox"]:checked:before {
-  content: "✓";
+  content: "";
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20class%3D%22ui-icon%22%20aria-hidden%3D%22true%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%221.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m5%2012%204%204L19%206%22%2F%3E%3C%2Fsvg%3E")
+    center / contain no-repeat;
   font-size: 14px;
   color: white;
 }
@@ -4083,4 +4107,47 @@ input::file-selector-button {
   padding: 17px 16px;
   font-size: 14px;
   line-height: 1.5;
+}
+
+/* SVG icons inherit the control color and keep a consistent baseline. */
+.developer-sidebar a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.developer-empty > span > .ui-icon {
+  width: 48px;
+  height: 48px;
+}
+.developer-header nav .ui-icon,
+.status-pill .ui-icon,
+.role-pill button .ui-icon,
+.bot-label .ui-icon,
+.poll-check .ui-icon,
+.slowmode-status .ui-icon {
+  width: 16px;
+  height: 16px;
+}
+.developer-header nav .ui-icon {
+  margin-left: 4px;
+}
+.action-menu button .ui-icon {
+  margin-right: 10px;
+}
+.welcome-icon .ui-icon,
+.thread-welcome > span .ui-icon {
+  width: 32px;
+  height: 32px;
+}
+.art-spark {
+  width: 90px;
+  height: 90px;
+}
+.art-spark .ui-icon {
+  width: 100%;
+  height: 100%;
+}
+.captcha-close .ui-icon {
+  width: 22px;
+  height: 22px;
 }

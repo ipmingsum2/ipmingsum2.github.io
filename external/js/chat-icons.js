@@ -1,6 +1,43 @@
 /* Small, local SVG icon set; no icon-font or remote runtime required. */
 window.ChatIcons = (() => {
   const paths = {
+    apps: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+    terminal:
+      '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="m7 9 3 3-3 3m6 0h4"/>',
+    cloud:
+      '<path d="M7 19a5 5 0 1 1 .5-10 6.5 6.5 0 0 1 12.4 2A4 4 0 0 1 19 19Z"/>',
+    sparkle:
+      '<path d="m12 3 2.6 6.4L21 12l-6.4 2.6L12 21l-2.6-6.4L3 12l6.4-2.6Z"/>',
+    external:
+      '<path d="M14 3h7v7m0-7L10 14M10 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5"/>',
+    back: '<path d="m10 5-7 7 7 7M3 12h18"/>',
+    forward: '<path d="m14 5 7 7-7 7M3 12h18"/>',
+    close: '<path d="m6 6 12 12M6 18 18 6"/>',
+    check: '<path d="m5 12 4 4L19 6"/>',
+    warning: '<path d="m12 3 10 18H2Z M12 9v4m0 4h.01"/>',
+    active: '<circle cx="12" cy="12" r="5" fill="currentColor" stroke="none"/>',
+    inactive: '<circle cx="12" cy="12" r="5"/>',
+    chevron: '<path d="m6 9 6 6 6-6"/>',
+    next: '<path d="m9 6 6 6-6 6"/>',
+    thread: '<path d="M5 3v16h16M9 5h12M9 10h12M9 15h8"/>',
+    reply: '<path d="m9 4-6 6 6 6M3 10h10a8 8 0 0 1 8 8v2"/>',
+    download:
+      '<path d="M12 3v12m-5-5 5 5 5-5M3 16v4a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-4"/>',
+    upload:
+      '<path d="M12 16V3m-5 5 5-5 5 5M3 16v4a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-4"/>',
+    poll: '<path d="M4 5h16M4 12h10M4 19h13"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    more: '<circle cx="5" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="19" cy="12" r="1" fill="currentColor"/>',
+    pin: '<path d="m16 3 5 5-4 1-3 5-4-4 5-3ZM10 10l-3 3 4 4 3-3M3 21l6-6"/>',
+    help: '<circle cx="12" cy="12" r="9"/><path d="M9 8a3 3 0 0 1 6 1c0 2-3 2-3 4m0 4h.01"/>',
+    audio:
+      '<path d="M14 3H5v18h14V8Zm0 0v5h5M9 13v4m0-4 5-1v4"/><circle cx="7.5" cy="17" r="1.5"/><circle cx="12.5" cy="16" r="1.5"/>',
+    play: '<path d="m8 4 12 8-12 8Z" fill="currentColor" stroke="none"/>',
+    pause:
+      '<path d="M7 4h3v16H7zm7 0h3v16h-3Z" fill="currentColor" stroke="none"/>',
+    volume:
+      '<path d="M3 9h4l5-4v14l-5-4H3Zm13-1a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/>',
+    muted: '<path d="M3 9h4l5-4v14l-5-4H3Zm13 0 6 6m0-6-6 6"/>',
     channel:
       '<path fill="currentColor" stroke="none" fill-rule="evenodd" clip-rule="evenodd" d="M10.99 3.16A1 1 0 1 0 9 2.84L8.15 8H4a1 1 0 0 0 0 2h3.82l-.67 4H3a1 1 0 1 0 0 2h3.82l-.8 4.84a1 1 0 0 0 1.97.32L8.85 16h4.97l-.8 4.84a1 1 0 0 0 1.97.32l.86-5.16H20a1 1 0 1 0 0-2h-3.82l.67-4H21a1 1 0 1 0 0-2h-3.82l.8-4.84a1 1 0 1 0-1.97-.32L15.15 8h-4.97l.8-4.84ZM14.15 14l.67-4H9.85l-.67 4h4.97Z"/>',
     "channel-private":
@@ -21,5 +58,5 @@ window.ChatIcons = (() => {
       '<circle cx="8" cy="8" r="3"/><path d="M2 21v-3a6 6 0 0 1 12 0v3M18 7v8M14 11h8"/>',
   };
   return (name) =>
-    `<svg class="ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${paths[name] || paths.plus}</svg>`;
+    `<svg xmlns="http://www.w3.org/2000/svg" class="ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${paths[name] || paths.plus}</svg>`;
 })();

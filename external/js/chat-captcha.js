@@ -10,7 +10,7 @@
       .captcha-overlay{position:fixed;inset:0;z-index:2147483646;display:grid;place-items:center;padding:12px;overflow:auto;background:#000a;backdrop-filter:blur(5px);font:15px/1.5 var(--font,system-ui,sans-serif);color:#f2f3f5;box-sizing:border-box}
       .captcha-card{position:relative;box-sizing:border-box;width:min(500px,100%);padding:34px 32px 40px;background:linear-gradient(155deg,#30345d 0%,#242429 45%);border:1px solid #ffffff12;border-radius:16px;box-shadow:0 24px 90px #0007;text-align:center;animation:captcha-in .2s ease-out}
       .captcha-close{position:absolute;right:16px;top:12px;border:0!important;border-radius:6px;background:transparent!important;color:#f2f3f5!important;font:30px/1 system-ui;width:36px!important;height:36px;padding:0!important;cursor:pointer}
-      .captcha-close:hover{background:#ffffff12!important}.captcha-close:focus-visible{outline:2px solid #a8afff;outline-offset:3px}
+      .captcha-close svg{width:22px;height:22px;vertical-align:middle}.captcha-close:hover{background:#ffffff12!important}.captcha-close:focus-visible{outline:2px solid #a8afff;outline-offset:3px}
       .captcha-art{display:block;width:230px;max-width:80%;height:150px;margin:18px auto 28px}
       .captcha-context{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#b6b8cc;margin:0 0 8px}
       .captcha-card h2{color:#f2f3f5!important;font-size:27px;line-height:1.2;margin:0 0 12px;font-weight:750;letter-spacing:-.025em}
@@ -99,7 +99,7 @@
           note.textContent = "Please confirm you’re not a robot.";
           widget.className = "captcha-widget";
           cancel.type = "button";
-          cancel.textContent = "×";
+          cancel.innerHTML = "<svg class=\"ui-icon\" aria-hidden=\"true\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m6 6 12 12M6 18 18 6\"/></svg>";
           cancel.className = "captcha-close";
           cancel.setAttribute("aria-label", "Cancel verification");
           dialog.append(cancel, art, context, heading, note, widget);

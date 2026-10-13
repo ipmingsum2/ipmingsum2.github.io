@@ -10,6 +10,7 @@
       defer
       src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"
     ></script>
+    <script defer src="/external/js/chat-icons.js"></script>
     <script defer src="/external/js/chat-config.js"></script>
     <script defer src="/external/js/chat-captcha.js"></script>
     <script defer src="/external/js/chat-accounts.js"></script>
@@ -25,7 +26,21 @@
         ><span>C</span> CHATBOX <small>DEVELOPERS</small></a
       >
       <nav>
-        <a href="/external/chatbox/index.html">Documentation ↗</a
+        <a href="/external/chatbox/index.html"
+          >Documentation
+          <svg
+            class="ui-icon"
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path
+              d="M14 3h7v7m0-7L10 14M10 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5"
+            /></svg></a
         ><a href="/external/chat.html">Open chat</a
         ><button class="secondary" id="developerAccount" hidden>
           Switch accounts
@@ -36,9 +51,54 @@
       <aside class="developer-sidebar">
         <p class="eyebrow">BUILD SOMETHING GOOD</p>
         <a href="/external/developers.html" class="developer-nav-active"
-          >▦ Applications</a
-        ><a href="/external/chatbox/index.html#slash-commands">⌘ Command API</a
-        ><a href="/external/chatbox/index.html#hosting">◉ Hosting guide</a>
+          ><svg
+            class="ui-icon"
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <rect x="3" y="3" width="7" height="7" rx="1.5" />
+            <rect x="14" y="3" width="7" height="7" rx="1.5" />
+            <rect x="3" y="14" width="7" height="7" rx="1.5" />
+            <rect x="14" y="14" width="7" height="7" rx="1.5" />
+          </svg>
+          Applications</a
+        ><a href="/external/chatbox/index.html#slash-commands"
+          ><svg
+            class="ui-icon"
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <rect x="3" y="4" width="18" height="16" rx="3" />
+            <path d="m7 9 3 3-3 3m6 0h4" />
+          </svg>
+          Command API</a
+        ><a href="/external/chatbox/index.html#hosting"
+          ><svg
+            class="ui-icon"
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path
+              d="M7 19a5 5 0 1 1 .5-10 6.5 6.5 0 0 1 12.4 2A4 4 0 0 1 19 19Z"
+            />
+          </svg>
+          Hosting guide</a
+        >
         <div class="developer-sidebar-note">
           <b>Your bot. Your personality.</b>
           <p>Give your community an app that feels at home.</p>

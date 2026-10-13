@@ -91,6 +91,7 @@
       b.type = "button";
       b.setAttribute("role", "menuitem");
       b.textContent = item.label;
+      if (item.icon) b.insertAdjacentHTML("afterbegin", window.ChatIcons(item.icon));
       b.disabled = !!item.disabled;
       b.onclick = () => {
         popup.close();

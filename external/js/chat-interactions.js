@@ -95,7 +95,7 @@
     }
     function renderComponents(m) {
       if (m.deleted) return "";
-      return `<div class="bot-components">${(m.components || []).map((row) => `<div class="bot-component-row">${(row.components || []).map((b) => (b.style === 5 ? (https(b.url) ? `<a class="secondary bot-component bot-style-5" ${b.disabled ? 'aria-disabled="true" tabindex="-1"' : `href="${esc(https(b.url))}" target="_blank" rel="noopener noreferrer"`}>${esc(b.label)} ↗</a>` : "") : `<button class="bot-component secondary bot-style-${[1, 2, 3, 4].includes(b.style) ? b.style : 2}" data-bot-button="${esc(b.custom_id)}" data-bot-message="${esc(m.id)}" ${b.disabled ? "disabled" : ""}>${esc(b.label)}</button>`)).join("")}</div>`).join("")}</div>`;
+      return `<div class="bot-components">${(m.components || []).map((row) => `<div class="bot-component-row">${(row.components || []).map((b) => (b.style === 5 ? (https(b.url) ? `<a class="secondary bot-component bot-style-5" ${b.disabled ? 'aria-disabled="true" tabindex="-1"' : `href="${esc(https(b.url))}" target="_blank" rel="noopener noreferrer"`}>${esc(b.label)} ${window.ChatIcons("external")}</a>` : "") : `<button class="bot-component secondary bot-style-${[1, 2, 3, 4].includes(b.style) ? b.style : 2}" data-bot-button="${esc(b.custom_id)}" data-bot-message="${esc(m.id)}" ${b.disabled ? "disabled" : ""}>${esc(b.label)}</button>`)).join("")}</div>`).join("")}</div>`;
     }
     async function watch(ticket) {
       if (pending.has(ticket.id)) return;
@@ -203,7 +203,10 @@
                 option.channel_types.includes(c.kind) ||
                 option.channel_types.includes(numeric[c.kind]),
             )
-            .map((c) => [c.id, (c.kind === "category" ? "▾ " : "# ") + c.name]);
+            .map((c) => [
+              c.id,
+              c.name + (c.kind === "category" ? " (category)" : " (channel)"),
+            ]);
         }
         return null;
       };

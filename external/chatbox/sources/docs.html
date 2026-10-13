@@ -28,7 +28,21 @@
         ><a href="#limits">Errors &amp; compatibility</a
         ><a href="#security">Verification &amp; root tools</a>
       </nav>
-      <a class="back" href="/external/chat.html">← Back to chat</a>
+      <a class="back" href="/external/chat.html"
+        ><svg
+          class="ui-icon"
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.7"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="m10 5-7 7 7 7M3 12h18" />
+        </svg>
+        Back to chat</a
+      >
     </aside>
     <main>
       <header>
@@ -47,10 +61,25 @@
         <h2>Dashboard hosting</h2>
         <p>
           Open the <a href="/external/developers.html">Developer Portal</a>,
-          select your application, then <b>Hosting → Open Bot Studio</b>. Upload
-          a JavaScript file or type in the editor. It includes highlighting,
-          line numbers, and autocomplete. <b>Save draft</b> saves your work
-          without changing the running bot.
+          select your application, then
+          <b
+            >Hosting
+            <svg
+              class="ui-icon"
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="m14 5 7 7-7 7M3 12h18" />
+            </svg>
+            Open Bot Studio</b
+          >. Upload a JavaScript file or type in the editor. It includes
+          highlighting, line numbers, and autocomplete. <b>Save draft</b> saves
+          your work without changing the running bot.
           <b>Publish &amp; run 24/7</b> activates it. You can close your
           browser; Supabase handles new messages for you.
         </p>
@@ -104,9 +133,24 @@ await client.login();</code></pre>
       <section id="start">
         <h2>Self-hosting with Node.js</h2>
         <p>
-          Create a bot in <b>Server settings → Apps &amp; Bots</b>. Save its
-          token in your environment. Run your bot with Node.js 20.3 or newer on
-          your computer or a server.
+          Create a bot in
+          <b
+            >Server settings
+            <svg
+              class="ui-icon"
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="m14 5 7 7-7 7M3 12h18" />
+            </svg>
+            Apps &amp; Bots</b
+          >. Save its token in your environment. Run your bot with Node.js 20.3
+          or newer on your computer or a server.
         </p>
         <div class="notice">
           GitHub Pages hosts the chat UI and this guide. With this option, your
@@ -115,9 +159,55 @@ await client.login();</code></pre>
         </div>
         <h3>1. Download three files</h3>
         <div class="downloads">
-          <a download href="chatbox.js">↓ chatbox.js</a
-          ><a download href="example-bot.mjs">↓ example-bot.mjs</a
-          ><a download="package.json" href="sdk-package.json">↓ package.json</a>
+          <a download href="chatbox.js"
+            ><svg
+              class="ui-icon"
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M12 3v12m-5-5 5 5 5-5M3 16v4a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-4"
+              />
+            </svg>
+            chatbox.js</a
+          ><a download href="example-bot.mjs"
+            ><svg
+              class="ui-icon"
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M12 3v12m-5-5 5 5 5-5M3 16v4a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-4"
+              />
+            </svg>
+            example-bot.mjs</a
+          ><a download="package.json" href="sdk-package.json"
+            ><svg
+              class="ui-icon"
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M12 3v12m-5-5 5 5 5-5M3 16v4a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-4"
+              />
+            </svg>
+            package.json</a
+          >
         </div>
         <p>
           Put them in the same folder. The package file contains
@@ -214,10 +304,25 @@ npx wrangler login</code></pre>
             need to be copied.
           </p>
           <p>
-            In CHATBOX, open <b>Server settings → Apps &amp; Bots</b>. Create a
-            bot and copy its token. Give it access only to the channels it
-            needs. Stop Bot Studio hosting if this is the same bot you
-            previously hosted there.
+            In CHATBOX, open
+            <b
+              >Server settings
+              <svg
+                class="ui-icon"
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.7"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="m14 5 7 7-7 7M3 12h18" />
+              </svg>
+              Apps &amp; Bots</b
+            >. Create a bot and copy its token. Give it access only to the
+            channels it needs. Stop Bot Studio hosting if this is the same bot
+            you previously hosted there.
           </p>
         </div>
         <div id="cloudflare-deploy">
@@ -353,7 +458,22 @@ npx wrangler types</code></pre>
             >
               Danger
             </button>
-            <a class="demo-button bot-style-5" href="#reference">Link ↗</a>
+            <a class="demo-button bot-style-5" href="#reference"
+              >Link
+              <svg
+                class="ui-icon"
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.7"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M14 3h7v7m0-7L10 14M10 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5"
+                /></svg
+            ></a>
           </div>
           <div class="ephemeral-demo" hidden>
             <p role="status" aria-live="polite"></p>
@@ -463,8 +583,22 @@ await client.login();</code></pre>
       <section id="developer-portal">
         <h2>Your application, in its own space</h2>
         <p>
-          <a href="/external/developers.html">Open the Developer Portal ↗</a>.
-          Sign in with your CHATBOX account. Administrators can create
+          <a href="/external/developers.html"
+            >Open the Developer Portal
+            <svg
+              class="ui-icon"
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M14 3h7v7m0-7L10 14M10 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5"
+              /></svg></a
+          >. Sign in with your CHATBOX account. Administrators can create
           applications; owners manage their applications and root can manage all
           of them.
         </p>
@@ -505,10 +639,27 @@ await client.profile.edit({ display_name: 'Orbit', status: 'Ready to help',
   banner_color: '#7867ed' });</code></pre>
         <h3>Switch CHATBOX accounts</h3>
         <p>
-          Open <b>User Settings → Switch accounts</b> or the portal’s
-          <b>Switch accounts</b> button. Add another account with email,
-          password and hCaptcha, then switch without signing in again. Remove
-          inactive accounts with ×. Log Out signs out the active account only.
+          Open
+          <b
+            >User Settings
+            <svg
+              class="ui-icon"
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="m14 5 7 7-7 7M3 12h18" />
+            </svg>
+            Switch accounts</b
+          >
+          or the portal’s <b>Switch accounts</b> button. Add another account
+          with email, password and hCaptcha, then switch without signing in
+          again. Remove inactive accounts with the Remove button. Log Out signs
+          out the active account only.
         </p>
         <p>
           Sessions are saved on this device, like the existing Supabase sign-in
@@ -663,8 +814,34 @@ const detail = interaction.options.getString('detail') ?? 'short';</code></pre>
           for channels, and <code>setFileTypes('image', '.pdf')</code> for
           attachments. Required arguments come before optional ones. Use up to
           25 options per level, 25 choices per option, and 100 commands per bot.
-          Nest groups → subcommands → arguments; do not mix subcommands with
-          ordinary arguments at the same level.
+          Nest groups
+          <svg
+            class="ui-icon"
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="m14 5 7 7-7 7M3 12h18" />
+          </svg>
+          subcommands
+          <svg
+            class="ui-icon"
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="m14 5 7 7-7 7M3 12h18" />
+          </svg>
+          arguments; do not mix subcommands with ordinary arguments at the same
+          level.
         </p>
         <h3>CHATBOX custom inputs</h3>
         <div class="code-head">
@@ -677,9 +854,9 @@ const detail = interaction.options.getString('detail') ?? 'short';</code></pre>
   .addMultilineOption(o =&gt; o.setName('note').setDescription('Longer note').setMaxLength(1000))
   .addURLOption(o =&gt; o.setName('link').setDescription('HTTPS link'));
 // These are string options with a server-checked CHATBOX format.
-const seconds = interaction.options.getDuration('wait'); // '5m' → 300
+const seconds = interaction.options.getDuration('wait'); // '5m' <svg class="ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m14 5 7 7-7 7M3 12h18"/></svg> 300
 const date = interaction.options.getDate('day'); // Date at midnight UTC
-const color = interaction.options.getColor('color'); // '#5865f2' → integer
+const color = interaction.options.getColor('color'); // '#5865f2' <svg class="ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m14 5 7 7-7 7M3 12h18"/></svg> integer
 const note = interaction.options.getString('note');
 const file = interaction.options.getAttachment('file');
 if (file) console.log(await file.getURL()); // Authorized download link, valid for 5 minutes.</code></pre>
@@ -1017,8 +1194,23 @@ client.on(Events.MessageCreate, async message =&gt; {
         <h2>Moderation</h2>
         <p>
           Messaging works by default. Root can grant optional permissions in
-          <b>Apps &amp; Bots → Permissions</b>. Bots never receive human staff
-          roles and cannot moderate staff or root.
+          <b
+            >Apps &amp; Bots
+            <svg
+              class="ui-icon"
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="m14 5 7 7-7 7M3 12h18" />
+            </svg>
+            Permissions</b
+          >. Bots never receive human staff roles and cannot moderate staff or
+          root.
         </p>
         <table>
           <tr>
@@ -1260,10 +1452,35 @@ await client.automod.delete('my-bot-spam-rule');</code></pre>
         </p>
         <p>
           Owners configure <code>HCAPTCHA_SECRET</code> in Supabase Edge
-          Functions → Secrets. In Authentication → Bot and Abuse Protection,
-          enable CAPTCHA, choose hCaptcha, and save the same secret. Only the
-          public sitekey belongs in the frontend. Complete that Auth setting
-          after deploying the frontend.
+          Functions
+          <svg
+            class="ui-icon"
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="m14 5 7 7-7 7M3 12h18" />
+          </svg>
+          Secrets. In Authentication
+          <svg
+            class="ui-icon"
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="m14 5 7 7-7 7M3 12h18" />
+          </svg>
+          Bot and Abuse Protection, enable CAPTCHA, choose hCaptcha, and save
+          the same secret. Only the public sitekey belongs in the frontend.
+          Complete that Auth setting after deploying the frontend.
         </p>
         <p>
           From <b>20 October 2026, 00:00 Hong Kong time</b>, human chat write
@@ -1282,11 +1499,24 @@ await client.automod.delete('my-bot-spam-rule');</code></pre>
         </p>
         <h3>Root account management</h3>
         <p>
-          Root can open Server settings → Members to reset another member’s
-          password or permanently delete their account. Password fields remain
-          masked, and current passwords are never returned. Account deletion
-          requires typing <code>DELETE username</code> and completing hCaptcha.
-          Root accounts cannot be deleted or reset through these controls.
+          Root can open Server settings
+          <svg
+            class="ui-icon"
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="m14 5 7 7-7 7M3 12h18" />
+          </svg>
+          Members to reset another member’s password or permanently delete their
+          account. Password fields remain masked, and current passwords are
+          never returned. Account deletion requires typing
+          <code>DELETE username</code> and completing hCaptcha. Root accounts
+          cannot be deleted or reset through these controls.
         </p>
         <p>
           Deletion removes the login, profile, uploads, messages, moderation

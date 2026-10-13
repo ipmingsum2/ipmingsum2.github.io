@@ -2,6 +2,10 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { JSDOM } from "jsdom";
+const icons = await readFile(
+  new URL("../../js/chat-icons.js", import.meta.url),
+  "utf8",
+);
 const pause = () => new Promise((r) => setTimeout(r, 10));
 test("bot buttons escape labels and forms submit privately with required field limits", async () => {
   const dom = new JSDOM('<main></main><div id="modal"></div>', {
@@ -21,6 +25,7 @@ test("bot buttons escape labels and forms submit privately with required field l
       render: esc,
       embeds: () => "",
     };
+    w.eval(icons);
     w.eval(
       await readFile(
         new URL("../../js/chat-interactions.js", import.meta.url),
@@ -99,18 +104,24 @@ test("bot buttons escape labels and forms submit privately with required field l
     assert.deepEqual(errors, []);
     d.querySelector("main").innerHTML = api.render({
       id: "colors",
-      components: [{ components: [1, 2, 3, 4, 5].map(style => ({
-        style, label: `Style ${style}`, custom_id: `button-${style}`,
-        url: "https://example.com", disabled: style === 5
-      })) }]
+      components: [
+        {
+          components: [1, 2, 3, 4, 5].map((style) => ({
+            style,
+            label: `Style ${style}`,
+            custom_id: `button-${style}`,
+            url: "https://example.com",
+            disabled: style === 5,
+          })),
+        },
+      ],
     });
     for (const style of [1, 2, 3, 4, 5]) {
       assert.ok(d.querySelector(`.bot-style-${style}`));
     }
-    const disabledLink = d.querySelector('.bot-style-5');
-    assert.equal(disabledLink.hasAttribute('href'), false);
-    assert.equal(disabledLink.getAttribute('aria-disabled'), 'true');
-
+    const disabledLink = d.querySelector(".bot-style-5");
+    assert.equal(disabledLink.hasAttribute("href"), false);
+    assert.equal(disabledLink.getAttribute("aria-disabled"), "true");
   } finally {
     w.close();
   }
@@ -123,6 +134,7 @@ test("custom selects keep form values, keyboard navigation, focus, and modal acc
   const w = dom.window,
     d = w.document;
   try {
+    w.eval(icons);
     w.eval(
       await readFile(new URL("../../js/chat-ui.js", import.meta.url), "utf8"),
     );
