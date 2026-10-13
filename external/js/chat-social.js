@@ -45,7 +45,7 @@
     threadButton.type = "button";
     threadButton.title = "Threads";
     threadButton.setAttribute("aria-label", "Browse threads");
-    threadButton.textContent = "≋";
+    threadButton.innerHTML = window.ChatIcons("thread");
     $("channelSettingsButton").before(threadButton);
     threadButton.onclick = () => safe(() => listThreads());
     async function action(op, p = {}) {
@@ -151,12 +151,12 @@
         .map((o) => {
           const pct = p.total ? Math.round((o.votes / p.total) * 100) : 0;
           return show
-            ? `<div class="poll-result ${p.mine.includes(o.id) ? "voted" : ""}"><span class="poll-result-bar" style="width:${pct}%"></span><span>${esc(o.emoji || "")} ${esc(o.text)}</span><small>${o.votes} ${o.votes === 1 ? "vote" : "votes"}</small><b>${pct}%</b>${p.mine.includes(o.id) ? '<span class="poll-check">✓</span>' : ""}</div>`
+            ? `<div class="poll-result ${p.mine.includes(o.id) ? "voted" : ""}"><span class="poll-result-bar" style="width:${pct}%"></span><span>${esc(o.emoji || "")} ${esc(o.text)}</span><small>${o.votes} ${o.votes === 1 ? "vote" : "votes"}</small><b>${pct}%</b>${p.mine.includes(o.id) ? '<span class="poll-check">' + window.ChatIcons("check") + "</span>" : ""}</div>`
             : `<label class="poll-answer ${selected.includes(o.id) ? "selected" : ""}"><span>${esc(o.emoji || "")} ${esc(o.text)}</span><input type="${p.multiple ? "checkbox" : "radio"}" name="poll-${esc(p.id)}" value="${esc(o.id)}" data-poll-choice="${esc(p.id)}" ${selected.includes(o.id) ? "checked" : ""}></label>`;
         })
         .join(
           "",
-        )}</div><footer><span>${p.total} ${p.total === 1 ? "vote" : "votes"} <span class="muted">· ${time}</span></span><div>${!p.ended ? (p.mine.length ? `<button class="secondary" data-poll-remove="${esc(p.id)}">Remove Vote</button>` : show ? `<button class="secondary" data-poll-back="${esc(p.id)}">Back to Vote</button>` : `<button class="text-button" data-poll-results="${esc(p.id)}">Show results</button><button class="primary" data-poll-vote="${esc(p.id)}" ${selected.length ? "" : "disabled"}>Vote</button>`) : ""}${!p.ended && (p.created_by === state.me.id || state.root) ? `<button class="icon-button" data-poll-close="${esc(p.id)}" title="End poll" aria-label="End poll">◷</button>` : ""}</div></footer></section>`;
+        )}</div><footer><span>${p.total} ${p.total === 1 ? "vote" : "votes"} <span class="muted">· ${time}</span></span><div>${!p.ended ? (p.mine.length ? `<button class="secondary" data-poll-remove="${esc(p.id)}">Remove Vote</button>` : show ? `<button class="secondary" data-poll-back="${esc(p.id)}">Back to Vote</button>` : `<button class="text-button" data-poll-results="${esc(p.id)}">Show results</button><button class="primary" data-poll-vote="${esc(p.id)}" ${selected.length ? "" : "disabled"}>Vote</button>`) : ""}${!p.ended && (p.created_by === state.me.id || state.root) ? `<button class="icon-button" data-poll-close="${esc(p.id)}" title="End poll" aria-label="End poll">${window.ChatIcons("clock")}</button>` : ""}</div></footer></section>`;
     }
     function paintPoll(id) {
       const p = polls.get(id);
@@ -205,7 +205,7 @@
         const t =
           threadInfo.get(m.thread_id) ||
           state.channels.find((c) => c.id === m.thread_id);
-        return `<button class="thread-card" data-open-thread="${esc(m.thread_id)}"><span class="thread-card-icon">≋</span><span><b>${esc(t?.name || m.text)}</b><small>${t?.archived ? "Closed · " : ""}${t?.message_count ?? 0} messages <span>›</span></small></span></button>`;
+        return `<button class="thread-card" data-open-thread="${esc(m.thread_id)}"><span class="thread-card-icon">${window.ChatIcons("thread")}</span><span><b>${esc(t?.name || m.text)}</b><small>${t?.archived ? "Closed · " : ""}${t?.message_count ?? 0} messages <span>${window.ChatIcons("next")}</span></small></span></button>`;
       }
       return "";
     }
@@ -213,7 +213,7 @@
       if (!room) return;
       modal(
         "Create a Poll",
-        `<form id="pollForm"><label>Question<textarea id="pollQuestion" maxlength="300" required placeholder="What would you like to ask?"></textarea></label><div class="poll-counter"><span id="pollQuestionCount">0</span> / 300</div><h3>Answers</h3><div id="pollAnswerFields"></div><button class="secondary poll-add" type="button" id="addPollAnswer">＋ Add another answer</button><label>Duration<select name="duration" id="pollDuration">${[
+        `<form id="pollForm"><label>Question<textarea id="pollQuestion" maxlength="300" required placeholder="What would you like to ask?"></textarea></label><div class="poll-counter"><span id="pollQuestionCount">0</span> / 300</div><h3>Answers</h3><div id="pollAnswerFields"></div><button class="secondary poll-add" type="button" id="addPollAnswer">${window.ChatIcons("plus")} Add another answer</button><label>Duration<select name="duration" id="pollDuration">${[
           [0.5, "30 minutes"],
           [1, "1 hour"],
           [4, "4 hours"],
@@ -236,7 +236,11 @@
         const row = document.createElement("div");
         row.className = "poll-answer-field";
         row.innerHTML =
-          '<button class="poll-emoji icon-button" type="button" aria-label="Choose answer emoji">☺</button><input class="poll-option-text" maxlength="100" required placeholder="Answer" aria-label="Poll answer"><button class="icon-button poll-delete" type="button" aria-label="Remove answer">×</button>';
+          '<button class="poll-emoji icon-button" type="button" aria-label="Choose answer emoji">' +
+          window.ChatIcons("smile") +
+          '</button><input class="poll-option-text" maxlength="100" required placeholder="Answer" aria-label="Poll answer"><button class="icon-button poll-delete" type="button" aria-label="Remove answer">' +
+          window.ChatIcons("close") +
+          "</button>";
         row.querySelector(".poll-delete").onclick = () => {
           if ($("pollAnswerFields").children.length > 2) {
             row.remove();
@@ -262,8 +266,8 @@
               label: emoji,
               action: () => {
                 row.dataset.emoji = emoji === "None" ? "" : emoji;
-                row.querySelector(".poll-emoji").textContent =
-                  emoji === "None" ? "☺" : emoji;
+                row.querySelector(".poll-emoji").innerHTML =
+                  emoji === "None" ? window.ChatIcons("smile") : esc(emoji);
               },
             })),
           );
@@ -348,7 +352,7 @@
       rows.forEach((t) => threadInfo.set(t.id, t));
       modal(
         "Threads",
-        `<p class="muted">Keep a conversation going without filling the channel.</p><button class="primary" id="newThreadFromList">＋ Create Thread</button><div class="thread-directory">${rows.length ? rows.map((t) => `<button class="thread-directory-item" data-open-thread="${esc(t.id)}"><span>≋</span><div><b>${esc(t.name)}</b><small>${t.archived ? "Closed" : "Active"} · ${t.message_count} messages</small></div><span>›</span></button>`).join("") : '<div class="empty-state">No threads yet. Start the first conversation.</div>'}</div>`,
+        `<p class="muted">Keep a conversation going without filling the channel.</p><button class="primary" id="newThreadFromList">${window.ChatIcons("plus")} Create Thread</button><div class="thread-directory">${rows.length ? rows.map((t) => `<button class="thread-directory-item" data-open-thread="${esc(t.id)}"><span>${window.ChatIcons("thread")}</span><div><b>${esc(t.name)}</b><small>${t.archived ? "Closed" : "Active"} · ${t.message_count} messages</small></div><span>${window.ChatIcons("next")}</span></button>`).join("") : '<div class="empty-state">No threads yet. Start the first conversation.</div>'}</div>`,
       );
       $("newThreadFromList").onclick = () => createThread();
     }
@@ -376,7 +380,7 @@
       follow = true;
       panel.hidden = false;
       $("appView").classList.add("thread-open");
-      panel.innerHTML = `<header class="thread-header"><span class="hash">≋</span><div><h2>${esc(t.name)}</h2><small>Thread in #${esc(state.channels.find((c) => c.id === t.parent_id)?.name)}</small></div><button id="threadOptions" class="icon-button" aria-label="Thread options">•••</button><button id="closeThread" class="icon-button" aria-label="Close thread panel">×</button></header><div id="threadMessages" class="thread-messages" role="log" aria-label="Thread messages"></div><div class="thread-compose-area"><div id="threadReply" hidden></div><p id="threadNotice" class="small-note" role="status"></p><form id="threadForm" class="composer"><button id="threadAdd" type="button" class="composer-tool" aria-label="Thread message options">＋</button><textarea id="threadText" rows="1" aria-label="Thread message" placeholder="Message ${esc(t.name)}"></textarea><span id="threadSlowmode" class="slowmode-status" hidden></span><button class="send-button" id="threadSend" aria-label="Send thread message">➤</button></form></div>`;
+      panel.innerHTML = `<header class="thread-header"><span class="hash">${window.ChatIcons("thread")}</span><div><h2>${esc(t.name)}</h2><small>Thread in #${esc(state.channels.find((c) => c.id === t.parent_id)?.name)}</small></div><button id="threadOptions" class="icon-button" aria-label="Thread options">${window.ChatIcons("more")}</button><button id="closeThread" class="icon-button" aria-label="Close thread panel">${window.ChatIcons("close")}</button></header><div id="threadMessages" class="thread-messages" role="log" aria-label="Thread messages"></div><div class="thread-compose-area"><div id="threadReply" hidden></div><p id="threadNotice" class="small-note" role="status"></p><form id="threadForm" class="composer"><button id="threadAdd" type="button" class="composer-tool" aria-label="Thread message options">${window.ChatIcons("plus")}</button><textarea id="threadText" rows="1" aria-label="Thread message" placeholder="Message ${esc(t.name)}"></textarea><span id="threadSlowmode" class="slowmode-status" hidden></span><button class="send-button" id="threadSend" aria-label="Send thread message">${window.ChatIcons("send")}</button></form></div>`;
       $("closeThread").onclick = closeThread;
       $("threadOptions").onclick = (e) =>
         window.ChatUI.menu(e.currentTarget, [
@@ -421,12 +425,12 @@
         old = list.scrollTop,
         stick = forceBottom || follow;
       list.innerHTML =
-        `<div class="thread-welcome"><span>≋</span><h2>${esc(t.name)}</h2><p>Started by ${esc(profile(t.created_by).display_name)}</p></div>` +
+        `<div class="thread-welcome"><span>${window.ChatIcons("thread")}</span><h2>${esc(t.name)}</h2><p>Started by ${esc(profile(t.created_by).display_name)}</p></div>` +
         messages
           .filter((m) => !m.deleted)
           .map(
             (m) =>
-              `<article class="thread-message"><button class="text-button" data-profile="${m.user_id}" aria-label="View ${esc(profile(m.user_id).display_name)} profile">${avatar(profile(m.user_id))}</button><div><button class="message-author" data-profile="${m.user_id}">${esc(profile(m.user_id).display_name)}</button><time>${new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>${m.reply_to ? '<small class="thread-reply-label">↳ Reply</small>' : ""}<div class="body">${m.deleted ? '<i class="muted">Message deleted</i>' : m.poll_id ? "" : render(m.text, state.profiles, state.channels)}</div>${!m.deleted ? attachmentHTML(m) + (api.componentHTML?.(m) || "") + window.ChatCore.embeds(m.embeds || [], state.profiles, state.channels) + messageExtra(m) : ""}${!m.deleted ? `<div class="thread-message-actions"><button class="text-button" data-thread-reply="${esc(m.id)}">Reply</button>${m.user_id === state.me.id ? `<button class="text-button" data-thread-delete="${esc(m.id)}">Delete</button>` : ""}</div>` : ""}</div></article>`,
+              `<article class="thread-message"><button class="text-button" data-profile="${m.user_id}" aria-label="View ${esc(profile(m.user_id).display_name)} profile">${avatar(profile(m.user_id))}</button><div><button class="message-author" data-profile="${m.user_id}">${esc(profile(m.user_id).display_name)}</button><time>${new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>${m.reply_to ? '<small class="thread-reply-label">' + window.ChatIcons("reply") + " Reply</small>" : ""}<div class="body">${m.deleted ? '<i class="muted">Message deleted</i>' : m.poll_id ? "" : render(m.text, state.profiles, state.channels)}</div>${!m.deleted ? attachmentHTML(m) + (api.componentHTML?.(m) || "") + window.ChatCore.embeds(m.embeds || [], state.profiles, state.channels) + messageExtra(m) : ""}${!m.deleted ? `<div class="thread-message-actions"><button class="text-button" data-thread-reply="${esc(m.id)}">Reply</button>${m.user_id === state.me.id ? `<button class="text-button" data-thread-delete="${esc(m.id)}">Delete</button>` : ""}</div>` : ""}</div></article>`,
           )
           .join("");
       if (older && messages.length) {
@@ -510,7 +514,7 @@
       const el = $("threadSlowmode");
       el.hidden = !status.seconds;
       el.dataset.seconds = String(status.seconds || 0);
-      el.textContent = "◷ " + status.seconds + "s";
+      el.innerHTML = window.ChatIcons("clock") + " " + status.seconds + "s";
     }
     setInterval(() => {
       if (!active || !$("threadSlowmode")) return;
@@ -519,7 +523,11 @@
         Math.ceil((threadCooldown - Date.now()) / 1000),
       );
       const el = $("threadSlowmode");
-      el.textContent = "◷ " + (seconds || el.dataset.seconds || 0) + "s";
+      el.innerHTML =
+        window.ChatIcons("clock") +
+        " " +
+        (seconds || el.dataset.seconds || 0) +
+        "s";
       $("threadSend").disabled =
         sending ||
         !threadCanSend ||
@@ -560,21 +568,28 @@
     }
     function composerMenu(anchor) {
       window.ChatUI.menu(anchor, [
-        { label: "↥  Upload a File", action: () => $("attachment").click() },
         {
-          label: "≋  Create Thread",
+          icon: "upload",
+          label: "Upload a File",
+          action: () => $("attachment").click(),
+        },
+        {
+          icon: "thread",
+          label: "Create Thread",
           disabled:
             !state.room ||
             state.channels.find((c) => c.id === state.room)?.kind === "dm",
           action: () => createThread(),
         },
         {
-          label: "▤  Create Poll",
+          icon: "poll",
+          label: "Create Poll",
           disabled: !state.room,
           action: () => createPoll(),
         },
         {
-          label: "✦  Use Apps",
+          icon: "apps",
+          label: "Use Apps",
           action: () =>
             modal(
               "Apps",
@@ -641,7 +656,7 @@
           reply = b.dataset.threadReply;
           $("threadReply").hidden = false;
           $("threadReply").innerHTML =
-            `<span>Replying to ${esc(profile(messages.find((m) => m.id === reply)?.user_id).display_name)}</span><button class="text-button" id="cancelThreadReply">×</button>`;
+            `<span>Replying to ${esc(profile(messages.find((m) => m.id === reply)?.user_id).display_name)}</span><button class="text-button" id="cancelThreadReply">${window.ChatIcons("close")}</button>`;
           $("cancelThreadReply").onclick = () => {
             reply = null;
             $("threadReply").hidden = true;
@@ -667,8 +682,10 @@
         if (t) {
           const small = el.querySelector("small");
           if (small)
-            small.textContent =
-              (t.archived ? "Closed · " : "") + t.message_count + " messages ›";
+            small.innerHTML =
+              (t.archived ? "Closed · " : "") +
+              t.message_count +
+              (" messages " + window.ChatIcons("next"));
         }
       });
     }
