@@ -146,6 +146,14 @@
         });
     return loading;
   }
+  async function hosted(action, payload) {
+    let result = await client.rpc("chat_hosted", { action, payload });
+    if (result.error?.message?.includes("CHATBOX_VERIFICATION_REQUIRED")) {
+      await verifySession();
+      result = await client.rpc("chat_hosted", { action, payload });
+    }
+    return checked(Promise.resolve(result));
+  }
   const image = (p, cls = "developer-app-icon") =>
     https(p.avatar_url)
       ? `<img class="${cls}" src="${esc(https(p.avatar_url))}" alt="" referrerpolicy="no-referrer">`
@@ -208,12 +216,7 @@
               options: [{ name: "count", type: 4, required: true }],
             },
           ]
-        : await checked(
-            client.rpc("chat_hosted", {
-              action: "commands",
-              payload: { bot_id: id },
-            }),
-          );
+        : await hosted("commands", { bot_id: id });
       if (selected?.id !== id || tab !== "commands") return;
       $("registeredCommands").innerHTML =
         rows
@@ -234,10 +237,7 @@
             request: async (action, payload) => {
               if (preview)
                 throw Error("Hosting is unavailable in the local preview");
-              const r = await checked(
-                client.rpc("chat_hosted", { action, payload }),
-              );
-              return r;
+              return hosted(action, payload);
             },
             modal,
             esc,
@@ -261,7 +261,6 @@
       file.size > 4 * 1024 * 1024
     )
       throw Error("Choose a PNG, JPEG, WebP, GIF or AVIF image up to 4 MB");
-    if (!(await checked(client.rpc("chat_human_ready")))) await verifySession();
     const ext = {
         "image/png": "png",
         "image/jpeg": "jpg",
@@ -322,6 +321,12 @@
           delete values.bannerFile;
           if (preview)
             throw Error("Identity editing is unavailable in the local preview");
+          if (
+            (form.elements.avatarFile.files[0] ||
+              form.elements.bannerFile.files[0]) &&
+            !(await checked(client.rpc("chat_human_ready")))
+          )
+            await verifySession();
           if (form.elements.avatarFile.files[0])
             values.avatar_url = await uploadImage(
               form.elements.avatarFile.files[0],

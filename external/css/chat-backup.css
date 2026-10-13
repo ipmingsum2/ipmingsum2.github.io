@@ -3601,6 +3601,9 @@ input::file-selector-button {
   font-size: 14px;
 }
 .developer-header .brand {
+  position: static;
+  flex: none;
+  white-space: nowrap;
   font-size: 18px;
   letter-spacing: -0.4px;
 }
@@ -3898,11 +3901,13 @@ input::file-selector-button {
   .developer-header {
     padding: 16px;
     height: auto;
+    flex-wrap: wrap;
   }
   .developer-header .brand small {
     display: none;
   }
   .developer-header nav {
+    flex-wrap: wrap;
     gap: 12px;
     font-size: 12px;
   }
