@@ -5,6 +5,20 @@ Based on Prometheus by Elias Oelschner, https://github.com/prometheus-lua/Promet
 Versioning starts at v1.5.7. Very major changes bump major, normal changes bump
 minor, and small changes bump patch; lower numbers reset after major/minor bumps.
 
+## [1.9.0] — 2026-10-16
+
+### Added
+
+- `StudioUltra` preset: a maximum-cost mode with two VM layers (no third) and the
+  widest opaque-predicate coverage. It is heavier and slower than Super, so keep
+  frequently executed game logic out of it.
+
+### Changed
+
+- Strengthen the automatic obfuscation again. Generated output stays functionally
+  identical for your scripts.
+- **Confidential** — withheld to avoid aiding deobfuscation.
+
 ## [1.8.0] — 2026-10-11
 
 ### Changed
