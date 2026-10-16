@@ -5,6 +5,15 @@ Based on Prometheus by Elias Oelschner, https://github.com/prometheus-lua/Promet
 Versioning starts at v1.5.7. Very major changes bump major, normal changes bump
 minor, and small changes bump patch; lower numbers reset after major/minor bumps.
 
+## [1.10.0] — 2026-10-16
+
+### Added
+
+- MemeDump: an anti-dump pass in the Super and StudioUltra modes that frustrates
+  commodity string dumpers. It raises analysis cost; it is **not** confidentiality,
+  and whoever runs the script can still observe the values it uses.
+- **Confidential** — withheld to avoid aiding deobfuscation.
+
 ## [1.9.0] — 2026-10-16
 
 ### Added
