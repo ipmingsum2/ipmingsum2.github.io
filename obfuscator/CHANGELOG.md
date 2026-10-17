@@ -5,6 +5,14 @@ Based on Prometheus by Elias Oelschner, https://github.com/prometheus-lua/Promet
 Versioning starts at v1.5.7. Very major changes bump major, normal changes bump
 minor, and small changes bump patch; lower numbers reset after major/minor bumps.
 
+## [1.11.0] — 2026-10-17
+
+### Changed
+
+- Harden the virtual machine against pattern-based deobfuscators. Routing and
+  output behaviour are unchanged.
+- **Confidential** — withheld to avoid aiding deobfuscation.
+
 ## [1.10.0] — 2026-10-16
 
 ### Added
