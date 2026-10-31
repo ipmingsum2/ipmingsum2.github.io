@@ -5,6 +5,17 @@ Based on Prometheus by Elias Oelschner, https://github.com/prometheus-lua/Promet
 Versioning starts at v1.5.7. Very major changes bump major, normal changes bump
 minor, and small changes bump patch; lower numbers reset after major/minor bumps.
 
+## [1.12.0] — 2026-10-31
+
+### Added
+
+- Bytecode VM (Beta): a new experimental, opt-in protection mode. It is off by
+  default and does not change the existing Studio, Super, Ultra or Legacy modes.
+  It adds a freshly shaped protection layer per build to raise analysis cost; it is
+  **not** confidentiality, and whoever runs the script can still observe the values
+  it uses.
+- **Confidential** — withheld to avoid aiding deobfuscation.
+
 ## [1.11.0] — 2026-10-17
 
 ### Changed
