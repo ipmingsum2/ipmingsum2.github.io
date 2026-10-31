@@ -5,6 +5,35 @@ Based on Prometheus by Elias Oelschner, https://github.com/prometheus-lua/Promet
 Versioning starts at v1.5.7. Very major changes bump major, normal changes bump
 minor, and small changes bump patch; lower numbers reset after major/minor bumps.
 
+## [1.13.0] — 2026-10-31
+
+### Added
+
+- Cloud Store (Beta): an owner-only way to keep a product's code off the client
+  until runtime. Publishing compiles your script to a protected data blob stored in
+  the cloud; a small loader you paste into your Roblox place validates its
+  environment and fetches the code at runtime with no loadstring. It raises the cost
+  of casual copying and scraping; it is **not** confidentiality — anyone running a
+  licensed client can still capture what the loader receives — so the authoritative
+  license must stay on your server.
+- **Confidential** — withheld to avoid aiding deobfuscation.
+
+## [1.12.1] — 2026-10-31
+
+### Added
+
+- The Bytecode VM (Beta) now compiles function definitions and calls to bytecode,
+  so more real code runs through the pure-Lua interpreter instead of falling back.
+- **Confidential** — withheld to avoid aiding deobfuscation.
+
+### Changed
+
+- Strengthen the Bytecode VM (Beta) mode. It previously emitted a thin layer that
+  left string constants readable, so a reader could recover them immediately; it
+  now applies full string encryption and several additional protection layers, so
+  product strings are no longer present in plaintext.
+- **Confidential** — withheld to avoid aiding deobfuscation.
+
 ## [1.12.0] — 2026-10-31
 
 ### Added
