@@ -5,6 +5,15 @@ Based on Prometheus by Elias Oelschner, https://github.com/prometheus-lua/Promet
 Versioning starts at v1.5.7. Very major changes bump major, normal changes bump
 minor, and small changes bump patch; lower numbers reset after major/minor bumps.
 
+## [1.13.2] — 2026-11-06
+
+### Fixed
+
+- Fix Cloud Store publishing, which failed with "Expected a bytecode-data blob."
+  The build embedded the data blob as a JSON object, but the store (and the loader)
+  expect the blob's JSON *text*; it is now emitted as a string, so publishing a
+  supported module succeeds and returns the loader.
+
 ## [1.13.1] — 2026-11-06
 
 ### Changed
