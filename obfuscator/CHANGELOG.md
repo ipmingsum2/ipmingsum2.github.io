@@ -5,6 +5,17 @@ Based on Prometheus by Elias Oelschner, https://github.com/prometheus-lua/Promet
 Versioning starts at v1.5.7. Very major changes bump major, normal changes bump
 minor, and small changes bump patch; lower numbers reset after major/minor bumps.
 
+## [1.13.1] — 2026-11-06
+
+### Changed
+
+- Cloud Store (Beta) now accepts module-style scripts. The bytecode VM previously
+  rejected any script using a table (`{}`), so publishing a normal product — which
+  almost always returns a table — failed with no loader produced. The VM now
+  compiles table constructors and table-field function definitions
+  (`function m.fn(...)`), so typical `local m = {} … return m` modules publish.
+- **Confidential** — withheld to avoid aiding deobfuscation.
+
 ## [1.13.0] — 2026-10-31
 
 ### Added
