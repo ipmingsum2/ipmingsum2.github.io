@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Math Workbook</title>
+
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+  <style>
+    :root {
+      --bg: #050816;
+      --panel: rgba(15, 23, 42, 0.74);
+      --border: rgba(148, 163, 184, 0.22);
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #8b5cf6;
+      --accent-2: #06b6d4;
+      --danger: #fb7185;
+      --success: #86efac;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      min-height: 100%;
+      background: var(--bg);
+    }
+
+    body {
+      min-height: 100vh;
+      font-family:
+        Inter,
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+      color: var(--text);
+      overflow-x: hidden;
+      background:
+        radial-gradient(circle at top left, rgba(139, 92, 246, 0.22), transparent 36%),
+        radial-gradient(circle at bottom right, rgba(6, 182, 212, 0.18), transparent 36%),
+        linear-gradient(135deg, #020617, #0f172a 48%, #020617);
+    }
+
+    .orb {
+      position: fixed;
+      width: 22rem;
+      height: 22rem;
+      border-radius: 999px;
+      filter: blur(75px);
+      opacity: 0.32;
+      pointer-events: none;
+      animation: float 12s ease-in-out infinite alternate;
+    }
+
+    .orb.one {
+      left: -8rem;
+      top: 8rem;
+      background: #8b5cf6;
+    }
+
+    .orb.two {
+      right: -8rem;
+      bottom: 6rem;
+      background: #06b6d4;
+      animation-delay: -4s;
+    }
+
+    .orb.three {
+      left: 45%;
+      top: -12rem;
+      background: #ec4899;
+      animation-delay: -8s;
+    }
+
+    @keyframes float {
+      from {
+        transform: translate3d(0, 0, 0) scale(1);
+      }
+
+      to {
+        transform: translate3d(2rem, -2rem, 0) scale(1.12);
+      }
+    }
+
+    .page {
+      position: relative;
+      z-index: 2;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 2rem 1rem;
+    }
+
+    .shell {
+      width: 100%;
+      max-width: 64rem;
+      animation: enter 700ms ease both;
+    }
+
+    @keyframes enter {
+      from {
+        opacity: 0;
+        transform: translateY(1.5rem) scale(0.98);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .top {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+
+    h1 {
+      font-size: clamp(2.6rem, 8vw, 5.8rem);
+      line-height: 0.95;
+      letter-spacing: -0.08em;
+      margin-bottom: 1rem;
+      background: linear-gradient(135deg, #ffffff, #c4b5fd, #67e8f9);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .subtitle {
+      max-width: 42rem;
+      margin: 0 auto;
+      color: var(--muted);
+      font-size: clamp(1rem, 3vw, 1.15rem);
+      line-height: 1.7;
+    }
+
+    .card {
+      position: relative;
+      overflow: visible;
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 2rem;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent),
+        var(--panel);
+      backdrop-filter: blur(22px);
+      box-shadow:
+        0 2rem 6rem rgba(0, 0, 0, 0.42),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      padding: clamp(1.2rem, 4vw, 2rem);
+    }
+
+    .panel {
+      position: relative;
+      z-index: 1;
+    }
+
+    .login {
+      display: grid;
+      gap: 1rem;
+      max-width: 34rem;
+      margin: 0 auto;
+    }
+
+    .label {
+      color: #e2e8f0;
+      font-size: 0.95rem;
+      font-weight: 650;
+    }
+
+    .label-row {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      position: relative;
+      width: fit-content;
+    }
+
+    .info-tip {
+      position: relative;
+      display: inline-grid;
+      place-items: center;
+      width: 1.15rem;
+      height: 1.15rem;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      background: rgba(15, 23, 42, 0.75);
+      color: #c4b5fd;
+      font-size: 0.75rem;
+      font-weight: 800;
+      line-height: 1;
+      cursor: pointer;
+      padding: 0;
+      flex: 0 0 auto;
+    }
+
+    .info-tip:focus {
+      outline: none;
+      box-shadow: 0 0 0 0.2rem rgba(139, 92, 246, 0.22);
+      border-color: rgba(139, 92, 246, 0.75);
+    }
+
+    .tooltip {
+      position: absolute;
+      left: 50%;
+      bottom: calc(100% + 0.7rem);
+      transform: translateX(-50%) translateY(0.4rem);
+      width: max-content;
+      max-width: 16rem;
+      padding: 0.7rem 0.8rem;
+      border-radius: 0.8rem;
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      background: rgba(2, 6, 23, 0.96);
+      color: #e2e8f0;
+      font-size: 0.78rem;
+      font-weight: 500;
+      line-height: 1.35;
+      text-align: center;
+      box-shadow: 0 1rem 2rem rgba(0, 0, 0, 0.35);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition:
+        opacity 160ms ease,
+        visibility 160ms ease,
+        transform 160ms ease;
+      z-index: 100;
+    }
+
+    .tooltip::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 100%;
+      transform: translateX(-50%);
+      border-width: 0.45rem;
+      border-style: solid;
+      border-color: rgba(2, 6, 23, 0.96) transparent transparent transparent;
+    }
+
+    .info-tip:hover .tooltip,
+    .info-tip:focus .tooltip,
+    .info-tip:active .tooltip {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .input-wrap {
+      position: relative;
+    }
+
+    input,
+    select {
+      width: 100%;
+      border: 1px solid rgba(148, 163, 184, 0.24);
+      border-radius: 1.1rem;
+      background: rgba(2, 6, 23, 0.68);
+      color: var(--text);
+      padding: 1rem;
+      outline: none;
+      font-size: 1rem;
+      transition:
+        border-color 180ms ease,
+        box-shadow 180ms ease,
+        transform 180ms ease;
+    }
+
+    .code-input {
+      padding-left: 3rem;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: rgba(139, 92, 246, 0.75);
+      box-shadow: 0 0 0 0.25rem rgba(139, 92, 246, 0.16);
+      transform: translateY(-1px);
+    }
+
+    .lock {
+      position: absolute;
+      left: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #a78bfa;
+      pointer-events: none;
+    }
+
+    .primary-btn,
+    .ghost-btn,
+    .link-btn,
+    .danger-btn {
+      border: 0;
+      cursor: pointer;
+      color: white;
+      border-radius: 1.1rem;
+      padding: 1rem 1.1rem;
+      font-size: 1rem;
+      font-weight: 750;
+      letter-spacing: -0.01em;
+      transition:
+        transform 180ms ease,
+        box-shadow 180ms ease,
+        filter 180ms ease,
+        background 180ms ease;
+    }
+
+    .primary-btn,
+    .link-btn {
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      box-shadow: 0 1rem 2rem rgba(6, 182, 212, 0.14);
+    }
+
+    .ghost-btn {
+      background: rgba(15, 23, 42, 0.72);
+      border: 1px solid rgba(148, 163, 184, 0.24);
+      color: #e2e8f0;
+    }
+
+    .danger-btn {
+      background: rgba(244, 63, 94, 0.15);
+      border: 1px solid rgba(251, 113, 133, 0.32);
+      color: #fecdd3;
+      padding: 0.7rem 0.9rem;
+      border-radius: 0.85rem;
+      font-size: 0.9rem;
+    }
+
+    .primary-btn:hover,
+    .ghost-btn:hover,
+    .link-btn:hover,
+    .danger-btn:hover {
+      transform: translateY(-3px);
+      filter: brightness(1.07);
+    }
+
+    .primary-btn:disabled,
+    .ghost-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.7;
+      transform: none;
+    }
+
+    .message {
+      min-height: 1.5rem;
+      color: var(--muted);
+      text-align: center;
+      font-size: 0.95rem;
+    }
+
+    .message.error {
+      color: var(--danger);
+    }
+
+    .message.success {
+      color: var(--success);
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .divider::before,
+    .divider::after {
+      content: "";
+      height: 1px;
+      background: rgba(148, 163, 184, 0.2);
+      flex: 1;
+    }
+
+    .google-note {
+      color: var(--muted);
+      font-size: 0.85rem;
+      text-align: center;
+    }
+
+    .view {
+      display: none;
+      animation: rise 450ms ease both;
+    }
+
+    @keyframes rise {
+      from {
+        opacity: 0;
+        transform: translateY(1rem);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .view-header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.2rem;
+      flex-wrap: wrap;
+    }
+
+    .view-header h2 {
+      font-size: clamp(1.4rem, 4vw, 2.1rem);
+      letter-spacing: -0.04em;
+    }
+
+    .view-header p {
+      color: var(--muted);
+      margin-top: 0.35rem;
+      line-height: 1.5;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 0.7rem;
+      flex-wrap: wrap;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
+    }
+
+    .link-btn {
+      position: relative;
+      min-height: 8rem;
+      display: flex;
+      align-items: flex-end;
+      text-align: left;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at top right, rgba(255, 255, 255, 0.24), transparent 32%),
+        linear-gradient(135deg, rgba(139, 92, 246, 0.92), rgba(6, 182, 212, 0.88));
+      animation: pop 500ms ease both;
+    }
+
+    @keyframes pop {
+      from {
+        opacity: 0;
+        transform: translateY(1rem) scale(0.96);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .link-btn::after {
+      content: "→";
+      position: absolute;
+      top: 0.9rem;
+      right: 1rem;
+      font-size: 1.35rem;
+      opacity: 0.85;
+      transition: transform 180ms ease;
+    }
+
+    .link-btn:hover::after {
+      transform: translateX(0.25rem);
+    }
+
+    .link-name {
+      position: relative;
+      z-index: 1;
+      font-size: 1.1rem;
+      line-height: 1.25;
+    }
+
+    .admin-layout {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.2rem;
+    }
+
+    .admin-box {
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      background: rgba(2, 6, 23, 0.36);
+      border-radius: 1.4rem;
+      padding: 1rem;
+    }
+
+    .admin-box h3 {
+      margin-bottom: 0.8rem;
+      letter-spacing: -0.03em;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 12rem auto;
+      gap: 0.8rem;
+      align-items: end;
+    }
+
+    .generated {
+      display: none;
+      margin-top: 1rem;
+      padding: 1rem;
+      border-radius: 1rem;
+      border: 1px solid rgba(134, 239, 172, 0.25);
+      background: rgba(34, 197, 94, 0.08);
+    }
+
+    .code-line {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-top: 0.5rem;
+    }
+
+    .mono {
+      font-family:
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        Monaco,
+        Consolas,
+        "Liberation Mono",
+        "Courier New",
+        monospace;
+      color: #d8b4fe;
+      overflow-wrap: anywhere;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 42rem;
+    }
+
+    th,
+    td {
+      text-align: left;
+      padding: 0.85rem;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+      color: #e2e8f0;
+      vertical-align: middle;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+
+    .tab {
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      background: rgba(15, 23, 42, 0.68);
+      color: #e2e8f0;
+      border-radius: 999px;
+      padding: 0.7rem 1rem;
+      cursor: pointer;
+    }
+
+    .tab.active {
+      background: linear-gradient(135deg, rgba(139, 92, 246, 0.9), rgba(6, 182, 212, 0.8));
+      border-color: transparent;
+      color: white;
+    }
+
+    @media (max-width: 820px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .card {
+        border-radius: 1.4rem;
+      }
+
+      .link-btn {
+        min-height: 6rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .tooltip {
+        max-width: 13rem;
+        white-space: normal;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="orb one"></div>
+  <div class="orb two"></div>
+  <div class="orb three"></div>
+
+  <main class="page">
+    <section class="shell">
+      <div class="top">
+        <h1>Math Workbook</h1>
+        <p class="subtitle">Enter your access code to continue.</p>
+      </div>
+
+      <div class="card">
+        <div class="panel">
+          <form id="loginForm" class="login">
+            <div class="label-row">
+              <label class="label" for="codeInput">Access Code</label>
+
+              <button
+                class="info-tip"
+                type="button"
+                aria-label="Access code information"
+              >
+                ?
+                <span class="tooltip">
+                  Enter da code a cool admin gave you :)
+                </span>
+              </button>
+            </div>
+
+            <div class="input-wrap">
+              <span class="lock">🔒</span>
+              <input
+                id="codeInput"
+                class="code-input"
+                type="text"
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                autocomplete="off"
+                required
+              />
+            </div>
+
+            <button id="continueBtn" class="primary-btn" type="submit">
+              Continue
+            </button>
+
+            <div class="divider">or</div>
+
+            <div class="admin-signin">
+              <button id="adminGoogleBtn" class="ghost-btn" type="button">
+                Continue with Google
+              </button>
+              <p class="google-note">Administrator sign in</p>
+            </div>
+
+            <p id="message" class="message"></p>
+          </form>
+
+          <section id="resourcesView" class="view">
+            <div class="view-header">
+              <div>
+                <h2>Resources</h2>
+                <p id="resourceMeta">Choose where you wanna go.</p>
+              </div>
+
+              <div class="header-actions">
+                <button id="backBtn" class="ghost-btn" type="button">
+                  Lock
+                </button>
+              </div>
+            </div>
+
+            <div id="linksGrid" class="grid"></div>
+          </section>
+
+          <section id="adminView" class="view">
+            <div class="view-header">
+              <div>
+                <h2>Admin</h2>
+                <p id="adminMeta">Manage access codes and resources.</p>
+              </div>
+
+              <div class="header-actions">
+                <button id="adminLogoutBtn" class="ghost-btn" type="button">
+                  Sign out
+                </button>
+              </div>
+            </div>
+
+            <div class="tabs">
+              <button id="adminResourcesTab" class="tab active" type="button">
+                Resources
+              </button>
+              <button id="adminCodesTab" class="tab" type="button">
+                Access Codes
+              </button>
+            </div>
+
+            <div id="adminResourcesPanel" class="admin-layout">
+              <div class="admin-box">
+                <h3>Resources</h3>
+                <div id="adminLinksGrid" class="grid"></div>
+              </div>
+            </div>
+
+            <div id="adminCodesPanel" class="admin-layout" style="display:none;">
+              <div class="admin-box">
+                <h3>Generate Access Code</h3>
+
+                <div class="form-grid">
+                  <div>
+                    <label class="label" for="labelInput">Label</label>
+                    <input id="labelInput" type="text" placeholder="Student, class, or note" />
+                  </div>
+
+                  <div>
+                    <label class="label" for="expirySelect">Expiry</label>
+                    <select id="expirySelect">
+                      <option value="30">30 minutes</option>
+                      <option value="60">1 hour</option>
+                      <option value="360">6 hours</option>
+                      <option value="1440" selected>1 day</option>
+                      <option value="10080">7 days</option>
+                      <option value="43200">30 days</option>
+                    </select>
+                  </div>
+
+                  <button id="generateBtn" class="primary-btn" type="button">
+                    Generate
+                  </button>
+                </div>
+
+                <div id="generatedBox" class="generated">
+                  <div class="small">Generated code</div>
+                  <div class="code-line">
+                    <strong id="generatedCode" class="mono"></strong>
+                    <button id="copyGeneratedBtn" class="ghost-btn" type="button">
+                      Copy
+                    </button>
+                  </div>
+                  <p id="generatedExpiry" class="small"></p>
+                </div>
+              </div>
+
+              <div class="admin-box">
+                <div class="view-header" style="margin-bottom:0.5rem;">
+                  <div>
+                    <h3>Active Codes</h3>
+                    <p class="small">Expired codes are automatically ignored.</p>
+                  </div>
+
+                  <button id="refreshCodesBtn" class="ghost-btn" type="button">
+                    Refresh
+                  </button>
+                </div>
+
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Label</th>
+                        <th>Code</th>
+                        <th>Expires</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody id="codesTableBody">
+                      <tr>
+                        <td colspan="4" class="small">No codes loaded.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <p id="adminMessage" class="message"></p>
+          </section>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const WORKER_BASE_URL = "https://math-pdf.ipmingsum5.workers.dev";
+    const GOOGLE_CLIENT_ID = "519333708022-5qpcmfgh43qc0pdi57cdf4ittoh3npl7.apps.googleusercontent.com";
+
+    const loginForm = document.getElementById("loginForm");
+    const codeInput = document.getElementById("codeInput");
+    const continueBtn = document.getElementById("continueBtn");
+    const adminGoogleBtn = document.getElementById("adminGoogleBtn");
+    const message = document.getElementById("message");
+
+    const resourcesView = document.getElementById("resourcesView");
+    const linksGrid = document.getElementById("linksGrid");
+    const resourceMeta = document.getElementById("resourceMeta");
+    const backBtn = document.getElementById("backBtn");
+
+    const adminView = document.getElementById("adminView");
+    const adminMeta = document.getElementById("adminMeta");
+    const adminLogoutBtn = document.getElementById("adminLogoutBtn");
+    const adminMessage = document.getElementById("adminMessage");
+
+    const adminResourcesTab = document.getElementById("adminResourcesTab");
+    const adminCodesTab = document.getElementById("adminCodesTab");
+    const adminResourcesPanel = document.getElementById("adminResourcesPanel");
+    const adminCodesPanel = document.getElementById("adminCodesPanel");
+    const adminLinksGrid = document.getElementById("adminLinksGrid");
+
+    const labelInput = document.getElementById("labelInput");
+    const expirySelect = document.getElementById("expirySelect");
+    const generateBtn = document.getElementById("generateBtn");
+    const generatedBox = document.getElementById("generatedBox");
+    const generatedCode = document.getElementById("generatedCode");
+    const generatedExpiry = document.getElementById("generatedExpiry");
+    const copyGeneratedBtn = document.getElementById("copyGeneratedBtn");
+    const refreshCodesBtn = document.getElementById("refreshCodesBtn");
+    const codesTableBody = document.getElementById("codesTableBody");
+
+    let currentAccessCode = "";
+    let adminToken = "";
+
+    function setMessage(target, text, type) {
+      target.textContent = text || "";
+      target.className = "message";
+
+      if (type) {
+        target.classList.add(type);
+      }
+    }
+
+    function setLoading(button, isLoading, normalText, loadingText) {
+      button.disabled = isLoading;
+      button.textContent = isLoading ? loadingText : normalText;
+    }
+
+    function hideAll() {
+      loginForm.style.display = "none";
+      resourcesView.style.display = "none";
+      adminView.style.display = "none";
+    }
+
+    function showLogin() {
+      hideAll();
+      loginForm.style.display = "grid";
+      currentAccessCode = "";
+      codeInput.value = "";
+      setMessage(message, "");
+      codeInput.focus();
+    }
+
+    function showResources(links, mode, expiresAt) {
+      hideAll();
+      resourcesView.style.display = "block";
+      linksGrid.innerHTML = "";
+
+      if (mode === "admin") {
+        resourceMeta.textContent = "Administrator view.";
+      } else if (expiresAt) {
+        resourceMeta.textContent =
+          "Access expires " + new Date(expiresAt).toLocaleString() + ".";
+      } else {
+        resourceMeta.textContent = "Choose where you want to go.";
+      }
+
+      links.forEach((link) => {
+        const button = createLinkButton(link, mode);
+        linksGrid.appendChild(button);
+      });
+    }
+
+    function createLinkButton(link, mode) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "link-btn";
+
+      const span = document.createElement("span");
+      span.className = "link-name";
+      span.textContent = link.name || "Open";
+
+      button.appendChild(span);
+
+      button.addEventListener("click", () => {
+        let redirectUrl = "";
+
+        if (mode === "admin") {
+          redirectUrl =
+            WORKER_BASE_URL +
+            "/admin/redir?id=" +
+            encodeURIComponent(link.id) +
+            "&token=" +
+            encodeURIComponent(adminToken);
+        } else {
+          redirectUrl =
+            WORKER_BASE_URL +
+            "/redir?id=" +
+            encodeURIComponent(link.id) +
+            "&code=" +
+            encodeURIComponent(currentAccessCode);
+        }
+
+        window.location.href = redirectUrl;
+      });
+
+      return button;
+    }
+
+    async function postJson(path, body) {
+      const response = await fetch(WORKER_BASE_URL + path, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body || {})
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok || !data || !data.ok) {
+        throw new Error(data && data.error ? data.error : "Request failed.");
+      }
+
+      return data;
+    }
+
+    loginForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const code = codeInput.value.trim();
+
+      if (!code) {
+        setMessage(message, "Enter your access code.", "error");
+        return;
+      }
+
+      setLoading(continueBtn, true, "Continue", "Loading...");
+      setMessage(message, "");
+
+      try {
+        const data = await postJson("/api/access/links", {
+          code
+        });
+
+        currentAccessCode = code;
+        showResources(data.links, "user", data.expiresAt);
+      } catch (error) {
+        setMessage(message, error.message || "Invalid access code.", "error");
+      } finally {
+        setLoading(continueBtn, false, "Continue", "Loading...");
+      }
+    });
+
+    backBtn.addEventListener("click", showLogin);
+
+    adminGoogleBtn.addEventListener("click", () => {
+      setMessage(message, "");
+
+      if (!window.google || !window.google.accounts || !window.google.accounts.id) {
+        setMessage(
+          message,
+          "Google sign-in is still loading. Try again in a moment.",
+          "error"
+        );
+        return;
+      }
+
+      window.google.accounts.id.prompt();
+    });
+
+    window.addEventListener("load", () => {
+      if (!window.google || !window.google.accounts || !window.google.accounts.id) {
+        setMessage(message, "Google sign-in could not load.", "error");
+        return;
+      }
+
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleGoogleCredential,
+        auto_select: false,
+        cancel_on_tap_outside: true
+      });
+    });
+
+    /*
+      Client does NOT check admin email.
+      Client only sends the Google credential to the Worker.
+      Worker decides whether login is allowed.
+    */
+    async function handleGoogleCredential(response) {
+      if (!response || !response.credential) {
+        setMessage(message, "Google sign-in failed.", "error");
+        return;
+      }
+
+      setMessage(message, "Signing in...");
+
+      try {
+        const data = await postJson("/api/admin/login", {
+          credential: response.credential
+        });
+
+        adminToken = data.adminToken;
+        showAdmin(data.admin, data.links);
+      } catch (error) {
+        setMessage(message, error.message || "Admin sign-in failed.", "error");
+      }
+    }
+
+    function showAdmin(admin, links) {
+      hideAll();
+      adminView.style.display = "block";
+      adminMeta.textContent = admin.email;
+      renderAdminLinks(links || []);
+      showAdminTab("resources");
+      loadCodes();
+    }
+
+    function renderAdminLinks(links) {
+      adminLinksGrid.innerHTML = "";
+
+      links.forEach((link) => {
+        const button = createLinkButton(link, "admin");
+        adminLinksGrid.appendChild(button);
+      });
+    }
+
+    function showAdminTab(tab) {
+      if (tab === "resources") {
+        adminResourcesTab.classList.add("active");
+        adminCodesTab.classList.remove("active");
+        adminResourcesPanel.style.display = "grid";
+        adminCodesPanel.style.display = "none";
+      } else {
+        adminCodesTab.classList.add("active");
+        adminResourcesTab.classList.remove("active");
+        adminResourcesPanel.style.display = "none";
+        adminCodesPanel.style.display = "grid";
+      }
+    }
+
+    adminResourcesTab.addEventListener("click", () => showAdminTab("resources"));
+    adminCodesTab.addEventListener("click", () => showAdminTab("codes"));
+
+    adminLogoutBtn.addEventListener("click", () => {
+      adminToken = "";
+      showLogin();
+    });
+
+    generateBtn.addEventListener("click", async () => {
+      setLoading(generateBtn, true, "Generate", "Generating...");
+      setMessage(adminMessage, "");
+
+      try {
+        const data = await postJson("/api/admin/codes", {
+          adminToken,
+          label: labelInput.value.trim() || "Access Code",
+          expiresInMinutes: Number(expirySelect.value)
+        });
+
+        generatedCode.textContent = data.code.code;
+        generatedExpiry.textContent =
+          "Expires " + new Date(data.code.expiresAt).toLocaleString() + ".";
+        generatedBox.style.display = "block";
+
+        await loadCodes();
+      } catch (error) {
+        setMessage(adminMessage, error.message || "Could not generate code.", "error");
+      } finally {
+        setLoading(generateBtn, false, "Generate", "Generating...");
+      }
+    });
+
+    copyGeneratedBtn.addEventListener("click", async () => {
+      const code = generatedCode.textContent;
+
+      try {
+        await navigator.clipboard.writeText(code);
+        setMessage(adminMessage, "Copied.", "success");
+      } catch {
+        setMessage(adminMessage, "Copy failed. Select the code manually.", "error");
+      }
+    });
+
+    refreshCodesBtn.addEventListener("click", loadCodes);
+
+    async function loadCodes() {
+      if (!adminToken) {
+        return;
+      }
+
+      try {
+        const data = await postJson("/api/admin/codes/list", {
+          adminToken
+        });
+
+        renderCodes(data.codes || []);
+      } catch (error) {
+        setMessage(adminMessage, error.message || "Could not load codes.", "error");
+      }
+    }
+
+    function renderCodes(codes) {
+      codesTableBody.innerHTML = "";
+
+      if (!codes.length) {
+        codesTableBody.innerHTML =
+          '<tr><td colspan="4" class="small">No active codes.</td></tr>';
+        return;
+      }
+
+      codes.forEach((item) => {
+        const tr = document.createElement("tr");
+
+        const labelTd = document.createElement("td");
+        labelTd.textContent = item.label || "Access Code";
+
+        const codeTd = document.createElement("td");
+        codeTd.className = "mono";
+        codeTd.textContent = item.code;
+
+        const expiresTd = document.createElement("td");
+        expiresTd.textContent = new Date(item.expiresAt).toLocaleString();
+
+        const actionTd = document.createElement("td");
+        const revokeBtn = document.createElement("button");
+        revokeBtn.type = "button";
+        revokeBtn.className = "danger-btn";
+        revokeBtn.textContent = "Revoke";
+        revokeBtn.addEventListener("click", () => revokeCode(item.code));
+        actionTd.appendChild(revokeBtn);
+
+        tr.appendChild(labelTd);
+        tr.appendChild(codeTd);
+        tr.appendChild(expiresTd);
+        tr.appendChild(actionTd);
+
+        codesTableBody.appendChild(tr);
+      });
+    }
+
+    async function revokeCode(code) {
+      try {
+        await postJson("/api/admin/codes/revoke", {
+          adminToken,
+          code
+        });
+
+        setMessage(adminMessage, "Code revoked.", "success");
+        await loadCodes();
+      } catch (error) {
+        setMessage(adminMessage, error.message || "Could not revoke code.", "error");
+      }
+    }
+  </script>
+</body>
+</html>
