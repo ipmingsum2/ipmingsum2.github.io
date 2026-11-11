@@ -1,7 +1,7 @@
 // Sign-in (Google + Discord OAuth), whitelist, dashboard users, API keys, account linking.
 import { HttpError, bad, json, redirect, now, parseJSON, str, readBody, randHex, randCode, sha256, signToken, verifyToken, logEvent } from './util.js';
 
-export const PERMISSIONS = ['manage_activity', 'ranking', 'manage_groups', 'manage_applications', 'review_applications', 'view_logs', 'manage_api_keys'];
+export const PERMISSIONS = ['manage_activity', 'ranking', 'manage_groups', 'manage_applications', 'review_applications', 'view_logs', 'manage_api_keys', 'manage_discipline', 'manage_content'];
 export const SCOPES = ['read', 'ranking', 'timeoff', 'game', 'verify'];
 const SESSION_TTL = 30 * 86400;
 

@@ -37,7 +37,7 @@ VIEWS.applications = async (el, id, sub, reload) => {
       <p class="hint">After opening it in Roblox Studio: publish the place, then make sure <b>Game Settings → Security → Allow HTTP Requests</b> is on.</p>`,
     actions: [{ label: 'Generate & download', kind: 'primary', onClick: async (close) => {
       const key = await createGameKey('Application center');
-      downloadFile(`ApplicationCenter-${S.gid}.rbxlx`, await buildPlaceFile('appcenter', { apiUrl: API_URL, apiKey: key, title: group().name }));
+      downloadFile(`ApplicationCenter-${S.gid}.rbxlx`, await buildPlaceFile('appcenter', { apiUrl: ROBLOX_API_URL, apiKey: key, title: group().name }));
       close(); toast('Place file generated', 'good');
     } }] });
 };
@@ -217,9 +217,10 @@ VIEWS.groups = async (el, _a, _b, reload) => {
         <label class="field">Replace Open Cloud API key<input id="key" type="password" autocomplete="off" placeholder="${g.hasApiKey ? 'Leave blank to keep the current key' : 'Paste a key'}">${keyHelp}</label>
         <label class="field">Highest rank this system may assign<input id="max" type="number" min="1" max="254" value="${g.settings.ranking?.maxRank || 254}"><small>Promotions, set-rank and auto-rank on acceptance never go above this, and members above it cannot be changed.</small></label>
         <label class="field">Log webhook<input id="log" value="${esc(g.settings.logWebhook || '')}" placeholder="https://discord.com/api/webhooks/…"><small>Every log entry for this group is mirrored to this Discord channel.</small></label>
-        <label class="field">Session announcements webhook<input id="ev" value="${esc(g.settings.events?.webhookUrl || '')}" placeholder="https://discord.com/api/webhooks/…"></label>`,
+        <label class="field">Session announcements webhook<input id="ev" value="${esc(g.settings.events?.webhookUrl || '')}" placeholder="https://discord.com/api/webhooks/…"></label>
+        <label class="field">News webhook<input id="nw" value="${esc(g.settings.news?.webhookUrl || '')}" placeholder="https://discord.com/api/webhooks/…"><small>News posts marked “announce” are sent here.</small></label>`,
       actions: [{ label: 'Save', kind: 'primary', onClick: async (close, m) => {
-        const body = { name: val(m, '#name'), ranking: { maxRank: Number(val(m, '#max')) }, logWebhook: val(m, '#log'), events: { webhookUrl: val(m, '#ev') } };
+        const body = { name: val(m, '#name'), ranking: { maxRank: Number(val(m, '#max')) }, logWebhook: val(m, '#log'), events: { webhookUrl: val(m, '#ev') }, news: { webhookUrl: val(m, '#nw') } };
         if (val(m, '#key')) body.apiKey = val(m, '#key');
         await api(path, { method: 'PATCH', body }); close(); toast('Group settings saved', 'good'); refresh();
       } }] });
@@ -246,8 +247,8 @@ function robloxSetup(g = group()) {
       const d = b.dataset.d;
       if (d === 'module') return downloadFile('ActivityTracker.lua', await luaSource('ActivityTracker.lua'), 'text/plain');
       const key = await createGameKey({ loader: 'Activity tracker', verify: 'Verification game', appcenter: 'Application center' }[d], g.id);
-      if (d === 'loader') return copyText(`-- Script in ServerScriptService (next to the ActivityTracker ModuleScript)\nlocal ActivityTracker = require(script.Parent:WaitForChild("ActivityTracker"))\n\nActivityTracker.Start({\n\tApiUrl = "${API_URL}",\n\tApiKey = "${key}",\n})\n`);
-      downloadFile(`${d === 'verify' ? 'VerificationGame' : 'ApplicationCenter'}-${g.id}.rbxlx`, await buildPlaceFile(d, { apiUrl: API_URL, apiKey: key, title: g.name }));
+      if (d === 'loader') return copyText(`-- Script in ServerScriptService (next to the ActivityTracker ModuleScript)\nlocal ActivityTracker = require(script.Parent:WaitForChild("ActivityTracker"))\n\nActivityTracker.Start({\n\tApiUrl = "${ROBLOX_API_URL}",\n\tApiKey = "${key}",\n})\n`);
+      downloadFile(`${d === 'verify' ? 'VerificationGame' : 'ApplicationCenter'}-${g.id}.rbxlx`, await buildPlaceFile(d, { apiUrl: ROBLOX_API_URL, apiKey: key, title: g.name }));
       toast('Place file generated', 'good');
     });
   };
@@ -259,13 +260,15 @@ VIEWS.api = async (el, _a, _b, reload) => {
   const { keys } = await api('/api/keys');
   const SC = { read: 'Read activity, members, requirements, logs, links', ranking: 'Promote / demote / set rank', timeoff: 'Submit time-off requests', game: 'Roblox game: heartbeats, in-game applications', verify: 'Roblox game: confirm link codes' };
   el.innerHTML = `${head('API', 'Keys for bots, websites and your Roblox games.', `<a class="btn" href="docs.html" target="_blank" rel="noopener">${icon('book')} API docs</a><button class="btn primary" id="add">${icon('plus')} New key</button>`)}
-    <div class="card"><div class="body row wrap"><span class="dim">Base URL</span><code class="grow">${esc(API_URL)}/v1</code><button class="btn sm" id="cp">${icon('copy', 'sm')} Copy</button></div></div>
+    <div class="card"><div class="body row wrap"><span class="dim">Roblox games</span><code class="grow">${esc(ROBLOX_API_URL)}/v1</code><button class="btn sm" id="cpr">${icon('copy', 'sm')} Copy</button></div>
+      <div class="body row wrap" style="border-top:1px solid var(--line)"><span class="dim">Bots &amp; websites</span><code class="grow">${esc(API_URL)}/v1</code><button class="btn sm" id="cp">${icon('copy', 'sm')} Copy</button></div></div>
     <div class="card"><div class="tbl-wrap"><table><thead><tr><th>Name</th><th>Key</th><th>Group</th><th>Scopes</th><th>Last used</th><th></th></tr></thead><tbody>
     ${keys.length ? keys.map((k) => `<tr><td><b>${esc(k.name)}</b><br><span class="muted">by ${esc(k.created_by || '?')} · ${fmtDate(k.created_at)}</span></td><td class="mono">${esc(k.prefix)}…</td>
       <td>${k.group_id ? esc(S.groups.find((g) => g.id === k.group_id)?.name || k.group_id) : '<span class="muted">All groups</span>'}</td><td>${k.scopes.map((s) => `<span class="badge">${s}</span>`).join(' ')}</td>
       <td class="muted">${k.last_used ? ago(k.last_used) : 'Never'}</td><td class="r"><button class="btn sm danger" data-rev="${k.id}">Revoke</button></td></tr>`).join('') : emptyRow(6, 'No API keys yet.', 'key')}
     </tbody></table></div></div>`;
   $('#cp', el).onclick = () => copyText(`${API_URL}/v1`);
+  $('#cpr', el).onclick = () => copyText(`${ROBLOX_API_URL}/v1`);
   $('#add', el).onclick = () => modal({ title: 'New API key', body: `
       <label class="field">Name<input id="n" placeholder="e.g. Discord bot"></label>
       <label class="field">Group<select id="g"><option value="">All groups</option>${S.groups.map((g) => `<option value="${g.id}" ${g.id === S.gid ? 'selected' : ''}>${esc(g.name)}</option>`).join('')}</select></label>
@@ -299,7 +302,7 @@ VIEWS.links = async (el, _a, _b, reload) => {
 VIEWS.access = async (el, _a, _b, reload) => {
   if (S.user.role !== 'owner') throw new Error('Only the owner can manage access.');
   const { users } = await api('/api/users');
-  const P = { manage_activity: 'Manage activity, requirements, time off, notes, sessions', ranking: 'Promote / demote / set ranks', manage_groups: 'Add and configure groups', manage_applications: 'Create and edit applications', review_applications: 'Accept / deny submissions', view_logs: 'View logs', manage_api_keys: 'Create and revoke API keys' };
+  const P = { manage_activity: 'Manage activity, requirements, time off, notes, sessions and registers', ranking: 'Promote / demote / set ranks, approve promotion recommendations', manage_groups: 'Add and configure groups', manage_applications: 'Create and edit applications', review_applications: 'Accept / deny submissions', view_logs: 'View logs', manage_api_keys: 'Create and revoke API keys', manage_discipline: 'Write and revoke logbook entries (warnings, suspensions…)', manage_content: 'Post news and edit the knowledgebase' };
   const form = (u = {}) => `
       <label class="field">Name<input id="n" value="${esc(u.name || '')}" placeholder="Shown in logs"></label>
       <div class="grid2"><label class="field">Google email<input id="ge" type="email" value="${esc(u.googleEmail || '')}" placeholder="name@gmail.com"></label>

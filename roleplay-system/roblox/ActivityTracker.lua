@@ -8,7 +8,7 @@
 
 	         local ActivityTracker = require(script.Parent:WaitForChild("ActivityTracker"))
 	         ActivityTracker.Start({
-	             ApiUrl = "https://rp-system.YOUR_SUBDOMAIN.workers.dev",
+	             ApiUrl = "https://rp-roblox.pages.dev", -- the pages.dev relay: Roblox blocks *.workers.dev
 	             ApiKey = "rpk_...", -- API key with the "game" scope (dashboard → API)
 	         })
 

@@ -15,12 +15,16 @@ const NAME = window.RP_CONFIG?.NAME || 'Roleplay System';
 const GROUP_NAV = () => [
   [group()?.name || 'Group'],
   ['', 'Overview', 'home'],
+  ['news', 'News', 'megaphone'],
   ['activity', 'Activity', 'chart'],
   ['requirements', 'Requirements', 'target'],
   ['timeoff', 'Time off', 'calendar'],
+  ['logbook', 'Logbook', 'clipboard'],
   ['ranking', 'Ranking', 'rank', () => can('ranking')],
+  ['promotions', 'Promotions', 'thumb'],
   ['sessions', 'Sessions', 'clock'],
   ['applications', 'Applications', 'file', () => can('manage_applications') || can('review_applications')],
+  ['kb', 'Knowledgebase', 'book'],
   ['logs', 'Logs', 'list', () => can('view_logs')],
   ...(isOwner() ? [] : [
     ['System', null, null, () => can('manage_groups') || can('manage_api_keys')],
@@ -43,7 +47,7 @@ const OWNER_NAV = () => [
   ['account', 'My account', 'user'],
 ];
 // Pages that belong to a group (need S.gid to be a real group).
-const GROUP_PAGES = new Set(['overview', 'activity', 'member', 'requirements', 'timeoff', 'ranking', 'sessions', 'applications']);
+const GROUP_PAGES = new Set(['overview', 'activity', 'member', 'requirements', 'timeoff', 'ranking', 'sessions', 'applications', 'news', 'logbook', 'promotions', 'kb']);
 
 const ERRORS = {
   not_whitelisted: 'That account is not on the whitelist. Ask the owner to add your Google email or Discord ID.',

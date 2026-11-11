@@ -23,8 +23,18 @@ VIEWS.overview = async (el) => {
       ${stat('Weekly requirement', o.requirements.due ? `${o.requirements.met}/${o.requirements.due}` : '—', o.requirements.due ? 'have met it so far' : 'no requirement set', 'target')}
       ${stat('Pending time off', o.pendingTimeOff, '<a href="#/timeoff">Review</a>', 'calendar')}
       ${stat('Pending applications', o.pendingApplications, can('review_applications') || can('manage_applications') ? '<a href="#/applications">Review</a>' : '', 'file')}
+      ${stat('Promotion picks', o.openRecommendations, '<a href="#/promotions">Vote</a>', 'thumb')}
     </div>
     ${chartCard('Total hours played')}
+    <div class="grid2">
+      <div class="card"><div class="head">${icon('trophy')}<h2 class="grow">This week's leaders</h2></div>
+        <div class="body leaders">
+          <div><h3 class="muted">Most time played</h3>${o.leaders.minutes.length ? `<ol class="podium">${o.leaders.minutes.map((m, i) => `<li><span class="place p${i + 1}">${i + 1}</span><a href="#/member/${esc(m.robloxId)}">${esc(m.username)}</a><span class="muted grow">${esc(m.roleName)}</span><b class="num">${fmtDur(m.value)}</b></li>`).join('')}</ol>` : '<p class="muted">Nobody has played yet this week.</p>'}</div>
+          <div><h3 class="muted">Most sessions</h3>${o.leaders.sessions.length ? `<ol class="podium">${o.leaders.sessions.map((m, i) => `<li><span class="place p${i + 1}">${i + 1}</span><a href="#/member/${esc(m.robloxId)}">${esc(m.username)}</a><span class="muted grow">${esc(m.roleName)}</span><b class="num">${m.value}</b></li>`).join('')}</ol>` : '<p class="muted">No completed sessions yet this week.</p>'}</div>
+        </div></div>
+      <div class="card"><div class="head">${icon('megaphone')}<h2 class="grow">News</h2><a class="btn sm ghost" href="#/news">All</a></div>
+        ${o.news.length ? `<div class="body stack">${o.news.map((n) => `<article class="news-mini">${n.pinned ? `<span class="badge accent">${icon('pin', 'sm')} Pinned</span>` : ''}<b>${esc(n.title)}</b><p class="dim clamp2">${esc(plainText(n.body))}</p><span class="muted">${esc(n.author || '')} · ${ago(n.created_at)}</span></article>`).join('')}</div>` : `<div class="empty">No news yet.${can('manage_content') ? ' <a href="#/news">Post an update</a>.' : ''}</div>`}</div>
+    </div>
     <div class="grid2">
       <div class="card"><div class="head"><h2 class="grow">Upcoming sessions</h2><a class="btn sm ghost" href="#/sessions">All</a></div>
         ${o.upcoming.length ? `<table><tbody>${o.upcoming.map((e) => `<tr><td><b>${esc(e.title)}</b><br><span class="muted">${esc(e.type)}${e.host_name ? ` · ${esc(e.host_name)}` : ''}</span></td><td class="r">${fmtTime(e.starts_at)}</td></tr>`).join('')}</tbody></table>` : `<div class="empty">Nothing scheduled.</div>`}</div>
@@ -111,16 +121,20 @@ VIEWS.member = async (el, rid, _b, reload) => {
         ${p.discord ? ` · ${icon('discord', 'sm')} ${esc(p.discord.name || p.discord.id)}` : ' · <span class="muted">Discord not linked</span>'}</p></div>
       <div class="row wrap">
         <a class="btn" target="_blank" rel="noopener" href="https://www.roblox.com/users/${encodeURIComponent(m.robloxId)}/profile">${icon('external')} Roblox profile</a>
+        <button class="btn" id="recBtn">${icon('thumb')} Recommend</button>
+        ${can('manage_discipline') ? `<button class="btn" id="lbBtn">${icon('clipboard')} Log entry</button>` : ''}
         ${can('ranking') ? `<button class="btn" data-rank="demote">${icon('down')} Demote</button><button class="btn primary" data-rank="promote">${icon('up')} Promote</button>` : ''}
       </div>
     </div>
     <div class="stats">
       ${stat('Today', fmtDur(p.totals.today))}${stat('This week', fmtDur(p.totals.week))}${stat('All time', `${fmtHours(p.totals.allTime)}h`)}
-      ${stat('Sessions', p.totals.sessions)}${stat('Messages', p.totals.messages)}
+      ${stat('Game sessions', p.totals.sessions)}${stat('Sessions attended', p.sessionsAttended.week, `${p.sessionsAttended.allTime} all time`)}${stat('Active warnings', p.activeWarnings, p.activeWarnings ? '<a href="#lb" data-jump>See logbook</a>' : 'clean record')}${stat('Messages', p.totals.messages)}
     </div>
     ${chartCard('Hours played')}
+    <div class="card" id="lb"><div class="head">${icon('clipboard')}<h2 class="grow">Logbook</h2>${p.activeWarnings ? `<span class="badge warn">${p.activeWarnings} active warning${p.activeWarnings === 1 ? '' : 's'}</span>` : '<span class="badge good">No active warnings</span>'}</div>
+      ${logbookTable(p.logbook, false)}</div>
     <div class="grid2">
-      <div class="card"><div class="head"><h2 class="grow">Notes &amp; warnings</h2>${can('manage_activity') ? `<button class="btn sm" id="addNote">${icon('plus', 'sm')} Add</button>` : ''}</div>
+      <div class="card"><div class="head"><h2 class="grow">Notes</h2>${can('manage_activity') ? `<button class="btn sm" id="addNote">${icon('plus', 'sm')} Add</button>` : ''}</div>
         <div class="body stack gap-s">${p.notes.length ? p.notes.map((n) => `<div class="note ${n.kind}"><div class="row"><span class="badge ${n.kind === 'warning' ? 'warn' : ''}">${n.kind}</span><span class="muted grow">${esc(n.author || '')} · ${ago(n.created_at)}</span>${can('manage_activity') ? `<button class="btn ghost icon sm" data-del-note="${n.id}" aria-label="Delete note">${icon('trash', 'sm')}</button>` : ''}</div><div>${esc(n.text)}</div></div>`).join('') : '<span class="muted">Nothing recorded.</span>'}</div></div>
       <div class="card"><div class="head"><h2>Time off</h2></div>
         ${p.timeOff.length ? `<table><tbody>${p.timeOff.map((t) => `<tr><td>${fmtDay(t.start_date)} – ${fmtDay(t.end_date)}<br><span class="muted">${esc(t.reason || 'No reason given')}</span></td><td class="r">${statusBadge(t.status)}</td></tr>`).join('')}</tbody></table>` : '<div class="empty">No time off.</div>'}</div>
@@ -128,15 +142,23 @@ VIEWS.member = async (el, rid, _b, reload) => {
     <div class="grid2">
       <div class="card"><div class="head"><h2>Recent play sessions</h2></div><div class="tbl-wrap"><table><thead><tr><th>Started</th><th>Length</th><th class="r">Idle</th><th class="r">Msgs</th></tr></thead><tbody>
         ${p.sessions.length ? p.sessions.map((s) => `<tr><td>${fmtTime(s.start)} ${s.live ? '<span class="badge good"><span class="dot"></span> Live</span>' : ''}</td><td class="num">${fmtDur(s.seconds)}</td><td class="r num muted">${fmtDur(s.idleSeconds)}</td><td class="r num">${s.messages}</td></tr>`).join('') : emptyRow(4, 'No sessions recorded.', 'clock')}</tbody></table></div></div>
+      <div class="card"><div class="head"><h2>Session register</h2></div><div class="tbl-wrap"><table><tbody>
+        ${p.register.length ? p.register.map((r) => `<tr><td><b>${esc(r.title)}</b> <span class="badge">${esc(r.type)}</span></td><td><span class="badge ${r.role === 'host' ? 'accent' : ''}">${esc(r.role === 'cohost' ? 'co-host' : r.role)}</span></td><td class="muted">${fmtTime(r.starts_at)}</td><td class="r">${statusBadge(r.status)}</td></tr>`).join('') : emptyRow(4, 'Not on any session register yet.', 'clock')}</tbody></table></div></div>
+    </div>
+    <div>
       <div class="card"><div class="head"><h2>Requirement history</h2></div><div class="tbl-wrap"><table><thead><tr><th>Period</th><th>Played</th><th class="r">Result</th></tr></thead><tbody>
         ${p.requirements.length ? p.requirements.map((r) => `<tr><td>${r.period_type === 'daily' ? fmtDay(r.period_start) : `Week of ${fmtDay(r.period_start)}`}</td><td class="num">${fmtDur(r.seconds)} / ${fmtDur(r.required)}</td><td class="r">${r.met ? '<span class="badge good">Met</span>' : r.exempt ? '<span class="badge">Excused</span>' : '<span class="badge bad">Not met</span>'}</td></tr>`).join('') : emptyRow(3, 'No checks have run yet.', 'target')}</tbody></table></div></div>
     </div>`;
   mountChart(el, p.series);
   $$('[data-rank]', el).forEach((b) => b.onclick = () => rankModal(m.username, b.dataset.rank, reload));
+  $('#recBtn', el).onclick = () => recommendModal(m.username, reload);
+  if ($('#lbBtn', el)) $('#lbBtn', el).onclick = () => logbookModal(m.username, reload);
+  bindLogbookRevoke(el, reload);
+  el.addEventListener('click', (e) => { if (e.target.closest('[data-jump]')) { e.preventDefault(); $('#lb', el).scrollIntoView({ behavior: 'smooth', block: 'start' }); } });
   if ($('#addNote', el)) $('#addNote', el).onclick = () => modal({ title: `Add note — ${m.username}`, body: `
-      <label class="field">Type<select id="k"><option value="note">Note</option><option value="warning">Warning</option></select></label>
+      <p class="hint">For warnings, strikes and other formal records use the <b>Logbook</b> instead.</p>
       <label class="field">Text<textarea id="t" maxlength="1000"></textarea></label>`,
-    actions: [{ label: 'Save', kind: 'primary', onClick: async (close, mm) => { await api(G(`/members/${rid}/notes`), { body: { kind: val(mm, '#k'), text: val(mm, '#t') } }); close(); reload(); } }] });
+    actions: [{ label: 'Save', kind: 'primary', onClick: async (close, mm) => { await api(G(`/members/${rid}/notes`), { body: { kind: 'note', text: val(mm, '#t') } }); close(); reload(); } }] });
   $$('[data-del-note]', el).forEach((b) => b.onclick = async () => { if (await confirmBox('Delete note?', 'This cannot be undone.', 'Delete')) run(b, async () => { await api(`/api/notes/${b.dataset.delNote}`, { method: 'DELETE' }); reload(); }); });
 };
 
@@ -183,15 +205,17 @@ VIEWS.requirements = async (el, _a, _b, reload) => {
       <div class="tbl-wrap"><table><thead><tr><th>Member</th><th>Rank</th><th>Progress</th><th></th><th class="r">Status</th></tr></thead><tbody id="rrows"></tbody></table></div></div>
     ${manage ? `<div class="card"><div class="head"><h2 class="grow">Settings</h2><label class="check"><input type="checkbox" id="en" ${r.enabled ? 'checked' : ''}> Automatic checks enabled</label></div>
       <div class="body stack">
-        <div class="grid3">
+        <div class="grid4">
           <label class="field">Daily requirement (minutes)<input type="number" id="dm" min="0" value="${r.dailyMinutes || 0}"><small>0 = no daily requirement.</small></label>
           <label class="field">Weekly requirement (minutes)<input type="number" id="wm" min="0" value="${r.weeklyMinutes || 0}"><small>0 = no weekly requirement.</small></label>
+          <label class="field">Weekly sessions<input type="number" id="ws" min="0" max="100" value="${r.weeklySessions || 0}"><small>Hosted, co-hosted or attended. 0 = none.</small></label>
           <label class="field">Check at (UTC hour)<select id="ch">${Array.from({ length: 24 }, (_, h) => `<option value="${h}" ${h === (r.checkHour || 0) ? 'selected' : ''}>${String(h).padStart(2, '0')}:00</option>`).join('')}</select><small>Daily: checks yesterday. Weekly: Mondays, checks last week.</small></label>
         </div>
         ${tracked.length ? `<div><h3>Per-rank overrides</h3><p class="hint">Leave blank to use the defaults above.</p>
-          <div class="tbl-wrap"><table><thead><tr><th>Rank</th><th>Daily minutes</th><th>Weekly minutes</th></tr></thead><tbody>${tracked.map((x) => `<tr><td>${esc(x.name)} <span class="muted">(${x.rank})</span></td>
+          <div class="tbl-wrap"><table><thead><tr><th>Rank</th><th>Daily minutes</th><th>Weekly minutes</th><th>Weekly sessions</th></tr></thead><tbody>${tracked.map((x) => `<tr><td>${esc(x.name)} <span class="muted">(${x.rank})</span></td>
             <td><input type="number" min="0" data-ov="${x.rank}" data-k="dailyMinutes" value="${r.rankOverrides?.[x.rank]?.dailyMinutes ?? ''}" placeholder="default" aria-label="Daily minutes for ${esc(x.name)}"></td>
-            <td><input type="number" min="0" data-ov="${x.rank}" data-k="weeklyMinutes" value="${r.rankOverrides?.[x.rank]?.weeklyMinutes ?? ''}" placeholder="default" aria-label="Weekly minutes for ${esc(x.name)}"></td></tr>`).join('')}</tbody></table></div></div>` : ''}
+            <td><input type="number" min="0" data-ov="${x.rank}" data-k="weeklyMinutes" value="${r.rankOverrides?.[x.rank]?.weeklyMinutes ?? ''}" placeholder="default" aria-label="Weekly minutes for ${esc(x.name)}"></td>
+            <td><input type="number" min="0" data-ov="${x.rank}" data-k="weeklySessions" value="${r.rankOverrides?.[x.rank]?.weeklySessions ?? ''}" placeholder="default" aria-label="Weekly sessions for ${esc(x.name)}"></td></tr>`).join('')}</tbody></table></div></div>` : ''}
         <label class="check"><input type="checkbox" id="ci" ${r.countIdle === false ? '' : 'checked'}> Count idle (AFK) time towards requirements</label>
         <h3>Discord notification</h3>
         <label class="field">Webhook URL<input id="wh" value="${esc(r.webhookUrl || '')}" placeholder="https://discord.com/api/webhooks/…"></label>
@@ -210,11 +234,13 @@ VIEWS.requirements = async (el, _a, _b, reload) => {
 
   const load = async () => {
     const d = await api(G(`/requirements?type=${type}`));
-    const due = d.members.filter((m) => m.required > 0);
+    const due = d.members.filter((m) => m.required > 0 || m.requiredSessions > 0);
+    const pct = (m) => Math.min(100, Math.min(m.required ? m.seconds / m.required : 1, m.requiredSessions ? m.sessions / m.requiredSessions : 1) * 100);
+    const togo = (m) => [m.seconds < m.required ? fmtDur(m.required - m.seconds) : '', m.sessions < m.requiredSessions ? `${m.requiredSessions - m.sessions} session${m.requiredSessions - m.sessions === 1 ? '' : 's'}` : ''].filter(Boolean).join(' + ');
     $('#rsum', el).textContent = due.length ? `${due.filter((m) => m.met).length} of ${due.length} have met it · ${fmtDay(d.from)}${d.from === d.to ? '' : ` – ${fmtDay(d.to)}`}` : `No ${type} requirement set`;
     $('#rrows', el).innerHTML = due.length ? due.map((m) => `<tr class="click" data-id="${m.robloxId}"><td>${who(m.username)}</td><td>${esc(m.roleName || m.rank)}</td>
-        <td class="num">${fmtDur(m.seconds)} / ${fmtDur(m.required)}</td><td style="width:26%"><div class="meter ${m.met ? 'good' : ''}"><i style="width:${Math.min(100, (m.seconds / m.required) * 100)}%"></i></div></td>
-        <td class="r">${m.met ? `<span class="badge good">${icon('check', 'sm')} Met</span>` : m.exempt ? '<span class="badge">On time off</span>' : `<span class="badge warn">${fmtDur(m.required - m.seconds)} to go</span>`}</td></tr>`).join('')
+        <td class="num">${m.required ? `${fmtDur(m.seconds)} / ${fmtDur(m.required)}` : ''}${m.requiredSessions ? `${m.required ? '<br>' : ''}<span class="${m.required ? 'muted' : ''}">${m.sessions} / ${m.requiredSessions} sessions</span>` : ''}</td><td style="width:26%"><div class="meter ${m.met ? 'good' : ''}"><i style="width:${pct(m)}%"></i></div></td>
+        <td class="r">${m.met ? `<span class="badge good">${icon('check', 'sm')} Met</span>` : m.exempt ? '<span class="badge">On time off</span>' : `<span class="badge warn">${togo(m)} to go</span>`}</td></tr>`).join('')
       : emptyRow(5, d.members.length ? `Set a ${type} requirement below to see progress.` : 'No tracked members yet.', 'target');
     $('#runs', el).innerHTML = d.runs.length ? d.runs.map((x) => `<tr><td>${x.period_type === 'daily' ? fmtDay(x.period_start) : `Week of ${fmtDay(x.period_start)}`} <span class="badge">${x.period_type}</span></td><td class="muted">${fmtTime(x.ran_at)}</td><td class="r num">${x.failed} of ${x.checked}</td></tr>`).join('') : emptyRow(3, 'No checks have run yet.', 'clock');
   };
@@ -227,7 +253,7 @@ VIEWS.requirements = async (el, _a, _b, reload) => {
     const overrides = {};
     $$('[data-ov]', el).forEach((i) => { if (i.value !== '') (overrides[i.dataset.ov] ||= {})[i.dataset.k] = Number(i.value); });
     const out = await api(G(), { method: 'PATCH', body: { requirements: {
-      enabled: $('#en', el).checked, dailyMinutes: Number(val(el, '#dm')), weeklyMinutes: Number(val(el, '#wm')), checkHour: Number(val(el, '#ch')), countIdle: $('#ci', el).checked,
+      enabled: $('#en', el).checked, dailyMinutes: Number(val(el, '#dm')), weeklyMinutes: Number(val(el, '#wm')), weeklySessions: Number(val(el, '#ws')), checkHour: Number(val(el, '#ch')), countIdle: $('#ci', el).checked,
       webhookUrl: val(el, '#wh'), mentionRoleId: val(el, '#mr'), pingMembers: $('#pm', el).checked, notifyAllMet: $('#am', el).checked,
       headerTemplate: val(el, '#ht'), lineTemplate: val(el, '#lt'), rankOverrides: overrides } } });
     Object.assign(g, out.group); toast('Requirements saved', 'good'); reload();
@@ -281,12 +307,13 @@ VIEWS.sessions = async (el, _a, _b, reload) => {
       <label class="field">Length (minutes)<input id="d" type="number" min="5" value="${e.duration_min || 60}"></label></div>
       <label class="field">Notes<textarea id="n">${esc(e.notes || '')}</textarea></label>`;
   const read = (m) => ({ title: val(m, '#t'), type: val(m, '#ty'), hostName: val(m, '#h'), startsAt: Math.floor(new Date(val(m, '#s')).getTime() / 1000), durationMin: Number(val(m, '#d')), notes: val(m, '#n') });
-  el.innerHTML = `${head('Sessions', 'Schedule shifts, trainings and events. New sessions can be announced to Discord (set the webhook in Groups).', manage ? `<button class="btn primary" id="add">${icon('plus')} Schedule session</button>` : '')}
+  el.innerHTML = `${head('Sessions', 'Schedule shifts, trainings and events, claim them, and keep a register of who attended. New sessions can be announced to Discord (set the webhook in Groups).', manage ? `<button class="btn primary" id="add">${icon('plus')} Schedule session</button>` : '')}
     <div class="card"><div class="tbl-wrap"><table><thead><tr><th>Session</th><th>Host</th><th>Starts</th><th>Length</th><th>Status</th><th></th></tr></thead><tbody>
     ${events.length ? events.map((e) => `<tr><td><b>${esc(e.title)}</b> <span class="badge">${esc(e.type)}</span>${e.notes ? `<br><span class="muted">${esc(e.notes)}</span>` : ''}</td><td>${esc(e.host_name || '—')}</td><td>${fmtTime(e.starts_at)}</td><td class="num">${e.duration_min}m</td><td>${statusBadge(e.status)}</td>
-      <td class="r"><div class="row" style="justify-content:flex-end">${manage ? `${e.status === 'scheduled' ? `<button class="btn sm good" data-st="${e.id}:completed">Complete</button><button class="btn sm" data-st="${e.id}:cancelled">Cancel</button>` : ''}
+      <td class="r"><div class="row" style="justify-content:flex-end"><button class="btn sm" data-reg="${e.id}">${icon('list', 'sm')} Register</button>${manage ? `${e.status === 'scheduled' ? `<button class="btn sm good" data-st="${e.id}:completed">Complete</button><button class="btn sm" data-st="${e.id}:cancelled">Cancel</button>` : ''}
       <button class="btn ghost icon sm" data-edit="${e.id}" aria-label="Edit">${icon('edit', 'sm')}</button><button class="btn ghost icon sm" data-del="${e.id}" aria-label="Delete">${icon('trash', 'sm')}</button>` : ''}</div></td></tr>`).join('') : emptyRow(6, 'No sessions scheduled.', 'clock')}
     </tbody></table></div></div>`;
+  $$('[data-reg]', el).forEach((b) => b.onclick = () => registerModal(events.find((x) => x.id == b.dataset.reg), reload));
   if (!manage) return;
   $('#add', el).onclick = () => modal({ title: 'Schedule session', body: form(), actions: [{ label: 'Schedule', kind: 'primary', onClick: async (close, m) => { await api(G('/events'), { body: read(m) }); close(); reload(); } }] });
   $$('[data-edit]', el).forEach((b) => b.onclick = () => { const e = events.find((x) => x.id == b.dataset.edit); modal({ title: 'Edit session', body: form(e), actions: [{ label: 'Save', kind: 'primary', onClick: async (close, m) => { await api(`/api/events/${e.id}`, { method: 'PATCH', body: read(m) }); close(); reload(); } }] }); });

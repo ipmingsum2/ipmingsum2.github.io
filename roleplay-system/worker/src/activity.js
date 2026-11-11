@@ -1,6 +1,7 @@
 // Activity tracking, requirements, time off, and the hourly cron.
 import { bad, json, now, parseJSON, str, int, readBody, dayStr, addDays, weekStartOf, isDay, fmtDur, isWebhook, sendWebhook, logEvent, batchAll, SYSTEM } from './util.js';
 import { resolveUser, syncMembers } from './roblox.js';
+import { sessionCounts } from './features.js';
 
 const STALE = 180; // seconds without a heartbeat before a play session is considered over
 
@@ -134,7 +135,7 @@ export async function memberProfile(c) {
   const today = dayStr();
   const wk = weekStartOf(today);
   const since = addDays(wk, -77);
-  const [m, days, sess, notes, off, link, tot, reqs] = await DB.batch([
+  const [m, days, sess, notes, off, link, tot, reqs, book, regs] = await DB.batch([
     DB.prepare('SELECT * FROM members WHERE group_id=? AND roblox_id=?').bind(gid, rid),
     DB.prepare('SELECT day, seconds, idle_seconds, messages, sessions FROM activity_daily WHERE group_id=? AND roblox_id=? AND day>=? ORDER BY day').bind(gid, rid, since),
     DB.prepare('SELECT start_ts, last_ts, idle_seconds, messages, ended FROM play_sessions WHERE group_id=? AND roblox_id=? ORDER BY start_ts DESC LIMIT 25').bind(gid, rid),
@@ -143,10 +144,15 @@ export async function memberProfile(c) {
     DB.prepare('SELECT discord_id, discord_name FROM links WHERE roblox_id=?').bind(rid),
     DB.prepare('SELECT SUM(seconds) s, SUM(messages) m, SUM(sessions) n FROM activity_daily WHERE group_id=? AND roblox_id=?').bind(gid, rid),
     DB.prepare('SELECT period_type, period_start, seconds, required, met, exempt FROM requirement_results WHERE group_id=? AND roblox_id=? ORDER BY period_start DESC LIMIT 20').bind(gid, rid),
+    DB.prepare('SELECT * FROM logbook WHERE group_id=? AND roblox_id=? ORDER BY id DESC LIMIT 50').bind(gid, rid),
+    DB.prepare("SELECT e.id, e.title, e.type, e.starts_at, e.status, p.role FROM event_people p JOIN events e ON e.id=p.event_id WHERE p.group_id=? AND p.roblox_id=? ORDER BY e.starts_at DESC LIMIT 15").bind(gid, rid),
   ]);
   const mem = m.results[0];
   if (!mem) bad('Member not found in this group', 404);
   const sum = (f) => days.results.filter(f).reduce((n, d) => n + d.seconds, 0);
+  const t = now();
+  const logbook = book.results.map((e) => ({ ...e, active: !e.revoked_at && (!e.expires_at || e.expires_at > t) }));
+  const [weekSess, allSess] = await Promise.all([sessionCounts(c.env, gid, wk, today), sessionCounts(c.env, gid, '2000-01-01', today)]);
   return json({
     member: { robloxId: rid, username: mem.username || `User ${rid}`, displayName: mem.display_name, rank: mem.rank, roleName: mem.role_name, updatedAt: mem.updated_at },
     discord: link.results[0] ? { id: link.results[0].discord_id, name: link.results[0].discord_name } : null,
@@ -155,6 +161,8 @@ export async function memberProfile(c) {
     seriesFrom: since,
     sessions: sess.results.map((s) => ({ start: s.start_ts, end: s.last_ts, seconds: s.last_ts - s.start_ts, idleSeconds: s.idle_seconds, messages: s.messages, live: !s.ended && now() - s.last_ts <= STALE })),
     notes: notes.results, timeOff: off.results, requirements: reqs.results,
+    logbook, activeWarnings: logbook.filter((e) => e.active && ['warning', 'strike'].includes(e.type)).length,
+    sessionsAttended: { week: weekSess.get(rid) || 0, allTime: allSess.get(rid) || 0 }, register: regs.results,
   });
 }
 
@@ -243,6 +251,13 @@ export function requiredSeconds(settings, rank, type) {
   return Math.max(0, Number(o ?? r[key]) || 0) * 60;
 }
 
+/** Weekly session target (hosted, co-hosted or attended). Daily periods have none. */
+export function requiredSessions(settings, rank, type) {
+  if (type !== 'weekly') return 0;
+  const r = settings.requirements || {};
+  return Math.max(0, Number(r.rankOverrides?.[rank]?.weeklySessions ?? r.weeklySessions) || 0);
+}
+
 const periodEnd = (type, start) => (type === 'daily' ? start : addDays(start, 6));
 function currentPeriod(type) { const t = dayStr(); return type === 'daily' ? t : weekStartOf(t); }
 
@@ -260,13 +275,16 @@ export async function requirementStatus(env, group, type, start) {
     DB.prepare('SELECT l.roblox_id, l.discord_id FROM links l JOIN members m ON m.roblox_id=l.roblox_id AND m.group_id=?').bind(group.id),
   ]);
   const a = new Map(act.results.map((r) => [r.roblox_id, r]));
+  const sess = await sessionCounts(env, group.id, start, end);
   const exempt = new Set(off.results.map((r) => r.roblox_id));
   const discord = new Map(links.results.map((r) => [r.roblox_id, r.discord_id]));
   const members = mem.results.filter((m) => tracked.has(m.rank)).map((m) => {
     const r = a.get(m.roblox_id);
     const seconds = Math.max(0, (r?.s || 0) - (countIdle ? 0 : r?.i || 0));
     const required = requiredSeconds(settings, m.rank, type);
-    return { robloxId: m.roblox_id, username: m.username || `User ${m.roblox_id}`, rank: m.rank, roleName: m.role_name, seconds, required, met: seconds >= required, exempt: exempt.has(m.roblox_id), discordId: discord.get(m.roblox_id) || null };
+    const sessions = sess.get(m.roblox_id) || 0, needSessions = requiredSessions(settings, m.rank, type);
+    return { robloxId: m.roblox_id, username: m.username || `User ${m.roblox_id}`, rank: m.rank, roleName: m.role_name, seconds, required, sessions, requiredSessions: needSessions,
+      met: seconds >= required && sessions >= needSessions, exempt: exempt.has(m.roblox_id), discordId: discord.get(m.roblox_id) || null };
   }).sort((x, y) => (x.met - y.met) || (x.seconds - y.seconds));
   return { type, from: start, to: end, members };
 }
@@ -282,7 +300,7 @@ export const DEFAULT_LINE = '{mention} **{user}** ({rank}) — {played} / {requi
 export async function runRequirementCheck(env, ctx, group, type, start, { record = true, send = true, actor = SYSTEM } = {}) {
   const status = await requirementStatus(env, group, type, start);
   const r = parseJSON(group.settings, {}).requirements || {};
-  const checked = status.members.filter((m) => m.required > 0);
+  const checked = status.members.filter((m) => m.required > 0 || m.requiredSessions > 0);
   const failed = checked.filter((m) => !m.met && !m.exempt);
   const label = type === 'daily' ? 'daily' : 'weekly';
   const rangeText = status.from === status.to ? status.from : `${status.from} → ${status.to}`;
@@ -297,7 +315,7 @@ export async function runRequirementCheck(env, ctx, group, type, start, { record
     await batchAll(env, [
       DB.prepare('INSERT OR REPLACE INTO requirement_runs (group_id, period_type, period_start, ran_at, failed, checked) VALUES (?,?,?,?,?,?)').bind(group.id, type, start, t, failed.length, checked.length),
       ...checked.map((m) => res.bind(group.id, type, start, m.robloxId, m.seconds, m.required, m.met ? 1 : 0, m.exempt ? 1 : 0)),
-      ...failed.map((m) => log.bind(t, group.id, actor.type, actor.name, m.robloxId, m.username, `${m.username} did not meet the ${label} requirement for ${rangeText}: ${fmtDur(m.seconds)} / ${fmtDur(m.required)}`, JSON.stringify({ period: type, start, seconds: m.seconds, required: m.required }))),
+      ...failed.map((m) => log.bind(t, group.id, actor.type, actor.name, m.robloxId, m.username, `${m.username} did not meet the ${label} requirement for ${rangeText}: ${fmtDur(m.seconds)} / ${fmtDur(m.required)}${m.requiredSessions ? `, ${m.sessions} / ${m.requiredSessions} sessions` : ''}`, JSON.stringify({ period: type, start, seconds: m.seconds, required: m.required, sessions: m.sessions, requiredSessions: m.requiredSessions }))),
     ]);
     const excused = checked.filter((m) => !m.met && m.exempt).length;
     await logEvent(env, ctx, { groupId: group.id, type: 'requirement.check', actor, summary: `${label[0].toUpperCase() + label.slice(1)} requirement check for ${rangeText}: ${failed.length} of ${checked.length} did not meet it${excused ? ` (${excused} more excused by time off)` : ''}`, details: { type, start, failed: failed.length, checked: checked.length, excused } });
@@ -307,8 +325,8 @@ export async function runRequirementCheck(env, ctx, group, type, start, { record
   if (send && isWebhook(r.webhookUrl) && (failed.length || r.notifyAllMet)) {
     const vars = { count: failed.length, period: label, range: rangeText, group: group.name, checked: checked.length };
     const header = failed.length ? fill(r.headerTemplate || DEFAULT_HEADER, vars) : `Everyone met the ${label} activity requirement (${rangeText}).`;
-    const lines = failed.map((m) => fill(r.lineTemplate || DEFAULT_LINE, {
-      ...vars, user: m.username, id: m.robloxId, rank: m.roleName || m.rank, played: fmtDur(m.seconds), required: fmtDur(m.required), missing: fmtDur(m.required - m.seconds),
+    const lines = failed.map((m) => fill(r.lineTemplate || (m.requiredSessions ? `${DEFAULT_LINE} · {sessions}/{requiredSessions} sessions` : DEFAULT_LINE), {
+      ...vars, user: m.username, id: m.robloxId, rank: m.roleName || m.rank, played: fmtDur(m.seconds), required: fmtDur(m.required), missing: fmtDur(Math.max(0, m.required - m.seconds)), sessions: m.sessions, requiredSessions: m.requiredSessions,
       mention: r.pingMembers && m.discordId ? `<@${m.discordId}>` : '',
     }).trim());
     // Chunk into embeds (Discord: 4096 chars per description, 10 embeds / 6000 chars per message).

@@ -9,6 +9,7 @@ import * as auth from './auth.js';
 import * as rbx from './roblox.js';
 import * as act from './activity.js';
 import * as apps from './apps.js';
+import * as feat from './features.js';
 
 const routes = [];
 /**
@@ -31,6 +32,7 @@ function groupView(g, user) {
     settings.logWebhook = settings.logWebhook ? '(hidden)' : '';
     if (settings.requirements) settings.requirements.webhookUrl = settings.requirements.webhookUrl ? '(hidden)' : '';
     if (settings.events) settings.events.webhookUrl = settings.events.webhookUrl ? '(hidden)' : '';
+    if (settings.news) settings.news.webhookUrl = settings.news.webhookUrl ? '(hidden)' : '';
   }
   return { id: g.id, name: g.name, hasApiKey: !!g.api_key_enc, roles: parseJSON(g.roles, []), trackedRanks: parseJSON(g.tracked_ranks, []), settings, createdAt: g.created_at };
 }
@@ -66,13 +68,14 @@ function cleanRequirements(r = {}, prev = {}) {
     const e = {};
     if (o.dailyMinutes !== '' && o.dailyMinutes != null) e.dailyMinutes = mins(o.dailyMinutes);
     if (o.weeklyMinutes !== '' && o.weeklyMinutes != null) e.weeklyMinutes = mins(o.weeklyMinutes);
+    if (o.weeklySessions !== '' && o.weeklySessions != null) e.weeklySessions = int(o.weeklySessions, 0, 100);
     if (Object.keys(e).length) overrides[rank] = e;
   }
   const hook = r.webhookUrl === '(hidden)' ? prev.webhookUrl || '' : cleanWebhook(r.webhookUrl);
   const role = str(r.mentionRoleId, 25);
   if (role && !/^\d{15,21}$/.test(role)) bad('Role to mention must be a numeric Discord role ID');
   return {
-    enabled: !!r.enabled, dailyMinutes: mins(r.dailyMinutes), weeklyMinutes: mins(r.weeklyMinutes), countIdle: r.countIdle !== false,
+    enabled: !!r.enabled, dailyMinutes: mins(r.dailyMinutes), weeklyMinutes: mins(r.weeklyMinutes), weeklySessions: int(r.weeklySessions, 0, 100), countIdle: r.countIdle !== false,
     checkHour: int(r.checkHour, 0, 23, 0), webhookUrl: hook, mentionRoleId: role, pingMembers: !!r.pingMembers, notifyAllMet: !!r.notifyAllMet,
     headerTemplate: str(r.headerTemplate, 400), lineTemplate: str(r.lineTemplate, 300), rankOverrides: overrides,
   };
@@ -91,7 +94,7 @@ async function updateGroup(c) {
     settings.requirements = cleanRequirements(b.requirements, settings.requirements);
     changed.push('requirements');
   }
-  const adminOnly = ['name', 'apiKey', 'trackedRanks', 'logWebhook', 'ranking', 'events'].filter((k) => b[k] !== undefined);
+  const adminOnly = ['name', 'apiKey', 'trackedRanks', 'logWebhook', 'ranking', 'events', 'news'].filter((k) => b[k] !== undefined);
   if (adminOnly.length && !admin) bad('You do not have permission to edit group settings', 403);
 
   if (b.name !== undefined) { const n = str(b.name, 80); if (!n) bad('Name cannot be empty'); sets.push('name=?'); vals.push(n); changed.push('name'); }
@@ -111,6 +114,7 @@ async function updateGroup(c) {
   if (b.logWebhook !== undefined) { settings.logWebhook = cleanWebhook(b.logWebhook); changed.push('log webhook'); }
   if (b.ranking !== undefined) { settings.ranking = { maxRank: int(b.ranking?.maxRank, 1, 254, 254) }; changed.push(`max assignable rank (${settings.ranking.maxRank})`); }
   if (b.events !== undefined) { settings.events = { webhookUrl: cleanWebhook(b.events?.webhookUrl) }; changed.push('session announcements webhook'); }
+  if (b.news !== undefined) { settings.news = feat.cleanNewsSettings(b.news); changed.push('news webhook'); }
   if (!changed.length) bad('Nothing to update');
 
   sets.push('settings=?'); vals.push(JSON.stringify(settings));
@@ -124,8 +128,9 @@ async function deleteGroup(c) {
   const { DB } = c.env;
   const id = c.group.id;
   await DB.batch([
-    ...['members', 'play_sessions', 'activity_daily', 'time_off', 'requirement_runs', 'requirement_results', 'applications', 'submissions', 'events', 'notes']
+    ...['members', 'play_sessions', 'activity_daily', 'time_off', 'requirement_runs', 'requirement_results', 'applications', 'submissions', 'events', 'notes', 'logbook', 'event_people', 'recommendations', 'kb_docs', 'posts']
       .map((t) => DB.prepare(`DELETE FROM ${t} WHERE group_id=?`).bind(id)),
+    DB.prepare('DELETE FROM rec_votes WHERE rec_id NOT IN (SELECT id FROM recommendations)'),
     DB.prepare('UPDATE api_keys SET revoked=1 WHERE group_id=?').bind(id),
     DB.prepare('DELETE FROM groups WHERE id=?').bind(id),
   ]);
@@ -161,14 +166,20 @@ async function overview(c) {
     DB.prepare('SELECT id, ts, type, actor_name, summary FROM logs WHERE group_id=? ORDER BY id DESC LIMIT 8').bind(gid),
     DB.prepare("SELECT * FROM events WHERE group_id=? AND status='scheduled' AND starts_at>? ORDER BY starts_at LIMIT 5").bind(gid, now() - 3600),
   ]);
-  const weekly = await act.requirementStatus(c.env, c.group, 'weekly', wk);
-  const due = weekly.members.filter((m) => m.required > 0 && !m.exempt);
+  const [weekly, leaders, news, recs] = await Promise.all([
+    act.requirementStatus(c.env, c.group, 'weekly', wk),
+    feat.leaderboard(c.env, c.group),
+    DB.prepare('SELECT id, title, body, pinned, author, created_at FROM posts WHERE group_id=? ORDER BY pinned DESC, id DESC LIMIT 3').bind(gid).all(),
+    DB.prepare("SELECT COUNT(*) n FROM recommendations WHERE group_id=? AND status='open'").bind(gid).first(),
+  ]);
+  const due = weekly.members.filter((m) => (m.required > 0 || m.requiredSessions > 0) && !m.exempt);
   return json({
     today: { seconds: d.results[0].s, members: d.results[0].u }, week: { seconds: w.results[0].s, members: w.results[0].u },
     online: live.results[0].n, pendingTimeOff: off.results[0].n, pendingApplications: subs.results[0].n,
     trackedMembers: mem.results.filter((m) => tracked.includes(m.rank)).length,
     requirements: { due: due.length, met: due.filter((m) => m.met).length },
     recentLogs: auth.can(c.user, 'view_logs') ? logs.results : [], upcoming: ev.results,
+    leaders, news: news.results, openRecommendations: recs.n,
   });
 }
 
@@ -290,6 +301,31 @@ R('POST', '/api/groups/:gid/events', createEvent, { perm: A });
 R('PATCH', '/api/events/:id', updateEvent, { perm: A });
 R('DELETE', '/api/events/:id', deleteEvent, { perm: A });
 
+// --- logbook, session registers, recommendations, knowledgebase, news ---
+const DISC = 'manage_discipline', CONTENT = 'manage_content';
+R('GET', '/api/groups/:gid/logbook', feat.logbookList);
+R('POST', '/api/groups/:gid/logbook', feat.logbookCreate, { perm: DISC });
+R('POST', '/api/logbook/:id/revoke', feat.logbookRevoke, { perm: DISC });
+R('GET', '/api/events/:id/people', feat.eventPeople);
+R('POST', '/api/events/:id/people', feat.eventAddPerson, { perm: A });
+R('DELETE', '/api/events/:id/people/:rid', feat.eventRemovePerson, { perm: A });
+R('POST', '/api/events/:id/claim', feat.eventClaim);
+R('DELETE', '/api/events/:id/claim', feat.eventUnclaim);
+R('GET', '/api/groups/:gid/recommendations', feat.recList);
+R('POST', '/api/groups/:gid/recommendations', feat.recCreate);
+R('POST', '/api/recommendations/:id/vote', feat.recVote);
+R('DELETE', '/api/recommendations/:id/vote', feat.recUnvote);
+R('PATCH', '/api/recommendations/:id', feat.recDecide, { perm: 'ranking' });
+R('GET', '/api/groups/:gid/kb', feat.kbList);
+R('POST', '/api/groups/:gid/kb', feat.kbCreate, { perm: CONTENT });
+R('GET', '/api/kb/:id', feat.kbGet);
+R('PATCH', '/api/kb/:id', feat.kbUpdate, { perm: CONTENT });
+R('DELETE', '/api/kb/:id', feat.kbDelete, { perm: CONTENT });
+R('GET', '/api/groups/:gid/news', feat.newsList);
+R('POST', '/api/groups/:gid/news', feat.newsCreate, { perm: CONTENT });
+R('PATCH', '/api/news/:id', feat.newsUpdate, { perm: CONTENT });
+R('DELETE', '/api/news/:id', feat.newsDelete, { perm: CONTENT });
+
 // --- applications ---
 const APP = ['manage_applications', 'review_applications'];
 R('GET', '/api/groups/:gid/applications', apps.listApps, { anyPerm: APP });
@@ -322,6 +358,8 @@ R('GET', '/v1/groups/:gid/members/:rid', act.memberProfile, { scope: 'read' });
 R('GET', '/v1/groups/:gid/requirements', act.requirementsGet, { scope: 'read' });
 R('GET', '/v1/groups/:gid/logs', (c) => logsList(c, c.group.id), { scope: 'read' });
 R('GET', '/v1/groups/:gid/timeoff', act.listTimeOff, { scope: 'read' });
+R('GET', '/v1/groups/:gid/logbook', feat.logbookList, { scope: 'read' });
+R('GET', '/v1/groups/:gid/news', feat.newsList, { scope: 'read' });
 R('POST', '/v1/groups/:gid/timeoff', (c) => act.createTimeOff(c, false), { scope: 'timeoff' });
 R('POST', '/v1/groups/:gid/ranking', rank, { scope: 'ranking' });
 R('GET', '/v1/links/discord/:id', (c) => auth.linkLookup(c, 'discord_id'), { scope: 'read' });

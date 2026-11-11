@@ -15,8 +15,8 @@ database_id = "f72e9fbc-2a67-4d05-ace4-2ea1fde0358a"
 # Where the static dashboard is hosted (GitHub Pages URL, no trailing slash).
 DASHBOARD_URL = "https://ipmingsum2.github.io/roleplay-system"
 
-GOOGLE_CLIENT_ID = ""
-DISCORD_CLIENT_ID = ""
+GOOGLE_CLIENT_ID = "470143922138-32a94godo69n6l7f1db6je1nn8be3t3v.apps.googleusercontent.com"
+DISCORD_CLIENT_ID = "1570031363657175100"
 
 # Secrets — set with `npx wrangler secret put NAME` (never commit them):
 #   SECRET_KEY             long random string; signs tokens and encrypts Open Cloud keys

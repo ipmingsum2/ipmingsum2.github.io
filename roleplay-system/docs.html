@@ -62,6 +62,16 @@
           params: [['type', 'Prefix filter, e.g. `rank`, `rank.promote`, `requirement.not_met`, `timeoff`, `application`.'], ['q', 'Search text (member, staff or summary).'], ['limit', '1–200, default 50.'], ['before', 'Pass the previous response’s `next` to get older entries.']],
           response: { logs: [{ id: 912, ts: 1794300000, group_id: '1234567', type: 'rank.promote', actor_type: 'user', actor_name: 'Owner', target_id: '156', target_name: 'Builderman', summary: 'Builderman was promoted from Receptionist (20) to Manager (40) — Passed training', details: { reason: 'Passed training' } }], next: 862 } }],
       ]],
+      ['Logbook & news', 'Discipline records and group announcements (read-only over the API; written from the dashboard).', [
+        ['GET', '/v1/groups/{groupId}/logbook', 'read', 'Warnings, strikes, suspensions, demotions, promotions, commendations', {
+          params: [['rid', 'Only this member (Roblox user ID).'], ['type', '`warning`, `strike`, `suspension`, `demotion`, `promotion`, `commendation` or `termination`.'], ['active', '`1` = only entries that are neither revoked nor expired.'], ['q', 'Search text (member, reason or author).']],
+          response: { entries: [{ id: 41, roblox_id: '156', username: 'Builderman', type: 'warning', reason: 'Missed a shift without notice', evidence: 'https://example.com/clip.mp4', expires_at: 1796900000, author: 'Avalynne', created_at: 1794300000, revoked_at: null, active: true, countsAsWarning: true }], activeWarnings: { 156: 1 }, types: ['warning', 'strike', 'suspension', 'demotion', 'promotion', 'commendation', 'termination'] },
+          notes: '`activeWarnings` counts active warnings and strikes per member — the same numbers as the dashboard’s warning ticker. Entries are never deleted; revoked ones have `revoked_at` set.' }],
+        ['GET', '/v1/groups/{groupId}/news', 'read', 'Group news posts, pinned first', {
+          params: [['limit', '1–100, default 50.']],
+          response: { posts: [{ id: 7, title: 'Grand reopening this Saturday!', body: 'The rooftop pool reopens…', pinned: 1, author: 'Avalynne', created_at: 1794300000 }] },
+          notes: '`body` is Markdown-style text (headings, **bold**, lists, links).' }],
+      ]],
       ['Account links', 'Discord ↔ Roblox links created through the verification game.', [
         ['GET', '/v1/links/discord/{discordId}', 'read', 'Roblox account linked to a Discord user', { response: { discordId: '123456789012345678', discordName: 'builder', robloxId: '156', robloxName: 'Builderman', linkedAt: 1794300000 }, notes: 'Returns 404 if the user has not verified.' }],
         ['GET', '/v1/links/roblox/{robloxId}', 'read', 'Discord account linked to a Roblox user', { response: { discordId: '123456789012345678', discordName: 'builder', robloxId: '156', robloxName: 'Builderman', linkedAt: 1794300000 } }],
@@ -96,6 +106,7 @@
 
       <h2>Basics</h2>
       <p>Base URL</p><pre><code>${esc(BASE)}</code></pre>
+      <p class="dim"><b>From Roblox games</b> use <code>${esc(String(window.RP_CONFIG.ROBLOX_API_URL || BASE).replace(/\/+$/, ''))}</code> instead — Roblox blocks <code>workers.dev</code> addresses, so this relay forwards <code>/v1/…</code> requests to the same API.</p>
       <p><b>Authentication.</b> Create a key in the dashboard under <b>API</b> and send it on every request as either header:</p>
       <pre><code>Authorization: Bearer rpk_your_key\nX-Api-Key: rpk_your_key</code></pre>
       <p class="dim">Keys are shown once, can be limited to one group, and only work for the scopes you tick. Treat them like passwords: use them from servers and bots only, never in a web page or a Roblox LocalScript.</p>
