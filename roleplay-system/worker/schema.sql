@@ -213,3 +213,88 @@ CREATE TABLE IF NOT EXISTS notes (
   created_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_notes_member ON notes (group_id, roblox_id);
+
+-- ===== Added: logbook, session registers, promotion recommendations, knowledgebase, news =====
+
+-- Discipline & record logbook (warnings expire; entries can be revoked, never deleted).
+CREATE TABLE IF NOT EXISTS logbook (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  group_id TEXT NOT NULL,
+  roblox_id TEXT NOT NULL,
+  username TEXT,
+  type TEXT NOT NULL,                         -- warning | strike | suspension | demotion | promotion | commendation | termination
+  reason TEXT NOT NULL,
+  evidence TEXT,                              -- link to a screenshot / clip
+  expires_at INTEGER,                         -- NULL = never
+  author TEXT,
+  created_at INTEGER NOT NULL,
+  revoked_at INTEGER,
+  revoked_by TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_logbook_member ON logbook (group_id, roblox_id);
+CREATE INDEX IF NOT EXISTS idx_logbook_group ON logbook (group_id, id);
+
+-- Session register: who hosted, co-hosted and attended each session.
+CREATE TABLE IF NOT EXISTS event_people (
+  event_id INTEGER NOT NULL,
+  group_id TEXT NOT NULL,
+  roblox_id TEXT NOT NULL,
+  username TEXT,
+  role TEXT NOT NULL DEFAULT 'attendee',      -- host | cohost | attendee
+  added_by TEXT,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (event_id, roblox_id)
+);
+CREATE INDEX IF NOT EXISTS idx_event_people_member ON event_people (group_id, roblox_id);
+
+-- Promotion recommendations with justified upvotes.
+CREATE TABLE IF NOT EXISTS recommendations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  group_id TEXT NOT NULL,
+  roblox_id TEXT NOT NULL,
+  username TEXT,
+  rank INTEGER,
+  role_name TEXT,
+  reason TEXT NOT NULL,
+  created_by_id INTEGER,
+  created_by TEXT,
+  status TEXT NOT NULL DEFAULT 'open',        -- open | promoted | declined
+  decided_by TEXT,
+  decided_at INTEGER,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_rec_group ON recommendations (group_id, status);
+CREATE TABLE IF NOT EXISTS rec_votes (
+  rec_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  user_name TEXT,
+  justification TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (rec_id, user_id)
+);
+
+-- Knowledgebase: handbooks, guides and policies.
+CREATE TABLE IF NOT EXISTS kb_docs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  group_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  category TEXT NOT NULL DEFAULT 'General',
+  body TEXT NOT NULL DEFAULT '',
+  visibility TEXT NOT NULL DEFAULT '',        -- '' = everyone, otherwise a permission key
+  updated_by TEXT,
+  updated_at INTEGER NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_kb_group ON kb_docs (group_id, category);
+
+-- Group news / announcements.
+CREATE TABLE IF NOT EXISTS posts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  group_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  body TEXT NOT NULL,
+  pinned INTEGER NOT NULL DEFAULT 0,
+  author TEXT,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_posts_group ON posts (group_id, pinned, id);

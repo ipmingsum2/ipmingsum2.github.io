@@ -39,6 +39,11 @@ const ICONS = {
   google: '<path d="M20 12h-8M20 12a8 8 0 1 1-2.340-5.660"/>',
   discord: '<path d="M8.500 6.500C10.800 6 13.200 6 15.500 6.500L17 4.500l3 1.500c1.500 3.200 2 6.500 1.500 10-1.500 1.200-3 2-4.500 2.500l-1.200-2.200c-2.500.700-5.100.700-7.600 0L7 18.500c-1.500-.500-3-1.300-4.500-2.500C2 12.500 2.500 9.200 4 6l3-1.500z"/><circle cx="9" cy="12" r="1.300"/><circle cx="15" cy="12" r="1.300"/>',
   swap: '<path d="M16 3l4 4-4 4M20 7H8M8 21l-4-4 4-4M4 17h12"/>',
+  thumb: '<path d="M7 10v11H4a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1z"/><path d="M7 10l4-8a3 3 0 0 1 3 3v4h5.500a2 2 0 0 1 2 2.300l-1.300 8A2 2 0 0 1 18.200 21H7"/>',
+  clipboard: '<rect x="5" y="4" width="14" height="18" rx="2"/><path d="M9 4V2h6v2M9 11h6M9 15h4"/>',
+  megaphone: '<path d="M3 11v2a1 1 0 0 0 1 1h2l6 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M16 8.500a4.500 4.500 0 0 1 0 7M19 6a8 8 0 0 1 0 12"/>',
+  trophy: '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/>',
+  pin: '<path d="M12 17v5M9 3h6l-1 6 3 4H7l3-4z"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.930 4.930l1.410 1.410M17.660 17.660l1.410 1.410M2 12h2M20 12h2M6.340 17.660l-1.410 1.410M19.070 4.930l-1.410 1.410"/>',
   moon: '<path d="M21 12.790A9 9 0 1 1 11.210 3 7 7 0 0 0 21 12.790z"/>',
   sparkle: '<path d="M12 3l1.900 5.100L19 10l-5.100 1.900L12 17l-1.900-5.100L5 10l5.100-1.900z"/><path d="M19 15l.800 2.200L22 18l-2.200.800L19 21l-.800-2.200L16 18l2.200-.800z"/>',
@@ -50,6 +55,8 @@ const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const API_URL = String(window.RP_CONFIG?.API_URL || '').replace(/\/+$/, '');
+/** Address Roblox scripts use (a pages.dev relay — Roblox refuses workers.dev). */
+const ROBLOX_API_URL = String(window.RP_CONFIG?.ROBLOX_API_URL || API_URL).replace(/\/+$/, '');
 
 // ---------- formatting ----------
 const fmtDur = (sec) => { const m = Math.round((sec || 0) / 60); const h = Math.floor(m / 60); return h ? `${h}h ${m % 60}m` : `${m}m`; };
@@ -86,7 +93,18 @@ async function api(path, opts = {}) {
 // ---------- theme ----------
 // Each page sets data-theme from storage in <head>; with no choice the system setting applies.
 const currentTheme = () => document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-function setTheme(t) { document.documentElement.dataset.theme = t; store.set('rp_theme', t); document.dispatchEvent(new CustomEvent('rp:theme', { detail: t })); }
+/** Switches theme with a soft cross-fade (no instant light/dark flash). */
+function setTheme(t) {
+  const html = document.documentElement;
+  const apply = () => { html.dataset.theme = t; store.set('rp_theme', t); document.dispatchEvent(new CustomEvent('rp:theme', { detail: t })); };
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return apply();
+  // Chromium/Safari: blend the old and new page as one image. Others: transition every color.
+  if (document.startViewTransition) { document.startViewTransition(apply); return; }
+  html.classList.add('theme-fade');
+  apply();
+  clearTimeout(setTheme.timer);
+  setTheme.timer = setTimeout(() => html.classList.remove('theme-fade'), 600);
+}
 const themeButton = (cls = '') => `<button class="btn ghost icon sm theme-btn ${cls}" data-theme-toggle aria-label="Switch between light and dark mode" title="Light / dark mode">${icon('sun', 'sun')}${icon('moon', 'moon')}</button>`;
 document.addEventListener('click', (e) => { if (e.target.closest('[data-theme-toggle]')) setTheme(currentTheme() === 'dark' ? 'light' : 'dark'); });
 

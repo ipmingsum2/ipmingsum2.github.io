@@ -21,7 +21,11 @@ A whitelist-only management system for Roblox roleplay groups: activity tracking
 | Applications | Form builder (9 question types, required flags, optional auto-grading), web form + in-game application center, review with optional auto-rank |
 | Accounts | Sign in with Google or Discord, link one to the other, link Roblox through a verification game |
 | Access | Whitelist-only. The owner manages the whitelist and per-user permissions |
-| Extras | Scheduled sessions (shifts/trainings) with Discord announcements, member notes and warnings, public API with scoped keys, API docs page |
+| Logbook | Warnings, strikes, suspensions, demotions, promotions, commendations and terminations with reason and evidence link; warnings expire, entries are revoked (never deleted); warning ticker per member; promotions/demotions can change the rank too |
+| Sessions | Schedule shifts/trainings/events with Discord announcements; staff claim them as host or co-host; registers record who attended; optional weekly session target in requirements |
+| Promotions | Nominate members for promotion, upvote with a required justification, filter by rank, sort by votes or trending, recommender insights; rankers promote straight from a recommendation |
+| Knowledgebase & news | Handbooks, guides and policies by category, each readable by everyone or one permission; group news with pinning and optional Discord announcement |
+| Extras | This-week leaderboard (minutes and sessions), member notes, public API with scoped keys, API docs page, light/dark theme with a soft fade |
 
 ## Feature tour
 
@@ -93,6 +97,15 @@ Open the dashboard and sign in with the owner's Google or Discord account (the `
 
 ### 5. Roblox
 
+**Roblox relay.** Roblox's `HttpService` refuses `*.workers.dev` addresses, so games call a small Cloudflare Pages project instead: `roblox-proxy/` (live at `https://rp-roblox.pages.dev`). It forwards `/v1/*` to the Worker over a service binding — no extra public hop — and serves nothing else. Deploy or update it with:
+
+```bash
+cd roblox-proxy
+npx wrangler pages deploy
+```
+
+`ROBLOX_API_URL` in `config.js` is what the dashboard puts into every generated script and place file.
+
 Everything Roblox-side talks to the API with a key held in a **server Script**. In every place, turn on **Game Settings → Security → Allow HTTP Requests**.
 
 **Activity tracker** — add `ActivityTracker.lua` as a ModuleScript named `ActivityTracker` in `ServerScriptService`, plus a Script next to it (the dashboard copies this with a fresh key filled in):
@@ -101,7 +114,7 @@ Everything Roblox-side talks to the API with a key held in a **server Script**. 
 local ActivityTracker = require(script.Parent:WaitForChild("ActivityTracker"))
 
 ActivityTracker.Start({
-	ApiUrl = "https://rp-system.YOURNAME.workers.dev",
+	ApiUrl = "https://rp-roblox.pages.dev",
 	ApiKey = "rpk_...",
 })
 ```
@@ -116,7 +129,7 @@ Generated files embed an API key. Do not share them or make the places copyable;
 
 Everyone on the whitelist can view activity, requirements, time off and sessions. The owner grants the rest per user:
 
-`manage_activity` · `ranking` · `manage_groups` · `manage_applications` · `review_applications` · `view_logs` · `manage_api_keys`
+`manage_activity` · `ranking` · `manage_groups` · `manage_applications` · `review_applications` · `view_logs` · `manage_api_keys` · `manage_discipline` (logbook) · `manage_content` (news, knowledgebase)
 
 Only the owner can edit the whitelist.
 

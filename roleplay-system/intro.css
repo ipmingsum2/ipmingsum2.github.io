@@ -85,8 +85,9 @@
 
 /* scroll tour */
 .tour { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 3vw; }
-.tour-media { position: sticky; top: 14vh; height: 72vh; display: flex; align-items: center; }
-.tour-media .frame { width: 100%; }
+.tour-media { position: sticky; top: 12vh; align-self: start; }
+/* Never taller than the viewport allows: width capped so (width / 1.6 + chrome) fits in 76vh. Overflowing a centred box is what pushed it over the heading. */
+.tour-media .frame { width: min(100%, calc((76vh - 34px) * 1.6)); }
 .stack-imgs { position: relative; aspect-ratio: 1440 / 900; }
 .stack-imgs img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top; opacity: 0; transform: scale(1.02); transition: opacity .55s var(--ease), transform .8s var(--ease); }
 .stack-imgs img.on { opacity: 1; transform: none; }
