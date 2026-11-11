@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Link your accounts</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="public" id="root"><div class="empty">Loading…</div></main>
+  <script src="config.js"></script>
+  <script src="core.js"></script>
+  <script>
+    'use strict';
+    // Discord sign-in returns here with #ptoken=… (a short-lived token that only proves a Discord identity).
+    if (location.hash.startsWith('#ptoken=')) { store.set('rp_ptoken', location.hash.slice(8)); history.replaceState(null, '', location.pathname); }
+    const failed = location.hash.startsWith('#error=');
+    if (failed) history.replaceState(null, '', location.pathname);
+    const root = $('#root');
+    const signIn = `${API_URL}/auth/discord/start?purpose=public&return=verify.html`;
+
+    function signedOut(msg) {
+      root.innerHTML = `<div class="card"><div class="body stack" style="text-align:center;align-items:center">
+        ${icon('link', 'lg')}<h1>Link Discord to Roblox</h1>
+        <p class="dim">Sign in with Discord, get a code, then enter it in the Roblox verification game. Your Discord and Roblox accounts will be linked.</p>
+        ${msg ? `<div class="callout bad" role="alert">${icon('alert')}<span>${esc(msg)}</span></div>` : ''}
+        <a class="btn primary big" style="max-width:320px" href="${signIn}">${icon('discord')} Sign in with Discord</a></div></div>`;
+    }
+
+    async function render() {
+      if (!store.get('rp_ptoken')) return signedOut(failed ? 'Discord sign-in did not complete. Please try again.' : '');
+      let d;
+      try { d = await api('/public/link', { public: true }); }
+      catch (e) { if (e.status === 401) { store.set('rp_ptoken', null); return signedOut('Your session expired. Please sign in again.'); } root.innerHTML = `<div class="callout bad">${icon('alert')}<span>${esc(e.message)}</span></div>`; return; }
+      root.innerHTML = `<div class="card"><div class="head">${icon('discord')}<div class="grow"><h2>${esc(d.discord.discordName || 'Discord account')}</h2><span class="muted mono">${esc(d.discord.discordId)}</span></div><button class="btn sm ghost" id="out">Sign out</button></div>
+        <div class="body stack">
+          ${d.link ? `<div class="callout">${icon('check')}<span>Linked to Roblox account <b>${esc(d.link.robloxName || d.link.robloxId)}</b> (${esc(d.link.robloxId)}). You can link a different account by verifying again.</span></div>`
+                   : `<div class="callout warn">${icon('info')}<span>No Roblox account linked yet.</span></div>`}
+          <div id="codeArea"><button class="btn primary" id="get">${icon('key')} Get a verification code</button></div>
+        </div></div>`;
+      $('#out').onclick = () => { store.set('rp_ptoken', null); render(); };
+      $('#get').onclick = (e) => run(e.currentTarget, async () => {
+        const { code } = await api('/public/verify-code', { public: true, method: 'POST' });
+        $('#codeArea').innerHTML = `<div class="stack"><div class="codebox" aria-label="Verification code">${esc(code)}</div>
+          <ol class="dim" style="margin:0;padding-left:20px"><li>Join the verification game on Roblox.</li><li>Type this code and press <b>Link account</b>.</li><li>Come back and press Refresh.</li></ol>
+          <p class="hint">The code works once and expires in 15 minutes. Never enter a code someone else gave you.</p>
+          <div><button class="btn" id="re">${icon('refresh')} Refresh</button></div></div>`;
+        $('#re').onclick = render;
+      });
+    }
+    render();
+  </script>
+</body>
+</html>

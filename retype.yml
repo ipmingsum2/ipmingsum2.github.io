@@ -3,6 +3,10 @@ output: .retype
 
 url: ipmingsum2.github.io
 
+# Standalone apps copied into the output as-is by the workflow (Retype would lowercase their file names).
+exclude:
+  - "/roleplay-system/"
+
 start:
   # Try the Retype Pro features
   pro: true

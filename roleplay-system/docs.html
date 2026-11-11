@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>API documentation</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="docs" id="root"></main>
+  <script src="config.js"></script>
+  <script src="core.js"></script>
+  <script>
+    'use strict';
+    const BASE = API_URL;
+    const j = (o) => JSON.stringify(o, null, 2);
+
+    // Each endpoint: [method, path, scope, summary, {params, body, response, notes}]
+    const SECTIONS = [
+      ['Groups & activity', 'Read-only data about a group, its tracked members and how long they have played. All days are UTC (YYYY-MM-DD); weeks start on Monday.', [
+        ['GET', '/v1/groups/{groupId}', 'read', 'Group details, roles and tracked ranks', {
+          response: { id: '1234567', name: 'Sunrise Hotels', roles: [{ id: '98765', name: 'Receptionist', rank: 20, memberCount: 14 }], trackedRanks: [20, 30, 40] } }],
+        ['GET', '/v1/groups/{groupId}/activity', 'read', 'Leaderboard for a date range, plus a per-day series for graphs', {
+          params: [['from', 'First day of the range. Default: Monday of the current week.'], ['to', 'Last day of the range. Default: today.'], ['seriesFrom', 'Start of the per-day series, if you want a longer history than the leaderboard range.']],
+          response: { from: '2026-11-09', to: '2026-11-10', seriesFrom: '2026-11-09', totals: { seconds: 18420, members: 12, active: 5, online: 2 },
+            leaderboard: [{ robloxId: '156', username: 'Builderman', displayName: 'Builderman', rank: 40, roleName: 'Manager', tracked: true, seconds: 7260, idleSeconds: 300, messages: 41, sessions: 3, online: true }],
+            series: [{ day: '2026-11-09', seconds: 11160, idleSeconds: 420, members: 4 }] },
+          notes: 'Daily total: use from = to = today. Weekly total: from = Monday, to = today.' }],
+        ['GET', '/v1/groups/{groupId}/members', 'read', 'Everyone currently in a tracked rank', {
+          response: { members: [{ robloxId: '156', username: 'Builderman', displayName: 'Builderman', rank: 40, roleName: 'Manager' }] } }],
+        ['GET', '/v1/groups/{groupId}/members/{robloxId}', 'read', 'Full profile for one member', {
+          response: { member: { robloxId: '156', username: 'Builderman', rank: 40, roleName: 'Manager' }, discord: { id: '123456789012345678', name: 'builder' },
+            totals: { today: 1800, week: 7260, allTime: 392400, messages: 2210, sessions: 148 }, series: [{ day: '2026-11-10', seconds: 1800, idleSeconds: 0, messages: 12, sessions: 1 }],
+            sessions: [{ start: 1794300000, end: 1794301800, seconds: 1800, idleSeconds: 0, messages: 12, live: true }], notes: [], timeOff: [], requirements: [] },
+          notes: 'All durations are in seconds. `series` covers the last 12 weeks.' }],
+      ]],
+      ['Requirements', 'Progress against the daily or weekly activity requirement.', [
+        ['GET', '/v1/groups/{groupId}/requirements', 'read', 'Live progress for the current (or a given) period', {
+          params: [['type', '`weekly` (default) or `daily`.'], ['start', 'A day inside the period to inspect. Default: the current period.']],
+          response: { type: 'weekly', from: '2026-11-09', to: '2026-11-15', members: [{ robloxId: '156', username: 'Builderman', rank: 40, roleName: 'Manager', seconds: 7260, required: 10800, met: false, exempt: false, discordId: '123456789012345678' }], runs: [] },
+          notes: '`exempt` is true when approved time off overlaps the period. Members are sorted with those who have not met the requirement first.' }],
+      ]],
+      ['Time off', 'List time off, or submit a request on a member’s behalf (for example from a Discord bot). Requests made through the API always start as pending.', [
+        ['GET', '/v1/groups/{groupId}/timeoff', 'read', 'All time-off entries for the group', {
+          response: { timeOff: [{ id: 3, roblox_id: '156', username: 'Builderman', start_date: '2026-11-12', end_date: '2026-11-19', reason: 'Exams', status: 'pending', requested_by: 'API key "Discord bot"' }] } }],
+        ['POST', '/v1/groups/{groupId}/timeoff', 'timeoff', 'Request time off', {
+          body: { user: 'Builderman', startDate: '2026-11-12', endDate: '2026-11-19', reason: 'Exams' },
+          response: { ok: true, id: 3, status: 'pending' }, notes: '`user` is a Roblox username or numeric user ID.' }],
+      ]],
+      ['Ranking', 'Changes a member’s rank through Roblox Open Cloud. Every change is written to the logs. The system never assigns rank 255, never touches the group owner, and never goes above the group’s configured maximum rank.', [
+        ['POST', '/v1/groups/{groupId}/ranking', 'ranking', 'Promote, demote or set a rank', {
+          body: { user: 'Builderman', action: 'set', rank: 40, reason: 'Passed training' },
+          response: { user: { id: '156', name: 'Builderman', displayName: 'Builderman' }, from: { name: 'Receptionist', rank: 20 }, to: { name: 'Manager', rank: 40 } },
+          notes: '`action` is `promote` (next rank up), `demote` (next rank down) or `set` (requires `rank`). Returns 404 if the user is not in the group.' }],
+      ]],
+      ['Logs', 'The audit trail: promotions, demotions, missed requirements, time off, applications, settings changes.', [
+        ['GET', '/v1/groups/{groupId}/logs', 'read', 'Newest first, paginated', {
+          params: [['type', 'Prefix filter, e.g. `rank`, `rank.promote`, `requirement.not_met`, `timeoff`, `application`.'], ['q', 'Search text (member, staff or summary).'], ['limit', '1–200, default 50.'], ['before', 'Pass the previous response’s `next` to get older entries.']],
+          response: { logs: [{ id: 912, ts: 1794300000, group_id: '1234567', type: 'rank.promote', actor_type: 'user', actor_name: 'Owner', target_id: '156', target_name: 'Builderman', summary: 'Builderman was promoted from Receptionist (20) to Manager (40) — Passed training', details: { reason: 'Passed training' } }], next: 862 } }],
+      ]],
+      ['Account links', 'Discord ↔ Roblox links created through the verification game.', [
+        ['GET', '/v1/links/discord/{discordId}', 'read', 'Roblox account linked to a Discord user', { response: { discordId: '123456789012345678', discordName: 'builder', robloxId: '156', robloxName: 'Builderman', linkedAt: 1794300000 }, notes: 'Returns 404 if the user has not verified.' }],
+        ['GET', '/v1/links/roblox/{robloxId}', 'read', 'Discord account linked to a Roblox user', { response: { discordId: '123456789012345678', discordName: 'builder', robloxId: '156', robloxName: 'Builderman', linkedAt: 1794300000 } }],
+      ]],
+      ['Roblox game endpoints', 'Called from server Scripts with a key that has the `game` scope and is tied to one group — the group comes from the key, so there is no group ID in the path. The bundled ActivityTracker module and generated place files already use these.', [
+        ['GET', '/v1/game/config', 'game', 'Group ID and tracked ranks for this key', { response: { groupId: '1234567', name: 'Sunrise Hotels', trackedRanks: [20, 30, 40], heartbeatSeconds: 60 } }],
+        ['POST', '/v1/game/heartbeat', 'game', 'Report who is in the server (send about once a minute)', {
+          body: { jobId: 'a1b2c3', players: [{ userId: 156, username: 'Builderman', displayName: 'Builderman', rank: 40, role: 'Manager', idle: false, messages: 3 }] },
+          response: { ok: true, tracked: 1 },
+          notes: 'Time is credited as the gap since the previous heartbeat for the same server (`jobId`) and player, up to 180 seconds — a longer gap starts a new session. Players whose rank is not tracked are ignored. `messages` is the count since the last heartbeat.' }],
+        ['POST', '/v1/game/session-end', 'game', 'A player left (credits the final partial minute)', { body: { jobId: 'a1b2c3', userId: 156 }, response: { ok: true } }],
+        ['GET', '/v1/game/applications', 'game', 'Open applications and their questions for the in-game application center', {
+          response: { group: 'Sunrise Hotels', applications: [{ id: '3f9a1c2b7d', group: 'Sunrise Hotels', title: 'Staff application', description: '', identity: 'username', successMessage: '', questions: [{ id: 'q1a2b3c4d', type: 'choice', label: 'What do you do if a guest is rude?', description: '', required: true, options: ['Stay calm', 'Argue back'] }] }] },
+          notes: 'Correct answers and points are never included.' }],
+        ['POST', '/v1/game/applications/{applicationId}/submit', 'game', 'Submit an application as a verified player', {
+          body: { userId: 156, username: 'Builderman', answers: { q1a2b3c4d: 'Stay calm' } }, response: { ok: true, message: 'Your application has been submitted.' },
+          notes: 'Answers are keyed by question ID. Checkboxes take an array of option texts; number and scale take numbers. Returns 409 if the player already has a pending submission.' }],
+        ['POST', '/v1/game/verify', 'verify or game', 'Confirm a link code typed in the verification game', { body: { code: 'K7M2QX', userId: 156, username: 'Builderman' }, response: { ok: true, discordName: 'builder' }, notes: 'Returns 404 with `{ ok: false, error }` for an invalid or expired code.' }],
+      ]],
+      ['Public application endpoints', 'Used by the web application form. No API key.', [
+        ['GET', '/public/applications/{applicationId}', 'none', 'The form definition', { response: { open: true, application: { id: '3f9a1c2b7d', group: 'Sunrise Hotels', title: 'Staff application', identity: 'username', questions: [] } } }],
+        ['POST', '/public/applications/{applicationId}/submit', 'none', 'Submit the web form', { body: { username: 'Builderman', answers: { q1a2b3c4d: 'Stay calm' } }, response: { ok: true, message: 'Your application has been submitted.' },
+          notes: 'If the application requires Discord sign-in, send the token from the Discord sign-in in an `X-Public-Token` header instead of `username`.' }],
+      ]],
+    ];
+
+    const curl = (m, path, body) => `curl ${m === 'GET' ? '' : `-X ${m} `}"${BASE}${path.replace('{groupId}', '1234567').replace('{robloxId}', '156').replace('{discordId}', '123456789012345678').replace('{applicationId}', '3f9a1c2b7d')}"${path.startsWith('/public') ? '' : ' \\\n  -H "Authorization: Bearer rpk_your_key"'}${body ? ` \\\n  -H "Content-Type: application/json" \\\n  -d '${JSON.stringify(body)}'` : ''}`;
+    const md = (s) => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>');
+
+    $('#root').innerHTML = `
+      <div class="row">${icon('book', 'lg')}<div class="grow"><h1>${esc(window.RP_CONFIG.NAME || 'Roleplay System')} API</h1><p class="dim">Activity, requirements, ranking, time off, logs and account links over HTTPS + JSON.</p></div><a class="btn" href="index.html">Dashboard</a></div>
+
+      <h2>Basics</h2>
+      <p>Base URL</p><pre><code>${esc(BASE)}</code></pre>
+      <p><b>Authentication.</b> Create a key in the dashboard under <b>API</b> and send it on every request as either header:</p>
+      <pre><code>Authorization: Bearer rpk_your_key\nX-Api-Key: rpk_your_key</code></pre>
+      <p class="dim">Keys are shown once, can be limited to one group, and only work for the scopes you tick. Treat them like passwords: use them from servers and bots only, never in a web page or a Roblox LocalScript.</p>
+      <div class="tbl-wrap card"><table><thead><tr><th>Scope</th><th>Allows</th></tr></thead><tbody>
+        <tr><td><code>read</code></td><td>Activity, members, requirements, time off, logs, account links</td></tr>
+        <tr><td><code>ranking</code></td><td>Promote, demote, set rank</td></tr>
+        <tr><td><code>timeoff</code></td><td>Submit time-off requests</td></tr>
+        <tr><td><code>game</code></td><td>Roblox game endpoints (key must be tied to a group)</td></tr>
+        <tr><td><code>verify</code></td><td>Confirm Discord → Roblox link codes</td></tr></tbody></table></div>
+      <p><b>Errors.</b> Failures return a non-2xx status and a JSON body with a human-readable message:</p>
+      <pre><code>${esc(j({ error: 'This API key is missing the "ranking" scope' }))}</code></pre>
+      <div class="tbl-wrap card"><table><thead><tr><th>Status</th><th>Meaning</th></tr></thead><tbody>
+        <tr><td>400</td><td>The request was malformed — the message says which field.</td></tr>
+        <tr><td>401</td><td>Missing or invalid API key.</td></tr>
+        <tr><td>403</td><td>The key lacks the scope, or is not valid for that group.</td></tr>
+        <tr><td>404</td><td>Group, member, link or application not found.</td></tr>
+        <tr><td>409</td><td>Conflict, e.g. a pending application already exists.</td></tr>
+        <tr><td>502</td><td>Roblox Open Cloud rejected or failed the request; the message includes Roblox’s reason.</td></tr></tbody></table></div>
+      <p class="dim"><b>Conventions.</b> Timestamps are Unix seconds. Durations are seconds. Days are UTC dates. Roblox and Discord IDs are strings in responses and may be sent as strings or numbers.</p>
+
+      ${SECTIONS.map(([title, intro, eps]) => `<h2>${esc(title)}</h2><p class="dim">${md(intro)}</p>${eps.map(([m, path, scope, sum, d]) => `
+        <details class="ep"><summary><span class="verb ${m}">${m}</span><code>${esc(path)}</code><span class="dim grow">${esc(sum)}</span><span class="badge">${scope === 'none' ? 'no key' : `scope: ${esc(scope)}`}</span></summary>
+          <div class="body">
+            ${d.notes ? `<p>${md(d.notes)}</p>` : ''}
+            ${d.params ? `<div class="tbl-wrap"><table><thead><tr><th>Query parameter</th><th>Description</th></tr></thead><tbody>${d.params.map(([n, t]) => `<tr><td><code>${n}</code></td><td>${md(t)}</td></tr>`).join('')}</tbody></table></div>` : ''}
+            ${d.body ? `<h3>Request body</h3><pre><code>${esc(j(d.body))}</code></pre>` : ''}
+            <h3>Example</h3><pre><code>${esc(curl(m, path, d.body))}</code></pre>
+            <h3>Response</h3><pre><code>${esc(j(d.response))}</code></pre>
+          </div></details>`).join('')}`).join('')}
+
+      <h2>Example: Discord bot command</h2>
+      <pre><code>${esc(`// "!activity <roblox username>" — how long has someone played this week?
+const res = await fetch("${BASE}/v1/groups/1234567/activity", {
+  headers: { Authorization: "Bearer " + process.env.RP_API_KEY },
+});
+const { leaderboard } = await res.json();
+const row = leaderboard.find((m) => m.username.toLowerCase() === name.toLowerCase());
+reply(row ? \`\${row.username}: \${(row.seconds / 3600).toFixed(1)}h this week\` : "Not a tracked member.");`)}</code></pre>`;
+  </script>
+</body>
+</html>

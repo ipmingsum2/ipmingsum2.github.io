@@ -39,6 +39,13 @@ jobs:
           mkdir -p "$RETYPE_OUTPUT_PATH/obfuscator"
           cp -a obfuscator/. "$RETYPE_OUTPUT_PATH/obfuscator/"
 
+      - name: Include roleplay system dashboard
+        run: |
+          test -n "$RETYPE_OUTPUT_PATH"
+          rm -rf "$RETYPE_OUTPUT_PATH/roleplay-system"
+          mkdir -p "$RETYPE_OUTPUT_PATH/roleplay-system"
+          cp -a roleplay-system/. "$RETYPE_OUTPUT_PATH/roleplay-system/"
+
       - uses: retypeapp/action-github-pages@latest
         with:
           update-branch: true

@@ -1,0 +1,346 @@
+// Views: applications (list, builder, submissions), logs, groups, API keys, linked accounts, access, account.
+'use strict';
+
+const Q_TYPES = [['short', 'Short answer'], ['paragraph', 'Paragraph'], ['choice', 'Multiple choice'], ['checkboxes', 'Checkboxes'], ['dropdown', 'Dropdown'], ['yesno', 'Yes / No'], ['number', 'Number'], ['scale', 'Linear scale'], ['section', 'Section heading']];
+const Q_LABEL = Object.fromEntries(Q_TYPES);
+const HAS_OPTS = ['choice', 'checkboxes', 'dropdown'];
+const GRADABLE = ['short', 'choice', 'checkboxes', 'dropdown', 'yesno', 'number'];
+const applyUrl = (id) => new URL(`apply.html?id=${id}`, location.href).href;
+
+/** Creates a group-bound API key with the "game" scope (used by generated place files and loader snippets). */
+async function createGameKey(label) {
+  if (!can('manage_api_keys')) throw new Error('You need the "manage API keys" permission to generate a game key.');
+  return (await api('/api/keys', { body: { name: `${label} — ${group().name}`, scopes: ['game', 'verify'], groupId: S.gid } })).key;
+}
+
+// ---------- applications ----------
+VIEWS.applications = async (el, id, sub, reload) => {
+  if (id === 'new' || (id && !sub)) return appBuilder(el, id === 'new' ? null : id);
+  if (id && sub === 'submissions') return appSubmissions(el, id, reload);
+  const { applications } = await api(G('/applications'));
+  const manage = can('manage_applications');
+  el.innerHTML = `${head('Applications', 'Application centers with your own questions. Applicants apply on the web page or inside the Roblox application center.', `
+      ${manage ? `<button class="btn" id="rbx">${icon('download')} Application center (.rbxlx)</button><a class="btn primary" href="#/applications/new">${icon('plus')} New application</a>` : ''}`)}
+    <div class="card"><div class="tbl-wrap"><table><thead><tr><th>Application</th><th>Questions</th><th>Status</th><th class="r">Pending</th><th class="r">Total</th><th></th></tr></thead><tbody>
+    ${applications.length ? applications.map((a) => `<tr><td><b>${esc(a.title)}</b><br><span class="muted">${a.settings.allowWeb === false ? 'In-game only' : `<a href="${applyUrl(a.id)}" target="_blank" rel="noopener">Web form</a>`}${a.settings.allowGame === false ? ' · web only' : ' · in-game'}</span></td>
+      <td class="num">${a.questions.filter((q) => q.type !== 'section').length}</td><td>${a.settings.open === false ? '<span class="badge bad">Closed</span>' : '<span class="badge good">Open</span>'}</td>
+      <td class="r num">${a.pending ? `<span class="badge warn">${a.pending}</span>` : '0'}</td><td class="r num">${a.total}</td>
+      <td class="r"><div class="row" style="justify-content:flex-end"><a class="btn sm" href="#/applications/${a.id}/submissions">Submissions</a>
+      ${a.settings.allowWeb === false ? '' : `<button class="btn ghost icon sm" data-copy="${a.id}" aria-label="Copy link" title="Copy link">${icon('copy', 'sm')}</button>`}
+      ${manage ? `<a class="btn ghost icon sm" href="#/applications/${a.id}" aria-label="Edit" title="Edit">${icon('edit', 'sm')}</a>` : ''}</div></td></tr>`).join('') : emptyRow(6, 'No applications yet.', 'file')}
+    </tbody></table></div></div>`;
+  $$('[data-copy]', el).forEach((b) => b.onclick = () => copyText(applyUrl(b.dataset.copy)));
+  if (manage) $('#rbx', el).onclick = () => modal({ title: 'Download the Roblox application center', body: `
+      <p class="dim">Generates a ready-to-publish place file for <b>${esc(group().name)}</b>. The place contains no questions — its server script fetches this group’s open applications from the API every time, so edits you make here appear in-game without regenerating the file.</p>
+      <div class="callout warn">${icon('alert')}<span>The file embeds a new API key in a server-only script. Do not share the file or make the place copyable. You can revoke the key any time on the API page.</span></div>
+      <p class="hint">After opening it in Roblox Studio: publish the place, then make sure <b>Game Settings → Security → Allow HTTP Requests</b> is on.</p>`,
+    actions: [{ label: 'Generate & download', kind: 'primary', onClick: async (close) => {
+      const key = await createGameKey('Application center');
+      downloadFile(`ApplicationCenter-${S.gid}.rbxlx`, await buildPlaceFile('appcenter', { apiUrl: API_URL, apiKey: key, title: group().name }));
+      close(); toast('Place file generated', 'good');
+    } }] });
+};
+
+async function appBuilder(el, id) {
+  if (!can('manage_applications')) throw new Error('You do not have permission to edit applications.');
+  const app = id ? (await api(`/api/applications/${id}`)).application : { title: '', description: '', questions: [], settings: { open: true, identity: 'username', allowWeb: true, allowGame: true } };
+  const qs = app.questions.map((q) => ({ ...q, options: q.options ? [...q.options] : undefined }));
+  const s = app.settings;
+  const g = group();
+  el.innerHTML = `<div><a href="#/applications" class="muted">← Applications</a></div>
+    ${head(id ? 'Edit application' : 'New application', '', `${id ? `<button class="btn danger" id="del">${icon('trash')} Delete</button>` : ''}<button class="btn primary" id="save">${icon('check')} Save</button>`)}
+    <div class="card"><div class="body stack">
+      <label class="field">Title<input id="title" maxlength="100" value="${esc(app.title)}" placeholder="e.g. Staff application"></label>
+      <label class="field">Description<textarea id="desc" maxlength="2000" placeholder="Shown at the top of the form">${esc(app.description)}</textarea></label>
+    </div></div>
+    <div class="card"><div class="head"><h2 class="grow">Questions</h2></div><div class="body stack"><div class="stack" id="qs"></div>
+      <div class="row wrap"><select id="newType" style="width:auto" aria-label="Question type">${Q_TYPES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select><button class="btn" id="addQ">${icon('plus')} Add question</button></div></div></div>
+    <div class="card"><div class="head"><h2>Settings</h2></div><div class="body stack">
+      <div class="grid2">
+        <label class="field">Who is applying?<select id="ident"><option value="username" ${s.identity !== 'discord' ? 'selected' : ''}>Applicant types their Roblox username</option><option value="discord" ${s.identity === 'discord' ? 'selected' : ''}>Must sign in with Discord (linked Roblox account)</option></select><small>Applies to the web form. In-game submissions are always the verified Roblox player.</small></label>
+        <label class="field">Rank on acceptance (optional)<select id="arank"><option value="">Do not rank automatically</option>${rolesOf(g).filter((r) => r.rank < 255).map((r) => `<option value="${r.rank}" ${s.acceptRank === r.rank ? 'selected' : ''}>${esc(r.name)} (${r.rank})</option>`).join('')}</select><small>Uses Roblox Open Cloud when a reviewer accepts.</small></label>
+      </div>
+      <label class="field">Discord webhook (optional)<input id="hook" value="${esc(s.webhookUrl || '')}" placeholder="https://discord.com/api/webhooks/…"><small>Notified on new submissions and decisions.</small></label>
+      <label class="field">Message after submitting<input id="succ" value="${esc(s.successMessage || '')}" placeholder="Your application has been submitted."></label>
+      <div class="row wrap" style="gap:18px">
+        <label class="check"><input type="checkbox" id="open" ${s.open === false ? '' : 'checked'}> Accepting submissions</label>
+        <label class="check"><input type="checkbox" id="web" ${s.allowWeb === false ? '' : 'checked'}> Available on the web form</label>
+        <label class="check"><input type="checkbox" id="game" ${s.allowGame === false ? '' : 'checked'}> Available in the Roblox application center</label>
+      </div></div></div>`;
+
+  const box = $('#qs', el);
+  const draw = () => {
+    box.innerHTML = qs.length ? qs.map((q, i) => `<div class="qcard" data-i="${i}">
+        <div class="bar-top"><span class="badge accent">${Q_LABEL[q.type]}</span><span class="grow"></span>
+          ${q.type === 'section' ? '' : `<label class="check"><input type="checkbox" data-f="required" ${q.required ? 'checked' : ''}> Required</label>`}
+          <button class="btn ghost icon sm" data-mv="-1" ${i === 0 ? 'disabled' : ''} aria-label="Move up">${icon('up', 'sm')}</button>
+          <button class="btn ghost icon sm" data-mv="1" ${i === qs.length - 1 ? 'disabled' : ''} aria-label="Move down">${icon('down', 'sm')}</button>
+          <button class="btn ghost icon sm" data-rm aria-label="Remove question">${icon('trash', 'sm')}</button></div>
+        <input data-f="label" value="${esc(q.label || '')}" placeholder="${q.type === 'section' ? 'Section title' : 'Question'}" aria-label="Question title" maxlength="300">
+        <input data-f="description" value="${esc(q.description || '')}" placeholder="Help text (optional)" aria-label="Help text" maxlength="500">
+        ${HAS_OPTS.includes(q.type) ? `<div class="stack gap-s">${(q.options || []).map((o, j) => `<div class="opt-row"><input data-opt="${j}" value="${esc(o)}" placeholder="Option ${j + 1}" aria-label="Option ${j + 1}" maxlength="120"><button class="btn ghost icon sm" data-rmopt="${j}" aria-label="Remove option">${icon('x', 'sm')}</button></div>`).join('')}
+          <div><button class="btn sm" data-addopt>${icon('plus', 'sm')} Add option</button></div></div>` : ''}
+        ${q.type === 'scale' ? `<div class="grid2"><label class="field">From<select data-f="min"><option ${q.min === 0 ? 'selected' : ''}>0</option><option ${q.min !== 0 ? 'selected' : ''}>1</option></select></label><label class="field">To<select data-f="max">${[2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => `<option ${n === (q.max || 5) ? 'selected' : ''}>${n}</option>`).join('')}</select></label></div>` : ''}
+        ${q.type === 'number' ? `<div class="grid2"><label class="field">Minimum (optional)<input type="number" data-f="min" value="${q.min ?? ''}"></label><label class="field">Maximum (optional)<input type="number" data-f="max" value="${q.max ?? ''}"></label></div>` : ''}
+        ${GRADABLE.includes(q.type) ? `<details ${q.points ? 'open' : ''}><summary class="hint" style="cursor:pointer">Auto-grading (optional)</summary><div class="grid2" style="margin-top:8px">
+          <label class="field">Points<input type="number" min="0" max="100" data-f="points" value="${q.points || ''}" placeholder="0 = not graded"></label>
+          <label class="field">Correct answer${q.type === 'checkboxes' ? 's' : ''}${q.type === 'yesno' ? `<select data-f="correct"><option value=""></option><option ${q.correct === 'Yes' ? 'selected' : ''}>Yes</option><option ${q.correct === 'No' ? 'selected' : ''}>No</option></select>`
+            : `<input data-f="correct" value="${esc(Array.isArray(q.correct) ? q.correct.join(' | ') : q.correct ?? '')}" placeholder="${q.type === 'checkboxes' ? 'Option A | Option B' : HAS_OPTS.includes(q.type) ? 'Exact option text' : 'Exact answer'}">`}</label></div>
+          <p class="hint">Applicants never see correct answers or points.</p></details>` : ''}
+      </div>`).join('') : `<div class="empty">${icon('file')}<div>No questions yet — add one below.</div></div>`;
+  };
+  draw();
+  // Text edits update the model in place; only structural changes redraw.
+  box.oninput = (e) => {
+    const card = e.target.closest('.qcard'); if (!card) return;
+    const q = qs[+card.dataset.i], t = e.target;
+    if (t.dataset.opt !== undefined) q.options[+t.dataset.opt] = t.value;
+    else if (t.dataset.f === 'required') q.required = t.checked;
+    else if (t.dataset.f === 'correct' && q.type === 'checkboxes') q.correct = t.value.split('|').map((x) => x.trim()).filter(Boolean);
+    else if (['min', 'max', 'points'].includes(t.dataset.f)) q[t.dataset.f] = t.value === '' ? null : Number(t.value);
+    else if (t.dataset.f) q[t.dataset.f] = t.value;
+  };
+  box.onchange = box.oninput;
+  box.onclick = (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    const i = +b.closest('.qcard').dataset.i, q = qs[i];
+    if (b.dataset.rm !== undefined) qs.splice(i, 1);
+    else if (b.dataset.mv) { const j = i + +b.dataset.mv; [qs[i], qs[j]] = [qs[j], qs[i]]; }
+    else if (b.dataset.addopt !== undefined) q.options.push('');
+    else if (b.dataset.rmopt !== undefined) q.options.splice(+b.dataset.rmopt, 1);
+    else return;
+    draw();
+  };
+  $('#addQ', el).onclick = () => {
+    const type = $('#newType', el).value;
+    qs.push({ type, label: '', description: '', required: type !== 'section', ...(HAS_OPTS.includes(type) ? { options: ['', ''] } : {}), ...(type === 'scale' ? { min: 1, max: 5 } : {}) });
+    draw(); $$('.qcard [data-f="label"]', box).pop().focus();
+  };
+  $('#save', el).onclick = (e) => run(e.currentTarget, async () => {
+    const body = { title: val(el, '#title'), description: val(el, '#desc'), questions: qs,
+      settings: { open: $('#open', el).checked, allowWeb: $('#web', el).checked, allowGame: $('#game', el).checked, identity: val(el, '#ident'), acceptRank: val(el, '#arank'), webhookUrl: val(el, '#hook'), successMessage: val(el, '#succ') } };
+    if (id) await api(`/api/applications/${id}`, { method: 'PATCH', body }); else await api(G('/applications'), { body });
+    toast('Application saved', 'good'); location.hash = '#/applications';
+  });
+  if (id) $('#del', el).onclick = async () => { if (await confirmBox('Delete application?', 'The form and all of its submissions will be permanently deleted.', 'Delete')) run(null, async () => { await api(`/api/applications/${id}`, { method: 'DELETE' }); location.hash = '#/applications'; }); };
+}
+
+async function appSubmissions(el, id, reload) {
+  const { application: app, submissions } = await api(`/api/applications/${id}/submissions`);
+  const review = can('review_applications');
+  const answer = (q, v) => v == null || v === '' ? '<span class="muted">No answer</span>' : esc(Array.isArray(v) ? v.join(', ') : v);
+  el.innerHTML = `<div><a href="#/applications" class="muted">← Applications</a></div>
+    ${head(app.title, `${submissions.filter((x) => x.status === 'pending').length} pending · ${submissions.length} shown`)}
+    <div class="card"><div class="tbl-wrap"><table><thead><tr><th>Applicant</th><th>Submitted</th><th>Score</th><th>Status</th><th></th></tr></thead><tbody>
+    ${submissions.length ? submissions.map((x) => `<tr class="click" data-id="${x.id}" tabindex="0"><td>${who(x.roblox_name, `Roblox ${x.roblox_id}${x.discord_id ? ` · Discord ${x.discord_id}` : ''}`)}</td><td class="muted">${fmtTime(x.created_at)}</td>
+      <td class="num">${x.max_score ? `${x.score}/${x.max_score}` : '—'}</td><td>${statusBadge(x.status)}${x.reviewer ? ` <span class="muted">by ${esc(x.reviewer)}</span>` : ''}</td><td class="r"><span class="btn sm">View</span></td></tr>`).join('') : emptyRow(5, 'No submissions yet.', 'file')}
+    </tbody></table></div></div>`;
+  const open = (e) => {
+    const tr = e.target.closest('tr[data-id]'); if (!tr || (e.type !== 'click' && e.key !== 'Enter')) return;
+    const x = submissions.find((y) => y.id == tr.dataset.id);
+    const decide = (status) => async (close, m) => {
+      const r = await api(`/api/submissions/${x.id}`, { method: 'PATCH', body: { status, note: val(m, '#note') } });
+      close();
+      if (r.rankError) toast(`Accepted, but auto-rank failed: ${r.rankError}`, 'bad'); else toast(r.ranked ? `Accepted and ranked to ${r.ranked.name}` : `Application ${status}`, 'good');
+      reload();
+    };
+    modal({ title: `${x.roblox_name} — ${app.title}`, wide: true, body: `
+        <div class="row wrap">${statusBadge(x.status)}${x.max_score ? `<span class="badge accent">Score ${x.score}/${x.max_score}</span>` : ''}<span class="muted">${fmtTime(x.created_at)}</span>
+          <a class="right" target="_blank" rel="noopener" href="https://www.roblox.com/users/${encodeURIComponent(x.roblox_id)}/profile">Roblox profile</a></div>
+        ${app.questions.map((q) => q.type === 'section' ? `<h3 style="margin-top:6px">${esc(q.label)}</h3>` : `<div><div class="dim" style="font-weight:550">${esc(q.label)}${q.points ? ` <span class="badge">${q.points} pt</span>` : ''}</div><div style="white-space:pre-wrap">${answer(q, x.answers[q.id])}</div>${q.points ? `<div class="hint">Expected: ${esc(Array.isArray(q.correct) ? q.correct.join(', ') : q.correct)}</div>` : ''}</div>`).join('')}
+        ${x.review_note ? `<div class="note"><b>Review note:</b> ${esc(x.review_note)}</div>` : ''}
+        ${review && x.status === 'pending' ? `<label class="field">Note (optional)<input id="note" placeholder="Shown in logs and the Discord notification"></label>${app.settings.acceptRank ? `<p class="hint">Accepting will set their rank to ${app.settings.acceptRank}.</p>` : ''}` : ''}`,
+      actions: review && x.status === 'pending' ? [{ label: 'Deny', kind: 'danger', onClick: decide('denied') }, { label: 'Accept', kind: 'primary', onClick: decide('accepted') }] : [] });
+  };
+  $('tbody', el).onclick = open; $('tbody', el).onkeydown = open;
+}
+
+// ---------- logs ----------
+VIEWS.logs = async (el) => {
+  const TYPES = [['', 'Everything'], ['rank', 'Ranking'], ['requirement', 'Requirements'], ['timeoff', 'Time off'], ['activity', 'Activity'], ['member', 'Notes & warnings'], ['application', 'Applications'], ['session', 'Sessions'], ['group', 'Groups'], ['access', 'Access'], ['auth', 'Sign-ins'], ['link', 'Account links'], ['apikey', 'API keys']];
+  const COLOR = { 'rank.promote': 'good', 'rank.demote': 'bad', 'requirement.not_met': 'bad', 'auth.denied': 'bad', 'access.revoked': 'bad', 'application.accepted': 'good', 'application.denied': 'bad', 'timeoff.approved': 'good', 'timeoff.denied': 'bad' };
+  el.innerHTML = `${head('Logs', 'Everything the system does: promotions, demotions, missed requirements, sign-ins, settings changes and more.')}
+    <div class="card"><div class="head">
+      <select id="scope" style="width:auto" aria-label="Scope">${S.gid ? `<option value="${S.gid}">${esc(group().name)}</option>` : ''}<option value="">All groups + system</option></select>
+      <select id="type" style="width:auto" aria-label="Type">${TYPES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
+      <div class="search grow">${icon('search', 'sm')}<input id="q" placeholder="Search by member, staff or text" aria-label="Search logs"></div></div>
+      <div class="tbl-wrap"><table><thead><tr><th>When</th><th>Type</th><th>What happened</th><th>By</th></tr></thead><tbody id="rows"></tbody></table></div>
+      <div class="body" id="more" style="text-align:center"></div></div>`;
+  let next = null;
+  const load = async (append) => {
+    const p = new URLSearchParams({ group: val(el, '#scope'), type: val(el, '#type'), q: val(el, '#q'), limit: 50 });
+    if (append && next) p.set('before', next);
+    const d = await api(`/api/logs?${p}`);
+    next = d.next;
+    const html = d.logs.map((l) => `<tr><td class="muted" style="white-space:nowrap" title="${new Date(l.ts * 1000).toISOString()}">${fmtTime(l.ts)}</td><td><span class="badge ${COLOR[l.type] || ''}">${esc(l.type)}</span></td><td>${esc(l.summary)}</td><td class="dim">${esc(l.actor_name || l.actor_type)}</td></tr>`).join('');
+    if (append) $('#rows', el).insertAdjacentHTML('beforeend', html); else $('#rows', el).innerHTML = html || emptyRow(4, 'No log entries match.', 'list');
+    $('#more', el).innerHTML = next ? '<button class="btn" id="moreBtn">Load older</button>' : '';
+    if (next) $('#moreBtn', el).onclick = (e) => run(e.currentTarget, () => load(true));
+  };
+  await load(false);
+  let timer;
+  $('#scope', el).onchange = $('#type', el).onchange = () => run(null, () => load(false));
+  $('#q', el).oninput = () => { clearTimeout(timer); timer = setTimeout(() => run(null, () => load(false)), 300); };
+};
+
+// ---------- groups ----------
+VIEWS.groups = async (el, _a, _b, reload) => {
+  if (!can('manage_groups')) throw new Error('You do not have permission to manage groups.');
+  await loadGroups(); drawGroupPick();
+  const refresh = async () => { await loadGroups(); drawGroupPick(); reload(); };
+  el.innerHTML = `${head('Groups', 'Every Roblox group this system manages. Each has its own tracked ranks, requirements, applications and API key.', `<button class="btn primary" id="add">${icon('plus')} Add group</button>`)}
+    ${S.groups.length ? S.groups.map((g) => `<div class="card" data-g="${g.id}"><div class="head"><div class="grow"><h2>${esc(g.name)}</h2><span class="muted">Group ID ${g.id}</span></div>
+        ${g.hasApiKey ? '<span class="badge good">Open Cloud connected</span>' : '<span class="badge warn">No Open Cloud key</span>'}
+        <button class="btn sm" data-a="setup">${icon('roblox', 'sm')} Roblox setup</button><button class="btn sm" data-a="roles">${icon('refresh', 'sm')} Refresh roles</button>
+        <button class="btn sm" data-a="edit">${icon('sliders', 'sm')} Settings</button><button class="btn sm danger icon" data-a="del" aria-label="Remove group">${icon('trash', 'sm')}</button></div>
+      <div class="body stack"><div><h3>Tracked ranks</h3><p class="hint">Only members in ticked ranks have activity recorded and requirements checked.</p></div>
+        ${rolesOf(g).length ? `<div class="row wrap" style="gap:8px 18px">${rolesOf(g).map((r) => `<label class="check"><input type="checkbox" data-rank="${r.rank}" ${g.trackedRanks.includes(r.rank) ? 'checked' : ''}> ${esc(r.name)} <span class="muted">(${r.rank})</span></label>`).join('')}</div>
+        <div><button class="btn primary sm" data-a="saveRanks">Save tracked ranks</button></div>` : `<div class="callout">${icon('info')}<span>Add an Open Cloud API key in Settings to load this group’s roles.</span></div>`}
+      </div></div>`).join('') : `<div class="card"><div class="empty">${icon('users')}<div>No groups yet.</div></div></div>`}`;
+
+  const keyHelp = `<small>Create at <a href="https://create.roblox.com/dashboard/credentials" target="_blank" rel="noopener">create.roblox.com → Open Cloud → API keys</a> with the <code>group:read</code> and <code>group:write</code> permissions for this group. The key’s owner needs permission to manage members in the group. Stored encrypted.</small>`;
+  $('#add', el).onclick = () => modal({ title: 'Add a Roblox group', body: `
+      <label class="field">Group ID<input id="id" inputmode="numeric" placeholder="e.g. 1234567"><small>The number in the group’s URL.</small></label>
+      <label class="field">Open Cloud API key<input id="key" type="password" autocomplete="off">${keyHelp}</label>`,
+    actions: [{ label: 'Add group', kind: 'primary', onClick: async (close, m) => { const r = await api('/api/groups', { body: { id: val(m, '#id'), apiKey: val(m, '#key') } }); S.gid = r.id; store.set('rp_gid', r.id); close(); toast(`Added ${r.name}`, 'good'); refresh(); } }] });
+
+  el.onclick = async (e) => {
+    const b = e.target.closest('[data-a]'); if (!b) return;
+    const card = b.closest('[data-g]'), g = S.groups.find((x) => x.id === card.dataset.g), path = `/api/groups/${g.id}`;
+    const a = b.dataset.a;
+    if (a === 'saveRanks') run(b, async () => { await api(path, { method: 'PATCH', body: { trackedRanks: $$('[data-rank]:checked', card).map((i) => Number(i.dataset.rank)) } }); toast('Tracked ranks saved', 'good'); refresh(); });
+    if (a === 'roles') run(b, async () => { await api(`${path}/sync-roles`, { method: 'POST' }); toast('Roles refreshed', 'good'); refresh(); });
+    if (a === 'del' && await confirmBox(`Remove ${g.name}?`, 'All activity, requirements, time off, applications and submissions for this group will be permanently deleted, and its API keys revoked.', 'Remove group')) run(b, async () => { await api(path, { method: 'DELETE' }); refresh(); });
+    if (a === 'edit') modal({ title: `${g.name} — settings`, body: `
+        <label class="field">Display name<input id="name" value="${esc(g.name)}"></label>
+        <label class="field">Replace Open Cloud API key<input id="key" type="password" autocomplete="off" placeholder="${g.hasApiKey ? 'Leave blank to keep the current key' : 'Paste a key'}">${keyHelp}</label>
+        <label class="field">Highest rank this system may assign<input id="max" type="number" min="1" max="254" value="${g.settings.ranking?.maxRank || 254}"><small>Promotions, set-rank and auto-rank on acceptance never go above this, and members above it cannot be changed.</small></label>
+        <label class="field">Log webhook<input id="log" value="${esc(g.settings.logWebhook || '')}" placeholder="https://discord.com/api/webhooks/…"><small>Every log entry for this group is mirrored to this Discord channel.</small></label>
+        <label class="field">Session announcements webhook<input id="ev" value="${esc(g.settings.events?.webhookUrl || '')}" placeholder="https://discord.com/api/webhooks/…"></label>`,
+      actions: [{ label: 'Save', kind: 'primary', onClick: async (close, m) => {
+        const body = { name: val(m, '#name'), ranking: { maxRank: Number(val(m, '#max')) }, logWebhook: val(m, '#log'), events: { webhookUrl: val(m, '#ev') } };
+        if (val(m, '#key')) body.apiKey = val(m, '#key');
+        await api(path, { method: 'PATCH', body }); close(); toast('Group settings saved', 'good'); refresh();
+      } }] });
+    if (a === 'setup') { S.gid = g.id; store.set('rp_gid', g.id); drawGroupPick(); robloxSetup(); }
+  };
+};
+
+function robloxSetup() {
+  const g = group();
+  const m = modal({ title: `Roblox setup — ${g.name}`, wide: true, body: `
+      <p class="dim">Three pieces connect Roblox to this system. Each download creates a fresh API key and embeds it in a <b>server-only</b> script — never share these files or put the key in a LocalScript.</p>
+      <div class="card"><div class="body stack gap-s"><h3>1 · Activity tracker (ModuleScript)</h3>
+        <p class="dim">Add <code>ActivityTracker</code> as a ModuleScript in <code>ServerScriptService</code> of your main game, then start it from a Script. It reports playtime, idle time and chat messages for tracked ranks every minute.</p>
+        <div class="row wrap"><button class="btn" data-d="module">${icon('download')} ActivityTracker.lua</button><button class="btn" data-d="loader">${icon('copy')} Copy loader script (with new key)</button></div></div></div>
+      <div class="card"><div class="body stack gap-s"><h3>2 · Verification game (Discord → Roblox)</h3>
+        <p class="dim">A small place where players type the code from the Verify page to link their Discord and Roblox accounts.</p>
+        <div class="row wrap"><button class="btn" data-d="verify">${icon('download')} VerificationGame.rbxlx</button><a class="btn ghost" href="verify.html" target="_blank" rel="noopener">${icon('external')} Verify page</a></div></div></div>
+      <div class="card"><div class="body stack gap-s"><h3>3 · Application center</h3>
+        <p class="dim">A place that loads this group’s open applications from the API and submits answers as the verified player.</p>
+        <div class="row wrap"><button class="btn" data-d="appcenter">${icon('download')} ApplicationCenter.rbxlx</button></div></div></div>
+      <p class="hint">In every place: enable <b>Game Settings → Security → Allow HTTP Requests</b>. Keys can be revoked on the API page.</p>` });
+  m.el.onclick = (e) => {
+    const b = e.target.closest('[data-d]'); if (!b) return;
+    run(b, async () => {
+      const d = b.dataset.d;
+      if (d === 'module') return downloadFile('ActivityTracker.lua', await luaSource('ActivityTracker.lua'), 'text/plain');
+      const key = await createGameKey({ loader: 'Activity tracker', verify: 'Verification game', appcenter: 'Application center' }[d]);
+      if (d === 'loader') return copyText(`-- Script in ServerScriptService (next to the ActivityTracker ModuleScript)\nlocal ActivityTracker = require(script.Parent:WaitForChild("ActivityTracker"))\n\nActivityTracker.Start({\n\tApiUrl = "${API_URL}",\n\tApiKey = "${key}",\n})\n`);
+      downloadFile(`${d === 'verify' ? 'VerificationGame' : 'ApplicationCenter'}-${g.id}.rbxlx`, await buildPlaceFile(d, { apiUrl: API_URL, apiKey: key, title: g.name }));
+      toast('Place file generated', 'good');
+    });
+  };
+}
+
+// ---------- API keys ----------
+VIEWS.api = async (el, _a, _b, reload) => {
+  if (!can('manage_api_keys')) throw new Error('You do not have permission to manage API keys.');
+  const { keys } = await api('/api/keys');
+  const SC = { read: 'Read activity, members, requirements, logs, links', ranking: 'Promote / demote / set rank', timeoff: 'Submit time-off requests', game: 'Roblox game: heartbeats, in-game applications', verify: 'Roblox game: confirm link codes' };
+  el.innerHTML = `${head('API', 'Keys for bots, websites and your Roblox games.', `<a class="btn" href="docs.html" target="_blank" rel="noopener">${icon('book')} API docs</a><button class="btn primary" id="add">${icon('plus')} New key</button>`)}
+    <div class="card"><div class="body row wrap"><span class="dim">Base URL</span><code class="grow">${esc(API_URL)}/v1</code><button class="btn sm" id="cp">${icon('copy', 'sm')} Copy</button></div></div>
+    <div class="card"><div class="tbl-wrap"><table><thead><tr><th>Name</th><th>Key</th><th>Group</th><th>Scopes</th><th>Last used</th><th></th></tr></thead><tbody>
+    ${keys.length ? keys.map((k) => `<tr><td><b>${esc(k.name)}</b><br><span class="muted">by ${esc(k.created_by || '?')} · ${fmtDate(k.created_at)}</span></td><td class="mono">${esc(k.prefix)}…</td>
+      <td>${k.group_id ? esc(S.groups.find((g) => g.id === k.group_id)?.name || k.group_id) : '<span class="muted">All groups</span>'}</td><td>${k.scopes.map((s) => `<span class="badge">${s}</span>`).join(' ')}</td>
+      <td class="muted">${k.last_used ? ago(k.last_used) : 'Never'}</td><td class="r"><button class="btn sm danger" data-rev="${k.id}">Revoke</button></td></tr>`).join('') : emptyRow(6, 'No API keys yet.', 'key')}
+    </tbody></table></div></div>`;
+  $('#cp', el).onclick = () => copyText(`${API_URL}/v1`);
+  $('#add', el).onclick = () => modal({ title: 'New API key', body: `
+      <label class="field">Name<input id="n" placeholder="e.g. Discord bot"></label>
+      <label class="field">Group<select id="g"><option value="">All groups</option>${S.groups.map((g) => `<option value="${g.id}" ${g.id === S.gid ? 'selected' : ''}>${esc(g.name)}</option>`).join('')}</select></label>
+      <div class="stack gap-s"><b style="font-size:13px">Scopes</b>${S.scopes.map((s) => `<label class="check"><input type="checkbox" data-s="${s}" ${s === 'read' ? 'checked' : ''}> <code>${s}</code> <span class="dim">${SC[s] || ''}</span></label>`).join('')}</div>`,
+    actions: [{ label: 'Create key', kind: 'primary', onClick: async (close, m) => {
+      const r = await api('/api/keys', { body: { name: val(m, '#n'), groupId: val(m, '#g'), scopes: $$('[data-s]:checked', m).map((i) => i.dataset.s) } });
+      close();
+      modal({ title: 'Copy your API key', body: `<div class="callout warn">${icon('alert')}<span>This is the only time the full key is shown. Store it somewhere safe.</span></div><pre><code id="k">${esc(r.key)}</code></pre>`, actions: [{ label: 'Copy', kind: 'primary', onClick: () => copyText(r.key) }] });
+      reload();
+    } }] });
+  $$('[data-rev]', el).forEach((b) => b.onclick = async () => { if (await confirmBox('Revoke key?', 'Anything using this key will stop working immediately.', 'Revoke')) run(b, async () => { await api(`/api/keys/${b.dataset.rev}`, { method: 'DELETE' }); reload(); }); });
+};
+
+// ---------- linked accounts ----------
+VIEWS.links = async (el, _a, _b, reload) => {
+  el.innerHTML = `${head('Linked accounts', 'Discord ↔ Roblox links made through the verification game. Used to ping members in requirement notices and to identify applicants.', `<a class="btn" href="verify.html" target="_blank" rel="noopener">${icon('external')} Verify page</a>`)}
+    <div class="card"><div class="head"><div class="search grow">${icon('search', 'sm')}<input id="q" placeholder="Search by Roblox or Discord name / ID" aria-label="Search links"></div></div>
+    <div class="tbl-wrap"><table><thead><tr><th>Roblox</th><th>Discord</th><th>Linked</th><th></th></tr></thead><tbody id="rows"></tbody></table></div></div>`;
+  const load = async () => {
+    const { links } = await api(`/api/links?q=${encodeURIComponent(val(el, '#q'))}`);
+    $('#rows', el).innerHTML = links.length ? links.map((l) => `<tr><td>${who(l.roblox_name || l.roblox_id, `ID ${l.roblox_id}`)}</td><td>${esc(l.discord_name || '')} <span class="muted mono">${esc(l.discord_id)}</span></td><td class="muted">${fmtDate(l.linked_at)}</td>
+      <td class="r">${can('manage_groups') ? `<button class="btn ghost icon sm" data-del="${esc(l.discord_id)}" aria-label="Remove link">${icon('trash', 'sm')}</button>` : ''}</td></tr>`).join('') : emptyRow(4, 'No linked accounts found.', 'link');
+    $$('[data-del]', el).forEach((b) => b.onclick = async () => { if (await confirmBox('Remove link?', 'The member will need to verify again.', 'Remove')) run(b, async () => { await api(`/api/links/${b.dataset.del}`, { method: 'DELETE' }); load(); }); });
+  };
+  await load();
+  let timer;
+  $('#q', el).oninput = () => { clearTimeout(timer); timer = setTimeout(() => run(null, load), 300); };
+};
+
+// ---------- access (owner) ----------
+VIEWS.access = async (el, _a, _b, reload) => {
+  if (S.user.role !== 'owner') throw new Error('Only the owner can manage access.');
+  const { users } = await api('/api/users');
+  const P = { manage_activity: 'Manage activity, requirements, time off, notes, sessions', ranking: 'Promote / demote / set ranks', manage_groups: 'Add and configure groups', manage_applications: 'Create and edit applications', review_applications: 'Accept / deny submissions', view_logs: 'View logs', manage_api_keys: 'Create and revoke API keys' };
+  const form = (u = {}) => `
+      <label class="field">Name<input id="n" value="${esc(u.name || '')}" placeholder="Shown in logs"></label>
+      <div class="grid2"><label class="field">Google email<input id="ge" type="email" value="${esc(u.googleEmail || '')}" placeholder="name@gmail.com"></label>
+      <label class="field">Discord user ID<input id="di" inputmode="numeric" value="${esc(u.discordId || '')}" placeholder="e.g. 123456789012345678"></label></div>
+      <label class="field">Roblox user ID (optional)<input id="ri" inputmode="numeric" value="${esc(u.robloxId || '')}"></label>
+      <p class="hint">They can sign in with either identity you enter, then link the other one themselves from My account.</p>
+      <div class="stack gap-s"><b style="font-size:13px">Permissions</b><span class="hint">Everyone on the whitelist can view activity, requirements, time off and sessions.</span>
+      ${S.permissions.map((p) => `<label class="check"><input type="checkbox" data-p="${p}" ${u.permissions?.includes(p) ? 'checked' : ''}> ${P[p] || p}</label>`).join('')}</div>`;
+  const read = (m) => ({ name: val(m, '#n'), googleEmail: val(m, '#ge'), discordId: val(m, '#di'), robloxId: val(m, '#ri'), permissions: $$('[data-p]:checked', m).map((i) => i.dataset.p) });
+  el.innerHTML = `${head('Access', 'This system is whitelist-only. Only people listed here can sign in, and only you can change this list.', `<button class="btn primary" id="add">${icon('plus')} Whitelist someone</button>`)}
+    <div class="card"><div class="tbl-wrap"><table><thead><tr><th>User</th><th>Google</th><th>Discord</th><th>Roblox</th><th>Permissions</th><th>Last sign-in</th><th></th></tr></thead><tbody>
+    ${users.map((u) => `<tr><td>${who(u.name || u.googleEmail || u.discordId, u.role === 'owner' ? 'Owner' : '')}</td>
+      <td>${u.googleEmail ? esc(u.googleEmail) : '<span class="muted">—</span>'}</td><td>${u.discordId ? `${esc(u.discordName || '')} <span class="muted mono">${esc(u.discordId)}</span>` : '<span class="muted">—</span>'}</td>
+      <td>${u.robloxId ? `${esc(u.robloxName || '')} <span class="muted mono">${esc(u.robloxId)}</span>` : '<span class="muted">—</span>'}</td>
+      <td>${u.role === 'owner' ? '<span class="badge accent">Everything</span>' : u.permissions.length ? u.permissions.map((p) => `<span class="badge">${p.replace(/_/g, ' ')}</span>`).join(' ') : '<span class="badge">View only</span>'}</td>
+      <td class="muted">${u.lastLogin ? ago(u.lastLogin) : 'Never'}</td>
+      <td class="r">${u.role === 'owner' ? '' : `<div class="row" style="justify-content:flex-end"><button class="btn ghost icon sm" data-edit="${u.id}" aria-label="Edit">${icon('edit', 'sm')}</button><button class="btn ghost icon sm" data-del="${u.id}" aria-label="Remove">${icon('trash', 'sm')}</button></div>`}</td></tr>`).join('')}
+    </tbody></table></div></div>`;
+  $('#add', el).onclick = () => modal({ title: 'Whitelist someone', body: form(), actions: [{ label: 'Add to whitelist', kind: 'primary', onClick: async (close, m) => { await api('/api/users', { body: read(m) }); close(); toast('Added to the whitelist', 'good'); reload(); } }] });
+  $$('[data-edit]', el).forEach((b) => b.onclick = () => { const u = users.find((x) => x.id == b.dataset.edit); modal({ title: `Edit access — ${u.name || u.googleEmail || u.discordId}`, body: form(u), actions: [{ label: 'Save', kind: 'primary', onClick: async (close, m) => { await api(`/api/users/${u.id}`, { method: 'PATCH', body: read(m) }); close(); toast('Access updated', 'good'); reload(); } }] }); });
+  $$('[data-del]', el).forEach((b) => b.onclick = async () => { if (await confirmBox('Remove from whitelist?', 'They will be signed out immediately and can no longer sign in.', 'Remove')) run(b, async () => { await api(`/api/users/${b.dataset.del}`, { method: 'DELETE' }); reload(); }); });
+};
+
+// ---------- my account ----------
+VIEWS.account = async (el, _a, _b, reload) => {
+  const u = (await api('/api/me')).user;
+  S.user = u;
+  const rowFor = (key, ic, label, value, linked) => `<tr><td><div class="row">${icon(ic)} <b>${label}</b></div></td><td>${linked ? esc(value) : '<span class="muted">Not linked</span>'}</td>
+    <td class="r">${linked ? `<button class="btn sm" data-unlink="${key}">Unlink</button>` : `<button class="btn sm primary" data-link="${key}">Link</button>`}</td></tr>`;
+  el.innerHTML = `${head('My account', 'Link your Google, Discord and Roblox accounts so you can sign in with either and be recognised everywhere.')}
+    <div class="card"><div class="tbl-wrap"><table><tbody>
+      ${rowFor('google', 'google', 'Google', u.googleEmail, !!u.googleEmail)}
+      ${rowFor('discord', 'discord', 'Discord', `${u.discordName || ''} (${u.discordId})`, !!u.discordId)}
+      ${rowFor('roblox', 'roblox', 'Roblox', `${u.robloxName || ''} (${u.robloxId})`, !!u.robloxId)}
+    </tbody></table></div></div>
+    <div class="card"><div class="head"><h2>Your permissions</h2></div><div class="body row wrap">${u.role === 'owner' ? '<span class="badge accent">Owner — everything</span>' : u.permissions.length ? u.permissions.map((p) => `<span class="badge">${p.replace(/_/g, ' ')}</span>`).join('') : '<span class="badge">View only</span>'}</div></div>`;
+  $$('[data-link]', el).forEach((b) => b.onclick = () => run(b, async () => {
+    const p = b.dataset.link;
+    if (p !== 'roblox') { location.href = (await api('/api/auth/link', { body: { provider: p } })).url; return; }
+    const { code } = await api('/api/me/verify-code', { method: 'POST' });
+    modal({ title: 'Link your Roblox account', body: `<p class="dim">Join the verification game on Roblox and enter this code. It expires in 15 minutes.</p><div class="codebox">${esc(code)}</div><p class="hint">This page updates after you close this window.</p>`, actions: [{ label: 'Done', kind: 'primary', onClick: (close) => { close(); reload(); } }] });
+  }));
+  $$('[data-unlink]', el).forEach((b) => b.onclick = async () => { if (await confirmBox(`Unlink ${b.dataset.unlink}?`, 'You can link it again at any time.', 'Unlink')) run(b, async () => { await api('/api/auth/unlink', { body: { provider: b.dataset.unlink } }); reload(); }); });
+};
