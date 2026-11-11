@@ -8,9 +8,10 @@ const GRADABLE = ['short', 'choice', 'checkboxes', 'dropdown', 'yesno', 'number'
 const applyUrl = (id) => new URL(`apply.html?id=${id}`, location.href).href;
 
 /** Creates a group-bound API key with the "game" scope (used by generated place files and loader snippets). */
-async function createGameKey(label) {
+async function createGameKey(label, gid = S.gid) {
   if (!can('manage_api_keys')) throw new Error('You need the "manage API keys" permission to generate a game key.');
-  return (await api('/api/keys', { body: { name: `${label} — ${group().name}`, scopes: ['game', 'verify'], groupId: S.gid } })).key;
+  const g = S.groups.find((x) => x.id === gid);
+  return (await api('/api/keys', { body: { name: `${label} — ${g?.name || gid}`, scopes: ['game', 'verify'], groupId: gid } })).key;
 }
 
 // ---------- applications ----------
@@ -161,7 +162,7 @@ VIEWS.logs = async (el) => {
   const COLOR = { 'rank.promote': 'good', 'rank.demote': 'bad', 'requirement.not_met': 'bad', 'auth.denied': 'bad', 'access.revoked': 'bad', 'application.accepted': 'good', 'application.denied': 'bad', 'timeoff.approved': 'good', 'timeoff.denied': 'bad' };
   el.innerHTML = `${head('Logs', 'Everything the system does: promotions, demotions, missed requirements, sign-ins, settings changes and more.')}
     <div class="card"><div class="head">
-      <select id="scope" style="width:auto" aria-label="Scope">${S.gid ? `<option value="${S.gid}">${esc(group().name)}</option>` : ''}<option value="">All groups + system</option></select>
+      <select id="scope" style="width:auto" aria-label="Scope">${group() ? `<option value="${S.gid}">${esc(group().name)}</option>` : ''}<option value="">All groups + system</option>${S.groups.filter((g) => g.id !== S.gid).map((g) => `<option value="${esc(g.id)}">${esc(g.name)}</option>`).join('')}</select>
       <select id="type" style="width:auto" aria-label="Type">${TYPES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
       <div class="search grow">${icon('search', 'sm')}<input id="q" placeholder="Search by member, staff or text" aria-label="Search logs"></div></div>
       <div class="tbl-wrap"><table><thead><tr><th>When</th><th>Type</th><th>What happened</th><th>By</th></tr></thead><tbody id="rows"></tbody></table></div>
@@ -186,8 +187,8 @@ VIEWS.logs = async (el) => {
 // ---------- groups ----------
 VIEWS.groups = async (el, _a, _b, reload) => {
   if (!can('manage_groups')) throw new Error('You do not have permission to manage groups.');
-  await loadGroups(); drawGroupPick();
-  const refresh = async () => { await loadGroups(); drawGroupPick(); reload(); };
+  await loadGroups();
+  const refresh = async () => { await loadGroups(); reload(); };
   el.innerHTML = `${head('Groups', 'Every Roblox group this system manages. Each has its own tracked ranks, requirements, applications and API key.', `<button class="btn primary" id="add">${icon('plus')} Add group</button>`)}
     ${S.groups.length ? S.groups.map((g) => `<div class="card" data-g="${g.id}"><div class="head"><div class="grow"><h2>${esc(g.name)}</h2><span class="muted">Group ID ${g.id}</span></div>
         ${g.hasApiKey ? '<span class="badge good">Open Cloud connected</span>' : '<span class="badge warn">No Open Cloud key</span>'}
@@ -202,7 +203,7 @@ VIEWS.groups = async (el, _a, _b, reload) => {
   $('#add', el).onclick = () => modal({ title: 'Add a Roblox group', body: `
       <label class="field">Group ID<input id="id" inputmode="numeric" placeholder="e.g. 1234567"><small>The number in the group’s URL.</small></label>
       <label class="field">Open Cloud API key<input id="key" type="password" autocomplete="off">${keyHelp}</label>`,
-    actions: [{ label: 'Add group', kind: 'primary', onClick: async (close, m) => { const r = await api('/api/groups', { body: { id: val(m, '#id'), apiKey: val(m, '#key') } }); S.gid = r.id; store.set('rp_gid', r.id); close(); toast(`Added ${r.name}`, 'good'); refresh(); } }] });
+    actions: [{ label: 'Add group', kind: 'primary', onClick: async (close, m) => { const r = await api('/api/groups', { body: { id: val(m, '#id'), apiKey: val(m, '#key') } }); close(); toast(`Added ${r.name}`, 'good'); refresh(); } }] });
 
   el.onclick = async (e) => {
     const b = e.target.closest('[data-a]'); if (!b) return;
@@ -222,12 +223,11 @@ VIEWS.groups = async (el, _a, _b, reload) => {
         if (val(m, '#key')) body.apiKey = val(m, '#key');
         await api(path, { method: 'PATCH', body }); close(); toast('Group settings saved', 'good'); refresh();
       } }] });
-    if (a === 'setup') { S.gid = g.id; store.set('rp_gid', g.id); drawGroupPick(); robloxSetup(); }
+    if (a === 'setup') robloxSetup(g);
   };
 };
 
-function robloxSetup() {
-  const g = group();
+function robloxSetup(g = group()) {
   const m = modal({ title: `Roblox setup — ${g.name}`, wide: true, body: `
       <p class="dim">Three pieces connect Roblox to this system. Each download creates a fresh API key and embeds it in a <b>server-only</b> script — never share these files or put the key in a LocalScript.</p>
       <div class="card"><div class="body stack gap-s"><h3>1 · Activity tracker (ModuleScript)</h3>
@@ -245,7 +245,7 @@ function robloxSetup() {
     run(b, async () => {
       const d = b.dataset.d;
       if (d === 'module') return downloadFile('ActivityTracker.lua', await luaSource('ActivityTracker.lua'), 'text/plain');
-      const key = await createGameKey({ loader: 'Activity tracker', verify: 'Verification game', appcenter: 'Application center' }[d]);
+      const key = await createGameKey({ loader: 'Activity tracker', verify: 'Verification game', appcenter: 'Application center' }[d], g.id);
       if (d === 'loader') return copyText(`-- Script in ServerScriptService (next to the ActivityTracker ModuleScript)\nlocal ActivityTracker = require(script.Parent:WaitForChild("ActivityTracker"))\n\nActivityTracker.Start({\n\tApiUrl = "${API_URL}",\n\tApiKey = "${key}",\n})\n`);
       downloadFile(`${d === 'verify' ? 'VerificationGame' : 'ApplicationCenter'}-${g.id}.rbxlx`, await buildPlaceFile(d, { apiUrl: API_URL, apiKey: key, title: g.name }));
       toast('Place file generated', 'good');
@@ -343,4 +343,32 @@ VIEWS.account = async (el, _a, _b, reload) => {
     modal({ title: 'Link your Roblox account', body: `<p class="dim">Join the verification game on Roblox and enter this code. It expires in 15 minutes.</p><div class="codebox">${esc(code)}</div><p class="hint">This page updates after you close this window.</p>`, actions: [{ label: 'Done', kind: 'primary', onClick: (close) => { close(); reload(); } }] });
   }));
   $$('[data-unlink]', el).forEach((b) => b.onclick = async () => { if (await confirmBox(`Unlink ${b.dataset.unlink}?`, 'You can link it again at any time.', 'Unlink')) run(b, async () => { await api('/api/auth/unlink', { body: { provider: b.dataset.unlink } }); reload(); }); });
+};
+
+// ---------- Owner Menu overview ----------
+VIEWS.ownerHome = async (el) => {
+  if (!isOwner()) throw new Error('Only the owner can open the Owner Menu.');
+  const [users, keys, links, logs, overviews] = await Promise.all([
+    api('/api/users'), api('/api/keys'), api('/api/links'), api('/api/logs?limit=12'),
+    Promise.all(S.groups.map((g) => api(`/api/groups/${g.id}/overview`).catch(() => null))),
+  ]);
+  const gname = (id) => S.groups.find((g) => g.id === id)?.name;
+  const staff = users.users.filter((u) => u.role !== 'owner');
+  el.innerHTML = `${head('Owner Menu', 'Everything that spans all of your groups. Pick a group from the switcher to manage its activity, ranking and applications.', `<a class="btn" href="#/access">${icon('shield')} Whitelist someone</a><a class="btn primary" href="#/groups">${icon('plus')} Add a group</a>`)}
+    <div class="stats">
+      ${stat('Groups', S.groups.length, `${S.groups.filter((g) => g.hasApiKey).length} with Open Cloud`, 'users')}
+      ${stat('Whitelisted staff', staff.length, `${staff.filter((u) => u.lastLogin && Date.now() / 1000 - u.lastLogin < 7 * 86400).length} signed in this week`, 'shield')}
+      ${stat('API keys', keys.keys.length, `${keys.keys.filter((k) => k.scopes.includes('game')).length} used by games`, 'key')}
+      ${stat('Linked accounts', links.links.length >= 200 ? '200+' : links.links.length, 'Discord ↔ Roblox', 'link')}
+    </div>
+    <div class="card"><div class="head"><h2 class="grow">Your groups</h2><a class="btn sm ghost" href="#/groups">Manage</a></div>
+      <div class="tbl-wrap"><table><thead><tr><th>Group</th><th class="r">Tracked</th><th class="r">In game</th><th class="r">Hours this week</th><th class="r">Pending</th><th></th></tr></thead><tbody>
+      ${S.groups.length ? S.groups.map((g, i) => { const o = overviews[i]; return `<tr><td>${who(g.name, `ID ${g.id}`)}</td>
+        <td class="r num">${o ? o.trackedMembers : '—'}</td><td class="r num">${o ? `${o.online ? '<span class="dot"></span> ' : ''}${o.online}` : '—'}</td>
+        <td class="r num">${o ? fmtHours(o.week.seconds) : '—'}</td><td class="r">${o && o.pendingTimeOff + o.pendingApplications ? `<span class="badge warn">${o.pendingTimeOff + o.pendingApplications}</span>` : '<span class="muted">0</span>'}</td>
+        <td class="r"><button class="btn sm" data-open="${esc(g.id)}">Open ${icon('external', 'sm')}</button></td></tr>`; }).join('') : emptyRow(6, 'No groups yet — add one to start tracking.', 'users')}
+      </tbody></table></div></div>
+    <div class="card"><div class="head"><h2 class="grow">Latest across all groups</h2><a class="btn sm ghost" href="#/logs">All logs</a></div>
+      <div class="tbl-wrap"><table><tbody>${logs.logs.length ? logs.logs.map((l) => `<tr><td class="muted" style="white-space:nowrap">${ago(l.ts)}</td><td>${l.group_id ? `<span class="badge">${esc(gname(l.group_id) || l.group_id)}</span>` : '<span class="badge accent">system</span>'}</td><td>${esc(l.summary)}</td></tr>`).join('') : emptyRow(3, 'Nothing logged yet.', 'list')}</tbody></table></div></div>`;
+  el.onclick = (e) => { const b = e.target.closest('[data-open]'); if (b) enter(b.dataset.open); };
 };
