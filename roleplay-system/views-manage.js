@@ -260,15 +260,14 @@ VIEWS.api = async (el, _a, _b, reload) => {
   const { keys } = await api('/api/keys');
   const SC = { read: 'Read activity, members, requirements, logs, links', ranking: 'Promote / demote / set rank', timeoff: 'Submit time-off requests', game: 'Roblox game: heartbeats, in-game applications', verify: 'Roblox game: confirm link codes' };
   el.innerHTML = `${head('API', 'Keys for bots, websites and your Roblox games.', `<a class="btn" href="docs.html" target="_blank" rel="noopener">${icon('book')} API docs</a><button class="btn primary" id="add">${icon('plus')} New key</button>`)}
-    <div class="card"><div class="body row wrap"><span class="dim">Roblox games</span><code class="grow">${esc(ROBLOX_API_URL)}/v1</code><button class="btn sm" id="cpr">${icon('copy', 'sm')} Copy</button></div>
-      <div class="body row wrap" style="border-top:1px solid var(--line)"><span class="dim">Bots &amp; websites</span><code class="grow">${esc(API_URL)}/v1</code><button class="btn sm" id="cp">${icon('copy', 'sm')} Copy</button></div></div>
+    <div class="card"><div class="body row wrap"><span class="dim">Base URL</span><code class="grow">${esc(ROBLOX_API_URL)}/v1</code><button class="btn sm" id="cp">${icon('copy', 'sm')} Copy</button></div>
+      <div class="body hint" style="padding-top:0">Works from Roblox games, Discord bots and websites.</div></div>
     <div class="card"><div class="tbl-wrap"><table><thead><tr><th>Name</th><th>Key</th><th>Group</th><th>Scopes</th><th>Last used</th><th></th></tr></thead><tbody>
     ${keys.length ? keys.map((k) => `<tr><td><b>${esc(k.name)}</b><br><span class="muted">by ${esc(k.created_by || '?')} · ${fmtDate(k.created_at)}</span></td><td class="mono">${esc(k.prefix)}…</td>
       <td>${k.group_id ? esc(S.groups.find((g) => g.id === k.group_id)?.name || k.group_id) : '<span class="muted">All groups</span>'}</td><td>${k.scopes.map((s) => `<span class="badge">${s}</span>`).join(' ')}</td>
       <td class="muted">${k.last_used ? ago(k.last_used) : 'Never'}</td><td class="r"><button class="btn sm danger" data-rev="${k.id}">Revoke</button></td></tr>`).join('') : emptyRow(6, 'No API keys yet.', 'key')}
     </tbody></table></div></div>`;
-  $('#cp', el).onclick = () => copyText(`${API_URL}/v1`);
-  $('#cpr', el).onclick = () => copyText(`${ROBLOX_API_URL}/v1`);
+  $('#cp', el).onclick = () => copyText(`${ROBLOX_API_URL}/v1`);
   $('#add', el).onclick = () => modal({ title: 'New API key', body: `
       <label class="field">Name<input id="n" placeholder="e.g. Discord bot"></label>
       <label class="field">Group<select id="g"><option value="">All groups</option>${S.groups.map((g) => `<option value="${g.id}" ${g.id === S.gid ? 'selected' : ''}>${esc(g.name)}</option>`).join('')}</select></label>

@@ -97,7 +97,7 @@ Open the dashboard and sign in with the owner's Google or Discord account (the `
 
 ### 5. Roblox
 
-**Roblox relay.** Roblox's `HttpService` refuses `*.workers.dev` addresses, so games call a small Cloudflare Pages project instead: `roblox-proxy/` (live at `https://rp-roblox.pages.dev`). It forwards `/v1/*` to the Worker over a service binding — no extra public hop — and serves nothing else. Deploy or update it with:
+**Roblox relay.** Roblox's `HttpService` refuses `*.workers.dev` addresses, so games call a small Cloudflare Pages project instead: `roblox-proxy/` (live at `https://rp-roblox.pages.dev`). It forwards the public API (`/v1/*`, `/public/*`) to the Worker over a service binding — no extra public hop — and serves nothing else. It is also the base URL in the API docs, so bots and websites use the same address. Sign-in and the dashboard API stay on the Worker. Deploy or update it with:
 
 ```bash
 cd roblox-proxy

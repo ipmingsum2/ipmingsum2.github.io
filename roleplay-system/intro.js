@@ -10,7 +10,16 @@
 
   // ---------- theme-aware screenshots ----------
   const shotSrc = (name) => `assets/screens/${name}-${currentTheme()}.webp`;
-  const applyShots = () => $$('img[data-shot]').forEach((img) => { const s = shotSrc(img.dataset.shot); if (img.getAttribute('src') !== s) img.src = s; });
+  const applyShots = () => $$('img[data-shot]').forEach((img) => { const s = shotSrc(img.dataset.shot); if (img.getAttribute('src')?.split('?')[0] !== s) { img.dataset.tries = '0'; img.src = s; } });
+  // A screenshot that fails (e.g. fetched mid-deploy, or a cached 404) retries twice with a cache-busting query.
+  document.addEventListener('error', (e) => {
+    const img = e.target;
+    if (!(img instanceof HTMLImageElement) || !img.dataset.shot) return;
+    const n = Number(img.dataset.tries || 0);
+    if (n >= 2) return;
+    img.dataset.tries = String(n + 1);
+    setTimeout(() => { img.src = `${shotSrc(img.dataset.shot)}?r=${Date.now()}`; }, 600 * (n + 1));
+  }, true);
   document.addEventListener('rp:theme', applyShots);
   matchMedia('(prefers-color-scheme: light)').addEventListener('change', applyShots);
   $('#themeSlot').innerHTML = themeButton();
