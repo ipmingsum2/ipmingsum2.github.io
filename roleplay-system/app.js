@@ -34,7 +34,7 @@ const ERRORS = {
 
 function loginScreen(error) {
   const dev = ['localhost', '127.0.0.1'].includes(location.hostname);
-  $('#root').innerHTML = `<div class="center"><div class="login">
+  $('#root').innerHTML = `<div class="corner-theme">${themeButton()}</div><div class="center"><div class="login">
     <div class="mark">${icon('shield', 'lg')}</div>
     <h1>${esc(NAME)}</h1>
     <p class="dim">Access is whitelist-only. Sign in with an account the owner has approved.</p>
@@ -87,6 +87,7 @@ function shell() {
         <div id="groupPick" class="row"></div>
         <div class="right row">
           <a class="btn ghost sm" href="#/account">${icon('user', 'sm')} ${esc(S.user.name || S.user.googleEmail || 'Account')}${S.user.role === 'owner' ? ' <span class="badge accent">Owner</span>' : ''}</a>
+          ${themeButton()}
           <button class="btn ghost icon sm" id="logout" aria-label="Sign out" title="Sign out">${icon('logout')}</button>
         </div>
       </header>

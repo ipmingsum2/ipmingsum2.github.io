@@ -98,7 +98,7 @@ export async function authCallback(c) {
   const { env, ctx, req } = c;
   const provider = c.params.provider;
   const p = PROVIDERS[provider];
-  const home = `${dash(env)}/index.html`;
+  const home = `${dash(env)}/app.html`;
   const fail = (code, page = home) => redirect(`${page}#error=${encodeURIComponent(code)}`);
   if (!p) return fail('unknown_provider');
 
