@@ -6,7 +6,7 @@ A whitelist-only management system for Roblox roleplay groups: activity tracking
 - **Dashboard** — static HTML/JS, no build step, hosted on GitHub Pages (this folder)
 - **Roblox** — a tracker ModuleScript plus generated place files (`roblox/`)
 
-**Live:** dashboard <https://ipmingsum2.github.io/roleplay-system/> · API `https://rp-system.ipmingsum5.workers.dev` · [API docs](https://ipmingsum2.github.io/roleplay-system/docs.html)
+**Live:** tour <https://ipmingsum2.github.io/roleplay-system/> · dashboard <https://ipmingsum2.github.io/roleplay-system/app.html> · API `https://rp-system.ipmingsum5.workers.dev` · [API docs](https://ipmingsum2.github.io/roleplay-system/docs.html)
 
 ## What it does
 
@@ -22,6 +22,10 @@ A whitelist-only management system for Roblox roleplay groups: activity tracking
 | Accounts | Sign in with Google or Discord, link one to the other, link Roblox through a verification game |
 | Access | Whitelist-only. The owner manages the whitelist and per-user permissions |
 | Extras | Scheduled sessions (shifts/trainings) with Discord announcements, member notes and warnings, public API with scoped keys, API docs page |
+
+## Feature tour
+
+`index.html` is an animated, scroll-driven tour of every feature that ends with the sign-in; the sidebar lists each section and has sign-in buttons too. Its previews in `assets/screens/` are real screenshots of the dashboard running on fictional demo data, captured in light and dark (`<page>-light.webp` / `<page>-dark.webp`) — the tour swaps them with the theme. The light/dark toggle on every page remembers its choice; with no choice the system setting applies.
 
 ## Setup
 
@@ -157,7 +161,8 @@ worker/
   src/roblox.js       Open Cloud: roles, ranking, member sync
   src/apps.js         applications and submissions
   src/util.js         crypto, dates, webhooks, audit log
-index.html            dashboard (app.js, views-*.js, core.js, styles.css)
+index.html            animated feature tour + sign-in (intro.css, intro.js, assets/screens/)
+app.html              dashboard (app.js, views-*.js, core.js, styles.css)
 apply.html            public application form
 verify.html           Discord → Roblox linking
 docs.html             API reference

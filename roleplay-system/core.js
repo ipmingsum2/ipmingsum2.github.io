@@ -38,6 +38,9 @@ const ICONS = {
   play: '<path d="M7 4v16l13-8z"/>',
   google: '<path d="M20 12h-8M20 12a8 8 0 1 1-2.340-5.660"/>',
   discord: '<path d="M8.500 6.500C10.800 6 13.200 6 15.500 6.500L17 4.500l3 1.500c1.500 3.200 2 6.500 1.500 10-1.500 1.200-3 2-4.500 2.500l-1.200-2.200c-2.500.700-5.100.700-7.600 0L7 18.500c-1.500-.500-3-1.300-4.500-2.500C2 12.500 2.500 9.200 4 6l3-1.500z"/><circle cx="9" cy="12" r="1.300"/><circle cx="15" cy="12" r="1.300"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.930 4.930l1.410 1.410M17.660 17.660l1.410 1.410M2 12h2M20 12h2M6.340 17.660l-1.410 1.410M19.070 4.930l-1.410 1.410"/>',
+  moon: '<path d="M21 12.790A9 9 0 1 1 11.210 3 7 7 0 0 0 21 12.790z"/>',
+  sparkle: '<path d="M12 3l1.900 5.100L19 10l-5.100 1.900L12 17l-1.900-5.100L5 10l5.100-1.900z"/><path d="M19 15l.800 2.200L22 18l-2.200.800L19 21l-.800-2.200L16 18l2.200-.800z"/>',
   roblox: '<path d="M6.500 3 21 6.500 17.500 21 3 17.500z"/><path d="m10.600 10 3.400.800-.800 3.400-3.400-.800z"/>',
 };
 const icon = (name, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ''}</svg>`;
@@ -78,6 +81,13 @@ async function api(path, opts = {}) {
   if (!res.ok) { const e = new Error(data.error || `Request failed (${res.status})`); e.status = res.status; throw e; }
   return data;
 }
+
+// ---------- theme ----------
+// Each page sets data-theme from storage in <head>; with no choice the system setting applies.
+const currentTheme = () => document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+function setTheme(t) { document.documentElement.dataset.theme = t; store.set('rp_theme', t); document.dispatchEvent(new CustomEvent('rp:theme', { detail: t })); }
+const themeButton = (cls = '') => `<button class="btn ghost icon sm theme-btn ${cls}" data-theme-toggle aria-label="Switch between light and dark mode" title="Light / dark mode">${icon('sun', 'sun')}${icon('moon', 'moon')}</button>`;
+document.addEventListener('click', (e) => { if (e.target.closest('[data-theme-toggle]')) setTheme(currentTheme() === 'dark' ? 'light' : 'dark'); });
 
 // ---------- toast / modal ----------
 function toast(msg, kind = '') {

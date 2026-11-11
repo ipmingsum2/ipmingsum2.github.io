@@ -9,8 +9,9 @@
   --radius: 10px; --shadow: 0 10px 40px rgba(0, 0, 0, .45);
   color-scheme: dark;
 }
+/* Light theme: follows the system unless the viewer picked one with the theme toggle (data-theme on <html>). */
 @media (prefers-color-scheme: light) {
-  :root {
+  :root:not([data-theme="dark"]) {
     --bg: #f4f5f8; --panel: #ffffff; --panel-2: #f7f8fa; --line: #e3e6ec; --line-2: #cfd4dd;
     --text: #171b24; --text-2: #4d5565; --muted: #7b8494;
     --accent: #2f62d8; --accent-ink: #ffffff; --accent-soft: rgba(47, 98, 216, .1);
@@ -22,8 +23,23 @@
     color-scheme: light;
   }
 }
+:root[data-theme="light"] {
+  --bg: #f4f5f8; --panel: #ffffff; --panel-2: #f7f8fa; --line: #e3e6ec; --line-2: #cfd4dd;
+  --text: #171b24; --text-2: #4d5565; --muted: #7b8494;
+  --accent: #2f62d8; --accent-ink: #ffffff; --accent-soft: rgba(47, 98, 216, .1);
+  --good: #19806a; --good-soft: rgba(25, 128, 106, .12);
+  --warn: #a36a00; --warn-soft: rgba(163, 106, 0, .12);
+  --bad: #c93545; --bad-soft: rgba(201, 53, 69, .1);
+  --bar: #2f62d8; --bar-dim: #b9c9ee;
+  --shadow: 0 10px 40px rgba(20, 30, 60, .15);
+  color-scheme: light;
+}
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
+html { transition: background-color .25s; }
+.theme-btn .moon { display: none; }
+:root[data-theme="dark"] .theme-btn .sun { display: none; } :root[data-theme="dark"] .theme-btn .moon { display: block; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme]) .theme-btn .sun { display: none; } :root:not([data-theme]) .theme-btn .moon { display: block; } }
 body { background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
 a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: underline; }
 h1 { font-size: 22px; margin: 0; letter-spacing: -.01em; } h2 { font-size: 15px; margin: 0; } h3 { font-size: 13px; margin: 0; }
@@ -168,3 +184,7 @@ td.r, th.r { text-align: right; }
 .verb { font: 700 11.5px ui-monospace, Consolas, monospace; padding: 3px 7px; border-radius: 5px; min-width: 48px; text-align: center; }
 .verb.GET { background: var(--good-soft); color: var(--good); } .verb.POST { background: var(--accent-soft); color: var(--accent); }
 .verb.PATCH { background: var(--warn-soft); color: var(--warn); } .verb.DELETE { background: var(--bad-soft); color: var(--bad); }
+
+/* theme toggle on pages without a top bar */
+.corner-theme { position: fixed; top: 12px; right: 12px; z-index: 40; }
+.corner-theme .btn { background: var(--panel); border-color: var(--line); }

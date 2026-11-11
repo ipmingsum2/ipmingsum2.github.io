@@ -3,18 +3,250 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="robots" content="noindex">
   <title>Roleplay System</title>
+  <meta name="description" content="Activity tracking, requirements, ranking, applications and logs for Roblox roleplay groups.">
+  <script>try{var t=localStorage.getItem("rp_theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%278%27 fill=%27%235b8def%27/%3E%3Cpath d=%27M16 26s7-3.500 7-8.750V11l-7-2.600L9 11v6.250C9 22.500 16 26 16 26z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%272%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E">
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="intro.css">
 </head>
-<body>
-  <div id="root"><div class="center muted">Loading…</div></div>
+<body class="intro">
+  <div class="progress" aria-hidden="true"><i id="progress"></i></div>
+
+  <!-- Mobile top bar -->
+  <header class="mtop">
+    <button class="btn ghost icon" id="menuBtn" aria-label="Open menu" aria-controls="side" aria-expanded="false" data-ic="menu"></button>
+    <a class="brand" href="#top"><span class="mark" data-ic="shield"></span><span>Roleplay System</span></a>
+    <a class="btn primary sm" href="#signin" data-signin-label>Sign in</a>
+  </header>
+
+  <aside class="iside" id="side" aria-label="Tour">
+    <a class="brand" href="#top"><span class="mark" data-ic="shield"></span><span>Roleplay System</span></a>
+    <nav class="inav" id="inav"></nav>
+    <div class="iside-foot">
+      <div class="row"><span class="dim grow">Theme</span><span id="themeSlot"></span></div>
+      <div class="signin-mini" id="miniSignin"></div>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim" hidden></div>
+
+  <main class="imain" id="main">
+    <!-- HERO -->
+    <section class="hero" id="top" data-nav="Introduction" data-icon="home">
+      <div class="glow g1" aria-hidden="true"></div><div class="glow g2" aria-hidden="true"></div>
+      <div class="hero-copy">
+        <span class="eyebrow" data-anim><span data-ic="sparkle"></span> For Roblox roleplay groups</span>
+        <h1 data-anim style="--d:.08s">Run your whole group<br><span class="grad">from one dashboard.</span></h1>
+        <p class="lead" data-anim style="--d:.16s">Track every minute played, enforce activity requirements, rank through Roblox Open Cloud, run application centers and keep a log of everything — across as many groups as you manage.</p>
+        <div class="row wrap" data-anim style="--d:.24s">
+          <a class="btn primary lg" href="#activity">Take the tour <span data-ic="down"></span></a>
+          <a class="btn lg" href="#signin" data-signin-label>Sign in</a>
+        </div>
+      </div>
+      <div class="hero-stage" id="heroStage">
+        <figure class="frame hero-frame" id="heroFrame">
+          <div class="chrome" aria-hidden="true"><svg viewBox="0 0 52 12"><circle cx="6" cy="6" r="5"/><circle cx="24" cy="6" r="5"/><circle cx="42" cy="6" r="5"/></svg><span>ipmingsum2.github.io/roleplay-system</span></div>
+          <img data-shot="overview" alt="Dashboard overview: hours today and this week, members in game, requirement progress, a daily hours chart and recent log entries" width="1440" height="900" fetchpriority="high">
+        </figure>
+        <div class="float f1" aria-hidden="true"><span class="fi good" data-ic="play"></span><div><b>4 in game now</b><small>Avalynne, Sunny, Ruby +1</small></div></div>
+        <div class="float f2" aria-hidden="true"><span class="fi accent" data-ic="rank"></span><div><b>ZaraPoolside promoted</b><small>Customer → Trainee · logged</small></div></div>
+        <div class="float f3" aria-hidden="true"><span class="fi bad" data-ic="bell"></span><div><b>3 missed this week</b><small>Posted to #staff-activity</small></div></div>
+      </div>
+    </section>
+
+    <section class="strip" aria-label="At a glance">
+      <div data-anim><b data-count="15">0</b><span>features in one place</span></div>
+      <div data-anim style="--d:.06s"><b data-count="9">0</b><span>application question types</span></div>
+      <div data-anim style="--d:.12s"><b data-count="60" data-suffix="s">0</b><span>between activity heartbeats</span></div>
+      <div data-anim style="--d:.18s"><b>∞</b><span>groups per dashboard</span></div>
+    </section>
+
+    <!-- ACTIVITY TOUR -->
+    <section class="chapter" id="activity" data-nav="Activity tracking" data-icon="chart">
+      <header class="chead" data-anim><span class="kicker">01 · Activity</span><h2>Know exactly who shows up.</h2><p>A drop-in Roblox module reports who is in your game every minute. The dashboard turns it into hours, sessions, idle time and chat activity for every member in a tracked rank.</p></header>
+      <div class="tour" data-tour>
+        <div class="tour-media"><figure class="frame"><div class="chrome" aria-hidden="true"><svg viewBox="0 0 52 12"><circle cx="6" cy="6" r="5"/><circle cx="24" cy="6" r="5"/><circle cx="42" cy="6" r="5"/></svg><span data-url></span></div><div class="stack-imgs"></div></figure></div>
+        <div class="tour-steps">
+          <article class="step" data-shot-step="activity" data-url="#/activity">
+            <span class="sicon" data-ic="chart"></span><h3>Total hours, daily or weekly</h3>
+            <p>Switch the graph between days and weeks, then filter the leaderboard by today, this week, last week, 30 days, all time or any custom date range.</p>
+            <ul><li>Idle (AFK) time detected server-side</li><li>Sessions, chat messages and who is in game right now</li><li>Manual adjustments, always logged</li></ul>
+          </article>
+          <article class="step" data-shot-step="member" data-url="#/member/RubyLobby">
+            <span class="sicon" data-ic="user"></span><h3>A profile for every member</h3>
+            <p>Twelve weeks of history, recent play sessions, requirement results, time off, linked Discord — plus notes and warnings your staff can leave.</p>
+          </article>
+          <article class="step" data-shot-step="requirements" data-url="#/requirements">
+            <span class="sicon" data-ic="target"></span><h3>Daily &amp; weekly requirements</h3>
+            <p>Set a minimum, override it per rank, and pick the hour checks run. Anyone who misses it is logged and posted to a Discord webhook — with your own message, a role mention and pings for linked members.</p>
+            <ul><li>Progress bars update live through the week</li><li>“Run check now” for any period</li></ul>
+          </article>
+          <article class="step" data-shot-step="timeoff" data-url="#/timeoff">
+            <span class="sicon" data-ic="calendar"></span><h3>Time off that actually excuses</h3>
+            <p>Members request time off from a bot or staff add it directly. Approved time off overlapping a period automatically excuses them from that requirement check.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- RANKING -->
+    <section class="chapter split" id="ranking" data-nav="Ranking" data-icon="rank">
+      <div class="copy" data-anim="left">
+        <span class="kicker">02 · Ranking</span><h2>Promote without leaving the dashboard.</h2>
+        <p>Promote, demote or set any rank through Roblox Open Cloud — from a member’s profile, the ranking page, an accepted application or the API.</p>
+        <ul class="ticks"><li>A ceiling on the highest rank the system may assign</li><li>The group owner can never be touched</li><li>Every change logged with who, why and from/to</li></ul>
+      </div>
+      <div class="media layered" data-anim="right">
+        <figure class="frame back"><img data-shot="ranking" alt="Ranking page listing group roles, tracked ranks and recent rank changes" width="1440" height="900" loading="lazy"></figure>
+        <figure class="frame front"><img data-shot="rank-modal" alt="Change rank dialog with member, action and reason fields" width="1440" height="900" loading="lazy"></figure>
+      </div>
+    </section>
+
+    <!-- LOGS -->
+    <section class="chapter split rev" id="logs" data-nav="Logging" data-icon="list">
+      <div class="copy" data-anim="right">
+        <span class="kicker">03 · Logging</span><h2>Everything it does, written down.</h2>
+        <p>Promotions, demotions, missed requirements, time off, applications, sign-ins, settings changes, API keys — every action lands in a searchable log, and can be mirrored to a Discord channel per group.</p>
+        <div class="chips"><span class="badge good">rank.promote</span><span class="badge bad">rank.demote</span><span class="badge bad">requirement.not_met</span><span class="badge good">timeoff.approved</span><span class="badge">application.submitted</span><span class="badge">access.granted</span></div>
+      </div>
+      <div class="media" data-anim="left"><figure class="frame"><img data-shot="logs" alt="Log page filtered to one group showing promotions, applications and sign-ins" width="1440" height="900" loading="lazy"></figure></div>
+    </section>
+
+    <!-- GROUPS -->
+    <section class="chapter split" id="groups" data-nav="Groups" data-icon="users">
+      <div class="copy" data-anim="left">
+        <span class="kicker">04 · Group management</span><h2>One dashboard, every group.</h2>
+        <p>Add as many Roblox groups as you run. Each keeps its own tracked ranks, requirements, Open Cloud key, webhooks, applications and API keys — switch between them from the top bar.</p>
+        <ul class="ticks"><li>Tick which ranks are tracked</li><li>Open Cloud keys stored encrypted</li><li>Sync members straight from Roblox</li></ul>
+      </div>
+      <div class="media" data-anim="right"><figure class="frame"><img data-shot="groups" alt="Groups page with two groups and their tracked-rank checkboxes" width="1440" height="900" loading="lazy"></figure></div>
+    </section>
+
+    <!-- APPLICATIONS TOUR -->
+    <section class="chapter" id="applications" data-nav="Application centers" data-icon="file">
+      <header class="chead" data-anim><span class="kicker">05 · Applications</span><h2>Application centers you design.</h2><p>Build the questions in the dashboard. Applicants answer on the web or inside your Roblox game — and the game always loads the latest questions from the API.</p></header>
+      <div class="tour" data-tour>
+        <div class="tour-media"><figure class="frame"><div class="chrome" aria-hidden="true"><svg viewBox="0 0 52 12"><circle cx="6" cy="6" r="5"/><circle cx="24" cy="6" r="5"/><circle cx="42" cy="6" r="5"/></svg><span data-url></span></div><div class="stack-imgs"></div></figure></div>
+        <div class="tour-steps">
+          <article class="step" data-shot-step="builder" data-url="#/applications/edit">
+            <span class="sicon" data-ic="edit"></span><h3>Nine question types</h3>
+            <p>Short answer, paragraph, multiple choice, checkboxes, dropdown, yes/no, number, linear scale and section headings — with required flags and optional auto-grading.</p>
+          </article>
+          <article class="step" data-shot-step="submission" data-url="#/applications/submissions">
+            <span class="sicon" data-ic="check"></span><h3>Review, score, auto-rank</h3>
+            <p>See every answer with its auto-score. Accept and the applicant can be ranked automatically through Open Cloud; Discord hears about it either way.</p>
+          </article>
+          <article class="step" data-shot-step="apply" data-url="apply.html">
+            <span class="sicon" data-ic="external"></span><h3>A shareable web form</h3>
+            <p>Every application gets a public link. Require a Discord sign-in with a linked Roblox account, or let applicants type their username.</p>
+          </article>
+          <article class="step" data-shot-step="rbxlx" data-url="#/applications">
+            <span class="sicon" data-ic="roblox"></span><h3>A Roblox place, generated</h3>
+            <p>One click downloads a ready-to-publish <code>.rbxlx</code> application center. It holds no questions — it fetches them from the API, so edits go live in-game instantly.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- SESSIONS -->
+    <section class="chapter split rev" id="sessions" data-nav="Sessions" data-icon="clock">
+      <div class="copy" data-anim="right">
+        <span class="kicker">06 · Sessions</span><h2>Shifts, trainings and events.</h2>
+        <p>Schedule sessions with a host, length and notes. New sessions are announced to Discord with a live countdown; mark them completed or cancelled afterwards.</p>
+      </div>
+      <div class="media" data-anim="left"><figure class="frame"><img data-shot="sessions" alt="Sessions page listing upcoming shifts, trainings and events" width="1440" height="900" loading="lazy"></figure></div>
+    </section>
+
+    <!-- LINKING -->
+    <section class="chapter split" id="linking" data-nav="Account linking" data-icon="link">
+      <div class="copy" data-anim="left">
+        <span class="kicker">07 · Accounts</span><h2>Discord, Google and Roblox — linked.</h2>
+        <p>Members sign in with Discord, get a one-time code and type it in a small verification game. The Roblox player is identified by the server, so nobody can link someone else’s account.</p>
+        <ul class="ticks"><li>Staff sign in with Google or Discord and link the other</li><li>Linked members get pinged in requirement notices</li><li>Tracker module, verification game and app center downloadable per group</li></ul>
+      </div>
+      <div class="media layered" data-anim="right">
+        <figure class="frame back"><img data-shot="roblox-setup" alt="Roblox setup dialog with downloads for the tracker module, verification game and application center" width="1440" height="900" loading="lazy"></figure>
+        <figure class="frame front"><img data-shot="verify" alt="Verification page: sign in with Discord to get a link code" width="1440" height="900" loading="lazy"></figure>
+      </div>
+    </section>
+
+    <!-- ACCESS -->
+    <section class="chapter split rev" id="access" data-nav="Access & whitelist" data-icon="shield">
+      <div class="copy" data-anim="right">
+        <span class="kicker">08 · Access</span><h2>Whitelist only. You decide who gets in.</h2>
+        <p>Nobody can sign in unless the owner adds their Google email or Discord ID. Each person gets exactly the permissions you tick — ranking, logs, applications, groups, API keys.</p>
+      </div>
+      <div class="media" data-anim="left"><figure class="frame"><img data-shot="access" alt="Access page listing whitelisted staff and their permissions" width="1440" height="900" loading="lazy"></figure></div>
+    </section>
+
+    <!-- API -->
+    <section class="chapter split" id="api" data-nav="Public API" data-icon="key">
+      <div class="copy" data-anim="left">
+        <span class="kicker">09 · Public API</span><h2>Build your own bots on top.</h2>
+        <p>Scoped API keys for activity, requirements, time off, ranking, logs and account links — with full documentation and copy-paste examples.</p>
+        <pre class="code"><code>curl https://rp-system…/v1/groups/<span class="hl">1234567</span>/activity \
+  -H "Authorization: Bearer <span class="hl">rpk_…</span>"</code></pre>
+        <a class="btn" href="docs.html"><span data-ic="book"></span> Read the API docs</a>
+      </div>
+      <div class="media layered" data-anim="right">
+        <figure class="frame back"><img data-shot="api" alt="API page listing scoped keys" width="1440" height="900" loading="lazy"></figure>
+        <figure class="frame front"><img data-shot="docs" alt="API documentation with an expanded endpoint" width="1440" height="900" loading="lazy"></figure>
+      </div>
+    </section>
+
+    <!-- DARK MODE + MOBILE -->
+    <section class="chapter split rev" id="anywhere" data-nav="Dark mode & mobile" data-icon="moon">
+      <div class="copy" data-anim="right">
+        <span class="kicker">10 · Anywhere</span><h2>Light, dark, desktop or phone.</h2>
+        <p>Every page follows your system theme or the one you pick — and works on a phone, so you can approve time off from anywhere.</p>
+        <button class="btn" type="button" data-theme-toggle><span data-ic="sun"></span> Try switching the theme</button>
+      </div>
+      <div class="media phones" data-anim="left">
+        <figure class="phone"><img data-shot="mobile-activity" alt="Activity page on a phone" width="780" height="1688" loading="lazy"></figure>
+        <figure class="phone p2"><img data-shot="mobile-apply" alt="Application form on a phone" width="780" height="1688" loading="lazy"></figure>
+      </div>
+    </section>
+
+    <!-- HOW IT WORKS -->
+    <section class="chapter" id="how" data-nav="How it works" data-icon="sparkle">
+      <header class="chead" data-anim><span class="kicker">11 · Under the hood</span><h2>Small, fast, nothing to host.</h2><p>Your games talk to one Cloudflare Worker. The dashboard is static pages on GitHub. Discord just receives webhooks.</p></header>
+      <div class="diagram" data-anim>
+        <svg viewBox="0 0 960 360" role="img" aria-label="Roblox games send heartbeats and applications to the Cloudflare Worker API, which stores data in D1, ranks through Roblox Open Cloud, posts to Discord webhooks and serves the dashboard and public API">
+          <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="arrowhead"/></marker></defs>
+          <path class="flow" d="M210 110 C 290 110, 310 160, 382 165" marker-end="url(#arr)"/>
+          <path class="flow" d="M210 250 C 290 250, 310 200, 382 195" marker-end="url(#arr)"/>
+          <path class="flow" d="M578 160 C 650 150, 670 80, 748 78" marker-end="url(#arr)"/>
+          <path class="flow" d="M578 180 L 748 180" marker-end="url(#arr)"/>
+          <path class="flow" d="M578 200 C 650 210, 670 282, 748 284" marker-end="url(#arr)"/>
+          <path class="flow slow" d="M480 232 L 480 300" marker-end="url(#arr)"/>
+          <g class="node"><rect x="30" y="72" width="180" height="76" rx="12"/><text x="120" y="104">Your Roblox game</text><text class="sub" x="120" y="126">ActivityTracker module</text></g>
+          <g class="node"><rect x="30" y="212" width="180" height="76" rx="12"/><text x="120" y="244">App center + verify</text><text class="sub" x="120" y="266">generated .rbxlx places</text></g>
+          <g class="node hub"><rect x="386" y="128" width="190" height="104" rx="14"/><text x="481" y="170">Cloudflare Worker</text><text class="sub" x="481" y="192">API · hourly checks</text><text class="sub" x="481" y="210">whitelist · logs</text></g>
+          <g class="node"><rect x="752" y="44" width="180" height="68" rx="12"/><text x="842" y="74">Dashboard</text><text class="sub" x="842" y="94">GitHub Pages</text></g>
+          <g class="node"><rect x="752" y="146" width="180" height="68" rx="12"/><text x="842" y="176">Roblox Open Cloud</text><text class="sub" x="842" y="196">promotions &amp; roles</text></g>
+          <g class="node"><rect x="752" y="250" width="180" height="68" rx="12"/><text x="842" y="280">Discord</text><text class="sub" x="842" y="300">requirement &amp; log webhooks</text></g>
+          <g class="node"><rect x="400" y="304" width="162" height="48" rx="12"/><text x="481" y="333">D1 database</text></g>
+        </svg>
+        <p class="diagram-hint">Swipe to see the whole diagram.</p>
+      </div>
+    </section>
+
+    <!-- SIGN IN -->
+    <section class="signin" id="signin" data-nav="Sign in" data-icon="user">
+      <div class="glow g3" aria-hidden="true"></div>
+      <div class="signin-card" data-anim>
+        <span class="mark big" data-ic="shield"></span>
+        <h2>Ready when you are.</h2>
+        <p class="dim">Access is whitelist-only. Sign in with an account the owner has approved.</p>
+        <div id="signinBody" class="stack"></div>
+        <p class="muted small"><a href="verify.html">Link Discord to Roblox</a> · <a href="docs.html">API docs</a></p>
+      </div>
+      <footer class="ifoot"><span class="muted">Roleplay System · Activity, requirements, ranking, applications and logs for Roblox groups.</span></footer>
+    </section>
+  </main>
+
   <script src="config.js"></script>
   <script src="core.js"></script>
-  <script src="rbxlx.js"></script>
-  <script src="app.js"></script>
-  <script src="views-activity.js"></script>
-  <script src="views-manage.js"></script>
-  <script>boot();</script>
+  <script src="intro.js"></script>
 </body>
 </html>
