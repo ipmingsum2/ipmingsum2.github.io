@@ -1,0 +1,27 @@
+name = "rp-system"
+main = "src/index.js"
+compatibility_date = "2026-01-01"
+
+# Hourly: requirement checks, member sync, cleanup.
+[triggers]
+crons = ["0 * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "rp-system"
+database_id = "f72e9fbc-2a67-4d05-ace4-2ea1fde0358a"
+
+[vars]
+# Where the static dashboard is hosted (GitHub Pages URL, no trailing slash).
+DASHBOARD_URL = "https://ipmingsum2.github.io/roleplay-system"
+
+GOOGLE_CLIENT_ID = ""
+DISCORD_CLIENT_ID = ""
+
+# Secrets — set with `npx wrangler secret put NAME` (never commit them):
+#   SECRET_KEY             long random string; signs tokens and encrypts Open Cloud keys
+#   GOOGLE_CLIENT_SECRET
+#   DISCORD_CLIENT_SECRET
+#   OWNER_GOOGLE_EMAIL     the owner always has full access and is the only one who can edit the whitelist
+#   OWNER_DISCORD_ID       (kept as secrets so they are not published in a public repo)
+#   OWNER_ROBLOX_ID

@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Application</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="public" id="root"><div class="empty">Loading…</div></main>
+  <script src="config.js"></script>
+  <script src="core.js"></script>
+  <script>
+    'use strict';
+    const id = new URLSearchParams(location.search).get('id') || '';
+    if (location.hash.startsWith('#ptoken=')) { store.set('rp_ptoken', location.hash.slice(8)); history.replaceState(null, '', location.pathname + location.search); }
+    const root = $('#root');
+    const fail = (msg) => { root.innerHTML = `<div class="card"><div class="empty">${icon('alert')}<div>${esc(msg)}</div></div></div>`; };
+
+    function field(q) {
+      const name = `q_${q.id}`;
+      switch (q.type) {
+        case 'short': return `<input name="${name}" maxlength="300" ${q.required ? 'required' : ''} aria-label="${esc(q.label)}">`;
+        case 'paragraph': return `<textarea name="${name}" maxlength="4000" rows="5" ${q.required ? 'required' : ''} aria-label="${esc(q.label)}"></textarea>`;
+        case 'number': return `<input type="number" step="any" name="${name}" ${q.min != null ? `min="${q.min}"` : ''} ${q.max != null ? `max="${q.max}"` : ''} ${q.required ? 'required' : ''} aria-label="${esc(q.label)}" style="max-width:220px">`;
+        case 'dropdown': return `<select name="${name}" ${q.required ? 'required' : ''} aria-label="${esc(q.label)}"><option value="">Choose…</option>${q.options.map((o) => `<option>${esc(o)}</option>`).join('')}</select>`;
+        case 'choice': return `<div class="opts" role="radiogroup">${q.options.map((o) => `<label class="check"><input type="radio" name="${name}" value="${esc(o)}" ${q.required ? 'required' : ''}> ${esc(o)}</label>`).join('')}</div>`;
+        case 'yesno': return `<div class="opts" role="radiogroup">${['Yes', 'No'].map((o) => `<label class="check"><input type="radio" name="${name}" value="${o}" ${q.required ? 'required' : ''}> ${o}</label>`).join('')}</div>`;
+        case 'checkboxes': return `<div class="opts">${q.options.map((o) => `<label class="check"><input type="checkbox" name="${name}" value="${esc(o)}"> ${esc(o)}</label>`).join('')}</div>`;
+        case 'scale': { let h = ''; for (let n = q.min; n <= q.max; n++) h += `<label><input type="radio" name="${name}" value="${n}" ${q.required ? 'required' : ''}><span>${n}</span></label>`; return `<div class="scale" role="radiogroup">${h}</div>`; }
+      }
+      return '';
+    }
+
+    async function render() {
+      if (!/^[A-Za-z0-9_-]{1,40}$/.test(id)) return fail('This application link is not valid.');
+      let app, open, me = null;
+      try { ({ application: app, open } = await api(`/public/applications/${id}`)); } catch (e) { return fail(e.message); }
+      document.title = `${app.title} — ${app.group}`;
+      if (!open) return fail(`“${app.title}” is not accepting applications right now.`);
+      if (store.get('rp_ptoken')) { try { me = await api('/public/link', { public: true }); } catch { store.set('rp_ptoken', null); } }
+
+      const signIn = `${API_URL}/auth/discord/start?purpose=public&return=${encodeURIComponent(`apply.html?id=${id}`)}`;
+      let identity;
+      if (app.identity === 'discord') {
+        if (!me) identity = `<div class="callout">${icon('info')}<span>This application requires a Discord account linked to Roblox.</span></div><div><a class="btn primary" href="${signIn}">${icon('discord')} Sign in with Discord</a></div>`;
+        else if (!me.link) identity = `<div class="callout warn">${icon('alert')}<span>Signed in as <b>${esc(me.discord.discordName)}</b>, but no Roblox account is linked. <a href="verify.html">Link your Roblox account</a>, then reload this page.</span></div>`;
+        else identity = `<div class="callout">${icon('check')}<span>Applying as <b>${esc(me.link.robloxName)}</b> (Discord: ${esc(me.discord.discordName)}).</span></div>`;
+      } else {
+        identity = `<label class="field">Roblox username <input name="username" required minlength="3" maxlength="20" pattern="[A-Za-z0-9_]+" autocomplete="off" placeholder="Your exact Roblox username"></label>`;
+      }
+      const ready = app.identity !== 'discord' || (me && me.link);
+
+      root.innerHTML = `<div class="card"><div class="body stack gap-s"><span class="muted">${esc(app.group)}</span><h1>${esc(app.title)}</h1>${app.description ? `<p class="dim" style="white-space:pre-wrap">${esc(app.description)}</p>` : ''}</div></div>
+        <form id="f" class="stack" novalidate>
+          <div class="card q">${identity}</div>
+          ${ready ? app.questions.map((q) => q.type === 'section'
+            ? `<div style="margin-top:8px"><h2 style="font-size:17px">${esc(q.label)}</h2>${q.description ? `<p class="dim">${esc(q.description)}</p>` : ''}</div>`
+            : `<div class="card q" data-q="${esc(q.id)}"><div><b>${esc(q.label)}</b>${q.required ? ' <span class="req" title="Required">*</span>' : ''}${q.description ? `<p class="hint">${esc(q.description)}</p>` : ''}</div>${field(q)}</div>`).join('') : ''}
+          ${ready ? `<div id="err" role="alert"></div><div class="row"><button class="btn primary" style="height:42px;padding:0 22px" id="send">Submit application</button><span class="muted"><span class="req" style="color:var(--bad)">*</span> required</span></div>` : ''}
+        </form>`;
+      if (!ready) return;
+
+      $('#f').onsubmit = (e) => {
+        e.preventDefault();
+        const form = e.target, fd = new FormData(form), answers = {};
+        const err = (msg, el) => { $('#err').innerHTML = `<div class="callout bad">${icon('alert')}<span>${esc(msg)}</span></div>`; el?.scrollIntoView({ behavior: 'smooth', block: 'center' }); };
+        for (const q of app.questions) {
+          if (q.type === 'section') continue;
+          const v = q.type === 'checkboxes' ? fd.getAll(`q_${q.id}`) : (fd.get(`q_${q.id}`) ?? '').toString().trim();
+          if (q.required && (!v || !v.length)) return err(`Please answer “${q.label}”.`, $(`[data-q="${q.id}"]`));
+          if (v && v.length) answers[q.id] = q.type === 'number' || q.type === 'scale' ? Number(v) : v;
+        }
+        const username = (fd.get('username') || '').toString().trim();
+        if (app.identity !== 'discord' && !/^[A-Za-z0-9_]{3,20}$/.test(username)) return err('Enter your Roblox username (3–20 letters, numbers or underscores).', form.username);
+        run($('#send'), async () => {
+          $('#err').innerHTML = '';
+          try {
+            const r = await api(`/public/applications/${id}/submit`, { public: true, body: { username, answers } });
+            root.innerHTML = `<div class="card"><div class="body stack" style="align-items:center;text-align:center;padding:40px 20px">${icon('check', 'lg')}<h1>Application submitted</h1><p class="dim">${esc(r.message)}</p></div></div>`;
+          } catch (e2) { err(e2.message); }
+        });
+      };
+    }
+    render();
+  </script>
+</body>
+</html>
