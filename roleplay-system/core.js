@@ -3,6 +3,7 @@
 
 // Every icon is an inline SVG (24×24, stroked).
 const ICONS = {
+  inbox: '<path d="M3 13h5l1.5 3h5L16 13h5"/><path d="M5.5 5h13L21 13v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-6z"/>',
   ban: '<circle cx="12" cy="12" r="9"/><path d="M5.7 5.7l12.6 12.6"/>',
   home: '<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>',
   chart: '<path d="M3 21h18M6 21V11M11 21V5M16 21v-8M21 21V9"/>',
@@ -81,6 +82,7 @@ async function api(path, opts = {}) {
   const headers = {};
   if (opts.body !== undefined) headers['content-type'] = 'application/json';
   if (opts.public) { const t = store.get('rp_ptoken'); if (t) headers['x-public-token'] = t; }
+  else if (opts.access) { const t = store.get('rp_access'); if (t) headers['x-access-token'] = t; }
   else { const t = store.get('rp_token'); if (t) headers.authorization = `Bearer ${t}`; }
   let res;
   try {
@@ -155,6 +157,37 @@ const confirmBox = (title, text, label = 'Confirm', kind = 'danger') => new Prom
   new MutationObserver((_, o) => { if (!m.el.isConnected) { o.disconnect(); if (!done) resolve(false); } }).observe(document.body, { childList: true });
 });
 async function copyText(text) { try { await navigator.clipboard.writeText(text); toast('Copied', 'good'); } catch { toast('Copy failed — select and copy manually', 'bad'); } }
+// ---------- filling in a form (applications, access requests) ----------
+function questionField(q) {
+  const name = `q_${q.id}`;
+  switch (q.type) {
+    case 'short': return `<input name="${name}" maxlength="300" ${q.required ? 'required' : ''} aria-label="${esc(q.label)}">`;
+    case 'paragraph': return `<textarea name="${name}" maxlength="4000" rows="5" ${q.required ? 'required' : ''} aria-label="${esc(q.label)}"></textarea>`;
+    case 'number': return `<input type="number" step="any" name="${name}" ${q.min != null ? `min="${q.min}"` : ''} ${q.max != null ? `max="${q.max}"` : ''} ${q.required ? 'required' : ''} aria-label="${esc(q.label)}" style="max-width:220px">`;
+    case 'dropdown': return `<select name="${name}" ${q.required ? 'required' : ''} aria-label="${esc(q.label)}"><option value="">Choose…</option>${q.options.map((o) => `<option>${esc(o)}</option>`).join('')}</select>`;
+    case 'choice': return `<div class="opts" role="radiogroup">${q.options.map((o) => `<label class="check"><input type="radio" name="${name}" value="${esc(o)}" ${q.required ? 'required' : ''}> ${esc(o)}</label>`).join('')}</div>`;
+    case 'yesno': return `<div class="opts" role="radiogroup">${['Yes', 'No'].map((o) => `<label class="check"><input type="radio" name="${name}" value="${o}" ${q.required ? 'required' : ''}> ${o}</label>`).join('')}</div>`;
+    case 'checkboxes': return `<div class="opts">${q.options.map((o) => `<label class="check"><input type="checkbox" name="${name}" value="${esc(o)}"> ${esc(o)}</label>`).join('')}</div>`;
+    case 'scale': { let h = ''; for (let n = q.min; n <= q.max; n++) h += `<label><input type="radio" name="${name}" value="${n}" ${q.required ? 'required' : ''}><span>${n}</span></label>`; return `<div class="scale" role="radiogroup">${h}</div>`; }
+  }
+  return '';
+}
+/** Question cards for a form (sections become headings). */
+const questionsHTML = (questions) => questions.map((q) => q.type === 'section'
+  ? `<div style="margin-top:8px"><h2 style="font-size:17px">${esc(q.label)}</h2>${q.description ? `<p class="dim">${esc(q.description)}</p>` : ''}</div>`
+  : `<div class="card q" data-q="${esc(q.id)}"><div><b>${esc(q.label)}</b>${q.required ? ' <span class="req" title="Required">*</span>' : ''}${q.description ? `<p class="hint">${esc(q.description)}</p>` : ''}</div>${questionField(q)}</div>`).join('');
+/** Reads answers keyed by question ID; returns { error, el } for the first missing required answer. */
+function readAnswers(form, questions) {
+  const fd = new FormData(form), answers = {};
+  for (const q of questions) {
+    if (q.type === 'section') continue;
+    const v = q.type === 'checkboxes' ? fd.getAll(`q_${q.id}`) : (fd.get(`q_${q.id}`) ?? '').toString().trim();
+    if (q.required && (!v || !v.length)) return { error: `Please answer “${q.label}”.`, el: form.querySelector(`[data-q="${CSS.escape(q.id)}"]`) };
+    if (v && v.length) answers[q.id] = q.type === 'number' || q.type === 'scale' ? Number(v) : v;
+  }
+  return { answers };
+}
+
 /** CSV from an array of rows (first row = headers). Cells that a spreadsheet would run as formulas are prefixed with '. */
 function toCSV(rows) {
   const cell = (v) => {

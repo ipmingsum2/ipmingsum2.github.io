@@ -21,20 +21,6 @@
     const root = $('#root');
     const fail = (msg) => { root.innerHTML = `<div class="card"><div class="empty">${icon('alert')}<div>${esc(msg)}</div></div></div>`; };
 
-    function field(q) {
-      const name = `q_${q.id}`;
-      switch (q.type) {
-        case 'short': return `<input name="${name}" maxlength="300" ${q.required ? 'required' : ''} aria-label="${esc(q.label)}">`;
-        case 'paragraph': return `<textarea name="${name}" maxlength="4000" rows="5" ${q.required ? 'required' : ''} aria-label="${esc(q.label)}"></textarea>`;
-        case 'number': return `<input type="number" step="any" name="${name}" ${q.min != null ? `min="${q.min}"` : ''} ${q.max != null ? `max="${q.max}"` : ''} ${q.required ? 'required' : ''} aria-label="${esc(q.label)}" style="max-width:220px">`;
-        case 'dropdown': return `<select name="${name}" ${q.required ? 'required' : ''} aria-label="${esc(q.label)}"><option value="">Choose…</option>${q.options.map((o) => `<option>${esc(o)}</option>`).join('')}</select>`;
-        case 'choice': return `<div class="opts" role="radiogroup">${q.options.map((o) => `<label class="check"><input type="radio" name="${name}" value="${esc(o)}" ${q.required ? 'required' : ''}> ${esc(o)}</label>`).join('')}</div>`;
-        case 'yesno': return `<div class="opts" role="radiogroup">${['Yes', 'No'].map((o) => `<label class="check"><input type="radio" name="${name}" value="${o}" ${q.required ? 'required' : ''}> ${o}</label>`).join('')}</div>`;
-        case 'checkboxes': return `<div class="opts">${q.options.map((o) => `<label class="check"><input type="checkbox" name="${name}" value="${esc(o)}"> ${esc(o)}</label>`).join('')}</div>`;
-        case 'scale': { let h = ''; for (let n = q.min; n <= q.max; n++) h += `<label><input type="radio" name="${name}" value="${n}" ${q.required ? 'required' : ''}><span>${n}</span></label>`; return `<div class="scale" role="radiogroup">${h}</div>`; }
-      }
-      return '';
-    }
 
     async function render() {
       if (!/^[A-Za-z0-9_-]{1,40}$/.test(id)) return fail('This application link is not valid.');
@@ -58,23 +44,17 @@
       root.innerHTML = `<div class="card"><div class="body stack gap-s"><span class="muted">${esc(app.group)}</span><h1>${esc(app.title)}</h1>${app.description ? `<p class="dim" style="white-space:pre-wrap">${esc(app.description)}</p>` : ''}</div></div>
         <form id="f" class="stack" novalidate>
           <div class="card q">${identity}</div>
-          ${ready ? app.questions.map((q) => q.type === 'section'
-            ? `<div style="margin-top:8px"><h2 style="font-size:17px">${esc(q.label)}</h2>${q.description ? `<p class="dim">${esc(q.description)}</p>` : ''}</div>`
-            : `<div class="card q" data-q="${esc(q.id)}"><div><b>${esc(q.label)}</b>${q.required ? ' <span class="req" title="Required">*</span>' : ''}${q.description ? `<p class="hint">${esc(q.description)}</p>` : ''}</div>${field(q)}</div>`).join('') : ''}
+          ${ready ? questionsHTML(app.questions) : ''}
           ${ready ? `<div id="err" role="alert"></div><div class="row"><button class="btn primary" style="height:42px;padding:0 22px" id="send">Submit application</button><span class="muted"><span class="req" style="color:var(--bad)">*</span> required</span></div>` : ''}
         </form>`;
       if (!ready) return;
 
       $('#f').onsubmit = (e) => {
         e.preventDefault();
-        const form = e.target, fd = new FormData(form), answers = {};
+        const form = e.target, fd = new FormData(form);
         const err = (msg, el) => { $('#err').innerHTML = `<div class="callout bad">${icon('alert')}<span>${esc(msg)}</span></div>`; el?.scrollIntoView({ behavior: 'smooth', block: 'center' }); };
-        for (const q of app.questions) {
-          if (q.type === 'section') continue;
-          const v = q.type === 'checkboxes' ? fd.getAll(`q_${q.id}`) : (fd.get(`q_${q.id}`) ?? '').toString().trim();
-          if (q.required && (!v || !v.length)) return err(`Please answer “${q.label}”.`, $(`[data-q="${q.id}"]`));
-          if (v && v.length) answers[q.id] = q.type === 'number' || q.type === 'scale' ? Number(v) : v;
-        }
+        const { answers, error, el: missing } = readAnswers(form, app.questions);
+        if (error) return err(error, missing);
         const username = (fd.get('username') || '').toString().trim();
         if (app.identity !== 'discord' && !/^[A-Za-z0-9_]{3,20}$/.test(username)) return err('Enter your Roblox username (3–20 letters, numbers or underscores).', form.username);
         run($('#send'), async () => {

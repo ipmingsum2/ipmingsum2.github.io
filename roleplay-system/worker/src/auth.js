@@ -1,5 +1,6 @@
 // Sign-in (Google + Discord OAuth), whitelist, dashboard users, API keys, account linking.
 import { HttpError, bad, json, redirect, now, parseJSON, str, readBody, randHex, randCode, sha256, signToken, verifyToken, logEvent } from './util.js';
+import { loadForm, accessToken } from './access.js';
 
 export const PERMISSIONS = ['manage_activity', 'ranking', 'manage_groups', 'manage_applications', 'review_applications', 'view_logs', 'manage_api_keys', 'manage_discipline', 'manage_content'];
 export const SCOPES = ['read', 'ranking', 'timeoff', 'game', 'verify'];
@@ -143,6 +144,8 @@ export async function authCallback(c) {
 
   if (!existing) {
     await logEvent(env, ctx, { type: 'auth.denied', actor: { type: 'public', id: val, name: ident.name }, summary: `Sign-in denied (not whitelisted): ${provider} ${val}` });
+    // With access requests on, they get a short-lived token to fill in the request form instead of a dead end.
+    if ((await loadForm(env)).enabled) return redirect(`${home}#access=${await accessToken(env, provider, ident)}`);
     return fail('not_whitelisted');
   }
   await saveIdentity(env, existing.id, provider, ident);
@@ -308,7 +311,7 @@ export async function revokeKey(c) {
 // ---------- Discord ↔ Roblox linking (code shown on the site, typed in the Roblox game) ----------
 export async function publicIdentity(c) {
   const t = await verifyToken(c.env, c.req.headers.get('x-public-token') || '');
-  return t ? { discordId: String(t.d), discordName: String(t.n || '') } : null;
+  return t && t.d && !t.k ? { discordId: String(t.d), discordName: String(t.n || '') } : null; // `k` tokens are for other purposes (access requests)
 }
 
 async function issueCode(env, { discordId = null, discordName = null, userId = null }) {

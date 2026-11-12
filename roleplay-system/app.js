@@ -42,6 +42,7 @@ const OWNER_NAV = () => [
   ['', 'Overview', 'home'],
   ['groups', 'Groups', 'users'],
   ['access', 'Access & whitelist', 'shield'],
+  ['requests', 'Access requests', 'inbox'],
   ['api', 'API keys', 'key'],
   ['links', 'Linked accounts', 'link'],
   ['logs', 'All logs', 'list'],
@@ -87,6 +88,13 @@ async function boot() {
     store.set('rp_next', null);
     history.replaceState(null, '', location.pathname + (isDeepLink(next) ? next : '#/select'));
   } else if (isDeepLink(h)) store.set('rp_next', null);
+  // Signed in with an account that isn't whitelisted: show the access request form.
+  if (h.startsWith('#access=')) {
+    store.set('rp_access', h.slice(8));
+    history.replaceState(null, '', location.pathname + '#/request-access');
+    return accessScreen();
+  }
+  if (h === '#/request-access' && !store.get('rp_token') && store.get('rp_access')) return accessScreen();
   if (h.startsWith('#error=')) { const code = decodeURIComponent(h.slice(7)); history.replaceState(null, '', location.pathname); return loginScreen(ERRORS[code] || 'Sign-in failed.'); }
   if (!store.get('rp_token')) return loginScreen();
   try {
@@ -121,6 +129,56 @@ function enter(id, hash = '#/', replace = false) {
   store.set('rp_gid', id);
   if (replace) { history.replaceState(null, '', location.pathname + hash); route(); }
   else if (location.hash === hash) route(); else location.hash = hash;
+}
+
+// ---------- access request (signed in, not whitelisted) ----------
+async function accessScreen() {
+  const root = $('#root');
+  root.onclick = null;
+  root.innerHTML = `<div class="corner-theme">${themeButton()}</div><main class="public" id="req"><div class="empty">Loading…</div></main>`;
+  const box = $('#req');
+  let d;
+  try { d = await api('/public/access-request', { access: true }); } catch (e) {
+    store.set('rp_access', null);
+    history.replaceState(null, '', location.pathname);
+    return loginScreen(e.status === 401 ? 'Your sign-in for the access request expired. Sign in again to continue.' : e.message);
+  }
+  const id = d.identity;
+  const account = id.provider === 'google' ? `${icon('google', 'sm')} <b>${esc(id.id)}</b>` : `${icon('discord', 'sm')} <b>${esc(id.name || 'Discord user')}</b> <span class="muted mono">${esc(id.id)}</span>`;
+  const signIn = `${API_URL}/auth/${id.provider}/start`;
+  const top = (title, sub) => `<div class="card"><div class="body stack gap-s">
+      <div class="row"><span class="mark">${icon('shield')}</span><span class="dim">${esc(NAME)}</span></div>
+      <h1>${title}</h1>${sub ? `<p class="dim">${sub}</p>` : ''}
+      <div class="row wrap acct"><span class="muted">Signed in as</span><span class="row gap-s">${account}</span><button class="btn ghost sm right" data-other>Use a different account</button></div>
+    </div></div>`;
+  const message = (ic, title, text, extra = '') => `${top(title)}<div class="card"><div class="empty">${icon(ic, 'lg')}<div>${text}</div>${extra}</div></div>`;
+  const r = d.request;
+  const waitUntil = r?.status === 'denied' && r.retryAt * 1000 > Date.now() ? r.retryAt : null;
+
+  if (d.whitelisted) box.innerHTML = message('check', 'You have access', 'The owner approved this account. Sign in again to open the dashboard.', `<a class="btn primary" href="${signIn}">Sign in</a>`);
+  else if (r?.status === 'pending') box.innerHTML = message('clock', 'Request sent', `Your access request from ${fmtTime(r.created_at)} is waiting for the owner. Sign in again later — once it’s approved you’ll go straight to the dashboard.`);
+  else if (waitUntil) box.innerHTML = message('x', 'Request denied', `The owner denied your request.${r.review_note ? `<div class="note" style="margin-top:10px;text-align:left"><b>Note:</b> ${esc(r.review_note)}</div>` : ''}`, `<p class="muted">You can send a new request after ${fmtTime(waitUntil)}.</p>`);
+  else if (!d.enabled) box.innerHTML = message('alert', 'No access', 'This account isn’t on the whitelist, and access requests are closed. Ask the owner to add you.');
+  else {
+    box.innerHTML = `${top('You don’t have access yet', 'This account isn’t on the whitelist. Send an access request and the owner will review it.')}
+      ${r?.status === 'denied' ? `<div class="callout warn">${icon('alert')}<span>Your previous request was denied${r.review_note ? `: ${esc(r.review_note)}` : '.'} You can try again.</span></div>` : ''}
+      ${d.form.intro ? `<div class="card"><div class="body"><p style="white-space:pre-wrap;margin:0">${esc(d.form.intro)}</p></div></div>` : ''}
+      <form id="f" class="stack" novalidate>${questionsHTML(d.form.questions)}
+        <div id="err" role="alert"></div>
+        <div class="row"><button class="btn primary" style="height:42px;padding:0 22px" id="send">${icon('inbox')} Send access request</button><span class="muted"><span class="req" style="color:var(--bad)">*</span> required</span></div>
+      </form>`;
+    const err = (msg, el) => { $('#err').innerHTML = `<div class="callout bad">${icon('alert')}<span>${esc(msg)}</span></div>`; el?.scrollIntoView({ behavior: 'smooth', block: 'center' }); };
+    $('#f').onsubmit = (e) => {
+      e.preventDefault();
+      const { answers, error, el } = readAnswers(e.target, d.form.questions);
+      if (error) return err(error, el);
+      run($('#send'), async () => {
+        $('#err').innerHTML = '';
+        try { await api('/public/access-request', { access: true, body: { answers } }); accessScreen(); } catch (e2) { err(e2.message); }
+      });
+    };
+  }
+  $('[data-other]', box).onclick = () => { store.set('rp_access', null); history.replaceState(null, '', location.pathname); loginScreen(); };
 }
 
 // ---------- picker ----------
@@ -215,8 +273,8 @@ async function route() {
   const seq = ++routeSeq;
   if (name === 'go') {
     const rest = location.hash.replace(/^#\/go\/[^/]+\/?/, '');
-    if (S.groups.some((g) => g.id === arg)) return enter(arg, `#/${rest}`, true);
-    toast('You do not have access to that group.', 'bad');
+    if (arg === OWNER ? isOwner() : S.groups.some((g) => g.id === arg)) return enter(arg, `#/${rest}`, true);
+    toast(arg === OWNER ? 'Only the owner can open that page.' : 'You do not have access to that group.', 'bad');
     history.replaceState(null, '', location.pathname + '#/select');
     return picker();
   }

@@ -11,6 +11,7 @@ import * as act from './activity.js';
 import * as apps from './apps.js';
 import * as feat from './features.js';
 import * as more from './more.js';
+import * as access from './access.js';
 
 const routes = [];
 /**
@@ -271,6 +272,11 @@ R('GET', '/api/users', auth.listUsers, { owner: true });
 R('POST', '/api/users', auth.createUser, { owner: true });
 R('PATCH', '/api/users/:id', auth.updateUser, { owner: true });
 R('DELETE', '/api/users/:id', auth.deleteUser, { owner: true });
+R('GET', '/api/access-form', access.formGet, { owner: true });
+R('PUT', '/api/access-form', access.formSave, { owner: true });
+R('GET', '/api/access-requests', access.list, { owner: true });
+R('GET', '/api/access-requests/:id', access.get, { owner: true });
+R('PATCH', '/api/access-requests/:id', access.decide, { owner: true });
 
 // --- groups ---
 R('GET', '/api/groups', listGroups);
@@ -355,6 +361,8 @@ R('GET', '/api/links', auth.listLinks);
 R('DELETE', '/api/links/:id', auth.deleteLink, { perm: G });
 
 // --- public pages ---
+R('GET', '/public/access-request', access.publicGet);
+R('POST', '/public/access-request', access.publicSubmit);
 R('GET', '/public/link', auth.publicLink);
 R('POST', '/public/verify-code', auth.publicVerifyCode);
 R('GET', '/public/applications/:id', apps.publicGet);
