@@ -286,21 +286,21 @@
   if (list) {
     const EVENTS = [
       ['play', 'good', '4 in game now', 'Avalynne, Sunny, Ruby +1'],
-      ['rank', 'accent', 'ZaraPoolside promoted', 'Customer → Trainee · logged'],
+      ['rank', 'accent', 'ZaraPoolside promoted', 'Customer -> Trainee · logged'],
       ['file', 'accent', 'New application', 'NovaStarRBX · auto-score 7/7'],
       ['bell', 'bad', '3 missed this week', 'Posted to #staff-activity'],
       ['clock', 'warn', 'Shift starts in 30 min', 'Reminder sent · @Receptionists'],
       ['trophy', 'warn', 'Staff of the week', 'SunnyConcierge · 14.2 h'],
       ['calendar', 'good', 'Time off approved', 'KaiSuite204 · 3 days'],
       ['inbox', 'accent', 'Access request', 'NewStaffer asked to join'],
-      ['sparkle', 'good', 'Auto-promoted', 'EliTrainee → Receptionist'],
+      ['sparkle', 'good', 'Auto-promoted', 'EliTrainee -> Receptionist'],
       ['ban', 'bad', 'Blacklisted player kicked', 'Exploiter99 tried to join'],
     ];
     let k = 0;
     const add = (animate) => {
       const [i, tone, title, sub] = EVENTS[k++ % EVENTS.length];
       $$('.lf-item', list).forEach((x, n) => { x.classList.remove('new'); x.classList.toggle('old', n >= 2); });
-      list.insertAdjacentHTML('afterbegin', `<li class="lf-item ${animate ? 'new' : ''}"><span class="lf-ic ${tone}">${ic(i)}</span><div><b>${esc(title)}</b><small>${esc(sub)}</small></div><span class="t">now</span></li>`);
+      list.insertAdjacentHTML('afterbegin', `<li class="lf-item ${animate ? 'new' : ''}"><span class="lf-ic ${tone}">${ic(i)}</span><div><b>${esc(title)}</b><small>${esc(sub).replace(/ -&gt; /g, ` ${ic('arrowR', 'inl')} `)}</small></div><span class="t">now</span></li>`);
       $$('.lf-item', list).forEach((x, n) => { const t = $('.t', x); if (t) t.textContent = n === 0 ? 'now' : `${n * 2}m`; });
       while (list.children.length > 5) list.lastElementChild.remove();
     };
@@ -352,7 +352,7 @@
       const ranks = [['ZaraPoolside', 'Customer', 'Trainee'], ['EliTrainee', 'Trainee', 'Receptionist'], ['RubyLobby', 'Receptionist', 'Senior Receptionist'], ['MaxDoorman', 'Senior Receptionist', 'Receptionist', true]];
       el.innerHTML = card('Rank change', 'via Open Cloud', '<div class="lv-row" id="lvRank"></div>');
       let i = 0;
-      const show = () => { const [n, a, b, down] = ranks[i++ % ranks.length]; $('#lvRank', el).innerHTML = `<span class="lv-ava">${n[0]}</span><div class="lv-swap" style="min-width:0"><div class="lv-name">${n}</div><div class="row wrap gap-s" style="margin-top:4px"><span class="lv-pill">${a}</span><span class="lv-arrow">→</span><span class="lv-pill ${down ? 'bad' : 'good'}">${b}</span></div></div><span class="lv-pill accent" style="margin-left:auto">logged</span>`; };
+      const show = () => { const [n, a, b, down] = ranks[i++ % ranks.length]; $('#lvRank', el).innerHTML = `<span class="lv-ava">${n[0]}</span><div class="lv-swap" style="min-width:0"><div class="lv-name">${n}</div><div class="row wrap gap-s" style="margin-top:4px"><span class="lv-pill">${a}</span><span class="lv-arrow">${ic('arrowR', 'inl')}</span><span class="lv-pill ${down ? 'bad' : 'good'}">${b}</span></div></div><span class="lv-pill accent" style="margin-left:auto">logged</span>`; };
       return every(3000, show);
     },
     promotions(el) {
@@ -366,7 +366,7 @@
       });
     },
     logs(el) {
-      const L = [['good', 'rank.promote', 'ZaraPoolside → Trainee'], ['', 'application.submitted', 'NovaStarRBX'], ['good', 'timeoff.approved', 'KaiSuite204 · 3 days'], ['bad', 'requirement.not_met', 'MaxDoorman · 1h 10m / 3h'], ['', 'session.completed', 'Evening reception'], ['bad', 'blacklist.added', 'Exploiter99'], ['good', 'autopromote.run', '2 recommended']];
+      const L = [['good', 'rank.promote', `ZaraPoolside ${ic('arrowR', 'inl')} Trainee`], ['', 'application.submitted', 'NovaStarRBX'], ['good', 'timeoff.approved', 'KaiSuite204 · 3 days'], ['bad', 'requirement.not_met', 'MaxDoorman · 1h 10m / 3h'], ['', 'session.completed', 'Evening reception'], ['bad', 'blacklist.added', 'Exploiter99'], ['good', 'autopromote.run', '2 recommended']];
       el.innerHTML = card('Log stream', 'every action', '<div class="lv-log" id="lvLog"></div>');
       let i = 0;
       const add = (animate) => {
@@ -407,18 +407,18 @@
       });
     },
     linking(el) {
-      el.innerHTML = card('Account link', 'verification game', `<div class="lv-link"><span class="lv-pill">${ic('discord', 'sm')} builder</span><span class="lv-wire" id="lvWire"><span class="lv-check">✓</span></span><span class="lv-pill">${ic('roblox', 'sm')} Builderman</span></div><div class="lv-muted" id="lvLinkTxt" style="margin-top:10px">Waiting for code K7M2QX…</div>`);
+      el.innerHTML = card('Account link', 'verification game', `<div class="lv-link"><span class="lv-pill">${ic('discord', 'sm')} builder</span><span class="lv-wire" id="lvWire"><span class="lv-check">${ic('check', 'inl')}</span></span><span class="lv-pill">${ic('roblox', 'sm')} Builderman</span></div><div class="lv-muted" id="lvLinkTxt" style="margin-top:10px">Waiting for code K7M2QX…</div>`);
       let on = false;
-      return every(2400, () => { on = !on; $('#lvWire', el).classList.toggle('done', on); $('#lvLinkTxt', el).textContent = on ? 'Linked · kicked with a thank-you ✓' : 'Waiting for code K7M2QX…'; });
+      return every(2400, () => { on = !on; $('#lvWire', el).classList.toggle('done', on); $('#lvLinkTxt', el).innerHTML = on ? `Linked · kicked with a thank-you ${ic('check', 'inl')}` : 'Waiting for code K7M2QX…'; });
     },
     access(el) {
-      el.innerHTML = card('Access request', 'Owner Menu', '<div id="lvAcc"></div>');
+      el.innerHTML = card('Access request', 'sign-in page', '<div id="lvAcc"></div>');
       let st = 0;
       return every(1800, () => {
         const box = $('#lvAcc', el);
-        if (st % 3 === 0) box.innerHTML = `<div class="lv-row lv-swap"><span class="lv-ava">N</span><div><div class="lv-name">NewStaffer</div><div class="lv-muted">“I moderate the hotel and need to log warnings.”</div></div></div><div class="lv-actions"><span>Deny</span><span class="ok">Approve</span></div>`;
+        if (st % 3 === 0) box.innerHTML = `<div class="lv-row lv-swap"><span class="lv-ava">N</span><div><div class="lv-name">Not on the whitelist yet</div><div class="lv-muted">“I moderate the hotel and need to log warnings.”</div></div></div><div class="lv-actions"><span class="ok">Send request</span></div>`;
         else if (st % 3 === 1) $('.ok', box)?.classList.add('press');
-        else box.innerHTML = `<div class="lv-row lv-swap"><span class="lv-ava" style="background:var(--good-soft);color:var(--good)">${ic('check')}</span><div><div class="lv-name">Added to the whitelist</div><div class="lv-muted">Permissions: logbook &amp; blacklist</div></div></div>`;
+        else box.innerHTML = `<div class="lv-row lv-swap"><span class="lv-ava" style="background:var(--good-soft);color:var(--good)">${ic('check')}</span><div><div class="lv-name">Request sent</div><div class="lv-muted">You’re in as soon as it’s approved</div></div></div>`;
         st++;
       });
     },
@@ -435,9 +435,9 @@
       });
     },
     anywhere(el) {
-      el.innerHTML = card('Theme', 'follows your system', `<div class="lv-row"><span class="lv-switch" id="lvSw"><i>☀</i></span><div><div class="lv-name" id="lvThemeName">Light</div><div class="lv-muted">Soft fade — no flash</div></div><span class="lv-pill" style="margin-left:auto">${ic('user', 'sm')} 390 px wide</span></div>`);
+      el.innerHTML = card('Theme', 'follows your system', `<div class="lv-row"><span class="lv-switch" id="lvSw"><i>${ic('sun', 'inl')}</i></span><div><div class="lv-name" id="lvThemeName">Light</div><div class="lv-muted">Soft fade — no flash</div></div><span class="lv-pill" style="margin-left:auto">${ic('user', 'sm')} 390 px wide</span></div>`);
       let on = false;
-      return every(2200, () => { on = !on; $('#lvSw', el).classList.toggle('on', on); $('#lvSw i', el).textContent = on ? '☾' : '☀'; $('#lvThemeName', el).textContent = on ? 'Dark' : 'Light'; });
+      return every(2200, () => { on = !on; $('#lvSw', el).classList.toggle('on', on); $('#lvSw i', el).innerHTML = ic(on ? 'moon' : 'sun', 'inl'); $('#lvThemeName', el).textContent = on ? 'Dark' : 'Light'; });
     },
   };
   for (const [id, build] of Object.entries(WIDGETS)) {

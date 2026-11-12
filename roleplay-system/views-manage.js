@@ -36,7 +36,7 @@ VIEWS.applications = async (el, id, sub, reload) => {
   if (manage) $('#rbx', el).onclick = () => modal({ title: 'Download the Roblox application center', body: `
       <p class="dim">Generates a ready-to-publish place file for <b>${esc(group().name)}</b>. The place contains no questions — its server script fetches this group’s open applications from the API every time, so edits you make here appear in-game without regenerating the file.</p>
       <div class="callout warn">${icon('alert')}<span>The file embeds a new API key in a server-only script. Do not share the file or make the place copyable. You can revoke the key any time on the API page.</span></div>
-      <p class="hint">After opening it in Roblox Studio: publish the place, then make sure <b>Game Settings → Security → Allow HTTP Requests</b> is on.</p>`,
+      <p class="hint">After opening it in Roblox Studio: publish the place, then make sure <b>Game Settings ${icon('arrowR', 'inl')} Security ${icon('arrowR', 'inl')} Allow HTTP Requests</b> is on.</p>`,
     actions: [{ label: 'Generate & download', kind: 'primary', onClick: async (close) => {
       const key = await createGameKey('Application center');
       downloadFile(`ApplicationCenter-${S.gid}.rbxlx`, await buildPlaceFile('appcenter', { apiUrl: ROBLOX_API_URL, apiKey: key, title: group().name }));
@@ -136,7 +136,7 @@ async function appBuilder(el, id) {
   const qs = app.questions.map((q) => ({ ...q, options: q.options ? [...q.options] : undefined }));
   const s = app.settings;
   const g = group();
-  el.innerHTML = `<div><a href="#/applications" class="muted">← Applications</a></div>
+  el.innerHTML = `<div><a href="#/applications" class="muted">${icon('arrowL', 'inl')} Applications</a></div>
     ${head(id ? 'Edit application' : 'New application', '', `${id ? `<button class="btn danger" id="del">${icon('trash')} Delete</button>` : ''}<button class="btn primary" id="save">${icon('check')} Save</button>`)}
     <div class="card"><div class="body stack">
       <label class="field">Title<input id="title" maxlength="100" value="${esc(app.title)}" placeholder="e.g. Staff application"></label>
@@ -168,7 +168,7 @@ async function appBuilder(el, id) {
 
 async function appSubmissions(el, id) {
   const { application: app, submissions } = await api(`/api/applications/${id}/submissions`);
-  el.innerHTML = `<div><a href="#/applications" class="muted">← Applications</a></div>
+  el.innerHTML = `<div><a href="#/applications" class="muted">${icon('arrowL', 'inl')} Applications</a></div>
     ${head(app.title, `${submissions.filter((x) => x.status === 'pending').length} pending · ${submissions.length} shown`)}
     <div class="card"><div class="tbl-wrap"><table><thead><tr><th>Applicant</th><th>Submitted</th><th>Score</th><th>Status</th><th></th></tr></thead><tbody>
     ${submissions.length ? submissions.map((x) => `<tr class="click" data-id="${x.id}"><td>${who(x.roblox_name, `Roblox ${x.roblox_id}${x.discord_id ? ` · Discord ${x.discord_id}` : ''}`)}</td><td class="muted">${fmtTime(x.created_at)}</td>
@@ -196,7 +196,7 @@ VIEWS.submission = async (el, id, _sub, reload) => {
     return `<span class="badge ${ok ? 'good' : 'bad'}">${ok ? icon('check', 'sm') : icon('x', 'sm')} ${ok ? q.points : 0}/${q.points} pt</span>`;
   };
   let n = 0;
-  el.innerHTML = `<div><a href="#/applications/${esc(app.id)}/submissions" class="muted">← ${esc(app.title)} submissions</a></div>
+  el.innerHTML = `<div><a href="#/applications/${esc(app.id)}/submissions" class="muted">${icon('arrowL', 'inl')} ${esc(app.title)} submissions</a></div>
     ${head(x.roblox_name, `Applied for <b>${esc(app.title)}</b> · ${fmtTime(x.created_at)}`,
       `<a class="btn" target="_blank" rel="noopener" href="https://www.roblox.com/users/${encodeURIComponent(x.roblox_id)}/profile">${icon('external')} Roblox profile</a>`)}
     <div class="stats">
@@ -291,7 +291,7 @@ VIEWS.groups = async (el, _a, _b, reload) => {
         <div><button class="btn primary sm" data-a="saveRanks">Save tracked ranks</button></div>` : `<div class="callout">${icon('info')}<span>Add an Open Cloud API key in Settings to load this group’s roles.</span></div>`}
       </div></div>`).join('') : `<div class="card"><div class="empty">${icon('users')}<div>No groups yet.</div></div></div>`}`;
 
-  const keyHelp = `<small>Create at <a href="https://create.roblox.com/dashboard/credentials" target="_blank" rel="noopener">create.roblox.com → Open Cloud → API keys</a> with the <code>group:read</code> and <code>group:write</code> permissions for this group. The key’s owner needs permission to manage members in the group. Stored encrypted.</small>`;
+  const keyHelp = `<small>Create at <a href="https://create.roblox.com/dashboard/credentials" target="_blank" rel="noopener">create.roblox.com ${icon('arrowR', 'inl')} Open Cloud ${icon('arrowR', 'inl')} API keys</a> with the <code>group:read</code> and <code>group:write</code> permissions for this group. The key’s owner needs permission to manage members in the group. Stored encrypted.</small>`;
   $('#add', el).onclick = () => modal({ title: 'Add a Roblox group', body: `
       <label class="field">Group ID<input id="id" inputmode="numeric" placeholder="e.g. 1234567"><small>The number in the group’s URL.</small></label>
       <label class="field">Open Cloud API key<input id="key" type="password" autocomplete="off">${keyHelp}</label>`,
@@ -346,7 +346,7 @@ function robloxSetup(g = group()) {
       <div class="card"><div class="body stack gap-s"><h3>2 · Application center</h3>
         <p class="dim">A place that loads this group’s open applications from the API and submits answers as the verified player.</p>
         <div class="row wrap"><button class="btn" data-d="appcenter">${icon('download')} ApplicationCenter.rbxlx</button></div></div></div>
-      <p class="hint">In every place: enable <b>Game Settings → Security → Allow HTTP Requests</b>. Keys can be revoked on the API page. The verification game is shared by every group — the owner downloads it from Owner Menu → Verification game.</p>` });
+      <p class="hint">In every place: enable <b>Game Settings ${icon('arrowR', 'inl')} Security ${icon('arrowR', 'inl')} Allow HTTP Requests</b>. Keys can be revoked on the API page. The verification game is shared by every group — the owner sets it up from their own menu.</p>` });
   m.el.onclick = (e) => {
     const b = e.target.closest('[data-d]'); if (!b) return;
     run(b, async () => {
@@ -388,7 +388,7 @@ VIEWS.api = async (el, _a, _b, reload) => {
 };
 
 // ---------- linked accounts ----------
-/** Owner Menu → Verification game: one place for the whole system — download it and set its Roblox link. */
+/** Owner Menu, Verification game: one place for the whole system — download it and set its Roblox link. */
 VIEWS.verification = async (el, _a, _b, reload) => {
   if (!isOwner()) throw new Error('Only the owner can set up the verification game.');
   const gameUrl = (await api('/public/verify-game')).url;
@@ -405,7 +405,7 @@ VIEWS.verification = async (el, _a, _b, reload) => {
     </div></div>
     <div class="card"><div class="head"><h2>How players verify</h2></div><div class="body">
       <ol class="dim" style="margin:0;padding-left:20px;display:grid;gap:6px">
-        <li>They open the <a href="verify.html" target="_blank" rel="noopener">Verify page</a> and sign in with Discord (staff can use <b>My account → Link Roblox</b> instead).</li>
+        <li>They open the <a href="verify.html" target="_blank" rel="noopener">Verify page</a> and sign in with Discord (staff can use <b>My account ${icon('arrowR', 'inl')} Link Roblox</b> instead).</li>
         <li>They get a 6-character code and press <b>Join to Verify</b>.</li>
         <li>In the game they type the code; once it’s linked, the game kicks them with a confirmation.</li>
       </ol>
@@ -425,7 +425,7 @@ VIEWS.verification = async (el, _a, _b, reload) => {
 };
 
 VIEWS.links = async (el) => {
-  el.innerHTML = `${head('Linked accounts', 'Discord ↔ Roblox links made through the verification game. Links are used to ping members in requirement notices and to identify applicants.', `<a class="btn" href="verify.html" target="_blank" rel="noopener">${icon('external')} Verify page</a>${isOwner() ? `<a class="btn" href="#/verification">${icon('roblox')} Verification game</a>` : ''}`)}
+  el.innerHTML = `${head('Linked accounts', 'Discord-to-Roblox links made through the verification game. Links are used to ping members in requirement notices and to identify applicants.', `<a class="btn" href="verify.html" target="_blank" rel="noopener">${icon('external')} Verify page</a>${isOwner() ? `<a class="btn" href="#/verification">${icon('roblox')} Verification game</a>` : ''}`)}
     <div class="card"><div class="head"><div class="search grow">${icon('search', 'sm')}<input id="q" placeholder="Search by Roblox or Discord name / ID" aria-label="Search links"></div></div>
     <div class="tbl-wrap"><table><thead><tr><th>Roblox</th><th>Discord</th><th>Linked</th><th></th></tr></thead><tbody id="rows"></tbody></table></div></div>`;
   const load = async () => {
@@ -504,7 +504,7 @@ VIEWS.ownerHome = async (el) => {
       ${stat('Groups', S.groups.length, `${S.groups.filter((g) => g.hasApiKey).length} with Open Cloud`, 'users')}
       ${stat('Whitelisted staff', staff.length, `${staff.filter((u) => u.lastLogin && Date.now() / 1000 - u.lastLogin < 7 * 86400).length} signed in this week`, 'shield')}
       ${stat('API keys', keys.keys.length, `${keys.keys.filter((k) => k.scopes.includes('game')).length} used by games`, 'key')}
-      ${stat('Linked accounts', links.links.length >= 200 ? '200+' : links.links.length, 'Discord ↔ Roblox', 'link')}
+      ${stat('Linked accounts', links.links.length >= 200 ? '200+' : links.links.length, 'Discord-to-Roblox', 'link')}
     </div>
     <div class="card"><div class="head"><h2 class="grow">Your groups</h2><a class="btn sm ghost" href="#/groups">Manage</a></div>
       <div class="tbl-wrap"><table><thead><tr><th>Group</th><th class="r">Tracked</th><th class="r">In game</th><th class="r">Hours this week</th><th class="r">Pending</th><th></th></tr></thead><tbody>

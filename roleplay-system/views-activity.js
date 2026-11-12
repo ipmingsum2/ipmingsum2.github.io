@@ -3,7 +3,7 @@
 
 const SERIES_FROM = () => addDays(weekStart(today()), -77); // 12 weeks of history for graphs
 const chartCard = (title) => `<div class="card"><div class="head"><h2 class="grow">${title}</h2>${seg('gmode', [['daily', 'Daily'], ['weekly', 'Weekly']], store.get('rp_gmode') || 'daily')}</div><div class="body"><div id="chart"></div><p class="hint" style="margin-top:8px">Days are counted in UTC; weeks start on Monday.</p></div></div>`;
-// ---------- heatmap: when members play (weekday × hour, viewer's local time) ----------
+// ---------- heatmap: when members play (weekday by hour, viewer's local time) ----------
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const heatCard = () => `<div class="card"><div class="head"><div class="grow"><h2>When members play</h2><span class="muted small" id="heatSub"></span></div>
     ${seg('heatDays', [['7', '7 days'], ['28', '28 days'], ['90', '90 days']], store.get('rp_heat') || '28')}</div>
@@ -31,7 +31,7 @@ async function mountHeatmap(el) {
     box.onmousemove = (e) => {
       const c = e.target.closest('i[data-i]'); if (!c) { tip.classList.add('hidden'); return; }
       const i = +c.dataset.i, v = local[i];
-      tip.innerHTML = `<b>${fmtDur(v)} played</b>${WEEKDAYS[Math.floor(i / 24)]} ${hourLabel(i % 24)}–${hourLabel((i % 24 + 1) % 24)}<br><span class="muted">≈ ${fmtDur(v / weeks)} per week</span>`;
+      tip.innerHTML = `<b>${fmtDur(v)} played</b>${WEEKDAYS[Math.floor(i / 24)]} ${hourLabel(i % 24)}–${hourLabel((i % 24 + 1) % 24)}<br><span class="muted">about ${fmtDur(v / weeks)} per week</span>`;
       const r = c.getBoundingClientRect(), p = box.parentElement.getBoundingClientRect();
       tip.style.left = `${r.left - p.left + r.width / 2}px`; tip.style.top = `${r.top - p.top - 6}px`;
       tip.classList.remove('hidden');
@@ -162,7 +162,7 @@ VIEWS.member = async (el, rid, _b, reload) => {
   const p = await api(G(`/members/${rid}`));
   const m = p.member, g = group();
   const tracked = g.trackedRanks.includes(m.rank);
-  el.innerHTML = `<div><a href="#/activity" class="muted">← Activity</a></div>
+  el.innerHTML = `<div><a href="#/activity" class="muted">${icon('arrowL', 'inl')} Activity</a></div>
     <div class="page-head">
       <span class="ava" style="width:48px;height:48px;font-size:20px">${esc(m.username[0].toUpperCase())}</span>
       <div class="grow"><h1>${esc(m.username)}</h1>
@@ -222,7 +222,7 @@ function rankModal(user, action, done) {
       <label class="field">Reason<input id="why" placeholder="Shown in the logs"></label>`,
     actions: [{ label: 'Apply', kind: 'primary', onClick: async (close, m) => {
       const r = await api(G('/ranking'), { body: { user: val(m, '#u'), action: val(m, '#a'), rank: Number(val(m, '#r') || 0), reason: val(m, '#why') } });
-      close(); toast(`${r.user.name}: ${r.from.name} → ${r.to.name}`, 'good'); done();
+      close(); toast(`${r.user.name} is now ${r.to.name}`, 'good'); done();
     } }] }).el.querySelector('#a').onchange = (e) => e.target.closest('.body').querySelector('#rk').classList.toggle('hidden', e.target.value !== 'set');
 }
 

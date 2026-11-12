@@ -31,7 +31,7 @@ function md(src) {
   return out.join('');
 }
 
-/** Markdown → plain text for short previews. */
+/** Markdown -> plain text for short previews. */
 const plainText = (s) => String(s || '').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/^\s*(#{1,3}|>|[-*]|\d+[.)])\s+/gm, '').replace(/[*`]/g, '').replace(/\s+/g, ' ').trim();
 
 // ---------- logbook ----------

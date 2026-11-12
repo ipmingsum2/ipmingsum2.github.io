@@ -7,8 +7,8 @@
   <meta name="description" content="Activity tracking, requirements, ranking, applications and logs for Roblox roleplay groups.">
   <script>try{var t=localStorage.getItem("rp_theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%278%27 fill=%27%235b8def%27/%3E%3Cpath d=%27M16 26s7-3.500 7-8.750V11l-7-2.600L9 11v6.250C9 22.500 16 26 16 26z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%272%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="styles.css?v=b8c2c5f">
-  <link rel="stylesheet" href="intro.css?v=b8c2c5f">
+  <link rel="stylesheet" href="styles.css?v=15fe94b">
+  <link rel="stylesheet" href="intro.css?v=15fe94b">
 </head>
 <body class="intro">
   <div class="progress" aria-hidden="true"><i id="progress"></i></div>
@@ -67,7 +67,7 @@
       <div data-anim><b data-count="30">0</b><span>features in one place</span></div>
       <div data-anim style="--d:.06s"><b data-count="11">0</b><span>application question types</span></div>
       <div data-anim style="--d:.12s"><b data-count="60" data-suffix="s">0</b><span>between activity heartbeats</span></div>
-      <div data-anim style="--d:.18s"><b>∞</b><span>groups per dashboard</span></div>
+      <div data-anim style="--d:.18s"><b class="inf" data-ic="infinity" aria-label="Unlimited"></b><span>groups per dashboard</span></div>
     </section>
 
     <!-- ACTIVITY TOUR -->
@@ -79,7 +79,7 @@
           <article class="step" data-shot-step="activity" data-url="#/activity">
             <span class="sicon" data-ic="chart"></span><h3>Total hours, daily or weekly</h3>
             <p>Switch the graph between days and weeks, then filter the leaderboard by today, this week, last week, 30 days, all time or any custom date range.</p>
-            <ul><li>A weekday × hour heatmap of when members actually play</li><li>Idle (AFK) time detected server-side</li><li>Sessions, chat messages and who is in game right now</li><li>CSV export, and manual adjustments that are always logged</li></ul>
+            <ul><li>A weekday-by-hour heatmap of when members actually play</li><li>Idle (AFK) time detected server-side</li><li>Sessions, chat messages and who is in game right now</li><li>CSV export, and manual adjustments that are always logged</li></ul>
           </article>
           <article class="step" data-shot-step="member" data-url="#/member/RubyLobby">
             <span class="sicon" data-ic="user"></span><h3>A profile for every member</h3>
@@ -220,15 +220,15 @@
     </section>
 
     <!-- ACCESS -->
-    <section class="chapter split" id="access" data-nav="Access &amp; Owner Menu" data-icon="shield">
+    <section class="chapter split" id="access" data-nav="Access &amp; groups" data-icon="shield">
       <div class="copy" data-anim="left">
         <span class="kicker">11 · Access</span><h2>Sign in, pick a group, get to work.</h2>
-        <p>After signing in you choose where to work. Every group shows live numbers on its card — and the owner always gets the <b>Owner Menu</b> first: the whitelist, every group, API keys, linked accounts and logs across all groups.</p>
-        <ul class="ticks"><li>Whitelist only — and anyone else gets an access request form you design</li><li>Per-person permissions: ranking, logs, applications, groups, API keys</li><li>Press <kbd>Ctrl</kbd> <kbd>K</kbd> to jump to any page, group or member</li></ul>
+        <p>After signing in you choose where to work. Every group you can open shows live numbers on its card, and you can switch groups any time from the top bar.</p>
+        <ul class="ticks"><li>Whitelist only — not on it yet? Ask for access right from the sign-in page</li><li>Per-person permissions: ranking, logs, applications, groups, API keys</li><li>Press <kbd>Ctrl</kbd> <kbd>K</kbd> to jump to any page, group or member</li></ul>
       </div>
       <div class="media layered" data-anim="right">
-        <figure class="frame back"><img data-shot="owner-home" alt="Owner Menu overview: groups, whitelisted staff, API keys and recent logs across all groups" width="1440" height="900" loading="lazy"></figure>
-        <figure class="frame front"><img data-shot="picker" alt="Group picker after sign-in with the Owner Menu as the first card" width="1440" height="900" loading="lazy"></figure>
+        <figure class="frame back"><img data-shot="picker" alt="Group picker after sign-in, with live numbers on every group" width="1440" height="900" loading="lazy"></figure>
+        <figure class="frame front"><img data-shot="palette" alt="Quick search (Ctrl+K) finding a member" width="1440" height="900" loading="lazy"></figure>
       </div>
     </section>
 
@@ -273,14 +273,14 @@
           <div class="dc-feed">
             <div class="dc-msg"><span class="dc-ava" data-ic="shield"></span><div class="dc-body"><div class="dc-name">Roleplay System <span class="dc-bot">APP</span> <span class="dc-time">Today at 17:30</span></div>
               <div class="dc-ping">@Receptionists</div>
-              <div class="dc-embed" style="--c:#e2a336"><b>⏰ Starting soon — Shift: Evening reception</b><span>Starts 18:00 (in 30 minutes) · 60 min</span><span>Host: <b>Avalynne</b> · Co-host: <b>SunnyConcierge</b></span></div></div></div>
+              <div class="dc-embed" style="--c:#e2a336"><b><span data-ic="clock" class="dc-i"></span> Starting soon — Shift: Evening reception</b><span>Starts 18:00 (in 30 minutes) · 60 min</span><span>Host: <b>Avalynne</b> · Co-host: <b>SunnyConcierge</b></span></div></div></div>
             <div class="dc-msg"><span class="dc-ava" data-ic="shield"></span><div class="dc-body"><div class="dc-name">Roleplay System <span class="dc-bot">APP</span> <span class="dc-time">Today at 18:00</span></div>
-              <div class="dc-embed" style="--c:#f2b84b"><b>🏆 Staff of the week — Sunrise Hotels</b><span><b>SunnyConcierge</b> led the week with <b>14.2 hours</b> in game. Thank you!</span>
-                <div class="dc-fields"><div><i>Most hours</i>🥇 SunnyConcierge — 14.2 h<br>🥈 Avalynne — 11.8 h<br>🥉 RubyLobby — 9.5 h</div><div><i>Most sessions</i>🥇 Avalynne — 6<br>🥈 MiraFrontDesk — 5<br>🥉 KaiSuite204 — 4</div></div></div></div></div>
+              <div class="dc-embed" style="--c:#f2b84b"><b><span data-ic="trophy" class="dc-i"></span> Staff of the week — Sunrise Hotels</b><span><b>SunnyConcierge</b> led the week with <b>14.2 hours</b> in game. Thank you!</span>
+                <div class="dc-fields"><div><i>Most hours</i><span data-ic="medal" class="m1"></span> SunnyConcierge — 14.2 h<br><span data-ic="medal" class="m2"></span> Avalynne — 11.8 h<br><span data-ic="medal" class="m3"></span> RubyLobby — 9.5 h</div><div><i>Most sessions</i><span data-ic="medal" class="m1"></span> Avalynne — 6<br><span data-ic="medal" class="m2"></span> MiraFrontDesk — 5<br><span data-ic="medal" class="m3"></span> KaiSuite204 — 4</div></div></div></div></div>
             <div class="dc-msg"><span class="dc-ava" data-ic="shield"></span><div class="dc-body"><div class="dc-name">Roleplay System <span class="dc-bot">APP</span> <span class="dc-time">Today at 18:12</span></div>
               <div class="dc-embed" style="--c:#8e6fd8"><b class="dc-link">New application — Receptionist</b><span><b>PixelPenguin42</b> applied · Auto-score <b>7/7</b></span>
-                <div class="dc-qa"><i>1. Why do you want to work here?</i>I love hospitality roleplay and I’m on most evenings.<i>2. Preferred shift ✅</i>Other: Weekends</div></div>
-              <div class="dc-buttons"><span>Decide ↗</span><span>Roblox profile ↗</span></div></div></div>
+                <div class="dc-qa"><i>1. Why do you want to work here?</i>I love hospitality roleplay and I’m on most evenings.<i>2. Preferred shift <span data-ic="check" class="dc-ok"></span></i>Other: Weekends</div></div>
+              <div class="dc-buttons"><span>Decide <span data-ic="external"></span></span><span>Roblox profile <span data-ic="external"></span></span></div></div></div>
             <div class="dc-msg"><span class="dc-ava" data-ic="shield"></span><div class="dc-body"><div class="dc-name">Roleplay System <span class="dc-bot">APP</span> <span class="dc-time">Monday at 00:00</span></div>
               <div class="dc-embed" style="--c:#e5484d"><b>2 members did not meet the weekly requirement</b><span><span class="dc-ping in">@MaxDoorman</span> <b>MaxDoorman</b> (Bellhop) — 1h 10m / 3h</span><span><span class="dc-ping in">@KaiSuite204</span> <b>KaiSuite204</b> (Receptionist) — 2h 05m / 3h</span></div></div></div>
           </div>
@@ -295,19 +295,19 @@
       <div class="bento">
         <article class="bcard" data-anim><div class="bviz viz-ban"><span class="ban-player"><span data-ic="user"></span> Exploiter99</span><span class="ban-x" data-ic="ban"></span></div>
           <h3><span data-ic="ban"></span> Blacklist</h3><p>Banned players are kicked the moment they join — and can’t apply.</p></article>
-        <article class="bcard" data-anim style="--d:.05s"><div class="bviz viz-promo"><div class="promo-row"><b>Trainee</b><span>→</span><b>Receptionist</b></div><div class="promo-bar"><i></i></div><small>10 h + 2 sessions in 30 days</small></div>
+        <article class="bcard" data-anim style="--d:.05s"><div class="bviz viz-promo"><div class="promo-row"><b>Trainee</b><span data-ic="arrowR"></span><b>Receptionist</b></div><div class="promo-bar"><i></i></div><small>10 h + 2 sessions in 30 days</small></div>
           <h3><span data-ic="sparkle"></span> Auto-promotion</h3><p>Rules rank people up — or recommend them — once they’ve put in the time.</p></article>
         <article class="bcard wide" data-anim style="--d:.1s"><div class="bviz viz-heat" id="miniHeat"></div>
           <h3><span data-ic="chart"></span> Activity heatmap</h3><p>See which hours of the week your game is busy, in your own time zone — and plan shifts around it.</p></article>
-        <article class="bcard wide" data-anim><div class="bviz viz-search"><div class="fake-search"><span data-ic="search"></span><span class="typed" data-type="RubyLobby|Logbook|Owner Menu|Auto-promotion"></span><kbd>Ctrl K</kbd></div></div>
+        <article class="bcard wide" data-anim><div class="bviz viz-search"><div class="fake-search"><span data-ic="search"></span><span class="typed" data-type="RubyLobby|Logbook|Sessions|Auto-promotion"></span><kbd>Ctrl K</kbd></div></div>
           <h3><span data-ic="search"></span> Quick search</h3><p>Jump to any page, group or member from anywhere in the dashboard.</p></article>
         <article class="bcard" data-anim style="--d:.05s"><div class="bviz viz-access"><span data-ic="inbox"></span><b class="count">3</b><small>new requests</small></div>
-          <h3><span data-ic="inbox"></span> Access requests</h3><p>Not on the whitelist? People fill in your form; you approve with a click.</p></article>
-        <article class="bcard" data-anim style="--d:.1s"><div class="bviz viz-verify"><span class="btn primary sm"><span data-ic="roblox"></span> Join to Verify</span><small class="kick">✔ Verified — kicked</small></div>
+          <h3><span data-ic="inbox"></span> Access requests</h3><p>Not on the whitelist yet? Ask for access right from the sign-in page.</p></article>
+        <article class="bcard" data-anim style="--d:.1s"><div class="bviz viz-verify"><span class="btn primary sm"><span data-ic="roblox"></span> Join to Verify</span><small class="kick"><span data-ic="check"></span> Verified — kicked</small></div>
           <h3><span data-ic="link"></span> One verification game</h3><p>A single place for every group, with a button straight to it.</p></article>
-        <article class="bcard" data-anim><div class="bviz viz-forms"><span class="chip">Other: <u>Weekends</u></span><span class="chip bad">Select at least 2</span><span class="chip">📅 2026-12-01</span></div>
+        <article class="bcard wide" data-anim><div class="bviz viz-forms"><span class="chip">Other: <u>Weekends</u></span><span class="chip bad">Select at least 2</span><span class="chip"><span data-ic="calendar"></span> 2026-12-01</span></div>
           <h3><span data-ic="file"></span> Smart forms</h3><p>“Other” answers, validation rules and date/time questions — on the web and in-game.</p></article>
-        <article class="bcard" data-anim style="--d:.05s"><div class="bviz viz-csv"><span data-ic="download"></span><small>activity.csv</small></div>
+        <article class="bcard wide" data-anim style="--d:.05s"><div class="bviz viz-csv"><span data-ic="download"></span><small>activity.csv</small></div>
           <h3><span data-ic="download"></span> CSV export</h3><p>Activity, logs and the blacklist straight into a spreadsheet.</p></article>
       </div>
     </section>
@@ -350,8 +350,8 @@
     </section>
   </main>
 
-  <script src="config.js?v=b8c2c5f"></script>
-  <script src="core.js?v=b8c2c5f"></script>
-  <script src="intro.js?v=b8c2c5f"></script>
+  <script src="config.js?v=15fe94b"></script>
+  <script src="core.js?v=15fe94b"></script>
+  <script src="intro.js?v=15fe94b"></script>
 </body>
 </html>

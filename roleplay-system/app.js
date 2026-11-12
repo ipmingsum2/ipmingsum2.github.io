@@ -258,7 +258,7 @@ function shell() {
 }
 
 // ---------- quick search (Ctrl+K) ----------
-const memberCache = new Map(); // gid → members (fetched once per page load)
+const memberCache = new Map(); // gid -> members (fetched once per page load)
 async function paletteItems() {
   const items = [];
   const nav = (list, ctxLabel, ctxId) => list.filter(([, label, , show]) => label && (!show || show())).forEach(([path, label, ic]) =>
@@ -281,7 +281,7 @@ async function palette() {
   ov.innerHTML = `<div class="palette" role="dialog" aria-modal="true" aria-label="Search">
       <div class="pal-in">${icon('search')}<input id="palQ" placeholder="Search pages, groups and members…" autocomplete="off" spellcheck="false" aria-label="Search" role="combobox" aria-expanded="true" aria-controls="palList"><kbd>Esc</kbd></div>
       <div class="pal-list" id="palList" role="listbox"><div class="empty">Loading…</div></div>
-      <div class="pal-foot muted small"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>Enter</kbd> open</span><span><kbd>Ctrl</kbd><kbd>K</kbd> anytime</span></div></div>`;
+      <div class="pal-foot muted small"><span><kbd>${icon('up', 'inl')}</kbd><kbd>${icon('down', 'inl')}</kbd> move</span><span><kbd>Enter</kbd> open</span><span><kbd>Ctrl</kbd><kbd>K</kbd> anytime</span></div></div>`;
   document.body.append(ov);
   const input = $('#palQ', ov), list = $('#palList', ov);
   const close = () => { ov.remove(); document.removeEventListener('keydown', onKey, true); };
