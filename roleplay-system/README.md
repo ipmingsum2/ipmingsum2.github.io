@@ -20,7 +20,7 @@ A whitelist-only management system for Roblox roleplay groups: activity tracking
 | Logging | Every action is logged (promotions, demotions, missed requirements, sign-ins, settings, applications…), searchable, optionally mirrored to a Discord channel |
 | Applications | Form builder (9 question types, required flags, optional auto-grading), web form + in-game application center, review with optional auto-rank |
 | Accounts | Sign in with Google or Discord, link one to the other, link Roblox through a verification game |
-| Access | Whitelist-only. The owner manages the whitelist and per-user permissions |
+| Access | Whitelist-only. The owner manages the whitelist and per-user permissions. Someone who signs in without being whitelisted gets an access request form (questions set by the owner in the Owner Menu); the owner approves — choosing their permissions — or denies with a note, and can be pinged in Discord with a Review button. Denied people can ask again after 24 hours |
 | Logbook | Warnings, strikes, suspensions, demotions, promotions, commendations and terminations with reason and evidence link; warnings expire, entries are revoked (never deleted); warning ticker per member; promotions/demotions can change the rank too |
 | Sessions | Schedule shifts/trainings/events with Discord announcements; staff claim them as host or co-host; registers record who attended; optional weekly session target in requirements |
 | Promotions | Nominate members for promotion, upvote with a required justification, filter by rank, sort by votes or trending, recommender insights; rankers promote straight from a recommendation |

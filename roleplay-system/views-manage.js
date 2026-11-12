@@ -6,6 +6,7 @@ const Q_LABEL = Object.fromEntries(Q_TYPES);
 const HAS_OPTS = ['choice', 'checkboxes', 'dropdown'];
 const GRADABLE = ['short', 'choice', 'checkboxes', 'dropdown', 'yesno', 'number'];
 const applyUrl = (id) => new URL(`apply.html?id=${id}`, location.href).href;
+const PERM_LABELS = { manage_activity: 'Manage activity, requirements, time off, notes, sessions and registers', ranking: 'Promote / demote / set ranks, approve promotion recommendations, auto-promotion', manage_groups: 'Add and configure groups', manage_applications: 'Create and edit applications', review_applications: 'Accept / deny submissions', view_logs: 'View logs', manage_api_keys: 'Create and revoke API keys', manage_discipline: 'Logbook entries and the blacklist', manage_content: 'Post news and edit the knowledgebase' };
 
 /** Creates a group-bound API key with the "game" scope (used by generated place files and loader snippets). */
 async function createGameKey(label, gid = S.gid) {
@@ -42,34 +43,11 @@ VIEWS.applications = async (el, id, sub, reload) => {
     } }] });
 };
 
-async function appBuilder(el, id) {
-  if (!can('manage_applications')) throw new Error('You do not have permission to edit applications.');
-  const app = id ? (await api(`/api/applications/${id}`)).application : { title: '', description: '', questions: [], settings: { open: true, identity: 'username', allowWeb: true, allowGame: true } };
-  const qs = app.questions.map((q) => ({ ...q, options: q.options ? [...q.options] : undefined }));
-  const s = app.settings;
-  const g = group();
-  el.innerHTML = `<div><a href="#/applications" class="muted">← Applications</a></div>
-    ${head(id ? 'Edit application' : 'New application', '', `${id ? `<button class="btn danger" id="del">${icon('trash')} Delete</button>` : ''}<button class="btn primary" id="save">${icon('check')} Save</button>`)}
-    <div class="card"><div class="body stack">
-      <label class="field">Title<input id="title" maxlength="100" value="${esc(app.title)}" placeholder="e.g. Staff application"></label>
-      <label class="field">Description<textarea id="desc" maxlength="2000" placeholder="Shown at the top of the form">${esc(app.description)}</textarea></label>
-    </div></div>
-    <div class="card"><div class="head"><h2 class="grow">Questions</h2></div><div class="body stack"><div class="stack" id="qs"></div>
-      <div class="row wrap"><select id="newType" style="width:auto" aria-label="Question type">${Q_TYPES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select><button class="btn" id="addQ">${icon('plus')} Add question</button></div></div></div>
-    <div class="card"><div class="head"><h2>Settings</h2></div><div class="body stack">
-      <div class="grid2">
-        <label class="field">Who is applying?<select id="ident"><option value="username" ${s.identity !== 'discord' ? 'selected' : ''}>Applicant types their Roblox username</option><option value="discord" ${s.identity === 'discord' ? 'selected' : ''}>Must sign in with Discord (linked Roblox account)</option></select><small>Applies to the web form. In-game submissions are always the verified Roblox player.</small></label>
-        <label class="field">Rank on acceptance (optional)<select id="arank"><option value="">Do not rank automatically</option>${rolesOf(g).filter((r) => r.rank < 255).map((r) => `<option value="${r.rank}" ${s.acceptRank === r.rank ? 'selected' : ''}>${esc(r.name)} (${r.rank})</option>`).join('')}</select><small>Uses Roblox Open Cloud when a reviewer accepts.</small></label>
-      </div>
-      <label class="field">Discord webhook (optional)<input id="hook" value="${esc(s.webhookUrl || '')}" placeholder="https://discord.com/api/webhooks/…"><small>Notified on new submissions and decisions.</small></label>
-      <label class="field">Message after submitting<input id="succ" value="${esc(s.successMessage || '')}" placeholder="Your application has been submitted."></label>
-      <div class="row wrap" style="gap:18px">
-        <label class="check"><input type="checkbox" id="open" ${s.open === false ? '' : 'checked'}> Accepting submissions</label>
-        <label class="check"><input type="checkbox" id="web" ${s.allowWeb === false ? '' : 'checked'}> Available on the web form</label>
-        <label class="check"><input type="checkbox" id="game" ${s.allowGame === false ? '' : 'checked'}> Available in the Roblox application center</label>
-      </div></div></div>`;
-
-  const box = $('#qs', el);
+/** Question list editor (applications and the access request form). Edits `qs` in place. */
+const questionEditorHTML = () => `<div class="stack" id="qs"></div>
+  <div class="row wrap"><select id="newType" style="width:auto" aria-label="Question type">${Q_TYPES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select><button class="btn" id="addQ">${icon('plus')} Add question</button></div>`;
+function bindQuestionEditor(root, qs, { grading = true } = {}) {
+  const box = $('#qs', root);
   const draw = () => {
     box.innerHTML = qs.length ? qs.map((q, i) => `<div class="qcard" data-i="${i}">
         <div class="bar-top"><span class="badge accent">${Q_LABEL[q.type]}</span><span class="grow"></span>
@@ -83,7 +61,7 @@ async function appBuilder(el, id) {
           <div><button class="btn sm" data-addopt>${icon('plus', 'sm')} Add option</button></div></div>` : ''}
         ${q.type === 'scale' ? `<div class="grid2"><label class="field">From<select data-f="min"><option ${q.min === 0 ? 'selected' : ''}>0</option><option ${q.min !== 0 ? 'selected' : ''}>1</option></select></label><label class="field">To<select data-f="max">${[2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => `<option ${n === (q.max || 5) ? 'selected' : ''}>${n}</option>`).join('')}</select></label></div>` : ''}
         ${q.type === 'number' ? `<div class="grid2"><label class="field">Minimum (optional)<input type="number" data-f="min" value="${q.min ?? ''}"></label><label class="field">Maximum (optional)<input type="number" data-f="max" value="${q.max ?? ''}"></label></div>` : ''}
-        ${GRADABLE.includes(q.type) ? `<details ${q.points ? 'open' : ''}><summary class="hint" style="cursor:pointer">Auto-grading (optional)</summary><div class="grid2" style="margin-top:8px">
+        ${grading && GRADABLE.includes(q.type) ? `<details ${q.points ? 'open' : ''}><summary class="hint" style="cursor:pointer">Auto-grading (optional)</summary><div class="grid2" style="margin-top:8px">
           <label class="field">Points<input type="number" min="0" max="100" data-f="points" value="${q.points || ''}" placeholder="0 = not graded"></label>
           <label class="field">Correct answer${q.type === 'checkboxes' ? 's' : ''}${q.type === 'yesno' ? `<select data-f="correct"><option value=""></option><option ${q.correct === 'Yes' ? 'selected' : ''}>Yes</option><option ${q.correct === 'No' ? 'selected' : ''}>No</option></select>`
             : `<input data-f="correct" value="${esc(Array.isArray(q.correct) ? q.correct.join(' | ') : q.correct ?? '')}" placeholder="${q.type === 'checkboxes' ? 'Option A | Option B' : HAS_OPTS.includes(q.type) ? 'Exact option text' : 'Exact answer'}">`}</label></div>
@@ -112,11 +90,40 @@ async function appBuilder(el, id) {
     else return;
     draw();
   };
-  $('#addQ', el).onclick = () => {
+  $('#addQ', root).onclick = () => {
     const type = $('#newType', el).value;
     qs.push({ type, label: '', description: '', required: type !== 'section', ...(HAS_OPTS.includes(type) ? { options: ['', ''] } : {}), ...(type === 'scale' ? { min: 1, max: 5 } : {}) });
-    draw(); $$('.qcard [data-f="label"]', box).pop().focus();
+    draw(); $('.qcard [data-f="label"]', box).pop().focus();
   };
+}
+
+async function appBuilder(el, id) {
+  if (!can('manage_applications')) throw new Error('You do not have permission to edit applications.');
+  const app = id ? (await api(`/api/applications/${id}`)).application : { title: '', description: '', questions: [], settings: { open: true, identity: 'username', allowWeb: true, allowGame: true } };
+  const qs = app.questions.map((q) => ({ ...q, options: q.options ? [...q.options] : undefined }));
+  const s = app.settings;
+  const g = group();
+  el.innerHTML = `<div><a href="#/applications" class="muted">← Applications</a></div>
+    ${head(id ? 'Edit application' : 'New application', '', `${id ? `<button class="btn danger" id="del">${icon('trash')} Delete</button>` : ''}<button class="btn primary" id="save">${icon('check')} Save</button>`)}
+    <div class="card"><div class="body stack">
+      <label class="field">Title<input id="title" maxlength="100" value="${esc(app.title)}" placeholder="e.g. Staff application"></label>
+      <label class="field">Description<textarea id="desc" maxlength="2000" placeholder="Shown at the top of the form">${esc(app.description)}</textarea></label>
+    </div></div>
+    <div class="card"><div class="head"><h2 class="grow">Questions</h2></div><div class="body stack">${questionEditorHTML()}</div></div>
+    <div class="card"><div class="head"><h2>Settings</h2></div><div class="body stack">
+      <div class="grid2">
+        <label class="field">Who is applying?<select id="ident"><option value="username" ${s.identity !== 'discord' ? 'selected' : ''}>Applicant types their Roblox username</option><option value="discord" ${s.identity === 'discord' ? 'selected' : ''}>Must sign in with Discord (linked Roblox account)</option></select><small>Applies to the web form. In-game submissions are always the verified Roblox player.</small></label>
+        <label class="field">Rank on acceptance (optional)<select id="arank"><option value="">Do not rank automatically</option>${rolesOf(g).filter((r) => r.rank < 255).map((r) => `<option value="${r.rank}" ${s.acceptRank === r.rank ? 'selected' : ''}>${esc(r.name)} (${r.rank})</option>`).join('')}</select><small>Uses Roblox Open Cloud when a reviewer accepts.</small></label>
+      </div>
+      <label class="field">Discord webhook (optional)<input id="hook" value="${esc(s.webhookUrl || '')}" placeholder="https://discord.com/api/webhooks/…"><small>Notified on new submissions and decisions.</small></label>
+      <label class="field">Message after submitting<input id="succ" value="${esc(s.successMessage || '')}" placeholder="Your application has been submitted."></label>
+      <div class="row wrap" style="gap:18px">
+        <label class="check"><input type="checkbox" id="open" ${s.open === false ? '' : 'checked'}> Accepting submissions</label>
+        <label class="check"><input type="checkbox" id="web" ${s.allowWeb === false ? '' : 'checked'}> Available on the web form</label>
+        <label class="check"><input type="checkbox" id="game" ${s.allowGame === false ? '' : 'checked'}> Available in the Roblox application center</label>
+      </div></div></div>`;
+
+  bindQuestionEditor(el, qs);
   $('#save', el).onclick = (e) => run(e.currentTarget, async () => {
     const body = { title: val(el, '#title'), description: val(el, '#desc'), questions: qs,
       settings: { open: $('#open', el).checked, allowWeb: $('#web', el).checked, allowGame: $('#game', el).checked, identity: val(el, '#ident'), acceptRank: val(el, '#arank'), webhookUrl: val(el, '#hook'), successMessage: val(el, '#succ') } };
@@ -353,7 +360,7 @@ VIEWS.links = async (el, _a, _b, reload) => {
 VIEWS.access = async (el, _a, _b, reload) => {
   if (S.user.role !== 'owner') throw new Error('Only the owner can manage access.');
   const { users } = await api('/api/users');
-  const P = { manage_activity: 'Manage activity, requirements, time off, notes, sessions and registers', ranking: 'Promote / demote / set ranks, approve promotion recommendations', manage_groups: 'Add and configure groups', manage_applications: 'Create and edit applications', review_applications: 'Accept / deny submissions', view_logs: 'View logs', manage_api_keys: 'Create and revoke API keys', manage_discipline: 'Write and revoke logbook entries (warnings, suspensions…)', manage_content: 'Post news and edit the knowledgebase' };
+  const P = PERM_LABELS;
   const form = (u = {}) => `
       <label class="field">Name<input id="n" value="${esc(u.name || '')}" placeholder="Shown in logs"></label>
       <div class="grid2"><label class="field">Google email<input id="ge" type="email" value="${esc(u.googleEmail || '')}" placeholder="name@gmail.com"></label>

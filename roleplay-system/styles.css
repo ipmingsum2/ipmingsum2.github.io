@@ -276,3 +276,9 @@ tr.faded td { opacity: .55; }
 .rule .check { padding-bottom: 9px; white-space: nowrap; }
 .rule [data-rm] { margin-bottom: 4px; }
 @media (max-width: 1100px) { .rule { grid-template-columns: repeat(2, minmax(0, 1fr)); } .rule .check, .rule [data-rm] { justify-self: start; } }
+
+/* Access request screen */
+.public .mark { width: 30px; height: 30px; border-radius: 8px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; }
+.public .acct { padding-top: 10px; border-top: 1px solid var(--line); margin-top: 4px; }
+.public .acct .icon { vertical-align: -3px; }
+.nowrap { white-space: nowrap; }

@@ -7,7 +7,7 @@ import { blacklisted } from './more.js';
 export const QUESTION_TYPES = ['short', 'paragraph', 'choice', 'checkboxes', 'dropdown', 'number', 'scale', 'yesno', 'section'];
 const HAS_OPTIONS = ['choice', 'checkboxes', 'dropdown'];
 
-function cleanQuestions(input) {
+export function cleanQuestions(input) {
   if (!Array.isArray(input)) bad('questions must be an array');
   if (input.length > 60) bad('An application can have at most 60 questions');
   const seen = new Set();
@@ -198,7 +198,7 @@ export async function reviewSubmission(c) {
 // ---------- submitting ----------
 const norm = (v) => String(v ?? '').trim().toLowerCase();
 
-function gradeAndValidate(questions, input) {
+export function gradeAndValidate(questions, input) {
   const answers = {};
   let score = 0, max = 0;
   for (const q of questions) {

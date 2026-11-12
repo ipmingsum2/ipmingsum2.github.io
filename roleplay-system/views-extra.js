@@ -1,4 +1,4 @@
-// Views: blacklist, auto-promotion.
+// Views: blacklist, auto-promotion, access requests (Owner Menu).
 'use strict';
 
 // ---------- blacklist ----------
@@ -168,3 +168,98 @@ VIEWS.autopromote = async (el, _a, _b, reload) => {
     });
   };
 };
+
+// ---------- access requests (Owner Menu) ----------
+const reqWho = (r) => r.name || r.google_email || r.discord_id;
+const reqAccount = (r) => r.provider === 'google' ? `${icon('google', 'sm')} ${esc(r.google_email)}` : `${icon('discord', 'sm')} ${esc(r.name || '')} <span class="muted mono">${esc(r.discord_id)}</span>`;
+const answerText = (v) => v == null || v === '' || (Array.isArray(v) && !v.length) ? '<span class="muted">No answer</span>' : esc(Array.isArray(v) ? v.join(', ') : v);
+
+VIEWS.requests = async (el, id, _sub, reload) => {
+  if (!isOwner()) throw new Error('Only the owner can review access requests.');
+  if (id === 'form') return accessFormEditor(el);
+  if (id) return accessRequestPage(el, id, reload);
+  const status = ['approved', 'denied'].includes(store.get('rp_reqstatus')) ? store.get('rp_reqstatus') : 'pending';
+  const [d, f] = await Promise.all([api(`/api/access-requests?status=${status}`), api('/api/access-form')]);
+  const first = d.questions.find((q) => q.type !== 'section');
+  el.innerHTML = `${head('Access requests', 'People who signed in without being on the whitelist and asked for access. Approving adds them to the whitelist.', `<a class="btn" href="#/requests/form">${icon('edit')} Edit form</a>`)}
+    ${f.form.enabled ? '' : `<div class="callout warn">${icon('alert')}<span>Access requests are turned off — people who aren’t whitelisted just see “not whitelisted”. <a href="#/requests/form">Turn them on</a>.</span></div>`}
+    <div class="stats">
+      ${stat('Pending', d.counts.pending || 0, 'waiting for you', 'inbox')}
+      ${stat('Approved', d.counts.approved || 0, 'all time', 'check')}
+      ${stat('Denied', d.counts.denied || 0, 'all time', 'x')}
+    </div>
+    <div class="card"><div class="head">${seg('rs', [['pending', 'Pending'], ['approved', 'Approved'], ['denied', 'Denied']], status)}</div>
+      <div class="tbl-wrap"><table><thead><tr><th>Person</th><th>Account</th>${first ? `<th>${esc(first.label)}</th>` : ''}<th>Sent</th><th></th></tr></thead><tbody>
+      ${d.requests.length ? d.requests.map((r) => `<tr class="click" data-id="${r.id}">
+        <td>${who(reqWho(r))}</td><td class="nowrap">${reqAccount(r)}</td>
+        ${first ? `<td class="wrap-text dim">${answerText(r.answers[first.id])}</td>` : ''}
+        <td class="muted">${ago(r.created_at)}${r.reviewer ? `<br><span class="small">${esc(r.status)} by ${esc(r.reviewer)}</span>` : ''}</td>
+        <td class="r"><a class="btn sm ${r.status === 'pending' ? 'primary' : ''}" href="#/requests/${r.id}">${r.status === 'pending' ? 'Review' : 'View'}</a></td></tr>`).join('')
+        : emptyRow(first ? 5 : 4, `No ${status} requests.`, 'inbox')}
+      </tbody></table></div></div>`;
+  onSeg(el, 'rs', (v) => { store.set('rp_reqstatus', v); reload(); });
+  $('tbody', el).onclick = (e) => { const tr = e.target.closest('tr[data-id]'); if (tr && !e.target.closest('a')) location.hash = `#/requests/${tr.dataset.id}`; };
+};
+
+async function accessRequestPage(el, id, reload) {
+  const { request: r, questions, whitelistedAs, history } = await api(`/api/access-requests/${encodeURIComponent(id)}`);
+  const pending = r.status === 'pending';
+  let n = 0;
+  el.innerHTML = `<div><a href="#/requests" class="muted">← Access requests</a></div>
+    ${head(reqWho(r), `Asked for access ${fmtTime(r.created_at)}`)}
+    <div class="stats">
+      ${stat('Status', statusBadge(r.status === 'approved' ? 'accepted' : r.status), r.reviewer ? `by ${esc(r.reviewer)} · ${fmtTime(r.reviewed_at)}` : 'Waiting for you', 'inbox')}
+      ${stat('Signed in with', r.provider === 'google' ? 'Google' : 'Discord', r.provider === 'google' ? esc(r.google_email) : esc(r.discord_id), r.provider)}
+      ${stat('Earlier requests', history.length, history.length ? history.map((h) => `${esc(h.status)} ${fmtDate(h.created_at)}`).join(' · ') : 'first time asking', 'list')}
+    </div>
+    ${whitelistedAs ? `<div class="callout">${icon('info')}<span>This account is already on the whitelist as <b>${esc(whitelistedAs.name || 'a user')}</b>.</span></div>` : ''}
+    <div class="sub-grid">
+      <div class="card"><div class="head"><h2 class="grow">Answers</h2></div><div class="body stack qa">
+        ${questions.map((q) => q.type === 'section' ? `<h3 class="qa-sec">${esc(q.label)}</h3>`
+          : `<div class="qa-item"><div class="qa-q"><b><span class="muted num">${++n}.</span> ${esc(q.label)}</b></div><div class="qa-a">${answerText(r.answers[q.id])}</div></div>`).join('')}
+        ${Object.keys(r.answers).some((k) => !questions.some((q) => q.id === k)) ? `<p class="hint">Some answers are to questions that have since been removed from the form.</p>` : ''}
+      </div></div>
+      <div class="card decide"><div class="head"><h2 class="grow">Decide</h2></div><div class="body stack">
+        ${pending ? `
+          <label class="field">Name on the whitelist<input id="nm" maxlength="60" value="${esc(r.name || '')}" placeholder="Shown in logs"></label>
+          <div class="stack gap-s"><b style="font-size:13px">Permissions</b><span class="hint">Everyone on the whitelist can view activity, requirements, time off and sessions. You can change this later on Access &amp; whitelist.</span>
+            ${S.permissions.map((p) => `<label class="check"><input type="checkbox" data-p="${p}"> ${esc(PERM_LABELS[p] || p)}</label>`).join('')}</div>
+          <label class="field">Note (optional)<textarea id="note" maxlength="500" placeholder="Shown to them if you deny"></textarea></label>
+          <div class="row wrap"><button class="btn danger grow" data-decide="denied">${icon('x')} Deny</button><button class="btn primary grow" data-decide="approved">${icon('check')} Approve</button></div>`
+        : `<p>${statusBadge(r.status === 'approved' ? 'accepted' : r.status)} by <b>${esc(r.reviewer || 'unknown')}</b> <span class="muted">· ${fmtTime(r.reviewed_at)}</span></p>
+           ${r.review_note ? `<div class="note"><b>Note:</b> ${esc(r.review_note)}</div>` : ''}
+           ${r.status === 'approved' ? '<p class="hint">They can now sign in. Change their permissions on Access &amp; whitelist.</p>' : ''}`}
+      </div></div>
+    </div>`;
+  $$('[data-decide]', el).forEach((b) => b.onclick = async () => {
+    const status = b.dataset.decide;
+    const perms = $$('[data-p]:checked', el).map((i) => i.dataset.p);
+    const ok = status === 'approved'
+      ? await confirmBox(`Approve ${reqWho(r)}?`, `They’ll be added to the whitelist with ${perms.length ? `${perms.length} permission${perms.length === 1 ? '' : 's'}` : 'view-only access'} and can sign in right away.`, 'Approve', 'primary')
+      : await confirmBox(`Deny ${reqWho(r)}?`, 'They’ll see that the request was denied (and your note), and can ask again after 24 hours.', 'Deny');
+    if (!ok) return;
+    run(b, async () => {
+      await api(`/api/access-requests/${r.id}`, { method: 'PATCH', body: { status, note: val(el, '#note'), name: val(el, '#nm'), permissions: perms } });
+      toast(status === 'approved' ? `${reqWho(r)} added to the whitelist` : 'Request denied', 'good');
+      reload();
+    });
+  });
+}
+
+async function accessFormEditor(el) {
+  const { form } = await api('/api/access-form');
+  const qs = form.questions.map((q) => ({ ...q, options: q.options ? [...q.options] : undefined }));
+  el.innerHTML = `<div><a href="#/requests" class="muted">← Access requests</a></div>
+    ${head('Access request form', 'What people see after signing in with an account that isn’t whitelisted.', `<button class="btn primary" id="save">${icon('check')} Save</button>`)}
+    <div class="card"><div class="body stack">
+      <label class="check"><input type="checkbox" id="on" ${form.enabled ? 'checked' : ''}> Let people who aren’t whitelisted send an access request</label>
+      <label class="field">Message at the top<textarea id="intro" maxlength="1000" placeholder="e.g. Only staff of our groups get access. Tell us who you are.">${esc(form.intro || '')}</textarea></label>
+      <label class="field">Discord webhook (optional)<input id="hook" value="${esc(form.webhookUrl || '')}" placeholder="https://discord.com/api/webhooks/…"><small>Posts each new request with its answers and a Review button.</small></label>
+    </div></div>
+    <div class="card"><div class="head"><h2 class="grow">Questions</h2><span class="muted">Their Google or Discord account is recorded automatically.</span></div><div class="body stack">${questionEditorHTML()}</div></div>`;
+  bindQuestionEditor(el, qs, { grading: false });
+  $('#save', el).onclick = (e) => run(e.currentTarget, async () => {
+    await api('/api/access-form', { method: 'PUT', body: { enabled: $('#on', el).checked, intro: val(el, '#intro'), webhookUrl: val(el, '#hook'), questions: qs } });
+    toast('Access request form saved', 'good'); location.hash = '#/requests';
+  });
+}

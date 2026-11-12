@@ -299,6 +299,30 @@ CREATE TABLE IF NOT EXISTS posts (
 );
 CREATE INDEX IF NOT EXISTS idx_posts_group ON posts (group_id, pinned, id);
 
+-- System-wide settings (key → JSON), e.g. the access request form.
+CREATE TABLE IF NOT EXISTS app_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
+-- Access requests from accounts that signed in but are not whitelisted.
+CREATE TABLE IF NOT EXISTS access_requests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  provider TEXT NOT NULL,                     -- google | discord
+  google_email TEXT,
+  discord_id TEXT,
+  name TEXT,
+  answers TEXT NOT NULL DEFAULT '{}',
+  status TEXT NOT NULL DEFAULT 'pending',     -- pending | approved | denied
+  review_note TEXT,
+  reviewer TEXT,
+  reviewed_at INTEGER,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_access_status ON access_requests (status, id);
+CREATE INDEX IF NOT EXISTS idx_access_google ON access_requests (google_email);
+CREATE INDEX IF NOT EXISTS idx_access_discord ON access_requests (discord_id);
+
 -- Blacklist: kicked by the in-game tracker and blocked from applying. Entries are removed, never deleted.
 CREATE TABLE IF NOT EXISTS blacklist (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
