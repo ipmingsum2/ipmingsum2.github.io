@@ -1,8 +1,12 @@
 // Shared front-end helpers: SVG icons, API client, formatting, modal/toast, bar chart.
 'use strict';
 
-// Every icon is an inline SVG (24×24, stroked).
+// Every icon is an inline SVG (24x24, stroked).
 const ICONS = {
+  arrowR: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+  arrowL: '<path d="M19 12H5M11 6l-6 6 6 6"/>',
+  infinity: '<path d="M12 12c-2-2.6-3.6-4-5.6-4a4 4 0 0 0 0 8c2 0 3.6-1.4 5.6-4zm0 0c2 2.6 3.6 4 5.6 4a4 4 0 0 0 0-8c-2 0-3.6 1.4-5.6 4z"/>',
+  medal: '<circle cx="12" cy="15" r="5"/><path d="M8.6 11.4 6 3h4l2 5 2-5h4l-2.6 8.4"/><path d="M12 13v4"/>',
   inbox: '<path d="M3 13h5l1.5 3h5L16 13h5"/><path d="M5.5 5h13L21 13v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-6z"/>',
   ban: '<circle cx="12" cy="12" r="9"/><path d="M5.7 5.7l12.6 12.6"/>',
   home: '<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>',
@@ -126,7 +130,7 @@ async function run(btn, fn) {
   try { return await fn(); } catch (e) { toast(e.message, 'bad'); } finally { if (btn) btn.disabled = false; }
 }
 /**
- * modal({title, body(html), wide, actions:[{label, kind, onClick(close, el, btn)}]}) → {el, close}
+ * modal({title, body(html), wide, actions:[{label, kind, onClick(close, el, btn)}]}) -> {el, close}
  */
 function modal({ title, body, actions = [], wide = false }) {
   const ov = document.createElement('div');

@@ -9,20 +9,20 @@
 	         local ActivityTracker = require(script.Parent:WaitForChild("ActivityTracker"))
 	         ActivityTracker.Start({
 	             ApiUrl = "https://rp-roblox.pages.dev", -- the pages.dev relay: Roblox blocks *.workers.dev
-	             ApiKey = "rpk_...", -- API key with the "game" scope (dashboard → API)
+	             ApiKey = "rpk_...", -- API key with the "game" scope (dashboard -> API)
 	         })
 
-	  3. Game Settings → Security → Allow HTTP Requests.
+	  3. Game Settings -> Security -> Allow HTTP Requests.
 
 	What it sends (server-side only — the API key never reaches clients)
 	  * Every minute: who is in the server, their group rank, whether they were idle, and how many chat messages they sent.
 	  * When a player leaves: a session-end ping so the last partial minute counts.
 
-	Which ranks are tracked is configured in the dashboard (Groups → Tracked ranks); nothing is hard-coded here.
+	Which ranks are tracked is configured in the dashboard (Groups -> Tracked ranks); nothing is hard-coded here.
 
 	Optional config
 	Blacklist
-	  Players on the group's blacklist (dashboard → Blacklist) are kicked when they join, and within a minute
+	  Players on the group's blacklist (dashboard -> Blacklist) are kicked when they join, and within a minute
 	  if they are added while already in the server. Turn this off with KickBlacklisted = false.
 
 	  IdleSeconds        number   seconds without moving before a player counts as idle (default 120)
@@ -91,7 +91,7 @@ local function request(method: string, path: string, body: any?): (boolean, any)
 	end
 	local decodedOk, data = pcall(HttpService.JSONDecode, HttpService, response.Body)
 	if not response.Success then
-		warn(("[ActivityTracker] %s %s → %d %s"):format(method, path, response.StatusCode, if decodedOk and data.error then data.error else ""))
+		warn(("[ActivityTracker] %s %s -> %d %s"):format(method, path, response.StatusCode, if decodedOk and data.error then data.error else ""))
 		return false, if decodedOk then data else nil
 	end
 	return true, if decodedOk then data else nil

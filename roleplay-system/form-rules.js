@@ -4,7 +4,7 @@
 (function (root) {
   'use strict';
 
-  // rule id → [label, group, question types it applies to, how many values it takes]
+  // rule id -> [label, group, question types it applies to, how many values it takes]
   const RULES = {
     gt: ['Greater than', 'Number', ['short'], 1],
     gte: ['Greater than or equal to', 'Number', ['short'], 1],

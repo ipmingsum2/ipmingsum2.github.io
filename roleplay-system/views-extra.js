@@ -87,7 +87,7 @@ VIEWS.autopromote = async (el, _a, _b, reload) => {
       ${stat('Ready now', eligible, s.mode === 'promote' ? 'would be promoted' : 'would be recommended', 'trophy')}
       ${stat('Last run', s.lastRunDay ? fmtDay(s.lastRunDay) : '—', 'scheduled runs', 'calendar')}
     </div>
-    ${!group().hasApiKey && s.mode === 'promote' ? `<div class="callout warn">${icon('alert')}<span>Promote mode needs this group’s Open Cloud key (Groups → edit). Until then, use Recommend mode.</span></div>` : ''}
+    ${!group().hasApiKey && s.mode === 'promote' ? `<div class="callout warn">${icon('alert')}<span>Promote mode needs this group’s Open Cloud key (Groups, then Settings). Until then, use Recommend mode.</span></div>` : ''}
     <div class="card"><div class="head"><h2 class="grow">Settings</h2></div><div class="body stack">
       <div class="grid3">
         <label class="field">Mode<select id="mode" ${edit ? '' : 'disabled'}><option value="recommend" ${s.mode !== 'promote' ? 'selected' : ''}>Recommend (someone approves on Promotions)</option><option value="promote" ${s.mode === 'promote' ? 'selected' : ''}>Promote automatically</option></select><small>Approving a recommendation moves them up one rank.</small></label>
@@ -101,7 +101,7 @@ VIEWS.autopromote = async (el, _a, _b, reload) => {
       ${edit ? `<div><button class="btn" id="addRule">${icon('plus')} Add rule</button></div>` : ''}</div></div>
     ${d.rules.map((r) => {
       const ready = r.people.filter((p) => p.eligible && !(s.mode === 'recommend' && p.recommended));
-      return `<div class="card"><div class="head"><h2 class="grow">${esc(r.fromName)} → ${esc(r.toName)}</h2>
+      return `<div class="card"><div class="head"><h2 class="grow">${esc(r.fromName)} ${icon('arrowR', 'inl')} ${esc(r.toName)}</h2>
         <span class="muted">${[r.minHours ? `${r.minHours}h` : '', r.minSessions ? `${r.minSessions} session${r.minSessions === 1 ? '' : 's'}` : ''].filter(Boolean).join(' + ')} ${r.days ? `in the last ${r.days} days` : 'all time'}${r.noWarnings ? ' · no active warnings' : ''}</span>
         <span class="badge ${ready.length ? 'good' : ''}">${ready.length} ready</span></div>
         <div class="tbl-wrap"><table><thead><tr><th>Member</th><th style="width:28%">Hours</th><th style="width:22%">Sessions</th><th>Status</th></tr></thead><tbody>
@@ -131,7 +131,7 @@ VIEWS.autopromote = async (el, _a, _b, reload) => {
         <label class="field">Counted over<select data-f="days" ${edit ? '' : 'disabled'}>${[[7, 'Last 7 days'], [14, 'Last 14 days'], [30, 'Last 30 days'], [60, 'Last 60 days'], [90, 'Last 90 days'], [0, 'All time']].map(([v, l]) => `<option value="${v}" ${v === r.days ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
         <label class="check"><input type="checkbox" data-f="noWarnings" ${r.noWarnings ? 'checked' : ''} ${edit ? '' : 'disabled'}> No active warnings</label>
         ${edit ? `<button class="btn ghost icon sm" data-rm aria-label="Remove rule" title="Remove rule">${icon('trash', 'sm')}</button>` : ''}
-      </div>`).join('') : `<div class="empty">${icon('sparkle')}<div>No rules yet.${edit ? ' Add one — for example “Trainee → Staff after 10 hours and 3 sessions in 30 days”.' : ''}</div></div>`;
+      </div>`).join('') : `<div class="empty">${icon('sparkle')}<div>No rules yet.${edit ? ' Add one — for example “Trainee to Staff after 10 hours and 3 sessions in 30 days”.' : ''}</div></div>`;
   };
   draw();
   $$('[data-member]', el).forEach((tr) => tr.onclick = () => { location.hash = `#/member/${tr.dataset.member}`; });
@@ -205,7 +205,7 @@ async function accessRequestPage(el, id, reload) {
   const { request: r, questions, whitelistedAs, history } = await api(`/api/access-requests/${encodeURIComponent(id)}`);
   const pending = r.status === 'pending';
   let n = 0;
-  el.innerHTML = `<div><a href="#/requests" class="muted">← Access requests</a></div>
+  el.innerHTML = `<div><a href="#/requests" class="muted">${icon('arrowL', 'inl')} Access requests</a></div>
     ${head(reqWho(r), `Asked for access ${fmtTime(r.created_at)}`)}
     <div class="stats">
       ${stat('Status', statusBadge(r.status === 'approved' ? 'accepted' : r.status), r.reviewer ? `by ${esc(r.reviewer)} · ${fmtTime(r.reviewed_at)}` : 'Waiting for you', 'inbox')}
@@ -249,7 +249,7 @@ async function accessRequestPage(el, id, reload) {
 async function accessFormEditor(el) {
   const { form } = await api('/api/access-form');
   const qs = form.questions.map((q) => ({ ...q, options: q.options ? [...q.options] : undefined }));
-  el.innerHTML = `<div><a href="#/requests" class="muted">← Access requests</a></div>
+  el.innerHTML = `<div><a href="#/requests" class="muted">${icon('arrowL', 'inl')} Access requests</a></div>
     ${head('Access request form', 'What people see after signing in with an account that isn’t whitelisted.', `<button class="btn primary" id="save">${icon('check')} Save</button>`)}
     <div class="card"><div class="body stack">
       <label class="check"><input type="checkbox" id="on" ${form.enabled ? 'checked' : ''}> Let people who aren’t whitelisted send an access request</label>

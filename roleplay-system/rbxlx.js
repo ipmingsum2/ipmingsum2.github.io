@@ -31,7 +31,7 @@ const part = (cls, name, [x, y, z], [sx, sy, sz], color) => item(cls, name,
   `<bool name="Anchored">true</bool>${cframe(x, y, z)}<Vector3 name="size"><X>${sx}</X><Y>${sy}</Y><Z>${sz}</Z></Vector3><Color3uint8 name="Color3uint8">${color}</Color3uint8><token name="TopSurface">0</token><token name="BottomSurface">0</token>`);
 
 /**
- * buildPlaceFile('appcenter' | 'verify', {apiUrl, apiKey, title}) → rbxlx XML string.
+ * buildPlaceFile('appcenter' | 'verify', {apiUrl, apiKey, title}) -> rbxlx XML string.
  * The API key is only ever written into the server Script.
  */
 async function buildPlaceFile(kind, { apiUrl, apiKey, title }) {
