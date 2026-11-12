@@ -282,7 +282,7 @@ CREATE TABLE IF NOT EXISTS kb_docs (
   title TEXT NOT NULL,
   category TEXT NOT NULL DEFAULT 'General',
   body TEXT NOT NULL DEFAULT '',
-  visibility TEXT NOT NULL DEFAULT '',        -- '' = everyone, otherwise a permission key
+  visibility TEXT NOT NULL DEFAULT '',        -- 'public' = anyone, '' = signed-in staff, otherwise a permission key
   updated_by TEXT,
   updated_at INTEGER NOT NULL,
   created_at INTEGER NOT NULL
@@ -297,8 +297,10 @@ CREATE TABLE IF NOT EXISTS posts (
   body TEXT NOT NULL,
   pinned INTEGER NOT NULL DEFAULT 0,
   author TEXT,
-  created_at INTEGER NOT NULL
+  created_at INTEGER NOT NULL,
+  visibility TEXT NOT NULL DEFAULT ''          -- 'public' | '' (signed-in staff) | a permission key
 );
+-- Existing databases: ALTER TABLE posts ADD COLUMN visibility TEXT NOT NULL DEFAULT '';
 CREATE INDEX IF NOT EXISTS idx_posts_group ON posts (group_id, pinned, id);
 
 -- System-wide settings (key → JSON), e.g. the access request form.

@@ -174,7 +174,7 @@ async function overview(c) {
   const [weekly, leaders, news, recs] = await Promise.all([
     act.requirementStatus(c.env, c.group, 'weekly', wk),
     feat.leaderboard(c.env, c.group),
-    DB.prepare('SELECT id, title, body, pinned, author, created_at FROM posts WHERE group_id=? ORDER BY pinned DESC, id DESC LIMIT 3').bind(gid).all(),
+    DB.prepare('SELECT id, title, body, pinned, author, created_at, visibility FROM posts WHERE group_id=? ORDER BY pinned DESC, id DESC LIMIT 20').bind(gid).all(),
     DB.prepare("SELECT COUNT(*) n FROM recommendations WHERE group_id=? AND status='open'").bind(gid).first(),
   ]);
   const due = weekly.members.filter((m) => (m.required > 0 || m.requiredSessions > 0) && !m.exempt);
@@ -184,7 +184,7 @@ async function overview(c) {
     trackedMembers: mem.results.filter((m) => tracked.includes(m.rank)).length,
     requirements: { due: due.length, met: due.filter((m) => m.met).length },
     recentLogs: auth.can(c.user, 'view_logs') ? logs.results : [], upcoming: ev.results,
-    leaders, news: news.results, openRecommendations: recs.n,
+    leaders, news: news.results.filter((p) => feat.canSee(c.user, p)).slice(0, 3), openRecommendations: recs.n,
   });
 }
 
@@ -376,6 +376,11 @@ R('DELETE', '/api/links/:id', auth.deleteLink, { perm: G });
 R('GET', '/public/access-request', access.publicGet);
 R('POST', '/public/access-request', access.publicSubmit);
 R('GET', '/public/verify-game', auth.verifyGameGet);
+R('GET', '/public/content', feat.publicIndex);
+R('GET', '/public/groups/:gid/posts', feat.publicPosts);
+R('GET', '/public/posts/:id', feat.publicPost);
+R('GET', '/public/groups/:gid/handbooks', feat.publicHandbooks);
+R('GET', '/public/handbooks/:id', feat.publicHandbook);
 R('GET', '/public/link', auth.publicLink);
 R('POST', '/public/verify-code', auth.publicVerifyCode);
 R('GET', '/public/applications/:id', apps.publicGet);

@@ -75,7 +75,8 @@ function loginScreen(error) {
     <a class="btn big" href="${API_URL}/auth/google/start">${icon('google')} Continue with Google</a>
     <a class="btn big" href="${API_URL}/auth/discord/start">${icon('discord')} Continue with Discord</a>
     ${dev ? `<button class="btn ghost" id="dev">Local development sign-in</button>` : ''}
-    <p class="muted"><a href="verify.html">Link Discord to Roblox</a> · <a href="docs.html">API docs</a></p>
+    ${store.get('rp_return') ? `<p class="dim">${icon('lock', 'sm')} Sign in to continue reading.</p>` : ''}
+    <p class="muted"><a href="posts/">Posts</a> · <a href="handbooks/">Handbooks</a> · <a href="verify.html">Link Discord to Roblox</a> · <a href="docs.html">API docs</a></p>
   </div></div>`;
   if (dev) $('#dev').onclick = (e) => run(e.target, async () => { store.set('rp_token', (await api('/auth/dev', { method: 'POST' })).token); boot(); });
 }
@@ -87,6 +88,9 @@ async function boot() {
     store.set('rp_gid', null); // a fresh sign-in starts at the picker, unless a deep link was waiting
     const next = store.get('rp_next');
     store.set('rp_next', null);
+    // Came from a restricted post or handbook: go straight back there (same site only).
+    const back = store.get('rp_return'); store.set('rp_return', null);
+    if (back && new URL(back, location.href).origin === location.origin) { location.replace(back); return; }
     history.replaceState(null, '', location.pathname + (isDeepLink(next) ? next : '#/select'));
   } else if (isDeepLink(h)) store.set('rp_next', null);
   // Signed in with an account that isn't whitelisted: show the access request form.

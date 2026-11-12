@@ -1,7 +1,7 @@
 // Logbook, session registers, promotion recommendations, knowledgebase, news, leaderboard.
 import { bad, json, now, parseJSON, str, int, readBody, addDays, dayStr, weekStartOf, cleanWebhook, sendWebhook, logEvent } from './util.js';
 import { resolveUser, changeRank } from './roblox.js';
-import { can, PERMISSIONS } from './auth.js';
+import { can, PERMISSIONS, getUser } from './auth.js';
 
 const ts = (day) => Math.floor(Date.parse(`${day}T00:00:00Z`) / 1000);
 
@@ -214,12 +214,15 @@ export async function recDecide(c) {
   return json({ ok: true, ranked });
 }
 
-// ---------- knowledgebase ----------
-const canSee = (user, doc) => !doc.visibility || can(user, doc.visibility) || can(user, 'manage_content');
+// ---------- who can read posts and handbooks ----------
+// 'public' = anyone, no sign-in · '' = any signed-in (whitelisted) staff · a permission key = people with it (content editors always can).
+export const cleanVisibility = (v) => (v === 'public' || PERMISSIONS.includes(v) ? v : '');
+export const canSee = (user, doc) => doc.visibility === 'public' || (!!user && (!doc.visibility || can(user, doc.visibility) || can(user, 'manage_content')));
+
+// ---------- knowledgebase (handbooks) ----------
 function docFields(b) {
   const title = str(b.title, 120); if (!title) bad('Title is required');
-  const visibility = b.visibility && PERMISSIONS.includes(b.visibility) ? b.visibility : '';
-  return { title, category: str(b.category, 40) || 'General', body: str(b.body, 50000), visibility };
+  return { title, category: str(b.category, 40) || 'General', body: str(b.body, 50000), visibility: cleanVisibility(b.visibility) };
 }
 export async function kbList(c) {
   const rows = (await c.env.DB.prepare('SELECT id, title, category, visibility, updated_by, updated_at, length(body) size FROM kb_docs WHERE group_id=? ORDER BY category, title').bind(c.group.id).all()).results;
@@ -256,13 +259,14 @@ export async function kbDelete(c) {
 // ---------- news ----------
 export async function newsList(c) {
   const rows = (await c.env.DB.prepare('SELECT * FROM posts WHERE group_id=? ORDER BY pinned DESC, id DESC LIMIT ?').bind(c.group.id, int(c.q.get('limit'), 1, 100, 50)).all()).results;
-  return json({ posts: rows });
+  // Dashboard users see what their permissions allow; API keys (c.user unset) are trusted with everything.
+  return json({ posts: c.user ? rows.filter((p) => canSee(c.user, p)) : rows });
 }
 export async function newsCreate(c) {
   const b = await readBody(c.req);
   const title = str(b.title, 140); if (!title) bad('Title is required');
   const body = str(b.body, 4000); if (!body) bad('Write something');
-  const r = await c.env.DB.prepare('INSERT INTO posts (group_id, title, body, pinned, author, created_at) VALUES (?,?,?,?,?,?)').bind(c.group.id, title, body, b.pinned ? 1 : 0, c.actor.name, now()).run();
+  const r = await c.env.DB.prepare('INSERT INTO posts (group_id, title, body, pinned, author, created_at, visibility) VALUES (?,?,?,?,?,?,?)').bind(c.group.id, title, body, b.pinned ? 1 : 0, c.actor.name, now(), cleanVisibility(b.visibility)).run();
   await logEvent(c.env, c.ctx, { groupId: c.group.id, type: 'content.news_posted', actor: c.actor, summary: `${c.actor.name} posted news: ${title}`, silent: true });
   const hook = parseJSON(c.group.settings, {}).news?.webhookUrl;
   let announced = false;
@@ -276,7 +280,12 @@ export async function newsUpdate(c) {
   const p = await c.env.DB.prepare('SELECT * FROM posts WHERE id=?').bind(Number(c.params.id)).first();
   if (!p) bad('Post not found', 404);
   const b = await readBody(c.req);
-  await c.env.DB.prepare('UPDATE posts SET pinned=? WHERE id=?').bind(b.pinned ? 1 : 0, p.id).run();
+  if (b.pinned !== undefined) await c.env.DB.prepare('UPDATE posts SET pinned=? WHERE id=?').bind(b.pinned ? 1 : 0, p.id).run();
+  if (b.visibility !== undefined) {
+    const v = cleanVisibility(b.visibility);
+    await c.env.DB.prepare('UPDATE posts SET visibility=? WHERE id=?').bind(v, p.id).run();
+    await logEvent(c.env, c.ctx, { groupId: p.group_id, type: 'content.news_visibility', actor: c.actor, summary: `${c.actor.name} set "${p.title}" to ${v === 'public' ? 'public' : v ? `"${v}" only` : 'signed-in staff'}`, silent: true });
+  }
   return json({ ok: true });
 }
 export async function newsDelete(c) {
@@ -287,3 +296,56 @@ export async function newsDelete(c) {
   return json({ ok: true });
 }
 export const cleanNewsSettings = (n = {}) => ({ webhookUrl: cleanWebhook(n.webhookUrl) });
+
+// ---------- public pages: /posts and /handbooks ----------
+// Anyone can read public items; a dashboard session (Authorization: Bearer …) unlocks the rest it is allowed to see.
+const viewer = (c) => getUser(c.req, c.env);
+const who = (u) => (u ? { name: u.name || u.google_email || u.discord_name || 'Staff' } : null);
+const locked = (c, u) => json({ error: u ? 'You don’t have permission to read this.' : 'Sign in to read this.', needLogin: !u }, u ? 403 : 401);
+
+/** GET /public/content — groups and how many posts/handbooks this viewer can read in each. */
+export async function publicIndex(c) {
+  const u = await viewer(c);
+  const { DB } = c.env;
+  const [groups, posts, docs] = await DB.batch([
+    DB.prepare('SELECT id, name FROM groups ORDER BY created_at'),
+    DB.prepare('SELECT group_id, visibility, COUNT(*) n FROM posts GROUP BY group_id, visibility'),
+    DB.prepare('SELECT group_id, visibility, COUNT(*) n FROM kb_docs GROUP BY group_id, visibility'),
+  ]);
+  const tally = (rows, gid) => rows.results.filter((r) => r.group_id === gid).reduce((t, r) => { if (canSee(u, r)) t.open += r.n; else t.locked += r.n; return t; }, { open: 0, locked: 0 });
+  return json({ viewer: who(u), groups: groups.results.map((g) => ({ id: g.id, name: g.name, posts: tally(posts, g.id), handbooks: tally(docs, g.id) })) });
+}
+
+/** GET /public/groups/:gid/posts */
+export async function publicPosts(c) {
+  const u = await viewer(c);
+  const rows = (await c.env.DB.prepare('SELECT id, title, body, pinned, author, created_at, visibility FROM posts WHERE group_id=? ORDER BY pinned DESC, id DESC LIMIT 100').bind(c.group.id).all()).results;
+  const open = rows.filter((p) => canSee(u, p));
+  return json({ viewer: who(u), group: { id: c.group.id, name: c.group.name }, posts: open, locked: rows.length - open.length });
+}
+
+/** GET /public/posts/:id */
+export async function publicPost(c) {
+  const p = await c.env.DB.prepare('SELECT p.id, p.group_id, p.title, p.body, p.pinned, p.author, p.created_at, p.visibility, g.name AS group_name FROM posts p JOIN groups g ON g.id = p.group_id WHERE p.id=?').bind(Number(c.params.id) || 0).first();
+  if (!p) bad('Post not found', 404);
+  const u = await viewer(c);
+  if (!canSee(u, p)) return locked(c, u);
+  return json({ viewer: who(u), post: p });
+}
+
+/** GET /public/groups/:gid/handbooks — titles only; bodies come one at a time. */
+export async function publicHandbooks(c) {
+  const u = await viewer(c);
+  const rows = (await c.env.DB.prepare('SELECT id, title, category, visibility, updated_at FROM kb_docs WHERE group_id=? ORDER BY category, title').bind(c.group.id).all()).results;
+  const open = rows.filter((d) => canSee(u, d));
+  return json({ viewer: who(u), group: { id: c.group.id, name: c.group.name }, handbooks: open, locked: rows.length - open.length });
+}
+
+/** GET /public/handbooks/:id */
+export async function publicHandbook(c) {
+  const d = await c.env.DB.prepare('SELECT k.id, k.group_id, k.title, k.category, k.body, k.visibility, k.updated_by, k.updated_at, g.name AS group_name FROM kb_docs k JOIN groups g ON g.id = k.group_id WHERE k.id=?').bind(Number(c.params.id) || 0).first();
+  if (!d) bad('Handbook not found', 404);
+  const u = await viewer(c);
+  if (!canSee(u, d)) return locked(c, u);
+  return json({ viewer: who(u), handbook: d });
+}

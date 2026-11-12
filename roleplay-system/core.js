@@ -3,6 +3,8 @@
 
 // Every icon is an inline SVG (24x24, stroked).
 const ICONS = {
+  lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/>',
   arrowR: '<path d="M5 12h14M13 6l6 6-6 6"/>',
   arrowL: '<path d="M19 12H5M11 6l-6 6 6 6"/>',
   infinity: '<path d="M12 12c-2-2.6-3.6-4-5.6-4a4 4 0 0 0 0 8c2 0 3.6-1.4 5.6-4zm0 0c2 2.6 3.6 4 5.6 4a4 4 0 0 0 0-8c-2 0-3.6 1.4-5.6 4z"/>',
@@ -246,6 +248,44 @@ function bindOtherInputs(form) {
     if (box && e.target.value.trim()) box.checked = true;
   });
 }
+
+// ---------- tiny, safe markdown (escape first, then add a few tags) ----------
+function md(src) {
+  const inline = (t) => esc(t)
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+    .replace(/(^|[^*])\*([^*]+)\*/g, '$1<i>$2</i>')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  const out = [];
+  let list = null, para = [];
+  const flush = () => { if (para.length) { out.push(`<p>${inline(para.join(' '))}</p>`); para = []; } if (list) { out.push(`</${list}>`); list = null; } };
+  for (const raw of String(src || '').split('\n')) {
+    const line = raw.trimEnd();
+    let m;
+    if (!line.trim()) { flush(); continue; }
+    if ((m = /^(#{1,3})\s+(.*)/.exec(line))) { flush(); out.push(`<h${m[1].length + 1}>${inline(m[2])}</h${m[1].length + 1}>`); continue; }
+    if ((m = /^>\s?(.*)/.exec(line))) { flush(); out.push(`<blockquote>${inline(m[1])}</blockquote>`); continue; }
+    if ((m = /^\s*[-*]\s+(.*)/.exec(line)) || (m = /^\s*\d+[.)]\s+(.*)/.exec(line))) {
+      const kind = /^\s*\d/.test(line) ? 'ol' : 'ul';
+      if (para.length) { out.push(`<p>${inline(para.join(' '))}</p>`); para = []; }
+      if (list !== kind) { if (list) out.push(`</${list}>`); out.push(`<${kind}>`); list = kind; }
+      out.push(`<li>${inline(m[1])}</li>`); continue;
+    }
+    if (list) { out.push(`</${list}>`); list = null; }
+    para.push(line.trim());
+  }
+  flush();
+  return out.join('');
+}
+
+/** Markdown -> plain text for short previews. */
+const plainText = (s) => String(s || '').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/^\s*(#{1,3}|>|[-*]|\d+[.)])\s+/gm, '').replace(/[*`]/g, '').replace(/\s+/g, ' ').trim();
+
+// ---------- who can read posts and handbooks ----------
+// 'public' = anyone (no sign-in) · '' = signed-in staff · a permission key = people with it (content editors always can).
+const VIS_LABELS = { public: 'Anyone (public page)', '': 'Signed-in staff', manage_activity: 'Activity managers', ranking: 'Rankers', manage_groups: 'Group managers', manage_applications: 'Application managers', review_applications: 'Application reviewers', view_logs: 'Log viewers', manage_api_keys: 'API key managers', manage_discipline: 'Discipline managers', manage_content: 'Content editors' };
+const visOptions = (cur = '') => Object.entries(VIS_LABELS).map(([k, l]) => `<option value="${k}" ${k === cur ? 'selected' : ''}>${l}</option>`).join('');
+const visBadge = (v) => (v === 'public' ? `<span class="badge good">${icon('globe', 'sm')} Public</span>` : `<span class="badge">${icon('lock', 'sm')} ${esc(v ? VIS_LABELS[v] || v : 'Staff only')}</span>`);
 
 /** CSV from an array of rows (first row = headers). Cells that a spreadsheet would run as formulas are prefixed with '. */
 function toCSV(rows) {
