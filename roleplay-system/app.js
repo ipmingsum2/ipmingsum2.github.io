@@ -44,6 +44,7 @@ const OWNER_NAV = () => [
   ['access', 'Access & whitelist', 'shield'],
   ['requests', 'Access requests', 'inbox'],
   ['api', 'API keys', 'key'],
+  ['verification', 'Verification game', 'roblox'],
   ['links', 'Linked accounts', 'link'],
   ['logs', 'All logs', 'list'],
   ['Account'],

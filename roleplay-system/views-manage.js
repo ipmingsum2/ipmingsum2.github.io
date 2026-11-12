@@ -328,7 +328,7 @@ function robloxSetup(g = group()) {
       <div class="card"><div class="body stack gap-s"><h3>2 · Application center</h3>
         <p class="dim">A place that loads this group’s open applications from the API and submits answers as the verified player.</p>
         <div class="row wrap"><button class="btn" data-d="appcenter">${icon('download')} ApplicationCenter.rbxlx</button></div></div></div>
-      <p class="hint">In every place: enable <b>Game Settings → Security → Allow HTTP Requests</b>. Keys can be revoked on the API page. The verification game is shared by every group — the owner downloads it from Owner Menu → Linked accounts.</p>` });
+      <p class="hint">In every place: enable <b>Game Settings → Security → Allow HTTP Requests</b>. Keys can be revoked on the API page. The verification game is shared by every group — the owner downloads it from Owner Menu → Verification game.</p>` });
   m.el.onclick = (e) => {
     const b = e.target.closest('[data-d]'); if (!b) return;
     run(b, async () => {
@@ -370,11 +370,12 @@ VIEWS.api = async (el, _a, _b, reload) => {
 };
 
 // ---------- linked accounts ----------
-VIEWS.links = async (el, _a, _b, reload) => {
-  const owner = isOwner();
-  const gameUrl = owner ? (await api('/public/verify-game')).url : '';
-  el.innerHTML = `${head('Linked accounts', 'Discord ↔ Roblox links made through the verification game. One verification game serves every group. Links are used to ping members in requirement notices and to identify applicants.', `<a class="btn" href="verify.html" target="_blank" rel="noopener">${icon('external')} Verify page</a>`)}
-    ${owner ? `<div class="card"><div class="head"><h2 class="grow">Verification game</h2>${gameUrl ? '<span class="badge good">Link set</span>' : '<span class="badge warn">No link yet</span>'}</div><div class="body stack">
+/** Owner Menu → Verification game: one place for the whole system — download it and set its Roblox link. */
+VIEWS.verification = async (el, _a, _b, reload) => {
+  if (!isOwner()) throw new Error('Only the owner can set up the verification game.');
+  const gameUrl = (await api('/public/verify-game')).url;
+  el.innerHTML = `${head('Verification game', 'Players link their Discord and Roblox accounts in this game. There is one for the whole system — it serves every group.', `<a class="btn" href="verify.html" target="_blank" rel="noopener">${icon('external')} Verify page</a><a class="btn" href="#/links">${icon('link')} Linked accounts</a>`)}
+    <div class="card"><div class="head"><h2 class="grow">Set up</h2>${gameUrl ? '<span class="badge good">Link set</span>' : '<span class="badge warn">No link yet</span>'}</div><div class="body stack">
       <p class="dim">One small place for the whole system: players get a code on the Verify page (or My account), type it in this game, and are kicked once their accounts are linked.</p>
       <div class="vg-steps">
         <div class="stack gap-s"><b>1 · Download and publish</b><span class="hint">Creates a system API key that can only verify. Publish the place on Roblox and turn on <b>Allow HTTP Requests</b>.</span>
@@ -383,7 +384,30 @@ VIEWS.links = async (el, _a, _b, reload) => {
           <div class="row wrap gap-s"><input id="vgUrl" class="grow" style="min-width:0;flex:1 1 240px" value="${esc(gameUrl)}" placeholder="https://www.roblox.com/games/1234567890/Verify" aria-label="Verification game link">
             <button class="btn primary" id="vgSave">${icon('check')} Save</button>${gameUrl ? `<a class="btn ghost" href="${esc(gameUrl)}" target="_blank" rel="noopener noreferrer">${icon('external')} Open</a>` : ''}</div></div>
       </div>
-    </div></div>` : ''}
+    </div></div>
+    <div class="card"><div class="head"><h2>How players verify</h2></div><div class="body">
+      <ol class="dim" style="margin:0;padding-left:20px;display:grid;gap:6px">
+        <li>They open the <a href="verify.html" target="_blank" rel="noopener">Verify page</a> and sign in with Discord (staff can use <b>My account → Link Roblox</b> instead).</li>
+        <li>They get a 6-character code and press <b>Join to Verify</b>.</li>
+        <li>In the game they type the code; once it’s linked, the game kicks them with a confirmation.</li>
+      </ol>
+      <p class="hint" style="margin-bottom:0">Re-downloading creates a new key; revoke old “Verification game — system” keys on the API keys page if you replace the place.</p>
+    </div></div>`;
+  $('#vgSave', el).onclick = (e) => run(e.currentTarget, async () => {
+    await api('/api/verify-game', { method: 'PUT', body: { url: val(el, '#vgUrl') } });
+    verifyGamePromise = null;
+    toast(val(el, '#vgUrl') ? 'Verification game link saved' : 'Verification game link removed', 'good'); reload();
+  });
+  $('#vgDownload', el).onclick = (e) => run(e.currentTarget, async () => {
+    // System-wide: no group, and only the "verify" scope — it can link accounts and nothing else.
+    const { key } = await api('/api/keys', { body: { name: 'Verification game — system', scopes: ['verify'] } });
+    downloadFile('VerificationGame.rbxlx', await buildPlaceFile('verify', { apiUrl: ROBLOX_API_URL, apiKey: key, title: NAME }));
+    toast('Place file downloaded — publish it, then paste its link here', 'good');
+  });
+};
+
+VIEWS.links = async (el) => {
+  el.innerHTML = `${head('Linked accounts', 'Discord ↔ Roblox links made through the verification game. Links are used to ping members in requirement notices and to identify applicants.', `<a class="btn" href="verify.html" target="_blank" rel="noopener">${icon('external')} Verify page</a>${isOwner() ? `<a class="btn" href="#/verification">${icon('roblox')} Verification game</a>` : ''}`)}
     <div class="card"><div class="head"><div class="search grow">${icon('search', 'sm')}<input id="q" placeholder="Search by Roblox or Discord name / ID" aria-label="Search links"></div></div>
     <div class="tbl-wrap"><table><thead><tr><th>Roblox</th><th>Discord</th><th>Linked</th><th></th></tr></thead><tbody id="rows"></tbody></table></div></div>`;
   const load = async () => {
@@ -395,18 +419,6 @@ VIEWS.links = async (el, _a, _b, reload) => {
   await load();
   let timer;
   $('#q', el).oninput = () => { clearTimeout(timer); timer = setTimeout(() => run(null, load), 300); };
-  if (!owner) return;
-  $('#vgSave', el).onclick = (e) => run(e.currentTarget, async () => {
-    await api('/api/verify-game', { method: 'PUT', body: { url: val(el, '#vgUrl') } });
-    verifyGamePromise = null;
-    toast(val(el, '#vgUrl') ? 'Verification game link saved' : 'Verification game link removed', 'good'); reload();
-  });
-  $('#vgDownload', el).onclick = (e) => run(e.currentTarget, async () => {
-    // System-wide: no group, and only the "verify" scope — it can link accounts and nothing else.
-    const { key } = await api('/api/keys', { body: { name: 'Verification game — system', scopes: ['verify'] } });
-    downloadFile('VerificationGame.rbxlx', await buildPlaceFile('verify', { apiUrl: ROBLOX_API_URL, apiKey: key, title: NAME }));
-    toast('Place file generated — publish it, then paste its link here', 'good');
-  });
 };
 
 // ---------- access (owner) ----------
