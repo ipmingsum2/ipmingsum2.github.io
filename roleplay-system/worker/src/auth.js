@@ -293,7 +293,7 @@ export async function createKey(c) {
   const groupId = str(b.groupId, 20) || null;
   if (groupId && !(await c.env.DB.prepare('SELECT id FROM groups WHERE id=?').bind(groupId).first())) bad('Group not found', 404);
   if (scopes.includes('game') && !groupId) bad('A key with the "game" scope must be tied to one group');
-  if (scopes.includes('verify') && groupId) bad('The "verify" scope is system-wide — create it without a group (the owner downloads the verification game from Owner Menu → Linked accounts)');
+  if (scopes.includes('verify') && groupId) bad('The "verify" scope is system-wide — create it without a group (the owner downloads the verification game from Owner Menu → Verification game)');
   const key = `rpk_${randHex(24)}`;
   await c.env.DB.prepare('INSERT INTO api_keys (name, key_hash, prefix, group_id, scopes, created_by, created_at) VALUES (?,?,?,?,?,?,?)')
     .bind(name, await sha256(key), key.slice(0, 12), groupId, JSON.stringify(scopes), c.actor.name, now()).run();
@@ -367,7 +367,7 @@ export async function verifyGameSave(c) {
 /** POST /v1/game/verify {code, userId, username} — called by the Roblox verification game. */
 export async function gameVerify(c) {
   // One verification game for the whole system: keys tied to a group (including older ones that had "verify") can't link accounts.
-  if (c.key.group_id) bad('Group keys cannot verify accounts — use the system verification game from Owner Menu → Linked accounts', 403);
+  if (c.key.group_id) bad('Group keys cannot verify accounts — use the system verification game from Owner Menu → Verification game', 403);
   const b = await readBody(c.req);
   const code = str(b.code, 12).toUpperCase().replace(/[^A-Z0-9]/g, '');
   const robloxId = str(b.userId, 20);
