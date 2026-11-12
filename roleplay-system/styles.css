@@ -173,7 +173,7 @@ td.r, th.r { text-align: right; }
 
 /* builder */
 .qcard { border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); padding: 14px; display: flex; flex-direction: column; gap: 10px; }
-.qcard .bar-top { display: flex; gap: 8px; align-items: center; }
+.qcard .bar-top { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; row-gap: 4px; } /* wraps on phones */
 .opt-row { display: flex; gap: 6px; align-items: center; }
 
 /* docs */
@@ -282,3 +282,12 @@ tr.faded td { opacity: .55; }
 .public .acct { padding-top: 10px; border-top: 1px solid var(--line); margin-top: 4px; }
 .public .acct .icon { vertical-align: -3px; }
 .nowrap { white-space: nowrap; }
+
+/* Google-Forms-style extras: Other option, scale labels, inline errors, response validation editor */
+.q .other-opt { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.q .other-opt .other-text { flex: 1 1 200px; min-width: 0; height: 32px; }
+.scale-wrap { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; } .scale-end { color: var(--text-2); font-size: 13px; }
+.card.q.invalid { border-color: var(--bad); }
+.q-err { color: var(--bad); font-size: 13px; margin: 0; display: flex; align-items: center; gap: 6px; }
+.rv { margin-top: 2px; } .rv-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
+.rv-row select { width: auto; max-width: 100%; } .rv-row input { flex: 1 1 140px; min-width: 0; } .rv-row .rv-msg { flex: 2 1 220px; }
