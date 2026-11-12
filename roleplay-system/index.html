@@ -7,8 +7,8 @@
   <meta name="description" content="Activity tracking, requirements, ranking, applications and logs for Roblox roleplay groups.">
   <script>try{var t=localStorage.getItem("rp_theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%278%27 fill=%27%235b8def%27/%3E%3Cpath d=%27M16 26s7-3.500 7-8.750V11l-7-2.600L9 11v6.250C9 22.500 16 26 16 26z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%272%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="styles.css?v=42e1ce9">
-  <link rel="stylesheet" href="intro.css?v=42e1ce9">
+  <link rel="stylesheet" href="styles.css?v=c7c6e91">
+  <link rel="stylesheet" href="intro.css?v=c7c6e91">
 </head>
 <body class="intro">
   <div class="progress" aria-hidden="true"><i id="progress"></i></div>
@@ -33,18 +33,22 @@
   <main class="imain" id="main">
     <!-- HERO -->
     <section class="hero" id="top" data-nav="Introduction" data-icon="home">
+      <canvas class="hero-canvas" id="heroCanvas" aria-hidden="true"></canvas>
+      <div class="hero-grid" aria-hidden="true"></div>
       <div class="glow g1" aria-hidden="true"></div><div class="glow g2" aria-hidden="true"></div>
       <div class="hero-copy">
         <span class="eyebrow" data-anim><span data-ic="sparkle"></span> For Roblox roleplay groups</span>
-        <h1 data-anim style="--d:.08s">Run your whole group<br><span class="grad">from one dashboard.</span></h1>
+        <h1 class="hero-title" aria-label="Run your whole group from one dashboard.">
+          <span aria-hidden="true"><span class="w" style="--i:0">Run</span> <span class="w" style="--i:1">your</span> <span class="w" style="--i:2">whole</span><br><span class="w rot-wrap" style="--i:3"><span class="rotator" id="rotator" data-words="group|staff team|police force|hotel|café|airline|school|fire department"><span class="rw on">group</span></span></span><br><span class="w grad" style="--i:4">from one dashboard.</span></span>
+        </h1>
         <p class="lead" data-anim style="--d:.16s">Track every minute played, enforce activity requirements, rank through Roblox Open Cloud, run application centers and keep a log of everything — across as many groups as you manage.</p>
         <div class="row wrap" data-anim style="--d:.24s">
-          <a class="btn primary lg" href="#activity">Take the tour <span data-ic="down"></span></a>
+          <a class="btn primary lg shine" href="#activity">Take the tour <span data-ic="down"></span></a>
           <a class="btn lg" href="#signin" data-signin-label>Sign in</a>
         </div>
       </div>
       <div class="hero-stage" id="heroStage">
-        <figure class="frame hero-frame" id="heroFrame">
+        <figure class="frame hero-frame tilt-glare" id="heroFrame">
           <div class="chrome" aria-hidden="true"><svg viewBox="0 0 52 12"><circle cx="6" cy="6" r="5"/><circle cx="24" cy="6" r="5"/><circle cx="42" cy="6" r="5"/></svg><span>ipmingsum2.github.io/roleplay-system</span></div>
           <img data-shot="overview" alt="Dashboard overview: hours today and this week, members in game, requirement progress, a daily hours chart and recent log entries" width="1440" height="900" fetchpriority="high">
         </figure>
@@ -54,9 +58,14 @@
       </div>
     </section>
 
+    <section class="marquee" aria-label="Everything included">
+      <div class="track" data-marquee><span class="mchip"><span data-ic="chart"></span>Activity tracking</span><span class="mchip"><span data-ic="target"></span>Daily &amp; weekly requirements</span><span class="mchip"><span data-ic="calendar"></span>Time off</span><span class="mchip"><span data-ic="rank"></span>Open Cloud ranking</span><span class="mchip"><span data-ic="thumb"></span>Promotion picks</span><span class="mchip"><span data-ic="sparkle"></span>Auto-promotion</span><span class="mchip"><span data-ic="clipboard"></span>Logbook</span><span class="mchip"><span data-ic="ban"></span>Blacklist</span><span class="mchip"><span data-ic="clock"></span>Session registers</span><span class="mchip"><span data-ic="bell"></span>Session reminders</span><span class="mchip"><span data-ic="list"></span>Full audit log</span></div>
+      <div class="track rev" data-marquee><span class="mchip"><span data-ic="file"></span>Application centers</span><span class="mchip"><span data-ic="edit"></span>Smart forms</span><span class="mchip"><span data-ic="inbox"></span>Access requests</span><span class="mchip"><span data-ic="trophy"></span>Staff of the week</span><span class="mchip"><span data-ic="chart"></span>Activity heatmap</span><span class="mchip"><span data-ic="search"></span>Quick search</span><span class="mchip"><span data-ic="book"></span>Knowledgebase</span><span class="mchip"><span data-ic="megaphone"></span>News</span><span class="mchip"><span data-ic="download"></span>CSV export</span><span class="mchip"><span data-ic="key"></span>Public API</span><span class="mchip"><span data-ic="users"></span>Unlimited groups</span><span class="mchip"><span data-ic="moon"></span>Dark mode</span></div>
+    </section>
+
     <section class="strip" aria-label="At a glance">
-      <div data-anim><b data-count="15">0</b><span>features in one place</span></div>
-      <div data-anim style="--d:.06s"><b data-count="9">0</b><span>application question types</span></div>
+      <div data-anim><b data-count="30">0</b><span>features in one place</span></div>
+      <div data-anim style="--d:.06s"><b data-count="11">0</b><span>application question types</span></div>
       <div data-anim style="--d:.12s"><b data-count="60" data-suffix="s">0</b><span>between activity heartbeats</span></div>
       <div data-anim style="--d:.18s"><b>∞</b><span>groups per dashboard</span></div>
     </section>
@@ -70,7 +79,7 @@
           <article class="step" data-shot-step="activity" data-url="#/activity">
             <span class="sicon" data-ic="chart"></span><h3>Total hours, daily or weekly</h3>
             <p>Switch the graph between days and weeks, then filter the leaderboard by today, this week, last week, 30 days, all time or any custom date range.</p>
-            <ul><li>Idle (AFK) time detected server-side</li><li>Sessions, chat messages and who is in game right now</li><li>Manual adjustments, always logged</li></ul>
+            <ul><li>A weekday × hour heatmap of when members actually play</li><li>Idle (AFK) time detected server-side</li><li>Sessions, chat messages and who is in game right now</li><li>CSV export, and manual adjustments that are always logged</li></ul>
           </article>
           <article class="step" data-shot-step="member" data-url="#/member/RubyLobby">
             <span class="sicon" data-ic="user"></span><h3>A profile for every member</h3>
@@ -152,12 +161,12 @@
         <div class="tour-media"><figure class="frame"><div class="chrome" aria-hidden="true"><svg viewBox="0 0 52 12"><circle cx="6" cy="6" r="5"/><circle cx="24" cy="6" r="5"/><circle cx="42" cy="6" r="5"/></svg><span data-url></span></div><div class="stack-imgs"></div></figure></div>
         <div class="tour-steps">
           <article class="step" data-shot-step="builder" data-url="#/applications/edit">
-            <span class="sicon" data-ic="edit"></span><h3>Nine question types</h3>
-            <p>Short answer, paragraph, multiple choice, checkboxes, dropdown, yes/no, number, linear scale and section headings — with required flags and optional auto-grading.</p>
+            <span class="sicon" data-ic="edit"></span><h3>Forms as flexible as Google Forms</h3>
+            <p>Eleven question types including date and time, an “Other” option people type into, shuffled options, scale labels and response validation — numbers, text, length, patterns or how many boxes to tick — with your own error message.</p>
           </article>
           <article class="step" data-shot-step="submission" data-url="#/applications/submissions">
             <span class="sicon" data-ic="check"></span><h3>Review, score, auto-rank</h3>
-            <p>See every answer with its auto-score. Accept and the applicant can be ranked automatically through Open Cloud; Discord hears about it either way.</p>
+            <p>See every answer with its auto-score. Discord gets every answer too, with a <b>Decide</b> button that opens the submission. Accept and the applicant can be ranked automatically through Open Cloud.</p>
           </article>
           <article class="step" data-shot-step="apply" data-url="apply.html">
             <span class="sicon" data-ic="external"></span><h3>A shareable web form</h3>
@@ -215,7 +224,7 @@
       <div class="copy" data-anim="left">
         <span class="kicker">11 · Access</span><h2>Sign in, pick a group, get to work.</h2>
         <p>After signing in you choose where to work. Every group shows live numbers on its card — and the owner always gets the <b>Owner Menu</b> first: the whitelist, every group, API keys, linked accounts and logs across all groups.</p>
-        <ul class="ticks"><li>Whitelist only — nobody signs in unless the owner adds them</li><li>Per-person permissions: ranking, logs, applications, groups, API keys</li><li>Switch groups any time from the top bar</li></ul>
+        <ul class="ticks"><li>Whitelist only — and anyone else gets an access request form you design</li><li>Per-person permissions: ranking, logs, applications, groups, API keys</li><li>Press <kbd>Ctrl</kbd> <kbd>K</kbd> to jump to any page, group or member</li></ul>
       </div>
       <div class="media layered" data-anim="right">
         <figure class="frame back"><img data-shot="owner-home" alt="Owner Menu overview: groups, whitelisted staff, API keys and recent logs across all groups" width="1440" height="900" loading="lazy"></figure>
@@ -251,9 +260,61 @@
       </div>
     </section>
 
+    <!-- DISCORD -->
+    <section class="chapter split" id="discord" data-nav="Discord automations" data-icon="megaphone">
+      <div class="copy" data-anim="left">
+        <span class="kicker">14 · Discord</span><h2>Your Discord, kept in the loop.</h2>
+        <p>Webhooks per group and per job, so each message lands in the right channel — no bot to host.</p>
+        <ul class="ticks"><li>Reminders before sessions start, with a role ping</li><li>“Staff of the week” posted automatically every week</li><li>Applications with every answer and a <b>Decide</b> button</li><li>Missed requirements with pings for linked members</li><li>Every log entry mirrored, if you want</li></ul>
+      </div>
+      <div class="media" data-anim="right">
+        <div class="dc" id="dcDemo" role="img" aria-label="A Discord channel receiving a session reminder, the Staff of the week post, a new application with a Decide button and a missed-requirements notice">
+          <div class="dc-head"><span class="dc-hash">#</span> staff-hub <span class="dc-topic">Roleplay System notifications</span></div>
+          <div class="dc-feed">
+            <div class="dc-msg"><span class="dc-ava" data-ic="shield"></span><div class="dc-body"><div class="dc-name">Roleplay System <span class="dc-bot">APP</span> <span class="dc-time">Today at 17:30</span></div>
+              <div class="dc-ping">@Receptionists</div>
+              <div class="dc-embed" style="--c:#e2a336"><b>⏰ Starting soon — Shift: Evening reception</b><span>Starts 18:00 (in 30 minutes) · 60 min</span><span>Host: <b>Avalynne</b> · Co-host: <b>SunnyConcierge</b></span></div></div></div>
+            <div class="dc-msg"><span class="dc-ava" data-ic="shield"></span><div class="dc-body"><div class="dc-name">Roleplay System <span class="dc-bot">APP</span> <span class="dc-time">Today at 18:00</span></div>
+              <div class="dc-embed" style="--c:#f2b84b"><b>🏆 Staff of the week — Sunrise Hotels</b><span><b>SunnyConcierge</b> led the week with <b>14.2 hours</b> in game. Thank you!</span>
+                <div class="dc-fields"><div><i>Most hours</i>🥇 SunnyConcierge — 14.2 h<br>🥈 Avalynne — 11.8 h<br>🥉 RubyLobby — 9.5 h</div><div><i>Most sessions</i>🥇 Avalynne — 6<br>🥈 MiraFrontDesk — 5<br>🥉 KaiSuite204 — 4</div></div></div></div></div>
+            <div class="dc-msg"><span class="dc-ava" data-ic="shield"></span><div class="dc-body"><div class="dc-name">Roleplay System <span class="dc-bot">APP</span> <span class="dc-time">Today at 18:12</span></div>
+              <div class="dc-embed" style="--c:#8e6fd8"><b class="dc-link">New application — Receptionist</b><span><b>PixelPenguin42</b> applied · Auto-score <b>7/7</b></span>
+                <div class="dc-qa"><i>1. Why do you want to work here?</i>I love hospitality roleplay and I’m on most evenings.<i>2. Preferred shift ✅</i>Other: Weekends</div></div>
+              <div class="dc-buttons"><span>Decide ↗</span><span>Roblox profile ↗</span></div></div></div>
+            <div class="dc-msg"><span class="dc-ava" data-ic="shield"></span><div class="dc-body"><div class="dc-name">Roleplay System <span class="dc-bot">APP</span> <span class="dc-time">Monday at 00:00</span></div>
+              <div class="dc-embed" style="--c:#e5484d"><b>2 members did not meet the weekly requirement</b><span><span class="dc-ping in">@MaxDoorman</span> <b>MaxDoorman</b> (Bellhop) — 1h 10m / 3h</span><span><span class="dc-ping in">@KaiSuite204</span> <b>KaiSuite204</b> (Receptionist) — 2h 05m / 3h</span></div></div></div>
+          </div>
+          <div class="dc-typing" aria-hidden="true"><i></i><i></i><i></i> <span>Roleplay System is typing…</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- AND MORE -->
+    <section class="chapter" id="more" data-nav="And more" data-icon="plus">
+      <header class="chead" data-anim><span class="kicker">15 · And more</span><h2>The details that make it run itself.</h2><p>Smaller tools that save your staff hours every week.</p></header>
+      <div class="bento">
+        <article class="bcard" data-anim><div class="bviz viz-ban"><span class="ban-player"><span data-ic="user"></span> Exploiter99</span><span class="ban-x" data-ic="ban"></span></div>
+          <h3><span data-ic="ban"></span> Blacklist</h3><p>Banned players are kicked the moment they join — and can’t apply.</p></article>
+        <article class="bcard" data-anim style="--d:.05s"><div class="bviz viz-promo"><div class="promo-row"><b>Trainee</b><span>→</span><b>Receptionist</b></div><div class="promo-bar"><i></i></div><small>10 h + 2 sessions in 30 days</small></div>
+          <h3><span data-ic="sparkle"></span> Auto-promotion</h3><p>Rules rank people up — or recommend them — once they’ve put in the time.</p></article>
+        <article class="bcard wide" data-anim style="--d:.1s"><div class="bviz viz-heat" id="miniHeat"></div>
+          <h3><span data-ic="chart"></span> Activity heatmap</h3><p>See which hours of the week your game is busy, in your own time zone — and plan shifts around it.</p></article>
+        <article class="bcard wide" data-anim><div class="bviz viz-search"><div class="fake-search"><span data-ic="search"></span><span class="typed" data-type="RubyLobby|Logbook|Owner Menu|Auto-promotion"></span><kbd>Ctrl K</kbd></div></div>
+          <h3><span data-ic="search"></span> Quick search</h3><p>Jump to any page, group or member from anywhere in the dashboard.</p></article>
+        <article class="bcard" data-anim style="--d:.05s"><div class="bviz viz-access"><span data-ic="inbox"></span><b class="count">3</b><small>new requests</small></div>
+          <h3><span data-ic="inbox"></span> Access requests</h3><p>Not on the whitelist? People fill in your form; you approve with a click.</p></article>
+        <article class="bcard" data-anim style="--d:.1s"><div class="bviz viz-verify"><span class="btn primary sm"><span data-ic="roblox"></span> Join to Verify</span><small class="kick">✔ Verified — kicked</small></div>
+          <h3><span data-ic="link"></span> One verification game</h3><p>A single place for every group, with a button straight to it.</p></article>
+        <article class="bcard" data-anim><div class="bviz viz-forms"><span class="chip">Other: <u>Weekends</u></span><span class="chip bad">Select at least 2</span><span class="chip">📅 2026-12-01</span></div>
+          <h3><span data-ic="file"></span> Smart forms</h3><p>“Other” answers, validation rules and date/time questions — on the web and in-game.</p></article>
+        <article class="bcard" data-anim style="--d:.05s"><div class="bviz viz-csv"><span data-ic="download"></span><small>activity.csv</small></div>
+          <h3><span data-ic="download"></span> CSV export</h3><p>Activity, logs and the blacklist straight into a spreadsheet.</p></article>
+      </div>
+    </section>
+
     <!-- HOW IT WORKS -->
     <section class="chapter" id="how" data-nav="How it works" data-icon="sparkle">
-      <header class="chead" data-anim><span class="kicker">14 · Under the hood</span><h2>Small, fast, nothing to host.</h2><p>Your games talk to one Cloudflare Worker. The dashboard is static pages on GitHub. Discord just receives webhooks.</p></header>
+      <header class="chead" data-anim><span class="kicker">16 · Under the hood</span><h2>Small, fast, nothing to host.</h2><p>Your games talk to one Cloudflare Worker. The dashboard is static pages on GitHub. Discord just receives webhooks.</p></header>
       <div class="diagram" data-anim>
         <svg viewBox="0 0 960 360" role="img" aria-label="Roblox games send heartbeats and applications to the Cloudflare Worker API, which stores data in D1, ranks through Roblox Open Cloud, posts to Discord webhooks and serves the dashboard and public API">
           <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="arrowhead"/></marker></defs>
@@ -278,7 +339,7 @@
     <!-- SIGN IN -->
     <section class="signin" id="signin" data-nav="Sign in" data-icon="user">
       <div class="glow g3" aria-hidden="true"></div>
-      <div class="signin-card" data-anim>
+      <div class="signin-card glow-border" data-anim>
         <span class="mark big" data-ic="shield"></span>
         <h2>Ready when you are.</h2>
         <p class="dim">Access is whitelist-only. Sign in with an account the owner has approved.</p>
@@ -289,8 +350,8 @@
     </section>
   </main>
 
-  <script src="config.js?v=42e1ce9"></script>
-  <script src="core.js?v=42e1ce9"></script>
-  <script src="intro.js?v=42e1ce9"></script>
+  <script src="config.js?v=c7c6e91"></script>
+  <script src="core.js?v=c7c6e91"></script>
+  <script src="intro.js?v=c7c6e91"></script>
 </body>
 </html>

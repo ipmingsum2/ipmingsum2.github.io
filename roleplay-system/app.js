@@ -243,6 +243,7 @@ function shell() {
       <header class="top">
         <button class="btn ghost icon menu-btn" id="menu" aria-label="Menu">${icon('menu')}</button>
         <a class="btn ctx" id="ctx" href="#/select" title="Switch group"></a>
+        <button class="btn ghost sm kbtn" id="kbtn" aria-label="Search (Ctrl+K)" title="Search (Ctrl+K)">${icon('search', 'sm')} <span class="hide-sm">Search</span> <kbd class="hide-sm">Ctrl K</kbd></button>
         <div class="right row">
           <a class="btn ghost sm" href="#/account">${icon('user', 'sm')} <span class="hide-sm">${esc(S.user.name || S.user.googleEmail || 'Account')}</span>${isOwner() ? ' <span class="badge accent">Owner</span>' : ''}</a>
           ${themeButton()}
@@ -253,7 +254,69 @@ function shell() {
     </div></div>`;
   $('#menu').onclick = () => $('#side').classList.toggle('open');
   $('[data-logout]').onclick = logout;
+  $('#kbtn').onclick = palette;
 }
+
+// ---------- quick search (Ctrl+K) ----------
+const memberCache = new Map(); // gid → members (fetched once per page load)
+async function paletteItems() {
+  const items = [];
+  const nav = (list, ctxLabel, ctxId) => list.filter(([, label, , show]) => label && (!show || show())).forEach(([path, label, ic]) =>
+    items.push({ label, hint: ctxLabel, ic, go: () => (ctxId === S.gid ? (location.hash = `#/${path}`) : enter(ctxId, `#/${path}`)) }));
+  if (inOwnerMenu()) nav(OWNER_NAV(), 'Owner Menu', OWNER); else if (group()) nav(GROUP_NAV(), group().name, S.gid);
+  if (isOwner() && !inOwnerMenu()) items.push({ label: 'Owner Menu', hint: 'Switch', ic: 'shield', go: () => enter(OWNER) });
+  S.groups.filter((g) => g.id !== S.gid).forEach((g) => items.push({ label: g.name, hint: 'Switch group', ic: 'users', go: () => enter(g.id) }));
+  items.push({ label: 'Toggle light / dark theme', hint: 'Action', ic: 'moon', go: () => setTheme(currentTheme() === 'dark' ? 'light' : 'dark') });
+  items.push({ label: 'Sign out', hint: 'Action', ic: 'logout', go: logout });
+  if (group()) {
+    if (!memberCache.has(S.gid)) memberCache.set(S.gid, api(G('/members')).then((d) => d.members).catch(() => []));
+    (await memberCache.get(S.gid)).forEach((m) => items.push({ label: m.username, sub: m.displayName && m.displayName !== m.username ? m.displayName : '', hint: m.roleName || 'Member', ic: 'user', member: true, go: () => { location.hash = `#/member/${m.robloxId}`; } }));
+  }
+  return items;
+}
+async function palette() {
+  if ($('.palette')) return;
+  const ov = document.createElement('div');
+  ov.className = 'overlay palette-ov';
+  ov.innerHTML = `<div class="palette" role="dialog" aria-modal="true" aria-label="Search">
+      <div class="pal-in">${icon('search')}<input id="palQ" placeholder="Search pages, groups and members…" autocomplete="off" spellcheck="false" aria-label="Search" role="combobox" aria-expanded="true" aria-controls="palList"><kbd>Esc</kbd></div>
+      <div class="pal-list" id="palList" role="listbox"><div class="empty">Loading…</div></div>
+      <div class="pal-foot muted small"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>Enter</kbd> open</span><span><kbd>Ctrl</kbd><kbd>K</kbd> anytime</span></div></div>`;
+  document.body.append(ov);
+  const input = $('#palQ', ov), list = $('#palList', ov);
+  const close = () => { ov.remove(); document.removeEventListener('keydown', onKey, true); };
+  let items = [], shown = [], sel = 0;
+  const draw = () => {
+    const words = input.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const hit = (it) => { const s = `${it.label} ${it.sub || ''} ${it.hint || ''}`.toLowerCase(); return words.every((w) => s.includes(w)); };
+    // With no query: pages and actions only; members appear once you type.
+    shown = (words.length ? items.filter(hit) : items.filter((it) => !it.member)).slice(0, 40);
+    sel = Math.min(sel, Math.max(0, shown.length - 1));
+    list.innerHTML = shown.length ? shown.map((it, i) => `<button type="button" class="pal-item ${i === sel ? 'on' : ''}" role="option" aria-selected="${i === sel}" data-i="${i}">${icon(it.ic || 'search')}<span class="grow"><b>${esc(it.label)}</b>${it.sub ? ` <span class="muted">${esc(it.sub)}</span>` : ''}</span><span class="muted small">${esc(it.hint || '')}</span></button>`).join('')
+      : `<div class="empty">${icon('search')}<div>Nothing matches “${esc(input.value)}”.</div></div>`;
+    list.querySelector('.on')?.scrollIntoView({ block: 'nearest' });
+  };
+  const pick = (i) => { const it = shown[i]; if (!it) return; close(); it.go(); };
+  const onKey = (e) => {
+    if (e.key === 'Escape') { e.preventDefault(); close(); }
+    else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); sel = (sel + (e.key === 'ArrowDown' ? 1 : -1) + shown.length) % Math.max(1, shown.length); draw(); }
+    else if (e.key === 'Enter') { e.preventDefault(); pick(sel); }
+  };
+  document.addEventListener('keydown', onKey, true);
+  ov.addEventListener('mousedown', (e) => { if (e.target === ov) close(); });
+  list.onclick = (e) => { const b = e.target.closest('[data-i]'); if (b) pick(+b.dataset.i); };
+  list.onmousemove = (e) => { const b = e.target.closest('[data-i]'); if (b && +b.dataset.i !== sel) { sel = +b.dataset.i; $$('.pal-item', list).forEach((x, i) => { x.classList.toggle('on', i === sel); x.setAttribute('aria-selected', i === sel); }); } };
+  input.oninput = () => { sel = 0; draw(); };
+  input.focus();
+  items = await paletteItems();
+  if (ov.isConnected) draw();
+}
+// Ctrl/Cmd+K anywhere, or "/" when not typing in a field.
+addEventListener('keydown', (e) => {
+  if (!$('#kbtn')) return;
+  const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName) || document.activeElement?.isContentEditable;
+  if (((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') || (e.key === '/' && !typing && !$('.overlay'))) { e.preventDefault(); palette(); }
+});
 
 function drawContext() {
   $('#ctx').innerHTML = inOwnerMenu()

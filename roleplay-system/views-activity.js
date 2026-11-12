@@ -3,6 +3,45 @@
 
 const SERIES_FROM = () => addDays(weekStart(today()), -77); // 12 weeks of history for graphs
 const chartCard = (title) => `<div class="card"><div class="head"><h2 class="grow">${title}</h2>${seg('gmode', [['daily', 'Daily'], ['weekly', 'Weekly']], store.get('rp_gmode') || 'daily')}</div><div class="body"><div id="chart"></div><p class="hint" style="margin-top:8px">Days are counted in UTC; weeks start on Monday.</p></div></div>`;
+// ---------- heatmap: when members play (weekday × hour, viewer's local time) ----------
+const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const heatCard = () => `<div class="card"><div class="head"><div class="grow"><h2>When members play</h2><span class="muted small" id="heatSub"></span></div>
+    ${seg('heatDays', [['7', '7 days'], ['28', '28 days'], ['90', '90 days']], store.get('rp_heat') || '28')}</div>
+  <div class="body stack"><div class="heat-wrap"><div class="heat" id="heat" role="img" aria-label="Hours played by weekday and hour"></div><div class="tip hidden" id="heatTip"></div></div>
+    <div class="row wrap heat-foot"><span class="dim small" id="heatBusy"></span><span class="heat-legend right" aria-hidden="true"><span class="muted small">Less</span>${[0, 1, 2, 3, 4].map((i) => `<i class="h${i}"></i>`).join('')}<span class="muted small">More</span></span></div></div></div>`;
+async function mountHeatmap(el) {
+  const box = $('#heat', el), tip = $('#heatTip', el);
+  const hourLabel = (h) => `${String(h).padStart(2, '0')}:00`;
+  const draw = async (days) => {
+    const d = await api(G(`/heatmap?days=${days}`));
+    // Buckets come in UTC; shift to this viewer's time zone (whole hours).
+    const shift = Math.round(-new Date().getTimezoneOffset() / 60);
+    const local = new Array(168).fill(0);
+    d.buckets.forEach((v, i) => { local[(((i + shift) % 168) + 168) % 168] += v; });
+    const max = Math.max(...local);
+    const weeks = Math.max(1, d.days / 7);
+    // 5 sequential steps of one hue; empty hours stay neutral.
+    const step = (v) => (!v || !max ? 0 : Math.min(4, 1 + Math.floor((v / max) * 3.999)));
+    box.innerHTML = `<span></span>${Array.from({ length: 24 }, (_, h) => `<span class="hx">${h % 3 === 0 ? String(h).padStart(2, '0') : ''}</span>`).join('')}
+      ${WEEKDAYS.map((w, r) => `<span class="hy">${w}</span>${Array.from({ length: 24 }, (_, h) => { const v = local[r * 24 + h]; return `<i class="h${step(v)}" data-i="${r * 24 + h}" tabindex="-1"></i>`; }).join('')}`).join('')}`;
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'local time';
+    $('#heatSub', el).textContent = `Last ${d.days} days · ${tz}`;
+    const top = local.map((v, i) => [v, i]).filter(([v]) => v > 0).sort((a, b) => b[0] - a[0]).slice(0, 3);
+    $('#heatBusy', el).innerHTML = top.length ? `Busiest: ${top.map(([v, i]) => `<b>${WEEKDAYS[Math.floor(i / 24)]} ${hourLabel(i % 24)}</b> (${fmtHours(v / weeks)} h/week)`).join(' · ')}` : 'No play sessions in this period yet.';
+    box.onmousemove = (e) => {
+      const c = e.target.closest('i[data-i]'); if (!c) { tip.classList.add('hidden'); return; }
+      const i = +c.dataset.i, v = local[i];
+      tip.innerHTML = `<b>${fmtDur(v)} played</b>${WEEKDAYS[Math.floor(i / 24)]} ${hourLabel(i % 24)}–${hourLabel((i % 24 + 1) % 24)}<br><span class="muted">≈ ${fmtDur(v / weeks)} per week</span>`;
+      const r = c.getBoundingClientRect(), p = box.parentElement.getBoundingClientRect();
+      tip.style.left = `${r.left - p.left + r.width / 2}px`; tip.style.top = `${r.top - p.top - 6}px`;
+      tip.classList.remove('hidden');
+    };
+    box.onmouseleave = () => tip.classList.add('hidden');
+  };
+  onSeg(el, 'heatDays', (v) => { store.set('rp_heat', v); run(null, () => draw(v)); });
+  await draw(store.get('rp_heat') || '28');
+}
+
 function mountChart(el, series) {
   const draw = (mode) => barChart($('#chart', el), bucketSeries(series, mode));
   onSeg(el, 'gmode', (v) => { store.set('rp_gmode', v); draw(v); });
@@ -56,6 +95,7 @@ VIEWS.activity = async (el, _a, _b, reload) => {
       ${can('manage_activity') ? `<button class="btn" id="adjust">${icon('edit')} Adjust time</button>` : ''}
       ${can('manage_activity') || can('manage_groups') ? `<button class="btn" id="sync">${icon('refresh')} Sync members</button>` : ''}`)}
     ${chartCard('Total hours played')}
+    ${heatCard()}
     <div class="card">
       <div class="head">
         ${seg('range', Object.entries(RANGES).map(([k, v]) => [k, v[0]]), rangeKey)}
@@ -86,6 +126,7 @@ VIEWS.activity = async (el, _a, _b, reload) => {
   };
   await load(RANGES[rangeKey][1], RANGES[rangeKey][2]);
   mountChart(el, data.series);
+  await mountHeatmap(el);
 
   onSeg(el, 'range', (k) => { rangeKey = k; store.set('rp_range', k); run(null, () => load(RANGES[k][1], RANGES[k][2])); });
   const custom = () => { const f = $('#from', el).value, to = $('#to', el).value; if (f && to && f <= to) { $$('#range button', el).forEach((b) => b.classList.remove('on')); run(null, () => load(f, to)); } };
