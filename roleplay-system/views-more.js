@@ -2,38 +2,6 @@
 // (logbook entry, recommend, session register) used by other pages.
 'use strict';
 
-// ---------- tiny, safe markdown (escape first, then add a few tags) ----------
-function md(src) {
-  const inline = (t) => esc(t)
-    .replace(/`([^`]+)`/g, '<code>$1</code>')
-    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
-    .replace(/(^|[^*])\*([^*]+)\*/g, '$1<i>$2</i>')
-    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
-  const out = [];
-  let list = null, para = [];
-  const flush = () => { if (para.length) { out.push(`<p>${inline(para.join(' '))}</p>`); para = []; } if (list) { out.push(`</${list}>`); list = null; } };
-  for (const raw of String(src || '').split('\n')) {
-    const line = raw.trimEnd();
-    let m;
-    if (!line.trim()) { flush(); continue; }
-    if ((m = /^(#{1,3})\s+(.*)/.exec(line))) { flush(); out.push(`<h${m[1].length + 1}>${inline(m[2])}</h${m[1].length + 1}>`); continue; }
-    if ((m = /^>\s?(.*)/.exec(line))) { flush(); out.push(`<blockquote>${inline(m[1])}</blockquote>`); continue; }
-    if ((m = /^\s*[-*]\s+(.*)/.exec(line)) || (m = /^\s*\d+[.)]\s+(.*)/.exec(line))) {
-      const kind = /^\s*\d/.test(line) ? 'ol' : 'ul';
-      if (para.length) { out.push(`<p>${inline(para.join(' '))}</p>`); para = []; }
-      if (list !== kind) { if (list) out.push(`</${list}>`); out.push(`<${kind}>`); list = kind; }
-      out.push(`<li>${inline(m[1])}</li>`); continue;
-    }
-    if (list) { out.push(`</${list}>`); list = null; }
-    para.push(line.trim());
-  }
-  flush();
-  return out.join('');
-}
-
-/** Markdown -> plain text for short previews. */
-const plainText = (s) => String(s || '').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/^\s*(#{1,3}|>|[-*]|\d+[.)])\s+/gm, '').replace(/[*`]/g, '').replace(/\s+/g, ' ').trim();
-
 // ---------- logbook ----------
 const LB_TYPES = { warning: ['Warning', 'warn'], strike: ['Strike', 'bad'], suspension: ['Suspension', 'bad'], demotion: ['Demotion', 'bad'], promotion: ['Promotion', 'good'], commendation: ['Commendation', 'good'], termination: ['Termination', 'bad'] };
 const lbBadge = (t) => `<span class="badge ${LB_TYPES[t]?.[1] || ''}">${esc(LB_TYPES[t]?.[0] || t)}</span>`;
@@ -185,30 +153,29 @@ VIEWS.promotions = async (el, _a, _b, reload) => {
 VIEWS.kb = async (el, id, sub, reload) => {
   const { docs } = await api(G('/kb'));
   const edit = can('manage_content');
-  const PERM_LABEL = { '': 'Everyone', manage_activity: 'Activity managers', ranking: 'Rankers', manage_groups: 'Group managers', manage_applications: 'Application managers', review_applications: 'Application reviewers', view_logs: 'Log viewers', manage_api_keys: 'API key managers', manage_discipline: 'Discipline managers', manage_content: 'Content editors' };
   const cats = [...new Set(docs.map((d) => d.category))];
   let current = id && id !== 'new' ? (await api(`/api/kb/${id}`)).doc : null;
   if (!id && docs.length) { location.replace(`#/kb/${docs[0].id}`); return; }
   const editing = id === 'new' || sub === 'edit';
   if (editing && !edit) throw new Error('You do not have permission to edit the knowledgebase.');
   const nav = `<nav class="kb-nav card">${edit ? `<div class="body"><a class="btn primary" style="width:100%" href="#/kb/new">${icon('plus')} New page</a></div>` : ''}
-    ${cats.length ? cats.map((c) => `<div class="nav-label">${esc(c)}</div>${docs.filter((d) => d.category === c).map((d) => `<a href="#/kb/${d.id}" class="${current?.id === d.id ? 'on' : ''}">${icon('file', 'sm')} <span class="grow">${esc(d.title)}</span>${d.visibility ? icon('shield', 'sm') : ''}</a>`).join('')}`).join('') : '<div class="empty">No pages yet.</div>'}</nav>`;
+    ${cats.length ? cats.map((c) => `<div class="nav-label">${esc(c)}</div>${docs.filter((d) => d.category === c).map((d) => `<a href="#/kb/${d.id}" class="${current?.id === d.id ? 'on' : ''}">${icon('file', 'sm')} <span class="grow">${esc(d.title)}</span>${d.visibility === 'public' ? icon('globe', 'sm') : icon('lock', 'sm')}</a>`).join('')}`).join('') : '<div class="empty">No pages yet.</div>'}</nav>`;
   let main;
   if (editing) {
     const d = current || { title: '', category: cats[0] || 'General', body: '', visibility: '' };
     main = `<div class="card"><div class="head"><h2 class="grow">${current ? 'Edit page' : 'New page'}</h2>${current ? `<button class="btn danger" id="del">${icon('trash')} Delete</button>` : ''}<a class="btn ghost" href="#/kb${current ? `/${current.id}` : ''}">Cancel</a><button class="btn primary" id="save">${icon('check')} Save</button></div>
       <div class="body stack"><div class="grid3"><label class="field">Title<input id="t" maxlength="120" value="${esc(d.title)}"></label>
         <label class="field">Category<input id="c" maxlength="40" value="${esc(d.category)}" list="cats"><datalist id="cats">${cats.map((c) => `<option value="${esc(c)}">`).join('')}</datalist></label>
-        <label class="field">Who can read it<select id="v">${Object.entries(PERM_LABEL).map(([k, l]) => `<option value="${k}" ${k === d.visibility ? 'selected' : ''}>${l}</option>`).join('')}</select></label></div>
+        <label class="field">Who can read it<select id="v">${visOptions(d.visibility)}</select><small>Public pages need no sign-in. Anything else asks people to sign in.</small></label></div>
         <div class="grid2 kb-edit"><label class="field">Content <small>Markdown: # heading, **bold**, *italic*, - lists, 1. lists, > quote, [link](https://…)</small><textarea id="b" rows="22">${esc(d.body)}</textarea></label>
         <div class="field"><span>Preview</span><div class="md card body" id="pv">${md(d.body)}</div></div></div></div></div>`;
   } else if (current) {
     main = `<article class="card"><div class="head"><div class="grow"><span class="kicker-sm">${esc(current.category)}</span><h2 class="doc-title">${esc(current.title)}</h2></div>
-      ${current.visibility ? `<span class="badge">${icon('shield', 'sm')} ${esc(PERM_LABEL[current.visibility] || current.visibility)}</span>` : ''}${edit ? `<a class="btn" href="#/kb/${current.id}/edit">${icon('edit')} Edit</a>` : ''}</div>
+      ${visBadge(current.visibility)}<a class="btn ghost" href="handbooks/?id=${current.id}" target="_blank" rel="noopener">${icon('external')} Page</a>${edit ? `<a class="btn" href="#/kb/${current.id}/edit">${icon('edit')} Edit</a>` : ''}</div>
       <div class="body md">${md(String(current.body).replace(/^\s*#\s+(.+)\n?/, (m, t) => (t.trim().toLowerCase() === current.title.trim().toLowerCase() ? '' : m))) || '<p class="muted">This page is empty.</p>'}</div>
       <div class="body muted small" style="border-top:1px solid var(--line)">Last edited by ${esc(current.updated_by || '')} · ${fmtTime(current.updated_at)}</div></article>`;
   } else main = `<div class="card"><div class="empty">${icon('book')}<div><b>No knowledgebase pages yet</b></div><p>Store your handbooks, guides and policies here.</p>${edit ? '<p style="margin-top:12px"><a class="btn primary" href="#/kb/new">Write the first page</a></p>' : ''}</div></div>`;
-  el.innerHTML = `${head('Knowledgebase', 'Handbooks, guides and policies for your staff. Pages can be limited to people with a specific permission.')}<div class="kb">${nav}<div class="kb-main">${main}</div></div>`;
+  el.innerHTML = `${head('Knowledgebase', 'Handbooks, guides and policies. Each page is public, for signed-in staff, or for one permission — and is also published on the Handbooks page.', `<a class="btn" href="handbooks/?g=${encodeURIComponent(S.gid)}" target="_blank" rel="noopener">${icon('external')} Handbooks page</a>`)}<div class="kb">${nav}<div class="kb-main">${main}</div></div>`;
   if (editing) {
     $('#b', el).oninput = (e) => { $('#pv', el).innerHTML = md(e.target.value); };
     $('#save', el).onclick = (e) => run(e.currentTarget, async () => {
@@ -224,9 +191,9 @@ VIEWS.kb = async (el, id, sub, reload) => {
 VIEWS.news = async (el, _a, _b, reload) => {
   const { posts } = await api(G('/news'));
   const edit = can('manage_content');
-  el.innerHTML = `${head('News', 'Announcements for your staff. Pinned posts stay on top and show on the overview.', edit ? `<button class="btn primary" id="add">${icon('plus')} New post</button>` : '')}
+  el.innerHTML = `${head('News', 'Announcements. Pinned posts stay on top and show on the overview; every post is also on the Posts page, public or for the people you choose.', `<a class="btn" href="posts/?g=${encodeURIComponent(S.gid)}" target="_blank" rel="noopener">${icon('external')} Posts page</a>${edit ? `<button class="btn primary" id="add">${icon('plus')} New post</button>` : ''}`)}
     <div class="news">${posts.length ? posts.map((p) => `<article class="card post">
-      <div class="head">${p.pinned ? `<span class="badge accent">${icon('pin', 'sm')} Pinned</span>` : ''}<h2 class="grow">${esc(p.title)}</h2>
+      <div class="head">${p.pinned ? `<span class="badge accent">${icon('pin', 'sm')} Pinned</span>` : ''}<h2 class="grow"><a href="posts/?id=${p.id}" target="_blank" rel="noopener">${esc(p.title)}</a></h2>${edit ? `<select class="vis-sel" data-vis="${p.id}" aria-label="Who can read this post">${visOptions(p.visibility || '')}</select>` : visBadge(p.visibility || '')}
         ${edit ? `<button class="btn ghost sm" data-pin="${p.id}:${p.pinned ? 0 : 1}">${p.pinned ? 'Unpin' : 'Pin'}</button><button class="btn ghost icon sm" data-del="${p.id}" aria-label="Delete post">${icon('trash', 'sm')}</button>` : ''}</div>
       <div class="body md">${md(p.body)}</div>
       <div class="body muted small" style="padding-top:0">${esc(p.author || '')} · ${fmtTime(p.created_at)}</div></article>`).join('') : `<div class="card"><div class="empty">${icon('megaphone')}<div>No news yet.</div></div></div>`}</div>`;
@@ -234,9 +201,11 @@ VIEWS.news = async (el, _a, _b, reload) => {
   $('#add', el).onclick = () => modal({ title: 'New post', wide: true, body: `
       <label class="field">Title<input id="t" maxlength="140"></label>
       <label class="field">Message <small>Markdown supported</small><textarea id="b" rows="8" maxlength="4000"></textarea></label>
+      <label class="field">Who can read it<select id="v">${visOptions('')}</select><small>Public posts appear on the Posts page for anyone. Anything else asks people to sign in.</small></label>
       <div class="row wrap" style="gap:18px"><label class="check"><input type="checkbox" id="p"> Pin to the top</label>
       <label class="check"><input type="checkbox" id="a" ${group()?.settings.news?.webhookUrl ? 'checked' : 'disabled'}> Announce in Discord ${group()?.settings.news?.webhookUrl ? '' : '<span class="muted">(set a news webhook in Groups)</span>'}</label></div>`,
-    actions: [{ label: 'Post', kind: 'primary', onClick: async (close, m) => { const r = await api(G('/news'), { body: { title: val(m, '#t'), body: $('#b', m).value, pinned: $('#p', m).checked, announce: $('#a', m).checked } }); close(); toast(r.announced ? 'Posted and announced' : 'Posted', 'good'); reload(); } }] });
+    actions: [{ label: 'Post', kind: 'primary', onClick: async (close, m) => { const r = await api(G('/news'), { body: { title: val(m, '#t'), body: $('#b', m).value, pinned: $('#p', m).checked, announce: $('#a', m).checked, visibility: val(m, '#v') } }); close(); toast(r.announced ? 'Posted and announced' : 'Posted', 'good'); reload(); } }] });
+  $$('[data-vis]', el).forEach((s) => s.onchange = () => run(null, async () => { await api(`/api/news/${s.dataset.vis}`, { method: 'PATCH', body: { visibility: s.value } }); toast(s.value === 'public' ? 'Post is now public' : 'Visibility updated', 'good'); }));
   $$('[data-pin]', el).forEach((b) => b.onclick = () => run(b, async () => { const [id, pin] = b.dataset.pin.split(':'); await api(`/api/news/${id}`, { method: 'PATCH', body: { pinned: pin === '1' } }); reload(); }));
   $$('[data-del]', el).forEach((b) => b.onclick = async () => { if (await confirmBox('Delete post?', 'This cannot be undone.', 'Delete')) run(b, async () => { await api(`/api/news/${b.dataset.del}`, { method: 'DELETE' }); reload(); }); });
 };
