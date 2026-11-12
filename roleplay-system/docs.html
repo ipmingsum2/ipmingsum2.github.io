@@ -100,7 +100,7 @@
         ['POST', '/v1/game/applications/{applicationId}/submit', 'game', 'Submit an application as a verified player', {
           body: { userId: 156, username: 'Builderman', answers: { q1a2b3c4d: 'Stay calm' } }, response: { ok: true, message: 'Your application has been submitted.' },
           notes: 'Answers are keyed by question ID. Checkboxes take an array of option texts; number and scale take numbers; date is `YYYY-MM-DD`, time is `HH:MM` (24-hour). Where `other` is on, any text that is not an option is the player’s own answer and is stored as `Other: …`. Answers that break a question’s `validation` rule are rejected with that rule’s message. Returns 409 if the player already has a pending submission, and 403 if they are blacklisted.' }],
-        ['POST', '/v1/game/verify', 'verify or game', 'Confirm a link code typed in the verification game', { body: { code: 'K7M2QX', userId: 156, username: 'Builderman' }, response: { ok: true, discordName: 'builder' }, notes: 'Returns 404 with `{ ok: false, error }` for an invalid or expired code.' }],
+        ['POST', '/v1/game/verify', 'verify', 'Confirm a link code typed in the verification game (one game for the whole system)', { body: { code: 'K7M2QX', userId: 156, username: 'Builderman' }, response: { ok: true, discordName: 'builder' }, notes: 'Returns 404 with `{ ok: false, error }` for an invalid or expired code.' }],
       ]],
       ['Public application endpoints', 'Used by the web application form. No API key.', [
         ['GET', '/public/applications/{applicationId}', 'none', 'The form definition', { response: { open: true, application: { id: '3f9a1c2b7d', group: 'Sunrise Hotels', title: 'Staff application', identity: 'username', questions: [] } } }],

@@ -95,8 +95,9 @@ Open the dashboard and sign in with the owner's Google or Discord account (the `
 
 1. **Groups → Add group** — group ID + an Open Cloud API key ([create.roblox.com → Open Cloud → API keys](https://create.roblox.com/dashboard/credentials)) with `group:read` and `group:write` for that group. The key's owner must be able to manage members in the group.
 2. Tick the **tracked ranks** and save.
-3. **Groups → Roblox setup** — download the tracker module, verification game and application center.
-4. **Access** — whitelist your staff and choose their permissions.
+3. **Groups → Roblox setup** — download the tracker module and the application center for that group.
+4. **Owner Menu → Linked accounts** — download the verification game once for the whole system, publish it, and paste its Roblox link so players get a **Join to Verify** button.
+5. **Access** — whitelist your staff and choose their permissions.
 
 ### 5. Roblox
 
@@ -124,7 +125,7 @@ ActivityTracker.Start({
 
 **Application center (.rbxlx)** — generated from the Applications page. The place stores no questions: it fetches the group's open applications from the API whenever a player opens it, so editing a form in the dashboard updates the game without republishing.
 
-**Verification game (.rbxlx)** — players sign in with Discord on `verify.html`, get a code, and type it in this game to link Discord ↔ Roblox.
+**Verification game (.rbxlx)** — one place for the whole system, downloaded from Owner Menu → Linked accounts with a key that can only verify. Players sign in with Discord on `verify.html` (or use My account), get a code, press **Join to Verify**, type the code, and are kicked with a confirmation once Discord ↔ Roblox is linked.
 
 Generated files embed an API key. Do not share them or make the places copyable; revoke keys on the API page if one leaks.
 

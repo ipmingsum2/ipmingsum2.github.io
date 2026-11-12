@@ -291,3 +291,7 @@ tr.faded td { opacity: .55; }
 .q-err { color: var(--bad); font-size: 13px; margin: 0; display: flex; align-items: center; gap: 6px; }
 .rv { margin-top: 2px; } .rv-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
 .rv-row select { width: auto; max-width: 100%; } .rv-row input { flex: 1 1 140px; min-width: 0; } .rv-row .rv-msg { flex: 2 1 220px; }
+
+/* Owner Menu → Linked accounts: verification game steps */
+.vg-steps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+@media (max-width: 860px) { .vg-steps { grid-template-columns: minmax(0, 1fr); } }

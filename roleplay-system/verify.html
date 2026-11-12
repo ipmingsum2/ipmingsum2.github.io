@@ -27,8 +27,11 @@
       root.innerHTML = `<div class="card"><div class="body stack" style="text-align:center;align-items:center">
         ${icon('link', 'lg')}<h1>Link Discord to Roblox</h1>
         <p class="dim">Sign in with Discord, get a code, then enter it in the Roblox verification game. Your Discord and Roblox accounts will be linked.</p>
+        <div id="joinTop"></div>
         ${msg ? `<div class="callout bad" role="alert">${icon('alert')}<span>${esc(msg)}</span></div>` : ''}
         <a class="btn primary big" style="max-width:320px" href="${signIn}">${icon('discord')} Sign in with Discord</a></div></div>`;
+      // Players can open the game ahead of time; the code comes after signing in.
+      joinVerifyButton('btn').then((b) => { const slot = $('#joinTop'); if (slot && b) slot.innerHTML = b; });
     }
 
     async function render() {
@@ -46,9 +49,9 @@
       $('#get').onclick = (e) => run(e.currentTarget, async () => {
         const { code } = await api('/public/verify-code', { public: true, method: 'POST' });
         $('#codeArea').innerHTML = `<div class="stack"><div class="codebox" aria-label="Verification code">${esc(code)}</div>
-          <ol class="dim" style="margin:0;padding-left:20px"><li>Join the verification game on Roblox.</li><li>Type this code and press <b>Link account</b>.</li><li>Come back and press Refresh.</li></ol>
+          <ol class="dim" style="margin:0;padding-left:20px"><li>Join the verification game on Roblox.</li><li>Type this code and press <b>Link account</b> — the game kicks you once it’s linked.</li><li>Come back and press Refresh.</li></ol>
           <p class="hint">The code works once and expires in 15 minutes. Never enter a code someone else gave you.</p>
-          <div><button class="btn" id="re">${icon('refresh')} Refresh</button></div></div>`;
+          <div class="row wrap">${await joinVerifyButton('btn primary')}<button class="btn" id="re">${icon('refresh')} Refresh</button></div></div>`;
         $('#re').onclick = render;
       });
     }

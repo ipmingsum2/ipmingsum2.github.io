@@ -156,6 +156,18 @@ const confirmBox = (title, text, label = 'Confirm', kind = 'danger') => new Prom
   const m = modal({ title, body: `<p class="dim">${esc(text)}</p>`, actions: [{ label, kind, onClick: (close) => { done = true; close(); resolve(true); } }] });
   new MutationObserver((_, o) => { if (!m.el.isConnected) { o.disconnect(); if (!done) resolve(false); } }).observe(document.body, { childList: true });
 });
+/** The verification game's Roblox link, set once by the owner ('' when not set). Fetched once per page. */
+let verifyGamePromise = null;
+function verifyGameUrl() {
+  verifyGamePromise ||= api('/public/verify-game').then((d) => (/^https:\/\/(www\.)?roblox\.com\//i.test(d.url || '') ? d.url : '')).catch(() => '');
+  return verifyGamePromise;
+}
+/** "Join to Verify" link button, or '' if the owner hasn't set the game link yet. */
+async function joinVerifyButton(cls = 'btn primary') {
+  const url = await verifyGameUrl();
+  return url ? `<a class="${cls}" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${icon('roblox')} Join to Verify</a>` : '';
+}
+
 async function copyText(text) { try { await navigator.clipboard.writeText(text); toast('Copied', 'good'); } catch { toast('Copy failed — select and copy manually', 'bad'); } }
 // ---------- filling in a form (applications, access requests) ----------
 const shuffled = (list) => { const a = [...list]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };

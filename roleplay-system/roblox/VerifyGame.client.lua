@@ -91,6 +91,12 @@ local function send()
 	status.TextColor3 = result.ok and GOOD or BAD
 	if result.ok then
 		box.Text = ""
+		busy = true -- stays set: nothing more to do before the server kicks the player
+		box.TextEditable = false
+		submit.Active = false
+		submit.AutoButtonColor = false
+		submit.Text = "Linked!"
+		submit.BackgroundColor3 = GOOD
 	end
 end
 

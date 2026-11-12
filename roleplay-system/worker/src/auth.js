@@ -293,6 +293,7 @@ export async function createKey(c) {
   const groupId = str(b.groupId, 20) || null;
   if (groupId && !(await c.env.DB.prepare('SELECT id FROM groups WHERE id=?').bind(groupId).first())) bad('Group not found', 404);
   if (scopes.includes('game') && !groupId) bad('A key with the "game" scope must be tied to one group');
+  if (scopes.includes('verify') && groupId) bad('The "verify" scope is system-wide — create it without a group (the owner downloads the verification game from Owner Menu → Linked accounts)');
   const key = `rpk_${randHex(24)}`;
   await c.env.DB.prepare('INSERT INTO api_keys (name, key_hash, prefix, group_id, scopes, created_by, created_at) VALUES (?,?,?,?,?,?,?)')
     .bind(name, await sha256(key), key.slice(0, 12), groupId, JSON.stringify(scopes), c.actor.name, now()).run();
@@ -341,8 +342,32 @@ export async function publicVerifyCode(c) {
   return json(await issueCode(c.env, idn));
 }
 
+// ---------- the verification game's Roblox link (one for the whole system) ----------
+// Accepts https://www.roblox.com/games/<placeId>[/name], /games/start?placeId=<id> and /share?code=… links.
+const ROBLOX_GAME_URL = /^https:\/\/(www\.)?roblox\.com\/(games\/\d+(\/[^\s?#]*)?|games\/start\?placeId=\d+|share\?code=[A-Za-z0-9]+)([?&#][^\s]*)?$/i;
+
+export async function verifyGameUrl(env) {
+  const row = await env.DB.prepare("SELECT value FROM app_settings WHERE key='verify_game'").first();
+  return parseJSON(row?.value, {}).url || '';
+}
+
+/** GET /public/verify-game — where players go to verify (shown as "Join to Verify"). */
+export async function verifyGameGet(c) { return json({ url: await verifyGameUrl(c.env) }); }
+
+/** PUT /api/verify-game {url} — owner sets the verification game's Roblox link ('' clears it). */
+export async function verifyGameSave(c) {
+  const b = await readBody(c.req);
+  const url = str(b.url, 300);
+  if (url && !ROBLOX_GAME_URL.test(url)) bad('Paste the game’s Roblox link, e.g. https://www.roblox.com/games/1234567890/Verify');
+  await c.env.DB.prepare("INSERT INTO app_settings (key, value) VALUES ('verify_game', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(JSON.stringify({ url })).run();
+  await logEvent(c.env, c.ctx, { type: 'link.game_set', actor: c.actor, summary: url ? `${c.actor.name} set the verification game link to ${url}` : `${c.actor.name} removed the verification game link` });
+  return json({ ok: true, url });
+}
+
 /** POST /v1/game/verify {code, userId, username} — called by the Roblox verification game. */
 export async function gameVerify(c) {
+  // One verification game for the whole system: keys tied to a group (including older ones that had "verify") can't link accounts.
+  if (c.key.group_id) bad('Group keys cannot verify accounts — use the system verification game from Owner Menu → Linked accounts', 403);
   const b = await readBody(c.req);
   const code = str(b.code, 12).toUpperCase().replace(/[^A-Z0-9]/g, '');
   const robloxId = str(b.userId, 20);
