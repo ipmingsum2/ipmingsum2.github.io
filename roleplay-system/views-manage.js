@@ -12,7 +12,7 @@ const PERM_LABELS = { manage_activity: 'Manage activity, requirements, time off,
 async function createGameKey(label, gid = S.gid) {
   if (!can('manage_api_keys')) throw new Error('You need the "manage API keys" permission to generate a game key.');
   const g = S.groups.find((x) => x.id === gid);
-  return (await api('/api/keys', { body: { name: `${label} — ${g?.name || gid}`, scopes: ['game', 'verify'], groupId: gid } })).key;
+  return (await api('/api/keys', { body: { name: `${label} — ${g?.name || gid}`, scopes: ['game'], groupId: gid } })).key;
 }
 
 // ---------- applications ----------
@@ -321,25 +321,22 @@ VIEWS.groups = async (el, _a, _b, reload) => {
 
 function robloxSetup(g = group()) {
   const m = modal({ title: `Roblox setup — ${g.name}`, wide: true, body: `
-      <p class="dim">Three pieces connect Roblox to this system. Each download creates a fresh API key and embeds it in a <b>server-only</b> script — never share these files or put the key in a LocalScript.</p>
+      <p class="dim">Two pieces connect this group’s Roblox games to the system. Each download creates a fresh API key for this group and embeds it in a <b>server-only</b> script — never share these files or put the key in a LocalScript.</p>
       <div class="card"><div class="body stack gap-s"><h3>1 · Activity tracker (ModuleScript)</h3>
         <p class="dim">Add <code>ActivityTracker</code> as a ModuleScript in <code>ServerScriptService</code> of your main game, then start it from a Script. It reports playtime, idle time and chat messages for tracked ranks every minute.</p>
         <div class="row wrap"><button class="btn" data-d="module">${icon('download')} ActivityTracker.lua</button><button class="btn" data-d="loader">${icon('copy')} Copy loader script (with new key)</button></div></div></div>
-      <div class="card"><div class="body stack gap-s"><h3>2 · Verification game (Discord → Roblox)</h3>
-        <p class="dim">A small place where players type the code from the Verify page to link their Discord and Roblox accounts.</p>
-        <div class="row wrap"><button class="btn" data-d="verify">${icon('download')} VerificationGame.rbxlx</button><a class="btn ghost" href="verify.html" target="_blank" rel="noopener">${icon('external')} Verify page</a></div></div></div>
-      <div class="card"><div class="body stack gap-s"><h3>3 · Application center</h3>
+      <div class="card"><div class="body stack gap-s"><h3>2 · Application center</h3>
         <p class="dim">A place that loads this group’s open applications from the API and submits answers as the verified player.</p>
         <div class="row wrap"><button class="btn" data-d="appcenter">${icon('download')} ApplicationCenter.rbxlx</button></div></div></div>
-      <p class="hint">In every place: enable <b>Game Settings → Security → Allow HTTP Requests</b>. Keys can be revoked on the API page.</p>` });
+      <p class="hint">In every place: enable <b>Game Settings → Security → Allow HTTP Requests</b>. Keys can be revoked on the API page. The verification game is shared by every group — the owner downloads it from Owner Menu → Linked accounts.</p>` });
   m.el.onclick = (e) => {
     const b = e.target.closest('[data-d]'); if (!b) return;
     run(b, async () => {
       const d = b.dataset.d;
       if (d === 'module') return downloadFile('ActivityTracker.lua', await luaSource('ActivityTracker.lua'), 'text/plain');
-      const key = await createGameKey({ loader: 'Activity tracker', verify: 'Verification game', appcenter: 'Application center' }[d], g.id);
+      const key = await createGameKey({ loader: 'Activity tracker', appcenter: 'Application center' }[d], g.id);
       if (d === 'loader') return copyText(`-- Script in ServerScriptService (next to the ActivityTracker ModuleScript)\nlocal ActivityTracker = require(script.Parent:WaitForChild("ActivityTracker"))\n\nActivityTracker.Start({\n\tApiUrl = "${ROBLOX_API_URL}",\n\tApiKey = "${key}",\n})\n`);
-      downloadFile(`${d === 'verify' ? 'VerificationGame' : 'ApplicationCenter'}-${g.id}.rbxlx`, await buildPlaceFile(d, { apiUrl: ROBLOX_API_URL, apiKey: key, title: g.name }));
+      downloadFile(`ApplicationCenter-${g.id}.rbxlx`, await buildPlaceFile('appcenter', { apiUrl: ROBLOX_API_URL, apiKey: key, title: g.name }));
       toast('Place file generated', 'good');
     });
   };
@@ -349,7 +346,7 @@ function robloxSetup(g = group()) {
 VIEWS.api = async (el, _a, _b, reload) => {
   if (!can('manage_api_keys')) throw new Error('You do not have permission to manage API keys.');
   const { keys } = await api('/api/keys');
-  const SC = { read: 'Read activity, members, requirements, logs, links', ranking: 'Promote / demote / set rank', timeoff: 'Submit time-off requests', game: 'Roblox game: heartbeats, in-game applications', verify: 'Roblox game: confirm link codes' };
+  const SC = { read: 'Read activity, members, requirements, logs, links', ranking: 'Promote / demote / set rank', timeoff: 'Submit time-off requests', game: 'Roblox game: heartbeats, in-game applications', verify: 'Verification game: confirm link codes (system-wide — leave the group empty)' };
   el.innerHTML = `${head('API', 'Keys for bots, websites and your Roblox games.', `<a class="btn" href="docs.html" target="_blank" rel="noopener">${icon('book')} API docs</a><button class="btn primary" id="add">${icon('plus')} New key</button>`)}
     <div class="card"><div class="body row wrap"><span class="dim">Base URL</span><code class="grow">${esc(ROBLOX_API_URL)}/v1</code><button class="btn sm" id="cp">${icon('copy', 'sm')} Copy</button></div>
       <div class="body hint" style="padding-top:0">Works from Roblox games, Discord bots and websites.</div></div>
@@ -374,7 +371,19 @@ VIEWS.api = async (el, _a, _b, reload) => {
 
 // ---------- linked accounts ----------
 VIEWS.links = async (el, _a, _b, reload) => {
-  el.innerHTML = `${head('Linked accounts', 'Discord ↔ Roblox links made through the verification game. Used to ping members in requirement notices and to identify applicants.', `<a class="btn" href="verify.html" target="_blank" rel="noopener">${icon('external')} Verify page</a>`)}
+  const owner = isOwner();
+  const gameUrl = owner ? (await api('/public/verify-game')).url : '';
+  el.innerHTML = `${head('Linked accounts', 'Discord ↔ Roblox links made through the verification game. One verification game serves every group. Links are used to ping members in requirement notices and to identify applicants.', `<a class="btn" href="verify.html" target="_blank" rel="noopener">${icon('external')} Verify page</a>`)}
+    ${owner ? `<div class="card"><div class="head"><h2 class="grow">Verification game</h2>${gameUrl ? '<span class="badge good">Link set</span>' : '<span class="badge warn">No link yet</span>'}</div><div class="body stack">
+      <p class="dim">One small place for the whole system: players get a code on the Verify page (or My account), type it in this game, and are kicked once their accounts are linked.</p>
+      <div class="vg-steps">
+        <div class="stack gap-s"><b>1 · Download and publish</b><span class="hint">Creates a system API key that can only verify. Publish the place on Roblox and turn on <b>Allow HTTP Requests</b>.</span>
+          <div><button class="btn" id="vgDownload">${icon('download')} VerificationGame.rbxlx</button></div></div>
+        <div class="stack gap-s"><b>2 · Paste the game’s link</b><span class="hint">Shown to players as a <b>Join to Verify</b> button on the Verify page and in My account.</span>
+          <div class="row wrap gap-s"><input id="vgUrl" class="grow" style="min-width:0;flex:1 1 240px" value="${esc(gameUrl)}" placeholder="https://www.roblox.com/games/1234567890/Verify" aria-label="Verification game link">
+            <button class="btn primary" id="vgSave">${icon('check')} Save</button>${gameUrl ? `<a class="btn ghost" href="${esc(gameUrl)}" target="_blank" rel="noopener noreferrer">${icon('external')} Open</a>` : ''}</div></div>
+      </div>
+    </div></div>` : ''}
     <div class="card"><div class="head"><div class="search grow">${icon('search', 'sm')}<input id="q" placeholder="Search by Roblox or Discord name / ID" aria-label="Search links"></div></div>
     <div class="tbl-wrap"><table><thead><tr><th>Roblox</th><th>Discord</th><th>Linked</th><th></th></tr></thead><tbody id="rows"></tbody></table></div></div>`;
   const load = async () => {
@@ -386,6 +395,18 @@ VIEWS.links = async (el, _a, _b, reload) => {
   await load();
   let timer;
   $('#q', el).oninput = () => { clearTimeout(timer); timer = setTimeout(() => run(null, load), 300); };
+  if (!owner) return;
+  $('#vgSave', el).onclick = (e) => run(e.currentTarget, async () => {
+    await api('/api/verify-game', { method: 'PUT', body: { url: val(el, '#vgUrl') } });
+    verifyGamePromise = null;
+    toast(val(el, '#vgUrl') ? 'Verification game link saved' : 'Verification game link removed', 'good'); reload();
+  });
+  $('#vgDownload', el).onclick = (e) => run(e.currentTarget, async () => {
+    // System-wide: no group, and only the "verify" scope — it can link accounts and nothing else.
+    const { key } = await api('/api/keys', { body: { name: 'Verification game — system', scopes: ['verify'] } });
+    downloadFile('VerificationGame.rbxlx', await buildPlaceFile('verify', { apiUrl: ROBLOX_API_URL, apiKey: key, title: NAME }));
+    toast('Place file generated — publish it, then paste its link here', 'good');
+  });
 };
 
 // ---------- access (owner) ----------
@@ -433,7 +454,8 @@ VIEWS.account = async (el, _a, _b, reload) => {
     const p = b.dataset.link;
     if (p !== 'roblox') { location.href = (await api('/api/auth/link', { body: { provider: p } })).url; return; }
     const { code } = await api('/api/me/verify-code', { method: 'POST' });
-    modal({ title: 'Link your Roblox account', body: `<p class="dim">Join the verification game on Roblox and enter this code. It expires in 15 minutes.</p><div class="codebox">${esc(code)}</div><p class="hint">This page updates after you close this window.</p>`, actions: [{ label: 'Done', kind: 'primary', onClick: (close) => { close(); reload(); } }] });
+    const join = await joinVerifyButton('btn primary');
+    modal({ title: 'Link your Roblox account', body: `<p class="dim">Join the verification game on Roblox and enter this code. It expires in 15 minutes.</p><div class="codebox">${esc(code)}</div>${join ? `<div>${join}</div>` : ''}<p class="hint">You’ll be kicked from the game once it’s linked. This page updates after you close this window.</p>`, actions: [{ label: 'Done', kind: 'primary', onClick: (close) => { close(); reload(); } }] });
   }));
   $$('[data-unlink]', el).forEach((b) => b.onclick = async () => { if (await confirmBox(`Unlink ${b.dataset.unlink}?`, 'You can link it again at any time.', 'Unlink')) run(b, async () => { await api('/api/auth/unlink', { body: { provider: b.dataset.unlink } }); reload(); }); });
 };

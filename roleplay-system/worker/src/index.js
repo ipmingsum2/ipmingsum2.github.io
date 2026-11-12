@@ -272,6 +272,7 @@ R('GET', '/api/users', auth.listUsers, { owner: true });
 R('POST', '/api/users', auth.createUser, { owner: true });
 R('PATCH', '/api/users/:id', auth.updateUser, { owner: true });
 R('DELETE', '/api/users/:id', auth.deleteUser, { owner: true });
+R('PUT', '/api/verify-game', auth.verifyGameSave, { owner: true });
 R('GET', '/api/access-form', access.formGet, { owner: true });
 R('PUT', '/api/access-form', access.formSave, { owner: true });
 R('GET', '/api/access-requests', access.list, { owner: true });
@@ -363,6 +364,7 @@ R('DELETE', '/api/links/:id', auth.deleteLink, { perm: G });
 // --- public pages ---
 R('GET', '/public/access-request', access.publicGet);
 R('POST', '/public/access-request', access.publicSubmit);
+R('GET', '/public/verify-game', auth.verifyGameGet);
 R('GET', '/public/link', auth.publicLink);
 R('POST', '/public/verify-code', auth.publicVerifyCode);
 R('GET', '/public/applications/:id', apps.publicGet);
@@ -392,7 +394,8 @@ R('POST', '/v1/game/session-end', act.sessionEnd, { scope: 'game', keyGroup: tru
 R('GET', '/v1/game/blacklist/:rid', more.blacklistCheck, { scope: 'game', keyGroup: true });
 R('GET', '/v1/game/applications', apps.gameList, { scope: 'game', keyGroup: true });
 R('POST', '/v1/game/applications/:id/submit', apps.gameSubmit, { scope: 'game', keyGroup: true });
-R('POST', '/v1/game/verify', auth.gameVerify, { scope: ['verify', 'game'] });
+// Verification is system-wide: only keys with the "verify" scope (the owner's verification game) may link accounts.
+R('POST', '/v1/game/verify', auth.gameVerify, { scope: 'verify' });
 
 // =====================================================================
 async function handle(req, env, ctx) {

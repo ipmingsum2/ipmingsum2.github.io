@@ -14,6 +14,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local API_URL = "__API_URL__"
 local API_KEY = "__API_KEY__"
 local COOLDOWN = 4
+local KICK_DELAY = 2 -- seconds: long enough for the player to see "Linked!" before being kicked
 
 local verifyCode = Instance.new("RemoteFunction")
 verifyCode.Name = "VerifyCode"
@@ -54,7 +55,13 @@ verifyCode.OnServerInvoke = function(player, code)
 	end
 	if response.Success and data.ok then
 		local who = data.discordName and (" to Discord account " .. data.discordName) or ""
-		return { ok = true, message = "Linked " .. player.Name .. who .. ". You can leave the game now." }
+		-- Done here: kick them with a confirmation instead of leaving them in an empty place.
+		task.delay(KICK_DELAY, function()
+			if player.Parent == Players then
+				player:Kick("Verified! " .. player.Name .. " is now linked" .. who .. ". You can close Roblox.")
+			end
+		end)
+		return { ok = true, message = "Linked " .. player.Name .. who .. ". Disconnecting you…" }
 	end
 	return { ok = false, message = data.error or "That code is invalid or has expired." }
 end
