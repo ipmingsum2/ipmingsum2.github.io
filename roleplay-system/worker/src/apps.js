@@ -197,12 +197,16 @@ export async function reviewSubmission(c) {
     try {
       const group = await c.env.DB.prepare('SELECT * FROM groups WHERE id=?').bind(s.group_id).first();
       ranked = (await changeRank(c.env, c.ctx, group, { user: s.roblox_id, action: 'set', rank: settings.acceptRank, reason: `Accepted application: ${a.title}` }, c.actor)).to;
-    } catch (e) { rankError = e.message; }
+    } catch (e) {
+      rankError = e.message;
+      // Details stay in the log (the Discord message only says it failed).
+      await logEvent(c.env, c.ctx, { groupId: s.group_id, type: 'rank.error', actor: c.actor, target: { id: s.roblox_id, name: s.roblox_name }, summary: `Auto-rank on accepting ${s.roblox_name}'s application failed: ${rankError}`, silent: true });
+    }
   }
   if (settings.webhookUrl) {
     const link = submissionUrl(c.env, s.group_id, s.id);
     c.ctx.waitUntil(notify(settings.webhookUrl, { title: `Application ${b.status}`, url: link, color: b.status === 'accepted' ? 0x2fa58a : 0xe5484d,
-      description: `**${s.roblox_name}**'s application for **${a.title}** was ${b.status} by ${c.actor.name}.${note ? `\n> ${clip(note, 500)}` : ''}${ranked ? `\nRanked to **${ranked.name}**.` : ''}${rankError ? `\nAuto-rank failed: ${rankError}` : ''}`,
+      description: `**${s.roblox_name}**'s application for **${a.title}** was ${b.status} by ${c.actor.name}.${note ? `\n> ${clip(note, 500)}` : ''}${ranked ? `\nRanked to **${ranked.name}**.` : ''}${rankError ? '\nAuto-rank failed — see Logs in the dashboard.' : ''}`,
       timestamp: new Date().toISOString() }, [{ label: 'View submission', url: link }]));
   }
   return json({ ok: true, ranked, rankError });

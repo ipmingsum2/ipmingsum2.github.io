@@ -100,7 +100,8 @@ export async function weeklyTop(env, group, top = 5, today = dayStr()) {
 
 async function postLeaderboard(env, group, lb) {
   const w = await weeklyTop(env, group, lb.top);
-  const list = (items, fmt) => items.length ? items.map((x, i) => `${MEDALS[i] || `**${i + 1}.**`} **${x.username}**${x.roleName ? ` · ${x.roleName}` : ''} — ${fmt(x.value)}`).join('\n') : '_Nobody yet_';
+  // Name + value only: with the rank too, the two side-by-side columns wrap onto several lines in Discord.
+  const list = (items, fmt) => items.length ? items.map((x, i) => `${MEDALS[i] || `**${i + 1}.**`} **${x.username}** — ${fmt(x.value)}`).join('\n') : '_Nobody yet_';
   const star = w.hours[0];
   const ok = await sendWebhook(lb.webhookUrl, {
     embeds: [{

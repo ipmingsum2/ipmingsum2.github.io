@@ -222,7 +222,7 @@ async function createEvent(c) {
     .bind(c.group.id, f.title, f.type, f.host, f.startsAt, f.duration, f.notes, c.actor.name, now(), extras.remindedAtFor(c.group, f.startsAt)).run();
   await logEvent(c.env, c.ctx, { groupId: c.group.id, type: 'session.scheduled', actor: c.actor, summary: `${c.actor.name} scheduled ${f.type} "${f.title}" for ${new Date(f.startsAt * 1000).toISOString().slice(0, 16).replace('T', ' ')} UTC` });
   const hook = parseJSON(c.group.settings, {}).events?.webhookUrl;
-  if (hook) c.ctx.waitUntil(sendWebhook(hook, { embeds: [{ title: `${f.type[0].toUpperCase() + f.type.slice(1)}: ${f.title}`, color: 0x5b8def,
+  if (hook) c.ctx.waitUntil(sendWebhook(hook, { embeds: [{ title: `📅 ${f.type[0].toUpperCase() + f.type.slice(1)}: ${f.title}`.slice(0, 256), color: 0x5b8def,
     description: `Starts <t:${f.startsAt}:F> (<t:${f.startsAt}:R>) · ${f.duration} min${f.host ? `\nHost: **${f.host}**` : ''}${f.notes ? `\n\n${f.notes}` : ''}` }] }));
   return json({ ok: true });
 }

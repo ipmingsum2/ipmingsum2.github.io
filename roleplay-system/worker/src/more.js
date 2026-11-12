@@ -168,7 +168,7 @@ export async function runAutoPromote(env, ctx, group, actor = SYSTEM) {
       summary: `Auto-promotion ${ap.mode === 'promote' ? 'promoted' : 'recommended'} ${ok.length} member${ok.length === 1 ? '' : 's'}${done.length > ok.length ? ` (${done.length - ok.length} failed)` : ''}: ${done.slice(0, 15).map((d) => `${d.username} → ${d.to}`).join(', ')}${done.length > 15 ? '…' : ''}`,
       details: { results: done.map(({ robloxId, username, to, result, error }) => ({ robloxId, username, to, result, error })) } });
     if (ap.webhookUrl) {
-      const lines = done.map((d) => `${d.result === 'failed' ? '⚠️' : d.result === 'promoted' ? '⬆️' : '👍'} **${d.username}** → ${d.to} · ${d.hours}h, ${d.sessions} sessions${d.error ? ` — ${d.error}` : ''}`);
+      const lines = done.map((d) => `${d.result === 'failed' ? '⚠️' : d.result === 'promoted' ? '⬆️' : '👍'} **${d.username}** → ${d.to} · ${d.hours}h, ${d.sessions} sessions${d.error ? ' — failed, see Logs' : ''}`);
       ctx.waitUntil(sendWebhook(ap.webhookUrl, { embeds: [{ title: ap.mode === 'promote' ? 'Auto-promotions' : 'Promotion recommendations', color: 0x2fa58a,
         description: lines.join('\n').slice(0, 4000), footer: { text: group.name }, timestamp: new Date().toISOString() }] }));
     }
