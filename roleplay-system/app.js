@@ -168,6 +168,7 @@ async function accessScreen() {
         <div class="row"><button class="btn primary" style="height:42px;padding:0 22px" id="send">${icon('inbox')} Send access request</button><span class="muted"><span class="req" style="color:var(--bad)">*</span> required</span></div>
       </form>`;
     const err = (msg, el) => { $('#err').innerHTML = `<div class="callout bad">${icon('alert')}<span>${esc(msg)}</span></div>`; el?.scrollIntoView({ behavior: 'smooth', block: 'center' }); };
+    bindOtherInputs($('#f'));
     $('#f').onsubmit = (e) => {
       e.preventDefault();
       const { answers, error, el } = readAnswers(e.target, d.form.questions);

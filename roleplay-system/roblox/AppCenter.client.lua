@@ -147,11 +147,26 @@ local function card(order)
 end
 
 -- ---------- question inputs ----------
-local function textInput(parent, multiline, numeric, onChange)
+local OTHER = "__other__" -- sent when "Other" is picked but nothing typed; the API answers with a clear error
+
+local function trim(text: string): string
+	return (string.gsub(text, "^%s*(.-)%s*$", "%1"))
+end
+
+local function shuffled(list)
+	local copy = table.clone(list)
+	for i = #copy, 2, -1 do
+		local j = math.random(i)
+		copy[i], copy[j] = copy[j], copy[i]
+	end
+	return copy
+end
+
+local function textInput(parent, multiline, numeric, onChange, placeholder)
 	local box = make("TextBox", {
 		BackgroundColor3 = C.bg, Size = UDim2.new(1, 0, 0, multiline and 110 or 40),
 		Font = Enum.Font.Gotham, TextSize = 16, TextColor3 = C.text, PlaceholderColor3 = C.dim,
-		PlaceholderText = numeric and "Enter a number" or "Your answer", Text = "", ClearTextOnFocus = false,
+		PlaceholderText = placeholder or (numeric and "Enter a number" or "Your answer"), Text = "", ClearTextOnFocus = false,
 		MultiLine = multiline, TextWrapped = true,
 		TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = multiline and Enum.TextYAlignment.Top or Enum.TextYAlignment.Center,
 	}, parent)
@@ -169,7 +184,8 @@ local function textInput(parent, multiline, numeric, onChange)
 end
 
 -- Option buttons: single choice replaces the selection, multi toggles each option.
-local function optionGroup(parent, options, multi, horizontal, onChange)
+-- allowOther adds an "Other" button with a text box for the player's own answer.
+local function optionGroup(parent, options, multi, horizontal, onChange, allowOther)
 	local holder = make("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y }, parent)
 	if horizontal then
 		make("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6), Wraps = true, SortOrder = Enum.SortOrder.LayoutOrder }, holder)
@@ -178,16 +194,25 @@ local function optionGroup(parent, options, multi, horizontal, onChange)
 	end
 	local selected = {}
 	local buttons = {}
+	local otherBox: TextBox? = nil
 	local function refresh()
 		for option, b in buttons do
 			b.BackgroundColor3 = selected[option] and C.accent or C.panel2
 		end
+		if otherBox then
+			otherBox.Visible = selected[OTHER] == true
+		end
+		local otherText = if otherBox then trim(otherBox.Text) else ""
+		local otherValue = if otherText ~= "" then otherText else OTHER
 		if multi then
 			local values = {}
 			for _, option in options do
 				if selected[option] then
 					table.insert(values, option)
 				end
+			end
+			if selected[OTHER] then
+				table.insert(values, otherValue)
 			end
 			onChange(values)
 		else
@@ -197,11 +222,18 @@ local function optionGroup(parent, options, multi, horizontal, onChange)
 					value = option
 				end
 			end
+			if selected[OTHER] then
+				value = otherValue
+			end
 			onChange(value)
 		end
 	end
-	for index, option in options do
-		local b = button(holder, tostring(option))
+	local all = table.clone(options)
+	if allowOther then
+		table.insert(all, OTHER)
+	end
+	for index, option in all do
+		local b = button(holder, if option == OTHER then "Other…" else tostring(option))
 		b.LayoutOrder = index
 		if horizontal then
 			b.Size = UDim2.fromOffset(52, 40)
@@ -221,6 +253,13 @@ local function optionGroup(parent, options, multi, horizontal, onChange)
 			end
 			refresh()
 		end)
+	end
+	if allowOther then
+		otherBox = textInput(holder, false, false, function()
+			refresh()
+		end, "Type your answer")
+		otherBox.LayoutOrder = #all + 1
+		otherBox.Visible = false
 	end
 end
 
@@ -280,9 +319,19 @@ local function showForm(application)
 		elseif question.type == "number" then
 			textInput(c, false, true, set)
 		elseif question.type == "choice" or question.type == "dropdown" then
-			optionGroup(c, question.options or {}, false, false, set)
+			local options = question.options or {}
+			optionGroup(c, if question.shuffle then shuffled(options) else options, false, false, set, question.type == "choice" and question.other)
 		elseif question.type == "checkboxes" then
-			optionGroup(c, question.options or {}, true, false, set)
+			local options = question.options or {}
+			optionGroup(c, if question.shuffle then shuffled(options) else options, true, false, set, question.other)
+		elseif question.type == "date" then
+			textInput(c, false, false, function(text)
+				set(trim(text))
+			end, "YYYY-MM-DD, e.g. 2026-11-30")
+		elseif question.type == "time" then
+			textInput(c, false, false, function(text)
+				set(trim(text))
+			end, "HH:MM (24-hour), e.g. 18:30")
 		elseif question.type == "yesno" then
 			optionGroup(c, { "Yes", "No" }, false, true, set)
 		elseif question.type == "scale" then
@@ -291,6 +340,9 @@ local function showForm(application)
 				table.insert(steps, value)
 			end
 			optionGroup(c, steps, false, true, set)
+			if (question.minLabel and question.minLabel ~= "") or (question.maxLabel and question.maxLabel ~= "") then
+				label(c, ("%d = %s   ·   %d = %s"):format(question.min or 1, question.minLabel or "", question.max or 5, question.maxLabel or ""), 14, C.dim)
+			end
 		end
 	end
 

@@ -3,9 +3,13 @@ import { bad, json, now, parseJSON, str, int, readBody, randHex, cleanWebhook, s
 import { resolveUser, changeRank } from './roblox.js';
 import { publicIdentity } from './auth.js';
 import { blacklisted } from './more.js';
+import FormRules from '../../form-rules.js';
 
-export const QUESTION_TYPES = ['short', 'paragraph', 'choice', 'checkboxes', 'dropdown', 'number', 'scale', 'yesno', 'section'];
+export const QUESTION_TYPES = ['short', 'paragraph', 'choice', 'checkboxes', 'dropdown', 'number', 'scale', 'yesno', 'date', 'time', 'section'];
 const HAS_OPTIONS = ['choice', 'checkboxes', 'dropdown'];
+const HAS_OTHER = ['choice', 'checkboxes'];
+const isDate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(`${v}T00:00:00Z`)) && new Date(`${v}T00:00:00Z`).toISOString().startsWith(v);
+const isTime = (v) => /^([01]\d|2[0-3]):[0-5]\d$/.test(v);
 
 export function cleanQuestions(input) {
   if (!Array.isArray(input)) bad('questions must be an array');
@@ -23,7 +27,16 @@ export function cleanQuestions(input) {
       out.options = [...new Set((Array.isArray(q.options) ? q.options : []).map((o) => str(o, 120)).filter(Boolean))].slice(0, 25);
       if (out.options.length < 2) bad(`Question ${i + 1} ("${label}") needs at least two options`);
     }
-    if (type === 'scale') { out.min = int(q.min, 0, 1, 1); out.max = int(q.max, 2, 10, 5); }
+    if (HAS_OTHER.includes(type) && q.other) out.other = true;
+    if (HAS_OPTIONS.includes(type) && q.shuffle) out.shuffle = true;
+    if (type === 'scale') {
+      out.min = int(q.min, 0, 1, 1); out.max = int(q.max, 2, 10, 5);
+      const lo = str(q.minLabel, 60), hi = str(q.maxLabel, 60);
+      if (lo) out.minLabel = lo;
+      if (hi) out.maxLabel = hi;
+    }
+    // Custom requirements (Google Forms' "response validation").
+    try { const v = FormRules.clean(type, q.validation); if (v) out.validation = v; } catch (e) { bad(`Question ${i + 1} ("${label}"): ${e.message}`); }
     if (type === 'number') { out.min = q.min === '' || q.min == null ? null : Number(q.min) || 0; out.max = q.max === '' || q.max == null ? null : Number(q.max) || 0; }
     // Optional auto-grading.
     const points = int(q.points, 0, 100);
@@ -209,13 +222,31 @@ export function gradeAndValidate(questions, input) {
     switch (q.type) {
       case 'short': v = str(v, 300); break;
       case 'paragraph': v = str(v, 4000); break;
-      case 'choice': case 'dropdown': v = str(v, 120); if (!q.options.includes(v)) bad(`"${q.label}" has an invalid answer`); break;
-      case 'checkboxes': v = (Array.isArray(v) ? v : [v]).map((x) => str(x, 120)).filter((x) => q.options.includes(x)); if (!v.length && q.required) bad(`"${q.label}" is required`); break;
+      case 'choice': case 'dropdown': {
+        const raw = str(v, 300);
+        if (q.options.includes(raw)) v = raw;
+        else if (q.other && raw && raw !== FormRules.OTHER) v = `${FormRules.OTHER_PREFIX}${raw}`; // anything that isn't an option is the typed "Other" answer
+        else bad(q.other && raw === FormRules.OTHER ? `"${q.label}": type your answer next to “Other”` : `"${q.label}" has an invalid answer`);
+        break;
+      }
+      case 'checkboxes': {
+        const raw = (Array.isArray(v) ? v : [v]).map((x) => str(x, 300)).filter(Boolean);
+        v = q.options.filter((o) => raw.includes(o)); // keeps the form's option order
+        const other = q.other ? raw.find((x) => !q.options.includes(x) && x !== FormRules.OTHER) : null;
+        if (other) v.push(`${FormRules.OTHER_PREFIX}${other}`);
+        if (q.other && raw.includes(FormRules.OTHER) && !other) bad(`"${q.label}": type your answer next to “Other”`);
+        if (!v.length && q.required) bad(`"${q.label}" is required`);
+        break;
+      }
+      case 'date': v = str(v, 10); if (!isDate(v)) bad(`"${q.label}" must be a date (YYYY-MM-DD)`); break;
+      case 'time': v = str(v, 5); if (!isTime(v)) bad(`"${q.label}" must be a time (HH:MM, 24-hour)`); break;
       case 'yesno': v = str(v, 3); if (!['Yes', 'No'].includes(v)) bad(`"${q.label}" must be Yes or No`); break;
       case 'number': v = Number(v); if (!Number.isFinite(v)) bad(`"${q.label}" must be a number`);
         if (q.min != null && v < q.min) bad(`"${q.label}" must be at least ${q.min}`); if (q.max != null && v > q.max) bad(`"${q.label}" must be at most ${q.max}`); break;
       case 'scale': v = int(v, q.min, q.max, q.min); break;
     }
+    const broken = FormRules.check(q, v);
+    if (broken) bad(`"${q.label}": ${broken}`);
     answers[q.id] = v;
     if (q.points) {
       max += q.points;

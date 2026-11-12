@@ -1,7 +1,7 @@
 // Views: applications (list, builder, submissions), logs, groups, API keys, linked accounts, access, account.
 'use strict';
 
-const Q_TYPES = [['short', 'Short answer'], ['paragraph', 'Paragraph'], ['choice', 'Multiple choice'], ['checkboxes', 'Checkboxes'], ['dropdown', 'Dropdown'], ['yesno', 'Yes / No'], ['number', 'Number'], ['scale', 'Linear scale'], ['section', 'Section heading']];
+const Q_TYPES = [['short', 'Short answer'], ['paragraph', 'Paragraph'], ['choice', 'Multiple choice'], ['checkboxes', 'Checkboxes'], ['dropdown', 'Dropdown'], ['yesno', 'Yes / No'], ['number', 'Number'], ['scale', 'Linear scale'], ['date', 'Date'], ['time', 'Time'], ['section', 'Section heading']];
 const Q_LABEL = Object.fromEntries(Q_TYPES);
 const HAS_OPTS = ['choice', 'checkboxes', 'dropdown'];
 const GRADABLE = ['short', 'choice', 'checkboxes', 'dropdown', 'yesno', 'number'];
@@ -43,6 +43,26 @@ VIEWS.applications = async (el, id, sub, reload) => {
     } }] });
 };
 
+/** "Response validation" block for a question card (short answer, paragraph, checkboxes). */
+function validationEditor(q) {
+  const rules = FormRules.rulesFor(q.type);
+  if (!rules.length) return '';
+  const v = q.validation || {}, def = FormRules.RULES[v.rule];
+  const groups = [...new Set(rules.map(([, r]) => r[1]))];
+  const kind = !def ? '' : ['contains', 'notContains'].includes(v.rule) ? 'text' : ['matches', 'notMatches'].includes(v.rule) ? 'pattern' : 'number';
+  const ph = { text: 'Text', pattern: 'Regular expression, e.g. [A-Za-z0-9_]{3,20}', number: def?.[1] === 'Number' ? 'Number' : 'Count' }[kind];
+  return `<details class="rv" ${v.rule ? 'open' : ''}><summary class="hint" style="cursor:pointer">Response validation (optional)</summary>
+    <div class="rv-row">
+      <select data-v="rule" aria-label="Requirement"><option value="">No requirement</option>${groups.map((gname) => `<optgroup label="${esc(gname)}">${rules.filter(([, r]) => r[1] === gname).map(([id, r]) => `<option value="${id}" ${id === v.rule ? 'selected' : ''}>${esc(r[0])}</option>`).join('')}</optgroup>`).join('')}</select>
+      ${def && def[3] >= 1 ? `<input data-v="a" value="${esc(v.a ?? '')}" placeholder="${esc(ph)}" aria-label="Value" ${kind === 'number' ? 'inputmode="decimal"' : ''}>` : ''}
+      ${def && def[3] === 2 ? `<span class="muted">and</span><input data-v="b" value="${esc(v.b ?? '')}" placeholder="Number" aria-label="Second value" inputmode="decimal">` : ''}
+      ${def ? `<input data-v="message" class="rv-msg" value="${esc(v.message || '')}" maxlength="200" placeholder="Custom error text (optional)" aria-label="Custom error text">` : ''}
+    </div>
+    ${kind === 'pattern' ? '<p class="hint">The whole answer must match. Example: <code>[A-Za-z0-9_]{3,20}</code> = a valid Roblox username.</p>' : ''}
+    ${q.type === 'checkboxes' && def ? '<p class="hint">“Other” counts as one selection.</p>' : ''}
+  </details>`;
+}
+
 /** Question list editor (applications and the access request form). Edits `qs` in place. */
 const questionEditorHTML = () => `<div class="stack" id="qs"></div>
   <div class="row wrap"><select id="newType" style="width:auto" aria-label="Question type">${Q_TYPES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select><button class="btn" id="addQ">${icon('plus')} Add question</button></div>`;
@@ -54,12 +74,19 @@ function bindQuestionEditor(root, qs, { grading = true } = {}) {
           ${q.type === 'section' ? '' : `<label class="check"><input type="checkbox" data-f="required" ${q.required ? 'checked' : ''}> Required</label>`}
           <button class="btn ghost icon sm" data-mv="-1" ${i === 0 ? 'disabled' : ''} aria-label="Move up">${icon('up', 'sm')}</button>
           <button class="btn ghost icon sm" data-mv="1" ${i === qs.length - 1 ? 'disabled' : ''} aria-label="Move down">${icon('down', 'sm')}</button>
+          <button class="btn ghost icon sm" data-dup aria-label="Duplicate question" title="Duplicate">${icon('copy', 'sm')}</button>
           <button class="btn ghost icon sm" data-rm aria-label="Remove question">${icon('trash', 'sm')}</button></div>
         <input data-f="label" value="${esc(q.label || '')}" placeholder="${q.type === 'section' ? 'Section title' : 'Question'}" aria-label="Question title" maxlength="300">
         <input data-f="description" value="${esc(q.description || '')}" placeholder="Help text (optional)" aria-label="Help text" maxlength="500">
         ${HAS_OPTS.includes(q.type) ? `<div class="stack gap-s">${(q.options || []).map((o, j) => `<div class="opt-row"><input data-opt="${j}" value="${esc(o)}" placeholder="Option ${j + 1}" aria-label="Option ${j + 1}" maxlength="120"><button class="btn ghost icon sm" data-rmopt="${j}" aria-label="Remove option">${icon('x', 'sm')}</button></div>`).join('')}
-          <div><button class="btn sm" data-addopt>${icon('plus', 'sm')} Add option</button></div></div>` : ''}
+          ${q.other ? `<div class="opt-row"><input disabled placeholder="Other: (people type their own answer)" aria-label="Other option preview"><button class="btn ghost icon sm" data-f-off="other" aria-label="Remove Other option">${icon('x', 'sm')}</button></div>` : ''}
+          <div class="row wrap gap-s"><button class="btn sm" data-addopt>${icon('plus', 'sm')} Add option</button>
+            ${['choice', 'checkboxes'].includes(q.type) && !q.other ? `<button class="btn sm ghost" data-add-other>${icon('plus', 'sm')} Add “Other”</button>` : ''}
+            <label class="check right"><input type="checkbox" data-f="shuffle" ${q.shuffle ? 'checked' : ''}> Shuffle option order</label></div></div>` : ''}
+        ${q.type === 'date' ? '<p class="hint">People pick a date (year, month, day).</p>' : q.type === 'time' ? '<p class="hint">People pick a time of day (24-hour).</p>' : ''}
+        ${validationEditor(q)}
         ${q.type === 'scale' ? `<div class="grid2"><label class="field">From<select data-f="min"><option ${q.min === 0 ? 'selected' : ''}>0</option><option ${q.min !== 0 ? 'selected' : ''}>1</option></select></label><label class="field">To<select data-f="max">${[2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => `<option ${n === (q.max || 5) ? 'selected' : ''}>${n}</option>`).join('')}</select></label></div>` : ''}
+        ${q.type === 'scale' ? `<div class="grid2"><label class="field">Label for ${q.min ?? 1} (optional)<input data-f="minLabel" maxlength="60" value="${esc(q.minLabel || '')}" placeholder="e.g. Not likely"></label><label class="field">Label for ${q.max || 5} (optional)<input data-f="maxLabel" maxlength="60" value="${esc(q.maxLabel || '')}" placeholder="e.g. Very likely"></label></div>` : ''}
         ${q.type === 'number' ? `<div class="grid2"><label class="field">Minimum (optional)<input type="number" data-f="min" value="${q.min ?? ''}"></label><label class="field">Maximum (optional)<input type="number" data-f="max" value="${q.max ?? ''}"></label></div>` : ''}
         ${grading && GRADABLE.includes(q.type) ? `<details ${q.points ? 'open' : ''}><summary class="hint" style="cursor:pointer">Auto-grading (optional)</summary><div class="grid2" style="margin-top:8px">
           <label class="field">Points<input type="number" min="0" max="100" data-f="points" value="${q.points || ''}" placeholder="0 = not graded"></label>
@@ -74,7 +101,9 @@ function bindQuestionEditor(root, qs, { grading = true } = {}) {
     const card = e.target.closest('.qcard'); if (!card) return;
     const q = qs[+card.dataset.i], t = e.target;
     if (t.dataset.opt !== undefined) q.options[+t.dataset.opt] = t.value;
-    else if (t.dataset.f === 'required') q.required = t.checked;
+    else if (t.dataset.v === 'rule') { if (e.type === 'change') { q.validation = t.value ? { rule: t.value, message: q.validation?.message || '' } : null; draw(); } }
+    else if (t.dataset.v) { q.validation = { ...(q.validation || {}), [t.dataset.v]: t.value }; }
+    else if (t.dataset.f === 'required' || t.dataset.f === 'shuffle') q[t.dataset.f] = t.checked;
     else if (t.dataset.f === 'correct' && q.type === 'checkboxes') q.correct = t.value.split('|').map((x) => x.trim()).filter(Boolean);
     else if (['min', 'max', 'points'].includes(t.dataset.f)) q[t.dataset.f] = t.value === '' ? null : Number(t.value);
     else if (t.dataset.f) q[t.dataset.f] = t.value;
@@ -86,6 +115,9 @@ function bindQuestionEditor(root, qs, { grading = true } = {}) {
     if (b.dataset.rm !== undefined) qs.splice(i, 1);
     else if (b.dataset.mv) { const j = i + +b.dataset.mv; [qs[i], qs[j]] = [qs[j], qs[i]]; }
     else if (b.dataset.addopt !== undefined) q.options.push('');
+    else if (b.dataset.addOther !== undefined) q.other = true;
+    else if (b.dataset.fOff) q[b.dataset.fOff] = false;
+    else if (b.dataset.dup !== undefined) qs.splice(i + 1, 0, { ...JSON.parse(JSON.stringify(q)), id: '', label: q.label ? `${q.label} (copy)` : '' });
     else if (b.dataset.rmopt !== undefined) q.options.splice(+b.dataset.rmopt, 1);
     else return;
     draw();

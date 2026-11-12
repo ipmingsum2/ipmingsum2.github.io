@@ -12,6 +12,7 @@
   <div class="corner-theme" id="themeCorner"></div>
   <main class="public" id="root"><div class="empty">Loading…</div></main>
   <script src="config.js"></script>
+  <script src="form-rules.js"></script>
   <script src="core.js"></script>
   <script>$('#themeCorner').innerHTML = themeButton();</script>
   <script>
@@ -49,6 +50,7 @@
         </form>`;
       if (!ready) return;
 
+      bindOtherInputs($('#f'));
       $('#f').onsubmit = (e) => {
         e.preventDefault();
         const form = e.target, fd = new FormData(form);

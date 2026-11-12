@@ -158,17 +158,30 @@ const confirmBox = (title, text, label = 'Confirm', kind = 'danger') => new Prom
 });
 async function copyText(text) { try { await navigator.clipboard.writeText(text); toast('Copied', 'good'); } catch { toast('Copy failed — select and copy manually', 'bad'); } }
 // ---------- filling in a form (applications, access requests) ----------
+const shuffled = (list) => { const a = [...list]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 function questionField(q) {
   const name = `q_${q.id}`;
+  const opts = q.shuffle ? shuffled(q.options || []) : q.options || [];
+  // "Other": a radio/checkbox plus a text box; typing in the box selects it.
+  const other = (kind) => q.other ? `<label class="check other-opt"><input type="${kind}" name="${name}" value="${FormRules.OTHER}" ${kind === 'radio' && q.required ? 'required' : ''}> Other:
+      <input class="other-text" name="${name}__other" maxlength="300" aria-label="${esc(q.label)} — other answer"></label>` : '';
+  switch (q.type) {
+    case 'choice': return `<div class="opts" role="radiogroup">${opts.map((o) => `<label class="check"><input type="radio" name="${name}" value="${esc(o)}" ${q.required ? 'required' : ''}> ${esc(o)}</label>`).join('')}${other('radio')}</div>`;
+    case 'checkboxes': return `<div class="opts">${opts.map((o) => `<label class="check"><input type="checkbox" name="${name}" value="${esc(o)}"> ${esc(o)}</label>`).join('')}${other('checkbox')}</div>`;
+    case 'dropdown': return `<select name="${name}" ${q.required ? 'required' : ''} aria-label="${esc(q.label)}"><option value="">Choose…</option>${opts.map((o) => `<option>${esc(o)}</option>`).join('')}</select>`;
+    case 'date': return `<input type="date" name="${name}" ${q.required ? 'required' : ''} aria-label="${esc(q.label)}" style="max-width:220px">`;
+    case 'time': return `<input type="time" name="${name}" ${q.required ? 'required' : ''} aria-label="${esc(q.label)}" style="max-width:160px">`;
+    case 'scale': {
+      let h = '';
+      for (let n = q.min; n <= q.max; n++) h += `<label><input type="radio" name="${name}" value="${n}" ${q.required ? 'required' : ''}><span>${n}</span></label>`;
+      return `<div class="scale-wrap">${q.minLabel ? `<span class="scale-end">${esc(q.minLabel)}</span>` : ''}<div class="scale" role="radiogroup">${h}</div>${q.maxLabel ? `<span class="scale-end">${esc(q.maxLabel)}</span>` : ''}</div>`;
+    }
+  }
   switch (q.type) {
     case 'short': return `<input name="${name}" maxlength="300" ${q.required ? 'required' : ''} aria-label="${esc(q.label)}">`;
     case 'paragraph': return `<textarea name="${name}" maxlength="4000" rows="5" ${q.required ? 'required' : ''} aria-label="${esc(q.label)}"></textarea>`;
     case 'number': return `<input type="number" step="any" name="${name}" ${q.min != null ? `min="${q.min}"` : ''} ${q.max != null ? `max="${q.max}"` : ''} ${q.required ? 'required' : ''} aria-label="${esc(q.label)}" style="max-width:220px">`;
-    case 'dropdown': return `<select name="${name}" ${q.required ? 'required' : ''} aria-label="${esc(q.label)}"><option value="">Choose…</option>${q.options.map((o) => `<option>${esc(o)}</option>`).join('')}</select>`;
-    case 'choice': return `<div class="opts" role="radiogroup">${q.options.map((o) => `<label class="check"><input type="radio" name="${name}" value="${esc(o)}" ${q.required ? 'required' : ''}> ${esc(o)}</label>`).join('')}</div>`;
     case 'yesno': return `<div class="opts" role="radiogroup">${['Yes', 'No'].map((o) => `<label class="check"><input type="radio" name="${name}" value="${o}" ${q.required ? 'required' : ''}> ${o}</label>`).join('')}</div>`;
-    case 'checkboxes': return `<div class="opts">${q.options.map((o) => `<label class="check"><input type="checkbox" name="${name}" value="${esc(o)}"> ${esc(o)}</label>`).join('')}</div>`;
-    case 'scale': { let h = ''; for (let n = q.min; n <= q.max; n++) h += `<label><input type="radio" name="${name}" value="${n}" ${q.required ? 'required' : ''}><span>${n}</span></label>`; return `<div class="scale" role="radiogroup">${h}</div>`; }
   }
   return '';
 }
@@ -176,16 +189,46 @@ function questionField(q) {
 const questionsHTML = (questions) => questions.map((q) => q.type === 'section'
   ? `<div style="margin-top:8px"><h2 style="font-size:17px">${esc(q.label)}</h2>${q.description ? `<p class="dim">${esc(q.description)}</p>` : ''}</div>`
   : `<div class="card q" data-q="${esc(q.id)}"><div><b>${esc(q.label)}</b>${q.required ? ' <span class="req" title="Required">*</span>' : ''}${q.description ? `<p class="hint">${esc(q.description)}</p>` : ''}</div>${questionField(q)}</div>`).join('');
-/** Reads answers keyed by question ID; returns { error, el } for the first missing required answer. */
+/**
+ * Reads answers keyed by question ID and checks them the same way the API does (FormRules).
+ * Marks every failing question inline and returns { error, el } for the first one.
+ */
 function readAnswers(form, questions) {
   const fd = new FormData(form), answers = {};
+  $$('.q-err', form).forEach((x) => x.remove());
+  $$('.card.q.invalid', form).forEach((x) => x.classList.remove('invalid'));
+  let first = null;
+  const fail = (q, msg) => {
+    const card = form.querySelector(`[data-q="${CSS.escape(q.id)}"]`);
+    if (card) { card.classList.add('invalid'); card.insertAdjacentHTML('beforeend', `<p class="q-err" role="alert">${icon('alert', 'sm')} ${esc(msg)}</p>`); }
+    if (!first) first = { error: `“${q.label}”: ${msg}`, el: card };
+  };
   for (const q of questions) {
     if (q.type === 'section') continue;
-    const v = q.type === 'checkboxes' ? fd.getAll(`q_${q.id}`) : (fd.get(`q_${q.id}`) ?? '').toString().trim();
-    if (q.required && (!v || !v.length)) return { error: `Please answer “${q.label}”.`, el: form.querySelector(`[data-q="${CSS.escape(q.id)}"]`) };
-    if (v && v.length) answers[q.id] = q.type === 'number' || q.type === 'scale' ? Number(v) : v;
+    const otherText = (fd.get(`q_${q.id}__other`) ?? '').toString().trim();
+    let v = q.type === 'checkboxes' ? fd.getAll(`q_${q.id}`) : (fd.get(`q_${q.id}`) ?? '').toString().trim();
+    if (q.other) {
+      const picked = Array.isArray(v) ? v.includes(FormRules.OTHER) : v === FormRules.OTHER;
+      if (picked && !otherText) { fail(q, 'Type your answer next to “Other”.'); continue; }
+      if (Array.isArray(v)) v = v.map((x) => (x === FormRules.OTHER ? otherText : x));
+      else if (picked) v = otherText;
+    }
+    const empty = !v || !v.length;
+    if (empty) { if (q.required) fail(q, 'This question is required.'); continue; }
+    if (q.type === 'number' || q.type === 'scale') v = Number(v);
+    const broken = FormRules.check(q, v);
+    if (broken) { fail(q, broken); continue; }
+    answers[q.id] = v;
   }
-  return { answers };
+  return first || { answers };
+}
+/** Clicking or typing in an "Other" box selects its option (call once per form). */
+function bindOtherInputs(form) {
+  form.addEventListener('input', (e) => {
+    if (!e.target.classList.contains('other-text')) return;
+    const box = e.target.closest('.other-opt').querySelector('input[type="radio"], input[type="checkbox"]');
+    if (box && e.target.value.trim()) box.checked = true;
+  });
 }
 
 /** CSV from an array of rows (first row = headers). Cells that a spreadsheet would run as formulas are prefixed with '. */
