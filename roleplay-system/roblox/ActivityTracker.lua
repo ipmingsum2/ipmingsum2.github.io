@@ -21,7 +21,13 @@
 	Which ranks are tracked is configured in the dashboard (Groups → Tracked ranks); nothing is hard-coded here.
 
 	Optional config
+	Blacklist
+	  Players on the group's blacklist (dashboard → Blacklist) are kicked when they join, and within a minute
+	  if they are added while already in the server. Turn this off with KickBlacklisted = false.
+
 	  IdleSeconds        number   seconds without moving before a player counts as idle (default 120)
+	  KickBlacklisted    boolean  kick blacklisted players (default true)
+	  KickMessage        string   shown to kicked players; {reason} is replaced (default below)
 	  HeartbeatSeconds   number   how often to report (default 60; keep under 150)
 	  Debug              boolean  print what is sent
 ]]
@@ -34,6 +40,8 @@ export type Config = {
 	ApiUrl: string,
 	ApiKey: string,
 	IdleSeconds: number?,
+	KickBlacklisted: boolean?,
+	KickMessage: string?,
 	HeartbeatSeconds: number?,
 	Debug: boolean?,
 }
@@ -57,6 +65,7 @@ local states: { [Player]: PlayerState } = {}
 local jobId = if game.JobId ~= "" then game.JobId else "studio-" .. HttpService:GenerateGUID(false)
 
 local RANK_REFRESH_SECONDS = 300
+local DEFAULT_KICK_MESSAGE = "You are blacklisted from this group. Reason: {reason}"
 
 local function log(...: any)
 	if config and config.Debug then
@@ -114,7 +123,29 @@ local function refreshRank(player: Player, state: PlayerState)
 	state.rankCheckedAt = os.clock()
 end
 
+local function kick(player: Player, reason: string?)
+	if config.KickBlacklisted == false or player.Parent ~= Players then
+		return
+	end
+	local message = string.gsub(config.KickMessage or DEFAULT_KICK_MESSAGE, "{reason}", function()
+		return reason or "not given"
+	end)
+	log("kicking blacklisted player", player.UserId)
+	player:Kick(message)
+end
+
+local function checkBlacklist(player: Player)
+	if config.KickBlacklisted == false then
+		return
+	end
+	local ok, data = request("GET", "/v1/game/blacklist/" .. player.UserId)
+	if ok and data and data.blacklisted then
+		kick(player, data.reason)
+	end
+end
+
 local function onPlayerAdded(player: Player)
+	task.spawn(checkBlacklist, player)
 	local state: PlayerState = {
 		rank = 0,
 		role = "Guest",
@@ -176,6 +207,13 @@ local function heartbeat()
 	local ok, data = request("POST", "/v1/game/heartbeat", { jobId = jobId, players = list })
 	if ok and data then
 		log(("heartbeat sent: %d players, %d tracked"):format(#list, data.tracked or 0))
+		-- Players blacklisted while already in this server.
+		for _, entry in data.kick or {} do
+			local player = Players:GetPlayerByUserId(entry.userId)
+			if player then
+				kick(player, entry.reason)
+			end
+		end
 	end
 end
 

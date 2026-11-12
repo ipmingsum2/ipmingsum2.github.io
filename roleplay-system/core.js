@@ -3,6 +3,7 @@
 
 // Every icon is an inline SVG (24×24, stroked).
 const ICONS = {
+  ban: '<circle cx="12" cy="12" r="9"/><path d="M5.7 5.7l12.6 12.6"/>',
   home: '<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>',
   chart: '<path d="M3 21h18M6 21V11M11 21V5M16 21v-8M21 21V9"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
@@ -154,6 +155,16 @@ const confirmBox = (title, text, label = 'Confirm', kind = 'danger') => new Prom
   new MutationObserver((_, o) => { if (!m.el.isConnected) { o.disconnect(); if (!done) resolve(false); } }).observe(document.body, { childList: true });
 });
 async function copyText(text) { try { await navigator.clipboard.writeText(text); toast('Copied', 'good'); } catch { toast('Copy failed — select and copy manually', 'bad'); } }
+/** CSV from an array of rows (first row = headers). Cells that a spreadsheet would run as formulas are prefixed with '. */
+function toCSV(rows) {
+  const cell = (v) => {
+    let s = v == null ? '' : String(v);
+    if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+    return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  return '\ufeff' + rows.map((r) => r.map(cell).join(',')).join('\r\n'); // BOM so Excel reads UTF-8
+}
+function downloadCSV(name, rows) { downloadFile(name, toCSV(rows), 'text/csv;charset=utf-8'); toast(`Exported ${rows.length - 1} row${rows.length === 2 ? '' : 's'}`, 'good'); }
 function downloadFile(name, text, type = 'application/xml') {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name;

@@ -22,8 +22,10 @@ const GROUP_NAV = () => [
   ['logbook', 'Logbook', 'clipboard'],
   ['ranking', 'Ranking', 'rank', () => can('ranking')],
   ['promotions', 'Promotions', 'thumb'],
+  ['autopromote', 'Auto-promotion', 'sparkle'],
   ['sessions', 'Sessions', 'clock'],
   ['applications', 'Applications', 'file', () => can('manage_applications') || can('review_applications')],
+  ['blacklist', 'Blacklist', 'ban'],
   ['kb', 'Knowledgebase', 'book'],
   ['logs', 'Logs', 'list', () => can('view_logs')],
   ...(isOwner() ? [] : [
@@ -47,7 +49,7 @@ const OWNER_NAV = () => [
   ['account', 'My account', 'user'],
 ];
 // Pages that belong to a group (need S.gid to be a real group).
-const GROUP_PAGES = new Set(['overview', 'activity', 'member', 'requirements', 'timeoff', 'ranking', 'sessions', 'applications', 'submission', 'news', 'logbook', 'promotions', 'kb']);
+const GROUP_PAGES = new Set(['overview', 'activity', 'member', 'requirements', 'timeoff', 'ranking', 'sessions', 'applications', 'submission', 'news', 'logbook', 'promotions', 'kb', 'blacklist', 'autopromote']);
 // Pages highlighted under another sidebar entry.
 const NAV_PARENT = { member: 'activity', submission: 'applications' };
 // Deep links from outside (e.g. Discord's "Decide" button): #/go/<groupId>/<page…> switches group, then opens the page.

@@ -52,6 +52,7 @@ VIEWS.activity = async (el, _a, _b, reload) => {
   let data, filter = '';
 
   el.innerHTML = `${head('Activity', 'Time played by members in tracked ranks.', `
+      <button class="btn" id="csv">${icon('download')} Export CSV</button>
       ${can('manage_activity') ? `<button class="btn" id="adjust">${icon('edit')} Adjust time</button>` : ''}
       ${can('manage_activity') || can('manage_groups') ? `<button class="btn" id="sync">${icon('refresh')} Sync members</button>` : ''}`)}
     ${chartCard('Total hours played')}
@@ -94,6 +95,13 @@ VIEWS.activity = async (el, _a, _b, reload) => {
   $('#rows', el).onclick = open; $('#rows', el).onkeydown = open;
   if ($('#sync', el)) $('#sync', el).onclick = (e) => run(e.currentTarget, async () => { const r = await api(G('/sync-members'), { method: 'POST' }); toast(`Synced ${r.synced} members from Roblox`, 'good'); reload(); });
   if ($('#adjust', el)) $('#adjust', el).onclick = () => adjustModal('', reload);
+  $('#csv', el).onclick = () => {
+    const list = data.leaderboard.filter((m) => !filter || `${m.username} ${m.displayName || ''} ${m.roleName || ''}`.toLowerCase().includes(filter));
+    downloadCSV(`activity-${group().name.replace(/[^\w-]+/g, '_')}-${data.from === '2000-01-01' ? 'all' : data.from}-to-${data.to}.csv`, [
+      ['Roblox ID', 'Username', 'Display name', 'Rank', 'Role', 'Hours played', 'Idle hours', 'Sessions', 'Messages', 'Tracked'],
+      ...list.map((m) => [m.robloxId, m.username, m.displayName || '', m.rank ?? '', m.roleName || '', (m.seconds / 3600).toFixed(2), ((m.idleSeconds || 0) / 3600).toFixed(2), m.sessions, m.messages, m.tracked ? 'yes' : 'no']),
+    ]);
+  };
 };
 
 function adjustModal(user, done) {
