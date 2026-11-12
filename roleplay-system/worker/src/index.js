@@ -334,6 +334,7 @@ R('GET', '/api/applications/:id', apps.getApp, { anyPerm: APP });
 R('PATCH', '/api/applications/:id', apps.updateApp, { perm: 'manage_applications' });
 R('DELETE', '/api/applications/:id', apps.deleteApp, { perm: 'manage_applications' });
 R('GET', '/api/applications/:id/submissions', apps.listSubmissions, { anyPerm: APP });
+R('GET', '/api/submissions/:id', apps.getSubmission, { anyPerm: APP });
 R('PATCH', '/api/submissions/:id', apps.reviewSubmission, { perm: 'review_applications' });
 
 // --- logs, keys, links ---
