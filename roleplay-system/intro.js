@@ -155,60 +155,8 @@
     }, 2600);
   }
 
-  // Hero: particle network that reacts to the pointer.
-  const canvas = $('#heroCanvas'), hero = $('.hero');
-  if (canvas && !reduce) {
-    const ctx = canvas.getContext('2d');
-    let W = 0, H = 0, dpr = 1, pts = [], color = '91,141,239', visible = true, raf = 0;
-    const mouse = { x: -9999, y: -9999 };
-    const readColor = () => {
-      const probe = document.createElement('span'); probe.style.color = css('--accent') || '#5b8def'; document.body.append(probe);
-      const m = getComputedStyle(probe).color.match(/\d+(\.\d+)?/g); probe.remove();
-      if (m) color = m.slice(0, 3).join(',');
-    };
-    const size = () => {
-      const r = hero.getBoundingClientRect(); dpr = Math.min(2, devicePixelRatio || 1);
-      W = r.width; H = r.height; canvas.width = W * dpr; canvas.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const n = Math.round(Math.min(90, Math.max(28, (W * H) / 16000)));
-      pts = Array.from({ length: n }, () => ({ x: Math.random() * W, y: Math.random() * H, vx: (Math.random() - .5) * .35, vy: (Math.random() - .5) * .35, r: Math.random() * 1.6 + .6 }));
-    };
-    const frame = () => {
-      raf = 0;
-      if (!visible || document.hidden) return;
-      ctx.clearRect(0, 0, W, H);
-      const link = 130, link2 = link * link;
-      for (const p of pts) {
-        p.x += p.vx; p.y += p.vy;
-        if (p.x < -20) p.x = W + 20; else if (p.x > W + 20) p.x = -20;
-        if (p.y < -20) p.y = H + 20; else if (p.y > H + 20) p.y = -20;
-        // gently pushed away from the pointer
-        const dx = p.x - mouse.x, dy = p.y - mouse.y, d2 = dx * dx + dy * dy;
-        if (d2 < 140 * 140) { const f = (1 - Math.sqrt(d2) / 140) * .6; p.x += (dx / Math.sqrt(d2 || 1)) * f; p.y += (dy / Math.sqrt(d2 || 1)) * f; }
-      }
-      for (let a = 0; a < pts.length; a++) {
-        const p = pts[a];
-        for (let b = a + 1; b < pts.length; b++) {
-          const q = pts[b], dx = p.x - q.x, dy = p.y - q.y, d2 = dx * dx + dy * dy;
-          if (d2 < link2) { ctx.strokeStyle = `rgba(${color},${(1 - d2 / link2) * .22})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke(); }
-        }
-        const md = Math.hypot(p.x - mouse.x, p.y - mouse.y);
-        if (md < 180) { ctx.strokeStyle = `rgba(${color},${(1 - md / 180) * .45})`; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(mouse.x, mouse.y); ctx.stroke(); }
-        ctx.fillStyle = `rgba(${color},.65)`; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
-      }
-      raf = requestAnimationFrame(frame);
-    };
-    const start = () => { if (!raf) raf = requestAnimationFrame(frame); };
-    readColor(); size(); start();
-    addEventListener('resize', () => { size(); start(); });
-    document.addEventListener('rp:theme', () => setTimeout(readColor, 50));
-    document.addEventListener('visibilitychange', start);
-    new IntersectionObserver(([e]) => { visible = e.isIntersecting; start(); }).observe(hero);
-    hero.addEventListener('pointermove', (e) => { const r = hero.getBoundingClientRect(); mouse.x = e.clientX - r.left; mouse.y = e.clientY - r.top; });
-    hero.addEventListener('pointerleave', () => { mouse.x = mouse.y = -9999; });
-  }
-
   // Hero frame: tilt toward the pointer with a moving glare; floating cards drift.
-  const stage = $('#heroStage'), frameEl = $('#heroFrame');
+  const hero = $('.hero'), stage = $('#heroStage'), frameEl = $('#heroFrame');
   if (stage && frameEl && finePointer && !reduce) {
     const target = { x: 0, y: 0 }, cur = { x: 0, y: 0 };
     let raf = 0;
@@ -318,4 +266,189 @@
     });
     new IntersectionObserver(([e]) => { if (e.isIntersecting) diagram.classList.add('in'); }, { threshold: .25 }).observe(diagram);
   } else if (diagram) diagram.classList.add('in');
+})();
+
+// ---------- round 2: hero Live feed, motion in every chapter, tour rails, live demo cards ----------
+(() => {
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const finePointer = matchMedia('(hover: hover) and (pointer: fine)').matches;
+  const ic = (name, cls = '') => icon(name, cls);
+
+  // Animations only run while their element is on screen.
+  const whenVisible = (el, start, stop = () => {}) => {
+    if (reduce) { start(true); return; }
+    new IntersectionObserver(([e]) => (e.isIntersecting ? start(false) : stop()), { threshold: .2 }).observe(el);
+  };
+  const every = (ms, fn) => { let t = 0; return { start: () => { if (!t) { fn(); t = setInterval(fn, ms); } }, stop: () => { clearInterval(t); t = 0; } }; };
+
+  // ---------- hero Live feed ----------
+  const list = $('#lfList');
+  if (list) {
+    const EVENTS = [
+      ['play', 'good', '4 in game now', 'Avalynne, Sunny, Ruby +1'],
+      ['rank', 'accent', 'ZaraPoolside promoted', 'Customer → Trainee · logged'],
+      ['file', 'accent', 'New application', 'NovaStarRBX · auto-score 7/7'],
+      ['bell', 'bad', '3 missed this week', 'Posted to #staff-activity'],
+      ['clock', 'warn', 'Shift starts in 30 min', 'Reminder sent · @Receptionists'],
+      ['trophy', 'warn', 'Staff of the week', 'SunnyConcierge · 14.2 h'],
+      ['calendar', 'good', 'Time off approved', 'KaiSuite204 · 3 days'],
+      ['inbox', 'accent', 'Access request', 'NewStaffer asked to join'],
+      ['sparkle', 'good', 'Auto-promoted', 'EliTrainee → Receptionist'],
+      ['ban', 'bad', 'Blacklisted player kicked', 'Exploiter99 tried to join'],
+    ];
+    let k = 0;
+    const add = (animate) => {
+      const [i, tone, title, sub] = EVENTS[k++ % EVENTS.length];
+      $$('.lf-item', list).forEach((x, n) => { x.classList.remove('new'); x.classList.toggle('old', n >= 2); });
+      list.insertAdjacentHTML('afterbegin', `<li class="lf-item ${animate ? 'new' : ''}"><span class="lf-ic ${tone}">${ic(i)}</span><div><b>${esc(title)}</b><small>${esc(sub)}</small></div><span class="t">now</span></li>`);
+      $$('.lf-item', list).forEach((x, n) => { const t = $('.t', x); if (t) t.textContent = n === 0 ? 'now' : `${n * 2}m`; });
+      while (list.children.length > 5) list.lastElementChild.remove();
+    };
+    for (let n = 0; n < 4; n++) add(false);
+    const loop = every(2800, () => add(true));
+    whenVisible(list, (still) => { if (!still) loop.start(); }, loop.stop);
+  }
+
+  // ---------- every chapter: word-by-word headings, staggered copy ----------
+  $$('.chapter h2, .signin h2').forEach((h) => {
+    if (h.children.length) return;
+    const words = h.textContent.trim().split(/\s+/);
+    h.setAttribute('aria-label', h.textContent.trim());
+    h.innerHTML = words.map((w, i) => `<span class="w2" aria-hidden="true" style="--i:${i}">${esc(w)}</span>`).join(' ');
+  });
+  const stagger = () => $$('.copy[data-anim]').forEach((c) => [...c.children].filter((x) => x.matches('p, .chips, .code, .btn, .live')).forEach((x, j) => x.style.setProperty('--j', j)));
+
+  // ---------- screenshots tilt toward the pointer ----------
+  if (finePointer && !reduce) {
+    $$('.media').forEach((m) => {
+      const frames = $$('.frame', m);
+      if (!frames.length) return;
+      m.addEventListener('pointermove', (e) => {
+        const r = m.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+        frames.forEach((f, i) => {
+          const depth = i ? 1.4 : 1;
+          f.style.setProperty('--rx', `${(x - .5) * 8 * depth}deg`); f.style.setProperty('--ry', `${(.5 - y) * 6 * depth}deg`);
+          const fr = f.getBoundingClientRect();
+          f.style.setProperty('--gx', `${((e.clientX - fr.left) / fr.width) * 100}%`); f.style.setProperty('--gy', `${((e.clientY - fr.top) / fr.height) * 100}%`); f.style.setProperty('--go', '1');
+        });
+      });
+      m.addEventListener('pointerleave', () => frames.forEach((f) => { f.style.setProperty('--rx', '0deg'); f.style.setProperty('--ry', '0deg'); f.style.setProperty('--go', '0'); }));
+    });
+  }
+
+  // ---------- tours: numbered steps and a rail that fills as you scroll ----------
+  const rails = $$('.tour-steps');
+  rails.forEach((r) => $$('.step', r).forEach((s, i) => s.insertAdjacentHTML('afterbegin', `<span class="snum" aria-hidden="true">${i + 1}</span>`)));
+  const fill = () => rails.forEach((r) => {
+    const b = r.getBoundingClientRect(), mid = innerHeight / 2;
+    r.style.setProperty('--tp', Math.max(0, Math.min(1, (mid - b.top - innerHeight * .1) / (b.height - innerHeight * .2))).toFixed(3));
+  });
+  if (!reduce) { addEventListener('scroll', () => requestAnimationFrame(fill), { passive: true }); fill(); }
+
+  // ---------- a live demo card under each chapter's text ----------
+  const card = (label, right, body) => `<div class="live-top">${label}${right ? `<span class="lt-r">${right}</span>` : ''}</div>${body}`;
+  const WIDGETS = {
+    ranking(el) {
+      const ranks = [['ZaraPoolside', 'Customer', 'Trainee'], ['EliTrainee', 'Trainee', 'Receptionist'], ['RubyLobby', 'Receptionist', 'Senior Receptionist'], ['MaxDoorman', 'Senior Receptionist', 'Receptionist', true]];
+      el.innerHTML = card('Rank change', 'via Open Cloud', '<div class="lv-row" id="lvRank"></div>');
+      let i = 0;
+      const show = () => { const [n, a, b, down] = ranks[i++ % ranks.length]; $('#lvRank', el).innerHTML = `<span class="lv-ava">${n[0]}</span><div class="lv-swap" style="min-width:0"><div class="lv-name">${n}</div><div class="row wrap gap-s" style="margin-top:4px"><span class="lv-pill">${a}</span><span class="lv-arrow">→</span><span class="lv-pill ${down ? 'bad' : 'good'}">${b}</span></div></div><span class="lv-pill accent" style="margin-left:auto">logged</span>`; };
+      return every(3000, show);
+    },
+    promotions(el) {
+      el.innerHTML = card('Promotion pick', 'trending', `<div class="lv-row"><span class="lv-ava">R</span><div><div class="lv-name">RubyLobby</div><div class="lv-muted">for Senior Receptionist · “Runs every evening shift”</div></div><div class="lv-vote"><span class="vb">${ic('up')}</span><span class="n" id="lvVotes">11</span></div></div>`);
+      let n = 11;
+      return every(2200, () => {
+        const vb = $('.vb', el), box = $('.lv-vote', el);
+        n = n >= 18 ? 11 : n + 1; $('#lvVotes', el).textContent = n;
+        vb.classList.remove('hit'); void vb.offsetWidth; vb.classList.add('hit');
+        box.insertAdjacentHTML('beforeend', '<span class="plus1">+1</span>'); setTimeout(() => box.querySelector('.plus1')?.remove(), 1000);
+      });
+    },
+    logs(el) {
+      const L = [['good', 'rank.promote', 'ZaraPoolside → Trainee'], ['', 'application.submitted', 'NovaStarRBX'], ['good', 'timeoff.approved', 'KaiSuite204 · 3 days'], ['bad', 'requirement.not_met', 'MaxDoorman · 1h 10m / 3h'], ['', 'session.completed', 'Evening reception'], ['bad', 'blacklist.added', 'Exploiter99'], ['good', 'autopromote.run', '2 recommended']];
+      el.innerHTML = card('Log stream', 'every action', '<div class="lv-log" id="lvLog"></div>');
+      let i = 0;
+      const add = (animate) => {
+        const [tone, type, what] = L[i++ % L.length], box = $('#lvLog', el);
+        const d = new Date(); const tm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        $$('div', box).forEach((x) => x.classList.remove('new'));
+        box.insertAdjacentHTML('afterbegin', `<div class="${animate ? 'new' : ''}"><span class="tm">${tm}</span><span class="badge ${tone}">${type}</span><span>${what}</span></div>`);
+        while (box.children.length > 5) box.lastElementChild.remove();
+      };
+      for (let n = 0; n < 4; n++) add(false);
+      return every(1700, () => add(true));
+    },
+    logbook(el) {
+      el.innerHTML = card('Logbook entry', 'auto-expires', `<div class="lv-row"><span class="lv-ava" style="background:var(--warn-soft);color:var(--warn)">${ic('alert')}</span><div style="min-width:0"><div class="lv-name">Warning · MaxDoorman</div><div class="lv-muted">Inactivity without notice · <span id="lvDays">30</span> days left</div></div><span class="lv-pill" style="margin-left:auto">2 active</span></div><div class="lv-bar"><i></i></div>`);
+      let d = 30; return every(200, () => { d = d <= 1 ? 30 : d - 1; $('#lvDays', el).textContent = d; });
+    },
+    groups(el) {
+      const G = [['Sunrise Hotels', '6 tracked ranks · 15 members'], ['Sunrise Security', '2 tracked ranks · 9 members'], ['Harbor City Police', '5 tracked ranks · 31 members']];
+      el.innerHTML = card('Group switcher', 'Ctrl K', '<div class="lv-row" id="lvGroup"></div>');
+      let i = 0;
+      return every(2600, () => { const [n, s] = G[i++ % G.length]; $('#lvGroup', el).innerHTML = `<span class="lv-ava">${ic('users')}</span><div class="lv-swap"><div class="lv-name">${n}</div><div class="lv-muted">${s}</div></div><span class="lv-pill" style="margin-left:auto">${ic('swap', 'sm')} switch</span>`; });
+    },
+    sessions(el) {
+      el.innerHTML = card('Next session', 'reminder at 30:00', `<div class="lv-row"><div><div class="lv-name">Shift: Evening reception</div><div class="lv-muted">Host Avalynne · co-host SunnyConcierge</div></div></div><div class="lv-row" style="margin-top:10px;justify-content:space-between"><span class="lv-count" id="lvCount">00:31:00</span><span class="lv-btn pulse">${ic('check', 'sm')} Claim co-host</span></div>`);
+      let s = 31 * 60;
+      return every(1000, () => { s = s <= 0 ? 31 * 60 : s - 1; const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, x = s % 60; $('#lvCount', el).textContent = [h, m, x].map((v) => String(v).padStart(2, '0')).join(':'); });
+    },
+    kb(el) {
+      const lines = ['1. Greet every guest within 30 seconds.', '2. Log your shift in the session register.', '3. Ask a supervisor before issuing refunds.'];
+      el.innerHTML = card('Staff handbook', 'editing', '<div class="lv-doc"><h4>Front desk basics</h4><div id="lvDoc"></div></div>');
+      let li = 0, ch = 0;
+      return every(55, () => {
+        const box = $('#lvDoc', el);
+        if (li >= lines.length) { if (++ch > 40) { li = 0; ch = 0; box.innerHTML = ''; } return; }
+        ch++; const done = lines.slice(0, li).map((l) => `<div>${esc(l)}</div>`).join('');
+        box.innerHTML = `${done}<div class="lv-caret">${esc(lines[li].slice(0, ch))}</div>`;
+        if (ch >= lines[li].length) { li++; ch = 0; }
+      });
+    },
+    linking(el) {
+      el.innerHTML = card('Account link', 'verification game', `<div class="lv-link"><span class="lv-pill">${ic('discord', 'sm')} builder</span><span class="lv-wire" id="lvWire"><span class="lv-check">✓</span></span><span class="lv-pill">${ic('roblox', 'sm')} Builderman</span></div><div class="lv-muted" id="lvLinkTxt" style="margin-top:10px">Waiting for code K7M2QX…</div>`);
+      let on = false;
+      return every(2400, () => { on = !on; $('#lvWire', el).classList.toggle('done', on); $('#lvLinkTxt', el).textContent = on ? 'Linked · kicked with a thank-you ✓' : 'Waiting for code K7M2QX…'; });
+    },
+    access(el) {
+      el.innerHTML = card('Access request', 'Owner Menu', '<div id="lvAcc"></div>');
+      let st = 0;
+      return every(1800, () => {
+        const box = $('#lvAcc', el);
+        if (st % 3 === 0) box.innerHTML = `<div class="lv-row lv-swap"><span class="lv-ava">N</span><div><div class="lv-name">NewStaffer</div><div class="lv-muted">“I moderate the hotel and need to log warnings.”</div></div></div><div class="lv-actions"><span>Deny</span><span class="ok">Approve</span></div>`;
+        else if (st % 3 === 1) $('.ok', box)?.classList.add('press');
+        else box.innerHTML = `<div class="lv-row lv-swap"><span class="lv-ava" style="background:var(--good-soft);color:var(--good)">${ic('check')}</span><div><div class="lv-name">Added to the whitelist</div><div class="lv-muted">Permissions: logbook &amp; blacklist</div></div></div>`;
+        st++;
+      });
+    },
+    api(el) {
+      const req = 'GET /v1/groups/1234567/members/156';
+      const res = ['{', '  <span class="k">"username"</span>: <span class="s">"Builderman"</span>,', '  <span class="k">"rank"</span>: 40,', '  <span class="k">"week"</span>: { <span class="k">"hours"</span>: 12.5 }', '}'];
+      el.innerHTML = card('Request', '200 OK', '<pre class="lv-code" id="lvCode"></pre>');
+      let ch = 0, ln = -1, hold = 0;
+      return every(45, () => {
+        const box = $('#lvCode', el);
+        if (ch < req.length) { ch++; box.innerHTML = `<span class="m">$</span> ${esc(req.slice(0, ch))}<span class="lv-caret"></span>`; return; }
+        if (ln < res.length - 1) { if (++hold % 6) return; ln++; box.innerHTML = `<span class="m">$</span> ${esc(req)}\n${res.slice(0, ln + 1).join('\n')}`; return; }
+        if (++hold > 120) { ch = 0; ln = -1; hold = 0; }
+      });
+    },
+    anywhere(el) {
+      el.innerHTML = card('Theme', 'follows your system', `<div class="lv-row"><span class="lv-switch" id="lvSw"><i>☀</i></span><div><div class="lv-name" id="lvThemeName">Light</div><div class="lv-muted">Soft fade — no flash</div></div><span class="lv-pill" style="margin-left:auto">${ic('user', 'sm')} 390 px wide</span></div>`);
+      let on = false;
+      return every(2200, () => { on = !on; $('#lvSw', el).classList.toggle('on', on); $('#lvSw i', el).textContent = on ? '☾' : '☀'; $('#lvThemeName', el).textContent = on ? 'Dark' : 'Light'; });
+    },
+  };
+  for (const [id, build] of Object.entries(WIDGETS)) {
+    const copy = $(`#${id} .copy`); if (!copy) continue;
+    // The card element is created first and stays the same node, so each widget's lookups keep working.
+    const el = document.createElement('div');
+    el.className = 'live'; el.setAttribute('aria-hidden', 'true');
+    const loop = build(el);
+    copy.append(el);
+    // Reduced motion: draw one frame and stop.
+    whenVisible(el, (still) => { loop.start(); if (still) loop.stop(); }, loop.stop);
+  }
+  stagger();
 })();

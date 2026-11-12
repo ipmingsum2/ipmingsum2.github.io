@@ -7,8 +7,8 @@
   <meta name="description" content="Activity tracking, requirements, ranking, applications and logs for Roblox roleplay groups.">
   <script>try{var t=localStorage.getItem("rp_theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%278%27 fill=%27%235b8def%27/%3E%3Cpath d=%27M16 26s7-3.500 7-8.750V11l-7-2.600L9 11v6.250C9 22.500 16 26 16 26z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%272%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="styles.css?v=3a747d0">
-  <link rel="stylesheet" href="intro.css?v=3a747d0">
+  <link rel="stylesheet" href="styles.css?v=b8c2c5f">
+  <link rel="stylesheet" href="intro.css?v=b8c2c5f">
 </head>
 <body class="intro">
   <div class="progress" aria-hidden="true"><i id="progress"></i></div>
@@ -33,7 +33,6 @@
   <main class="imain" id="main">
     <!-- HERO -->
     <section class="hero" id="top" data-nav="Introduction" data-icon="home">
-      <canvas class="hero-canvas" id="heroCanvas" aria-hidden="true"></canvas>
       <div class="hero-grid" aria-hidden="true"></div>
       <div class="glow g1" aria-hidden="true"></div><div class="glow g2" aria-hidden="true"></div>
       <div class="hero-copy">
@@ -47,14 +46,15 @@
           <a class="btn lg" href="#signin" data-signin-label>Sign in</a>
         </div>
       </div>
+      <aside class="live-feed" id="liveFeed" aria-label="Example of what happens in a group" data-anim style="--d:.3s">
+        <div class="lf-head">Live · Sunrise Hotels<span class="lf-sub">example</span></div>
+        <ol class="lf-list" id="lfList"></ol>
+      </aside>
       <div class="hero-stage" id="heroStage">
         <figure class="frame hero-frame tilt-glare" id="heroFrame">
           <div class="chrome" aria-hidden="true"><svg viewBox="0 0 52 12"><circle cx="6" cy="6" r="5"/><circle cx="24" cy="6" r="5"/><circle cx="42" cy="6" r="5"/></svg><span>ipmingsum2.github.io/roleplay-system</span></div>
           <img data-shot="overview" alt="Dashboard overview: hours today and this week, members in game, requirement progress, a daily hours chart and recent log entries" width="1440" height="900" fetchpriority="high">
         </figure>
-        <div class="float f1" aria-hidden="true"><span class="fi good" data-ic="play"></span><div><b>4 in game now</b><small>Avalynne, Sunny, Ruby +1</small></div></div>
-        <div class="float f2" aria-hidden="true"><span class="fi accent" data-ic="rank"></span><div><b>ZaraPoolside promoted</b><small>Customer → Trainee · logged</small></div></div>
-        <div class="float f3" aria-hidden="true"><span class="fi bad" data-ic="bell"></span><div><b>3 missed this week</b><small>Posted to #staff-activity</small></div></div>
       </div>
     </section>
 
@@ -350,8 +350,8 @@
     </section>
   </main>
 
-  <script src="config.js?v=3a747d0"></script>
-  <script src="core.js?v=3a747d0"></script>
-  <script src="intro.js?v=3a747d0"></script>
+  <script src="config.js?v=b8c2c5f"></script>
+  <script src="core.js?v=b8c2c5f"></script>
+  <script src="intro.js?v=b8c2c5f"></script>
 </body>
 </html>
