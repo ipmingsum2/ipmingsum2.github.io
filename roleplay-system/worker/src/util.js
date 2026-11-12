@@ -96,10 +96,11 @@ export const isWebhook = (u) =>
   typeof u === 'string' && /^https:\/\/(?:(?:ptb|canary)\.)?discord(?:app)?\.com\/api\/webhooks\/\d+\/[\w-]+$/.test(u);
 /** '' is allowed (clears it); anything else must be a real Discord webhook URL. */
 export const cleanWebhook = (u) => { const s = str(u, 300); if (s && !isWebhook(s)) bad('Webhook must be a Discord webhook URL (https://discord.com/api/webhooks/...)'); return s; };
-export async function sendWebhook(url, payload) {
+/** `query` is appended after validation (e.g. 'with_components=true' so plain webhooks may send link buttons). */
+export async function sendWebhook(url, payload, query = '') {
   if (!isWebhook(url)) return false;
   try {
-    const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ allowed_mentions: { parse: [] }, ...payload }) });
+    const r = await fetch(query ? `${url}?${query}` : url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ allowed_mentions: { parse: [] }, ...payload }) });
     return r.ok;
   } catch { return false; }
 }

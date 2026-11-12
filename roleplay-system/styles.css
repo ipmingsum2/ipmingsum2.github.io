@@ -256,3 +256,13 @@ tr.faded td { opacity: .55; }
 .md blockquote { margin: 0; padding: 6px 14px; border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 0 8px 8px 0; }
 .news { display: flex; flex-direction: column; gap: 14px; max-width: 900px; }
 .post .head h2 { font-size: 17px; }
+
+/* Submission page: answers + sticky Decide panel */
+.sub-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+.sub-grid .decide { position: sticky; top: 76px; }
+.qa { gap: 18px; }
+.qa-sec { margin: 6px 0 -4px; padding-top: 6px; border-top: 1px solid var(--line); }
+.qa-sec:first-child { border-top: 0; padding-top: 0; }
+.qa-q { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.qa-a { margin-top: 6px; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--panel-2); border-radius: 8px; padding: 9px 12px; }
+@media (max-width: 1000px) { .sub-grid { grid-template-columns: minmax(0, 1fr); } .sub-grid .decide { position: static; } }

@@ -47,7 +47,11 @@ const OWNER_NAV = () => [
   ['account', 'My account', 'user'],
 ];
 // Pages that belong to a group (need S.gid to be a real group).
-const GROUP_PAGES = new Set(['overview', 'activity', 'member', 'requirements', 'timeoff', 'ranking', 'sessions', 'applications', 'news', 'logbook', 'promotions', 'kb']);
+const GROUP_PAGES = new Set(['overview', 'activity', 'member', 'requirements', 'timeoff', 'ranking', 'sessions', 'applications', 'submission', 'news', 'logbook', 'promotions', 'kb']);
+// Pages highlighted under another sidebar entry.
+const NAV_PARENT = { member: 'activity', submission: 'applications' };
+// Deep links from outside (e.g. Discord's "Decide" button): #/go/<groupId>/<page…> switches group, then opens the page.
+const isDeepLink = (h) => /^#\/go\/[^/]+\/./.test(h || '');
 
 const ERRORS = {
   not_whitelisted: 'That account is not on the whitelist. Ask the owner to add your Google email or Discord ID.',
@@ -56,6 +60,8 @@ const ERRORS = {
 };
 
 function loginScreen(error) {
+  // Remember a deep link so it opens right after signing in.
+  if (isDeepLink(location.hash)) store.set('rp_next', location.hash);
   const dev = ['localhost', '127.0.0.1'].includes(location.hostname);
   $('#root').innerHTML = `<div class="corner-theme">${themeButton()}</div><div class="center"><div class="login">
     <div class="mark">${icon('shield', 'lg')}</div>
@@ -74,9 +80,11 @@ async function boot() {
   const h = location.hash;
   if (h.startsWith('#token=')) {
     store.set('rp_token', h.slice(7));
-    store.set('rp_gid', null); // a fresh sign-in always starts at the picker
-    history.replaceState(null, '', location.pathname + '#/select');
-  }
+    store.set('rp_gid', null); // a fresh sign-in starts at the picker, unless a deep link was waiting
+    const next = store.get('rp_next');
+    store.set('rp_next', null);
+    history.replaceState(null, '', location.pathname + (isDeepLink(next) ? next : '#/select'));
+  } else if (isDeepLink(h)) store.set('rp_next', null);
   if (h.startsWith('#error=')) { const code = decodeURIComponent(h.slice(7)); history.replaceState(null, '', location.pathname); return loginScreen(ERRORS[code] || 'Sign-in failed.'); }
   if (!store.get('rp_token')) return loginScreen();
   try {
@@ -105,10 +113,12 @@ async function loadGroups() {
   if (!S.gid && !isOwner() && S.groups.length === 1) S.gid = S.groups[0].id;
 }
 
-function enter(id, hash = '#/') {
+/** `replace` swaps the current history entry (so Back doesn't bounce through a #/go/ link). */
+function enter(id, hash = '#/', replace = false) {
   S.gid = id;
   store.set('rp_gid', id);
-  if (location.hash === hash) route(); else location.hash = hash;
+  if (replace) { history.replaceState(null, '', location.pathname + hash); route(); }
+  else if (location.hash === hash) route(); else location.hash = hash;
 }
 
 // ---------- picker ----------
@@ -201,6 +211,13 @@ let routeSeq = 0;
 async function route() {
   const [name = '', arg, arg2] = location.hash.replace(/^#\/?/, '').split('/').map(decodeURIComponent);
   const seq = ++routeSeq;
+  if (name === 'go') {
+    const rest = location.hash.replace(/^#\/go\/[^/]+\/?/, '');
+    if (S.groups.some((g) => g.id === arg)) return enter(arg, `#/${rest}`, true);
+    toast('You do not have access to that group.', 'bad');
+    history.replaceState(null, '', location.pathname + '#/select');
+    return picker();
+  }
   if (name === 'select' || !S.gid) return picker();
   let key = name === '' ? 'overview' : name;
   if (inOwnerMenu()) {
@@ -209,7 +226,7 @@ async function route() {
   }
   if (!$('#side')) shell();
   drawContext();
-  drawNav(name === 'member' ? 'activity' : name);
+  drawNav(NAV_PARENT[name] || name);
   $('#side').classList.remove('open');
   const el = $('#view');
   const view = VIEWS[key];

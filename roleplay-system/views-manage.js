@@ -126,35 +126,72 @@ async function appBuilder(el, id) {
   if (id) $('#del', el).onclick = async () => { if (await confirmBox('Delete application?', 'The form and all of its submissions will be permanently deleted.', 'Delete')) run(null, async () => { await api(`/api/applications/${id}`, { method: 'DELETE' }); location.hash = '#/applications'; }); };
 }
 
-async function appSubmissions(el, id, reload) {
+async function appSubmissions(el, id) {
   const { application: app, submissions } = await api(`/api/applications/${id}/submissions`);
-  const review = can('review_applications');
-  const answer = (q, v) => v == null || v === '' ? '<span class="muted">No answer</span>' : esc(Array.isArray(v) ? v.join(', ') : v);
   el.innerHTML = `<div><a href="#/applications" class="muted">← Applications</a></div>
     ${head(app.title, `${submissions.filter((x) => x.status === 'pending').length} pending · ${submissions.length} shown`)}
     <div class="card"><div class="tbl-wrap"><table><thead><tr><th>Applicant</th><th>Submitted</th><th>Score</th><th>Status</th><th></th></tr></thead><tbody>
-    ${submissions.length ? submissions.map((x) => `<tr class="click" data-id="${x.id}" tabindex="0"><td>${who(x.roblox_name, `Roblox ${x.roblox_id}${x.discord_id ? ` · Discord ${x.discord_id}` : ''}`)}</td><td class="muted">${fmtTime(x.created_at)}</td>
-      <td class="num">${x.max_score ? `${x.score}/${x.max_score}` : '—'}</td><td>${statusBadge(x.status)}${x.reviewer ? ` <span class="muted">by ${esc(x.reviewer)}</span>` : ''}</td><td class="r"><span class="btn sm">View</span></td></tr>`).join('') : emptyRow(5, 'No submissions yet.', 'file')}
+    ${submissions.length ? submissions.map((x) => `<tr class="click" data-id="${x.id}"><td>${who(x.roblox_name, `Roblox ${x.roblox_id}${x.discord_id ? ` · Discord ${x.discord_id}` : ''}`)}</td><td class="muted">${fmtTime(x.created_at)}</td>
+      <td class="num">${x.max_score ? `${x.score}/${x.max_score}` : '—'}</td><td>${statusBadge(x.status)}${x.reviewer ? ` <span class="muted">by ${esc(x.reviewer)}</span>` : ''}</td>
+      <td class="r"><a class="btn sm" href="#/submission/${x.id}">${x.status === 'pending' && can('review_applications') ? 'Decide' : 'View'}</a></td></tr>`).join('') : emptyRow(5, 'No submissions yet.', 'file')}
     </tbody></table></div></div>`;
-  const open = (e) => {
-    const tr = e.target.closest('tr[data-id]'); if (!tr || (e.type !== 'click' && e.key !== 'Enter')) return;
-    const x = submissions.find((y) => y.id == tr.dataset.id);
-    const decide = (status) => async (close, m) => {
-      const r = await api(`/api/submissions/${x.id}`, { method: 'PATCH', body: { status, note: val(m, '#note') } });
-      close();
+  // The whole row opens the submission; the button inside is a real link for keyboard and middle-click.
+  $('tbody', el).onclick = (e) => { const tr = e.target.closest('tr[data-id]'); if (tr && !e.target.closest('a')) location.hash = `#/submission/${tr.dataset.id}`; };
+}
+
+/** One submission: every question with its answer, and Accept / Deny. Discord's "Decide" button links here. */
+VIEWS.submission = async (el, id, _sub, reload) => {
+  const { application: app, submission: x } = await api(`/api/submissions/${encodeURIComponent(id)}`);
+  if (x.group_id !== S.gid) {
+    if (!S.groups.some((g) => g.id === x.group_id)) throw new Error('This submission belongs to a group you cannot open.');
+    enter(x.group_id, `#/submission/${x.id}`, true); return;
+  }
+  const review = can('review_applications'), pending = x.status === 'pending';
+  const answer = (v) => v == null || v === '' || (Array.isArray(v) && !v.length) ? '<span class="muted">No answer</span>' : esc(Array.isArray(v) ? v.join(', ') : v);
+  const graded = (q, v) => {
+    if (!q.points) return '';
+    const empty = v == null || v === '' || (Array.isArray(v) && !v.length);
+    const norm = (s) => String(s ?? '').trim().toLowerCase();
+    const ok = !empty && (q.type === 'checkboxes' ? v.length === q.correct.length && q.correct.every((c) => v.includes(c)) : norm(v) === norm(q.correct));
+    return `<span class="badge ${ok ? 'good' : 'bad'}">${ok ? icon('check', 'sm') : icon('x', 'sm')} ${ok ? q.points : 0}/${q.points} pt</span>`;
+  };
+  let n = 0;
+  el.innerHTML = `<div><a href="#/applications/${esc(app.id)}/submissions" class="muted">← ${esc(app.title)} submissions</a></div>
+    ${head(x.roblox_name, `Applied for <b>${esc(app.title)}</b> · ${fmtTime(x.created_at)}`,
+      `<a class="btn" target="_blank" rel="noopener" href="https://www.roblox.com/users/${encodeURIComponent(x.roblox_id)}/profile">${icon('external')} Roblox profile</a>`)}
+    <div class="stats">
+      ${stat('Status', statusBadge(x.status), x.reviewer ? `by ${esc(x.reviewer)}${x.reviewed_at ? ` · ${fmtTime(x.reviewed_at)}` : ''}` : 'Waiting for a decision', 'file')}
+      ${stat('Score', x.max_score ? `${x.score}/${x.max_score}` : '—', x.max_score ? `${Math.round((x.score / x.max_score) * 100)}% auto-graded` : 'No graded questions', 'target')}
+      ${stat('Roblox', esc(x.roblox_id), x.discord_id ? `Discord ${esc(x.discord_id)}` : 'No Discord linked', 'user')}
+    </div>
+    <div class="sub-grid">
+      <div class="card"><div class="head"><h2 class="grow">Answers</h2></div><div class="body stack qa">
+        ${app.questions.map((q) => q.type === 'section'
+          ? `<h3 class="qa-sec">${esc(q.label)}</h3>`
+          : `<div class="qa-item"><div class="qa-q"><b><span class="muted num">${++n}.</span> ${esc(q.label)}</b> ${graded(q, x.answers[q.id])}</div>
+              <div class="qa-a">${answer(x.answers[q.id])}</div>
+              ${q.points ? `<div class="hint">Expected: ${esc(Array.isArray(q.correct) ? q.correct.join(', ') : q.correct)}</div>` : ''}</div>`).join('')}
+      </div></div>
+      <div class="card decide"><div class="head"><h2 class="grow">Decide</h2></div><div class="body stack">
+        ${pending && review ? `
+          <label class="field">Note (optional)<textarea id="note" maxlength="500" placeholder="Shown in logs and the Discord notification"></textarea></label>
+          ${app.settings.acceptRank ? `<p class="hint">Accepting sets their rank to <b>${esc(rolesOf().find((r) => r.rank === app.settings.acceptRank)?.name || app.settings.acceptRank)}</b> through Roblox Open Cloud.</p>` : ''}
+          <div class="row wrap"><button class="btn danger grow" data-decide="denied">${icon('x')} Deny</button><button class="btn primary grow" data-decide="accepted">${icon('check')} Accept</button></div>`
+        : pending ? `<p class="dim">Waiting for a reviewer. You need the “review applications” permission to decide.</p>`
+        : `<p>${statusBadge(x.status)} by <b>${esc(x.reviewer || 'unknown')}</b>${x.reviewed_at ? ` <span class="muted">· ${fmtTime(x.reviewed_at)}</span>` : ''}</p>
+           ${x.review_note ? `<div class="note"><b>Note:</b> ${esc(x.review_note)}</div>` : ''}`}
+      </div></div>
+    </div>`;
+  $$('[data-decide]', el).forEach((b) => b.onclick = async () => {
+    const status = b.dataset.decide;
+    if (status === 'denied' && !await confirmBox(`Deny ${x.roblox_name}?`, `Their application for "${app.title}" will be marked as denied.`, 'Deny')) return;
+    run(b, async () => {
+      const r = await api(`/api/submissions/${x.id}`, { method: 'PATCH', body: { status, note: val(el, '#note') } });
       if (r.rankError) toast(`Accepted, but auto-rank failed: ${r.rankError}`, 'bad'); else toast(r.ranked ? `Accepted and ranked to ${r.ranked.name}` : `Application ${status}`, 'good');
       reload();
-    };
-    modal({ title: `${x.roblox_name} — ${app.title}`, wide: true, body: `
-        <div class="row wrap">${statusBadge(x.status)}${x.max_score ? `<span class="badge accent">Score ${x.score}/${x.max_score}</span>` : ''}<span class="muted">${fmtTime(x.created_at)}</span>
-          <a class="right" target="_blank" rel="noopener" href="https://www.roblox.com/users/${encodeURIComponent(x.roblox_id)}/profile">Roblox profile</a></div>
-        ${app.questions.map((q) => q.type === 'section' ? `<h3 style="margin-top:6px">${esc(q.label)}</h3>` : `<div><div class="dim" style="font-weight:550">${esc(q.label)}${q.points ? ` <span class="badge">${q.points} pt</span>` : ''}</div><div style="white-space:pre-wrap">${answer(q, x.answers[q.id])}</div>${q.points ? `<div class="hint">Expected: ${esc(Array.isArray(q.correct) ? q.correct.join(', ') : q.correct)}</div>` : ''}</div>`).join('')}
-        ${x.review_note ? `<div class="note"><b>Review note:</b> ${esc(x.review_note)}</div>` : ''}
-        ${review && x.status === 'pending' ? `<label class="field">Note (optional)<input id="note" placeholder="Shown in logs and the Discord notification"></label>${app.settings.acceptRank ? `<p class="hint">Accepting will set their rank to ${app.settings.acceptRank}.</p>` : ''}` : ''}`,
-      actions: review && x.status === 'pending' ? [{ label: 'Deny', kind: 'danger', onClick: decide('denied') }, { label: 'Accept', kind: 'primary', onClick: decide('accepted') }] : [] });
-  };
-  $('tbody', el).onclick = open; $('tbody', el).onkeydown = open;
-}
+    });
+  });
+};
 
 // ---------- logs ----------
 VIEWS.logs = async (el) => {

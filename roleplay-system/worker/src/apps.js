@@ -117,6 +117,54 @@ export async function listSubmissions(c) {
   return json({ application: full(a), submissions: rows.map((s) => ({ ...s, answers: parseJSON(s.answers, {}) })) });
 }
 
+/** GET /api/submissions/:id — one submission with its application (the page the Discord "Decide" button opens). */
+export async function getSubmission(c) {
+  const s = await c.env.DB.prepare('SELECT * FROM submissions WHERE id=?').bind(Number(c.params.id) || 0).first();
+  if (!s) bad('Submission not found', 404);
+  const a = await loadApp(c.env, s.application_id);
+  return json({ application: full(a), submission: { ...s, answers: parseJSON(s.answers, {}) } });
+}
+
+// ---------- Discord notifications ----------
+const clip = (t, n) => { t = String(t ?? ''); return t.length > n ? `${t.slice(0, n - 1)}…` : t; };
+/** Dashboard page for one submission; `#/go/<gid>/…` switches to the right group first. */
+const submissionUrl = (env, gid, id) => `${String(env.DASHBOARD_URL || '').replace(/\/+$/, '')}/app.html#/go/${encodeURIComponent(gid)}/submission/${id}`;
+
+/** Embed fields for every answered question (Discord: ≤25 fields, ≤1024 chars per value, ≤6000 chars per embed). */
+export function answerFields(questions, answers) {
+  const fields = [];
+  let used = 0, skipped = 0, n = 0;
+  // Share the ~4600-character budget across up to 24 answers so long forms still show most of them.
+  const count = Math.max(1, Math.min(24, questions.filter((q) => q.type !== 'section').length));
+  const per = Math.max(150, Math.min(1024, Math.floor(4600 / count) - 60));
+  for (const q of questions) {
+    if (q.type === 'section') continue;
+    n++;
+    const v = answers?.[q.id];
+    const empty = v == null || v === '' || (Array.isArray(v) && !v.length);
+    let mark = '';
+    if (q.points && !empty) {
+      const ok = q.type === 'checkboxes' ? v.length === q.correct.length && q.correct.every((x) => v.includes(x)) : norm(v) === norm(q.correct);
+      mark = ok ? ' ✅' : ' ❌';
+    } else if (q.points) mark = ' ❌';
+    const name = clip(`${n}. ${q.label}${mark}`, 256);
+    const value = empty ? '*No answer*' : clip(Array.isArray(v) ? v.join(', ') : v, per);
+    if (fields.length >= 24 || used + name.length + value.length > 5000) { skipped++; continue; }
+    used += name.length + value.length;
+    fields.push({ name, value, inline: false });
+  }
+  if (skipped) fields.push({ name: '…', value: `${skipped} more answer${skipped === 1 ? '' : 's'} — open the submission to read everything.`, inline: false });
+  return fields;
+}
+
+/** Posts with link buttons; if Discord refuses the components, posts again without them so the notice still arrives. */
+export async function notify(url, embed, buttons) {
+  const links = buttons.filter((b) => /^https?:\/\/\S+$/.test(b.url || '') && b.url.length <= 512).map((b) => ({ type: 2, style: 5, label: b.label, url: b.url }));
+  if (!links.length) return sendWebhook(url, { embeds: [embed] });
+  if (await sendWebhook(url, { embeds: [embed], components: [{ type: 1, components: links }] }, 'with_components=true')) return true;
+  return sendWebhook(url, { embeds: [embed] });
+}
+
 export async function reviewSubmission(c) {
   const b = await readBody(c.req);
   if (!['accepted', 'denied'].includes(b.status)) bad('status must be accepted or denied');
@@ -138,8 +186,10 @@ export async function reviewSubmission(c) {
     } catch (e) { rankError = e.message; }
   }
   if (settings.webhookUrl) {
-    c.ctx.waitUntil(sendWebhook(settings.webhookUrl, { embeds: [{ title: `Application ${b.status}`, color: b.status === 'accepted' ? 0x2fa58a : 0xe5484d,
-      description: `**${s.roblox_name}**'s application for **${a.title}** was ${b.status} by ${c.actor.name}.${note ? `\n> ${note}` : ''}${ranked ? `\nRanked to **${ranked.name}**.` : ''}${rankError ? `\nAuto-rank failed: ${rankError}` : ''}` }] }));
+    const link = submissionUrl(c.env, s.group_id, s.id);
+    c.ctx.waitUntil(notify(settings.webhookUrl, { title: `Application ${b.status}`, url: link, color: b.status === 'accepted' ? 0x2fa58a : 0xe5484d,
+      description: `**${s.roblox_name}**'s application for **${a.title}** was ${b.status} by ${c.actor.name}.${note ? `\n> ${clip(note, 500)}` : ''}${ranked ? `\nRanked to **${ranked.name}**.` : ''}${rankError ? `\nAuto-rank failed: ${rankError}` : ''}`,
+      timestamp: new Date().toISOString() }, [{ label: 'View submission', url: link }]));
   }
   return json({ ok: true, ranked, rankError });
 }
@@ -182,13 +232,20 @@ async function submit(c, app, who, input) {
   if (settings.open === false) bad('This application is closed', 403);
   const dup = await c.env.DB.prepare("SELECT id FROM submissions WHERE application_id=? AND roblox_id=? AND status='pending'").bind(app.id, who.robloxId).first();
   if (dup) bad('You already have a pending submission for this application', 409);
-  const { answers, score, max } = gradeAndValidate(parseJSON(app.questions, []), input);
-  await c.env.DB.prepare('INSERT INTO submissions (application_id, group_id, roblox_id, roblox_name, discord_id, answers, score, max_score, created_at) VALUES (?,?,?,?,?,?,?,?,?)')
+  const questions = parseJSON(app.questions, []);
+  const { answers, score, max } = gradeAndValidate(questions, input);
+  const ins = await c.env.DB.prepare('INSERT INTO submissions (application_id, group_id, roblox_id, roblox_name, discord_id, answers, score, max_score, created_at) VALUES (?,?,?,?,?,?,?,?,?)')
     .bind(app.id, app.group_id, who.robloxId, who.robloxName, who.discordId || null, JSON.stringify(answers), score, max, now()).run();
   await logEvent(c.env, c.ctx, { groupId: app.group_id, type: 'application.submitted', actor: c.actor, target: { id: who.robloxId, name: who.robloxName }, summary: `${who.robloxName} applied for "${app.title}"${max ? ` (score ${score}/${max})` : ''}` });
   if (settings.webhookUrl) {
-    c.ctx.waitUntil(sendWebhook(settings.webhookUrl, { embeds: [{ title: 'New application', color: 0x8e6fd8,
-      description: `**${who.robloxName}** (${who.robloxId}) applied for **${app.title}**.${max ? `\nAuto-score: **${score}/${max}**` : ''}${who.discordId ? `\nDiscord: <@${who.discordId}>` : ''}` }] }));
+    const link = submissionUrl(c.env, app.group_id, ins.meta.last_row_id);
+    c.ctx.waitUntil(notify(settings.webhookUrl, {
+      title: clip(`New application — ${app.title}`, 256), url: link, color: 0x8e6fd8,
+      description: `**${who.robloxName}** (${who.robloxId}) applied for **${app.title}**.${max ? `\nAuto-score: **${score}/${max}**` : ''}${who.discordId ? `\nDiscord: <@${who.discordId}>` : ''}`,
+      fields: answerFields(questions, answers),
+      footer: { text: 'Use Decide to accept or deny in the dashboard' },
+      timestamp: new Date().toISOString(),
+    }, [{ label: 'Decide', url: link }, { label: 'Roblox profile', url: `https://www.roblox.com/users/${who.robloxId}/profile` }]));
   }
   return json({ ok: true, message: settings.successMessage || 'Your application has been submitted.' });
 }
