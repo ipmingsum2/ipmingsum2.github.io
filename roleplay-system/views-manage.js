@@ -197,19 +197,20 @@ VIEWS.submission = async (el, id, _sub, reload) => {
 VIEWS.logs = async (el) => {
   const TYPES = [['', 'Everything'], ['rank', 'Ranking'], ['requirement', 'Requirements'], ['timeoff', 'Time off'], ['activity', 'Activity'], ['member', 'Notes & warnings'], ['application', 'Applications'], ['session', 'Sessions'], ['group', 'Groups'], ['access', 'Access'], ['auth', 'Sign-ins'], ['link', 'Account links'], ['apikey', 'API keys']];
   const COLOR = { 'rank.promote': 'good', 'rank.demote': 'bad', 'requirement.not_met': 'bad', 'auth.denied': 'bad', 'access.revoked': 'bad', 'application.accepted': 'good', 'application.denied': 'bad', 'timeoff.approved': 'good', 'timeoff.denied': 'bad' };
-  el.innerHTML = `${head('Logs', 'Everything the system does: promotions, demotions, missed requirements, sign-ins, settings changes and more.')}
+  el.innerHTML = `${head('Logs', 'Everything the system does: promotions, demotions, missed requirements, sign-ins, settings changes and more.', `<button class="btn" id="csv">${icon('download')} Export CSV</button>`)}
     <div class="card"><div class="head">
       <select id="scope" style="width:auto" aria-label="Scope">${group() ? `<option value="${S.gid}">${esc(group().name)}</option>` : ''}<option value="">All groups + system</option>${S.groups.filter((g) => g.id !== S.gid).map((g) => `<option value="${esc(g.id)}">${esc(g.name)}</option>`).join('')}</select>
       <select id="type" style="width:auto" aria-label="Type">${TYPES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
       <div class="search grow">${icon('search', 'sm')}<input id="q" placeholder="Search by member, staff or text" aria-label="Search logs"></div></div>
       <div class="tbl-wrap"><table><thead><tr><th>When</th><th>Type</th><th>What happened</th><th>By</th></tr></thead><tbody id="rows"></tbody></table></div>
       <div class="body" id="more" style="text-align:center"></div></div>`;
-  let next = null;
+  let next = null, shown = [];
   const load = async (append) => {
     const p = new URLSearchParams({ group: val(el, '#scope'), type: val(el, '#type'), q: val(el, '#q'), limit: 50 });
     if (append && next) p.set('before', next);
     const d = await api(`/api/logs?${p}`);
     next = d.next;
+    shown = append ? shown.concat(d.logs) : d.logs;
     const html = d.logs.map((l) => `<tr><td class="muted" style="white-space:nowrap" title="${new Date(l.ts * 1000).toISOString()}">${fmtTime(l.ts)}</td><td><span class="badge ${COLOR[l.type] || ''}">${esc(l.type)}</span></td><td>${esc(l.summary)}</td><td class="dim">${esc(l.actor_name || l.actor_type)}</td></tr>`).join('');
     if (append) $('#rows', el).insertAdjacentHTML('beforeend', html); else $('#rows', el).innerHTML = html || emptyRow(4, 'No log entries match.', 'list');
     $('#more', el).innerHTML = next ? '<button class="btn" id="moreBtn">Load older</button>' : '';
@@ -219,6 +220,20 @@ VIEWS.logs = async (el) => {
   let timer;
   $('#scope', el).onchange = $('#type', el).onchange = () => run(null, () => load(false));
   $('#q', el).oninput = () => { clearTimeout(timer); timer = setTimeout(() => run(null, () => load(false)), 300); };
+  // Exports what the filters match, fetching older pages too (up to 5,000 rows).
+  $('#csv', el).onclick = (e) => run(e.currentTarget, async () => {
+    const rows = [...shown];
+    let before = next;
+    while (before && rows.length < 5000) {
+      const p = new URLSearchParams({ group: val(el, '#scope'), type: val(el, '#type'), q: val(el, '#q'), limit: 200, before });
+      const d = await api(`/api/logs?${p}`);
+      rows.push(...d.logs); before = d.next;
+    }
+    downloadCSV(`logs-${new Date().toISOString().slice(0, 10)}.csv`, [
+      ['Time (UTC)', 'Type', 'Summary', 'By', 'Actor type', 'Target ID', 'Target', 'Group ID'],
+      ...rows.map((l) => [new Date(l.ts * 1000).toISOString().replace('T', ' ').slice(0, 19), l.type, l.summary, l.actor_name || '', l.actor_type || '', l.target_id || '', l.target_name || '', l.group_id || '']),
+    ]);
+  });
 };
 
 // ---------- groups ----------

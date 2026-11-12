@@ -2,6 +2,7 @@
 import { bad, json, now, parseJSON, str, int, readBody, randHex, cleanWebhook, sendWebhook, logEvent } from './util.js';
 import { resolveUser, changeRank } from './roblox.js';
 import { publicIdentity } from './auth.js';
+import { blacklisted } from './more.js';
 
 export const QUESTION_TYPES = ['short', 'paragraph', 'choice', 'checkboxes', 'dropdown', 'number', 'scale', 'yesno', 'section'];
 const HAS_OPTIONS = ['choice', 'checkboxes', 'dropdown'];
@@ -230,6 +231,10 @@ function gradeAndValidate(questions, input) {
 async function submit(c, app, who, input) {
   const settings = parseJSON(app.settings, {});
   if (settings.open === false) bad('This application is closed', 403);
+  if (await blacklisted(c.env, app.group_id, who.robloxId)) {
+    await logEvent(c.env, c.ctx, { groupId: app.group_id, type: 'application.blocked', actor: c.actor, target: { id: who.robloxId, name: who.robloxName }, summary: `${who.robloxName} tried to apply for "${app.title}" but is blacklisted` });
+    bad('You are not eligible to apply to this group.', 403);
+  }
   const dup = await c.env.DB.prepare("SELECT id FROM submissions WHERE application_id=? AND roblox_id=? AND status='pending'").bind(app.id, who.robloxId).first();
   if (dup) bad('You already have a pending submission for this application', 409);
   const questions = parseJSON(app.questions, []);

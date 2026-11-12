@@ -298,3 +298,19 @@ CREATE TABLE IF NOT EXISTS posts (
   created_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_posts_group ON posts (group_id, pinned, id);
+
+-- Blacklist: kicked by the in-game tracker and blocked from applying. Entries are removed, never deleted.
+CREATE TABLE IF NOT EXISTS blacklist (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  group_id TEXT NOT NULL,
+  roblox_id TEXT NOT NULL,
+  username TEXT,
+  reason TEXT NOT NULL,
+  evidence TEXT,
+  expires_at INTEGER,                         -- NULL = permanent
+  author TEXT,
+  created_at INTEGER NOT NULL,
+  removed_at INTEGER,
+  removed_by TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_blacklist_member ON blacklist (group_id, roblox_id);

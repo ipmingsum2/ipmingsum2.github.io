@@ -2,6 +2,7 @@
 import { bad, json, now, parseJSON, str, int, readBody, dayStr, addDays, weekStartOf, isDay, fmtDur, isWebhook, sendWebhook, logEvent, batchAll, SYSTEM } from './util.js';
 import { resolveUser, syncMembers } from './roblox.js';
 import { sessionCounts } from './features.js';
+import { blacklistedAmong } from './more.js';
 
 const STALE = 180; // seconds without a heartbeat before a play session is considered over
 
@@ -60,7 +61,10 @@ export async function heartbeat(c) {
   // Anyone with an open session in this server who is no longer listed has left.
   for (const s of open) if (!present.has(s.roblox_id)) stmts.push(DB.prepare('UPDATE play_sessions SET ended=1 WHERE id=?').bind(s.id));
   await batchAll(env, stmts);
-  return json({ ok: true, tracked: counted });
+  // Blacklisted players in this server — the tracker kicks them (works for every rank, tracked or not).
+  const ids = players.map((p) => str(p?.userId, 20)).filter((id) => /^\d{1,15}$/.test(id));
+  const kick = (await blacklistedAmong(env, group.id, ids)).map((r) => ({ userId: Number(r.roblox_id), reason: r.reason }));
+  return json({ ok: true, tracked: counted, kick });
 }
 
 /** POST /v1/game/session-end {jobId, userId} — optional, sent when a player leaves so the last partial minute counts. */

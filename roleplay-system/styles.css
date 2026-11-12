@@ -206,7 +206,10 @@ td.r, th.r { text-align: right; }
 .pick.add { border-style: dashed; background: none; align-items: center; justify-content: center; color: var(--text-2); min-height: 150px; }
 .pick-meta { display: flex; gap: 6px 16px; flex-wrap: wrap; align-items: center; color: var(--text-2); font-size: 13px; margin-top: auto; }
 .pick-meta b { color: var(--text); font-variant-numeric: tabular-nums; }
-.btn.ctx { font-weight: 600; max-width: 46vw; } .btn.ctx span { overflow: hidden; text-overflow: ellipsis; } .btn.ctx .sw { color: var(--muted); }
+.btn.ctx { font-weight: 600; max-width: 46vw; min-width: 0; flex: 0 1 auto; } .btn.ctx span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; } .btn.ctx .sw { color: var(--muted); }
+/* On phones the group switcher gives way so the top bar never pushes the page sideways. */
+.top > .right { flex-shrink: 0; }
+@media (max-width: 480px) { .top { gap: 8px; } .btn.ctx { max-width: none; } .top > .right { gap: 4px; } }
 @media (max-width: 640px) { .hide-sm { display: none; } }
 
 /* Theme switch: soft cross-fade instead of an instant flash */
@@ -266,3 +269,10 @@ tr.faded td { opacity: .55; }
 .qa-q { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .qa-a { margin-top: 6px; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--panel-2); border-radius: 8px; padding: 9px 12px; }
 @media (max-width: 1000px) { .sub-grid { grid-template-columns: minmax(0, 1fr); } .sub-grid .decide { position: static; } }
+
+/* Auto-promotion rule rows */
+.rule { display: grid; grid-template-columns: minmax(130px, 1.3fr) minmax(130px, 1.3fr) minmax(80px, .7fr) minmax(80px, .7fr) minmax(130px, 1fr) auto auto; gap: 10px; align-items: end;
+  padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); }
+.rule .check { padding-bottom: 9px; white-space: nowrap; }
+.rule [data-rm] { margin-bottom: 4px; }
+@media (max-width: 1100px) { .rule { grid-template-columns: repeat(2, minmax(0, 1fr)); } .rule .check, .rule [data-rm] { justify-self: start; } }

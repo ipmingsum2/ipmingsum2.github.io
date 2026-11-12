@@ -10,6 +10,7 @@ import * as rbx from './roblox.js';
 import * as act from './activity.js';
 import * as apps from './apps.js';
 import * as feat from './features.js';
+import * as more from './more.js';
 
 const routes = [];
 /**
@@ -128,7 +129,7 @@ async function deleteGroup(c) {
   const { DB } = c.env;
   const id = c.group.id;
   await DB.batch([
-    ...['members', 'play_sessions', 'activity_daily', 'time_off', 'requirement_runs', 'requirement_results', 'applications', 'submissions', 'events', 'notes', 'logbook', 'event_people', 'recommendations', 'kb_docs', 'posts']
+    ...['members', 'play_sessions', 'activity_daily', 'time_off', 'requirement_runs', 'requirement_results', 'applications', 'submissions', 'events', 'notes', 'logbook', 'event_people', 'recommendations', 'kb_docs', 'posts', 'blacklist']
       .map((t) => DB.prepare(`DELETE FROM ${t} WHERE group_id=?`).bind(id)),
     DB.prepare('DELETE FROM rec_votes WHERE rec_id NOT IN (SELECT id FROM recommendations)'),
     DB.prepare('UPDATE api_keys SET revoked=1 WHERE group_id=?').bind(id),
@@ -326,6 +327,14 @@ R('POST', '/api/groups/:gid/news', feat.newsCreate, { perm: CONTENT });
 R('PATCH', '/api/news/:id', feat.newsUpdate, { perm: CONTENT });
 R('DELETE', '/api/news/:id', feat.newsDelete, { perm: CONTENT });
 
+// --- blacklist, auto-promotion ---
+R('GET', '/api/groups/:gid/blacklist', more.blacklistList);
+R('POST', '/api/groups/:gid/blacklist', more.blacklistAdd, { perm: DISC });
+R('POST', '/api/blacklist/:id/remove', more.blacklistRemove, { perm: DISC });
+R('GET', '/api/groups/:gid/autopromote', more.autoPromoteGet);
+R('PUT', '/api/groups/:gid/autopromote', more.autoPromoteSave, { perm: 'ranking' });
+R('POST', '/api/groups/:gid/autopromote/run', more.autoPromoteRun, { perm: 'ranking' });
+
 // --- applications ---
 const APP = ['manage_applications', 'review_applications'];
 R('GET', '/api/groups/:gid/applications', apps.listApps, { anyPerm: APP });
@@ -361,6 +370,8 @@ R('GET', '/v1/groups/:gid/logs', (c) => logsList(c, c.group.id), { scope: 'read'
 R('GET', '/v1/groups/:gid/timeoff', act.listTimeOff, { scope: 'read' });
 R('GET', '/v1/groups/:gid/logbook', feat.logbookList, { scope: 'read' });
 R('GET', '/v1/groups/:gid/news', feat.newsList, { scope: 'read' });
+R('GET', '/v1/groups/:gid/blacklist', more.blacklistPublic, { scope: 'read' });
+R('GET', '/v1/groups/:gid/blacklist/:rid', more.blacklistCheck, { scope: 'read' });
 R('POST', '/v1/groups/:gid/timeoff', (c) => act.createTimeOff(c, false), { scope: 'timeoff' });
 R('POST', '/v1/groups/:gid/ranking', rank, { scope: 'ranking' });
 R('GET', '/v1/links/discord/:id', (c) => auth.linkLookup(c, 'discord_id'), { scope: 'read' });
@@ -370,6 +381,7 @@ R('GET', '/v1/links/roblox/:id', (c) => auth.linkLookup(c, 'roblox_id'), { scope
 R('GET', '/v1/game/config', act.gameConfig, { scope: 'game', keyGroup: true });
 R('POST', '/v1/game/heartbeat', act.heartbeat, { scope: 'game', keyGroup: true });
 R('POST', '/v1/game/session-end', act.sessionEnd, { scope: 'game', keyGroup: true });
+R('GET', '/v1/game/blacklist/:rid', more.blacklistCheck, { scope: 'game', keyGroup: true });
 R('GET', '/v1/game/applications', apps.gameList, { scope: 'game', keyGroup: true });
 R('POST', '/v1/game/applications/:id/submit', apps.gameSubmit, { scope: 'game', keyGroup: true });
 R('POST', '/v1/game/verify', auth.gameVerify, { scope: ['verify', 'game'] });
@@ -424,6 +436,6 @@ export default {
     }
   },
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(act.cron(env, ctx));
+    ctx.waitUntil(act.cron(env, ctx).finally(() => more.autoPromoteCron(env, ctx)));
   },
 };

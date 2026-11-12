@@ -73,6 +73,13 @@
           response: { posts: [{ id: 7, title: 'Grand reopening this Saturday!', body: 'The rooftop pool reopens…', pinned: 1, author: 'Avalynne', created_at: 1794300000 }] },
           notes: '`body` is Markdown-style text (headings, **bold**, lists, links).' }],
       ]],
+      ['Blacklist', 'Players who may not join your games or apply. Managed from the dashboard; the ActivityTracker module kicks them automatically.', [
+        ['GET', '/v1/groups/{groupId}/blacklist', 'read', 'Everyone currently blacklisted', {
+          response: { blacklist: [{ robloxId: '156', username: 'Builderman', reason: 'Exploiting', expiresAt: null, createdAt: 1794300000 }] },
+          notes: 'Only active entries (not removed, not expired). `expiresAt` is `null` for a permanent entry.' }],
+        ['GET', '/v1/groups/{groupId}/blacklist/{robloxId}', 'read', 'Is this player blacklisted?', {
+          response: { robloxId: '156', blacklisted: true, reason: 'Exploiting', expiresAt: null } }],
+      ]],
       ['Account links', 'Discord ↔ Roblox links created through the verification game.', [
         ['GET', '/v1/links/discord/{discordId}', 'read', 'Roblox account linked to a Discord user', { response: { discordId: '123456789012345678', discordName: 'builder', robloxId: '156', robloxName: 'Builderman', linkedAt: 1794300000 }, notes: 'Returns 404 if the user has not verified.' }],
         ['GET', '/v1/links/roblox/{robloxId}', 'read', 'Discord account linked to a Roblox user', { response: { discordId: '123456789012345678', discordName: 'builder', robloxId: '156', robloxName: 'Builderman', linkedAt: 1794300000 } }],
@@ -81,15 +88,18 @@
         ['GET', '/v1/game/config', 'game', 'Group ID and tracked ranks for this key', { response: { groupId: '1234567', name: 'Sunrise Hotels', trackedRanks: [20, 30, 40], heartbeatSeconds: 60 } }],
         ['POST', '/v1/game/heartbeat', 'game', 'Report who is in the server (send about once a minute)', {
           body: { jobId: 'a1b2c3', players: [{ userId: 156, username: 'Builderman', displayName: 'Builderman', rank: 40, role: 'Manager', idle: false, messages: 3 }] },
-          response: { ok: true, tracked: 1 },
-          notes: 'Time is credited as the gap since the previous heartbeat for the same server (`jobId`) and player, up to 180 seconds — a longer gap starts a new session. Players whose rank is not tracked are ignored. `messages` is the count since the last heartbeat.' }],
+          response: { ok: true, tracked: 1, kick: [{ userId: 999, reason: 'Exploiting' }] },
+          notes: 'Time is credited as the gap since the previous heartbeat for the same server (`jobId`) and player, up to 180 seconds — a longer gap starts a new session. Players whose rank is not tracked are ignored. `messages` is the count since the last heartbeat. `kick` lists players in this server who are blacklisted (any rank).' }],
+        ['GET', '/v1/game/blacklist/{robloxId}', 'game', 'Check a joining player against the blacklist', {
+          response: { robloxId: '156', blacklisted: false, reason: null, expiresAt: null },
+          notes: 'ActivityTracker calls this when a player joins and kicks them if `blacklisted` is true (turn off with `KickBlacklisted = false`).' }],
         ['POST', '/v1/game/session-end', 'game', 'A player left (credits the final partial minute)', { body: { jobId: 'a1b2c3', userId: 156 }, response: { ok: true } }],
         ['GET', '/v1/game/applications', 'game', 'Open applications and their questions for the in-game application center', {
           response: { group: 'Sunrise Hotels', applications: [{ id: '3f9a1c2b7d', group: 'Sunrise Hotels', title: 'Staff application', description: '', identity: 'username', successMessage: '', questions: [{ id: 'q1a2b3c4d', type: 'choice', label: 'What do you do if a guest is rude?', description: '', required: true, options: ['Stay calm', 'Argue back'] }] }] },
           notes: 'Correct answers and points are never included.' }],
         ['POST', '/v1/game/applications/{applicationId}/submit', 'game', 'Submit an application as a verified player', {
           body: { userId: 156, username: 'Builderman', answers: { q1a2b3c4d: 'Stay calm' } }, response: { ok: true, message: 'Your application has been submitted.' },
-          notes: 'Answers are keyed by question ID. Checkboxes take an array of option texts; number and scale take numbers. Returns 409 if the player already has a pending submission.' }],
+          notes: 'Answers are keyed by question ID. Checkboxes take an array of option texts; number and scale take numbers. Returns 409 if the player already has a pending submission, and 403 if they are blacklisted.' }],
         ['POST', '/v1/game/verify', 'verify or game', 'Confirm a link code typed in the verification game', { body: { code: 'K7M2QX', userId: 156, username: 'Builderman' }, response: { ok: true, discordName: 'builder' }, notes: 'Returns 404 with `{ ok: false, error }` for an invalid or expired code.' }],
       ]],
       ['Public application endpoints', 'Used by the web application form. No API key.', [
