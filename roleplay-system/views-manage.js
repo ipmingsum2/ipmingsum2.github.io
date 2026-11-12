@@ -6,6 +6,7 @@ const Q_LABEL = Object.fromEntries(Q_TYPES);
 const HAS_OPTS = ['choice', 'checkboxes', 'dropdown'];
 const GRADABLE = ['short', 'choice', 'checkboxes', 'dropdown', 'yesno', 'number'];
 const applyUrl = (id) => new URL(`apply.html?id=${id}`, location.href).href;
+const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const PERM_LABELS = { manage_activity: 'Manage activity, requirements, time off, notes, sessions and registers', ranking: 'Promote / demote / set ranks, approve promotion recommendations, auto-promotion', manage_groups: 'Add and configure groups', manage_applications: 'Create and edit applications', review_applications: 'Accept / deny submissions', view_logs: 'View logs', manage_api_keys: 'Create and revoke API keys', manage_discipline: 'Logbook entries and the blacklist', manage_content: 'Post news and edit the knowledgebase' };
 
 /** Creates a group-bound API key with the "game" scope (used by generated place files and loader snippets). */
@@ -308,13 +309,30 @@ VIEWS.groups = async (el, _a, _b, reload) => {
         <label class="field">Replace Open Cloud API key<input id="key" type="password" autocomplete="off" placeholder="${g.hasApiKey ? 'Leave blank to keep the current key' : 'Paste a key'}">${keyHelp}</label>
         <label class="field">Highest rank this system may assign<input id="max" type="number" min="1" max="254" value="${g.settings.ranking?.maxRank || 254}"><small>Promotions, set-rank and auto-rank on acceptance never go above this, and members above it cannot be changed.</small></label>
         <label class="field">Log webhook<input id="log" value="${esc(g.settings.logWebhook || '')}" placeholder="https://discord.com/api/webhooks/…"><small>Every log entry for this group is mirrored to this Discord channel.</small></label>
-        <label class="field">Session announcements webhook<input id="ev" value="${esc(g.settings.events?.webhookUrl || '')}" placeholder="https://discord.com/api/webhooks/…"></label>
-        <label class="field">News webhook<input id="nw" value="${esc(g.settings.news?.webhookUrl || '')}" placeholder="https://discord.com/api/webhooks/…"><small>News posts marked “announce” are sent here.</small></label>`,
+        <label class="field">News webhook<input id="nw" value="${esc(g.settings.news?.webhookUrl || '')}" placeholder="https://discord.com/api/webhooks/…"><small>News posts marked “announce” are sent here.</small></label>
+        <h3 class="set-h">${icon('clock', 'sm')} Sessions</h3>
+        <label class="field">Session announcements webhook<input id="ev" value="${esc(g.settings.events?.webhookUrl || '')}" placeholder="https://discord.com/api/webhooks/…"><small>New sessions are announced here, and so are reminders.</small></label>
+        <div class="grid2">
+          <label class="field">Reminder before a session<select id="evr">${[[0, 'No reminder'], [10, '10 minutes before'], [15, '15 minutes before'], [30, '30 minutes before'], [60, '1 hour before'], [120, '2 hours before']].map(([v, l]) => `<option value="${v}" ${(g.settings.events?.remindMinutes ?? 30) === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+          <label class="field">Role to ping (optional)<input id="evrole" inputmode="numeric" value="${esc(g.settings.events?.mentionRoleId || '')}" placeholder="Discord role ID"></label>
+        </div>
+        <h3 class="set-h">${icon('trophy', 'sm')} Staff of the week</h3>
+        <label class="check"><input type="checkbox" id="lbOn" ${g.settings.leaderboard?.enabled ? 'checked' : ''}> Post a weekly leaderboard to Discord (top members by hours and by sessions over the last 7 days)</label>
+        <label class="field">Leaderboard webhook<input id="lbHook" value="${esc(g.settings.leaderboard?.webhookUrl || '')}" placeholder="https://discord.com/api/webhooks/…"></label>
+        <div class="grid3">
+          <label class="field">Day<select id="lbDay">${WEEKDAY_NAMES.map((d, i) => `<option value="${i}" ${(g.settings.leaderboard?.day ?? 6) === i ? 'selected' : ''}>${d}</option>`).join('')}</select></label>
+          <label class="field">Time (UTC)<select id="lbHour">${Array.from({ length: 24 }, (_, h) => `<option value="${h}" ${(g.settings.leaderboard?.hour ?? 18) === h ? 'selected' : ''}>${String(h).padStart(2, '0')}:00</option>`).join('')}</select></label>
+          <label class="field">Show<select id="lbTop">${[3, 5, 10].map((n) => `<option value="${n}" ${(g.settings.leaderboard?.top ?? 5) === n ? 'selected' : ''}>Top ${n}</option>`).join('')}</select></label>
+        </div>
+        ${g.settings.leaderboard?.webhookUrl ? `<div><button type="button" class="btn sm" id="lbPost">${icon('trophy', 'sm')} Post this week’s leaderboard now</button> <span class="hint">Uses the saved settings.</span></div>` : ''}`,
       actions: [{ label: 'Save', kind: 'primary', onClick: async (close, m) => {
-        const body = { name: val(m, '#name'), ranking: { maxRank: Number(val(m, '#max')) }, logWebhook: val(m, '#log'), events: { webhookUrl: val(m, '#ev') }, news: { webhookUrl: val(m, '#nw') } };
+        const body = { name: val(m, '#name'), ranking: { maxRank: Number(val(m, '#max')) }, logWebhook: val(m, '#log'), news: { webhookUrl: val(m, '#nw') },
+          events: { webhookUrl: val(m, '#ev'), remindMinutes: Number(val(m, '#evr')), mentionRoleId: val(m, '#evrole') },
+          leaderboard: { enabled: $('#lbOn', m).checked, webhookUrl: val(m, '#lbHook'), day: Number(val(m, '#lbDay')), hour: Number(val(m, '#lbHour')), top: Number(val(m, '#lbTop')) } };
         if (val(m, '#key')) body.apiKey = val(m, '#key');
         await api(path, { method: 'PATCH', body }); close(); toast('Group settings saved', 'good'); refresh();
       } }] });
+    if (a === 'edit' && $('#lbPost')) $('#lbPost').onclick = (ev) => run(ev.currentTarget, async () => { await api(`${path}/leaderboard/post`, { method: 'POST' }); toast('Leaderboard posted to Discord', 'good'); });
     if (a === 'setup') robloxSetup(g);
   };
 };

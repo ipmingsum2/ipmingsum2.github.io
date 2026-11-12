@@ -12,7 +12,7 @@ A whitelist-only management system for Roblox roleplay groups: activity tracking
 
 | Area | Details |
 |---|---|
-| Activity | Total hours played per member, filter by today / this week / last week / 30 days / all time / custom dates, daily or weekly bar graph, idle time, sessions, chat messages, who is in game now, manual adjustments |
+| Activity | Total hours played per member, filter by today / this week / last week / 30 days / all time / custom dates, daily or weekly bar graph, a weekday × hour heatmap of when members play (in each viewer's time zone), idle time, sessions, chat messages, who is in game now, manual adjustments |
 | Requirements | Daily and weekly minimums, per-rank overrides, hourly scheduler, Discord webhook when members miss them (custom header + per-member line, role mention, ping linked members), manual "run now" |
 | Time off | Requests (dashboard or API), approve/deny, approved time off excuses members from requirements |
 | Ranking | Promote / demote / set rank through Roblox Open Cloud, with a maximum assignable rank |
@@ -22,7 +22,9 @@ A whitelist-only management system for Roblox roleplay groups: activity tracking
 | Accounts | Sign in with Google or Discord, link one to the other, link Roblox through a verification game |
 | Access | Whitelist-only. The owner manages the whitelist and per-user permissions. Someone who signs in without being whitelisted gets an access request form (questions set by the owner in the Owner Menu); the owner approves — choosing their permissions — or denies with a note, and can be pinged in Discord with a Review button. Denied people can ask again after 24 hours |
 | Logbook | Warnings, strikes, suspensions, demotions, promotions, commendations and terminations with reason and evidence link; warnings expire, entries are revoked (never deleted); warning ticker per member; promotions/demotions can change the rank too |
-| Sessions | Schedule shifts/trainings/events with Discord announcements; staff claim them as host or co-host; registers record who attended; optional weekly session target in requirements |
+| Sessions | Schedule shifts/trainings/events with Discord announcements and a reminder 10 minutes to 2 hours before they start (optional role ping); staff claim them as host or co-host; registers record who attended; optional weekly session target in requirements |
+| Staff of the week | Optional weekly Discord post on a chosen day and hour: top 3/5/10 members by hours and by sessions over the last 7 days, with a “post now” button |
+| Quick search | <kbd>Ctrl</kbd>+<kbd>K</kbd> (or <kbd>/</kbd>) anywhere in the dashboard jumps to a page, group or member |
 | Promotions | Nominate members for promotion, upvote with a required justification, filter by rank, sort by votes or trending, recommender insights; rankers promote straight from a recommendation |
 | Knowledgebase & news | Handbooks, guides and policies by category, each readable by everyone or one permission; group news with pinning and optional Discord announcement |
 | Blacklist | Ban players with a reason, optional evidence link and expiry; the ActivityTracker module kicks them on join (and within a minute if they're added mid-game); blacklisted players can't apply; entries are removed, never deleted; API lookup |

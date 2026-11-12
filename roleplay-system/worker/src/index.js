@@ -12,6 +12,7 @@ import * as apps from './apps.js';
 import * as feat from './features.js';
 import * as more from './more.js';
 import * as access from './access.js';
+import * as extras from './extras.js';
 
 const routes = [];
 /**
@@ -35,6 +36,7 @@ function groupView(g, user) {
     if (settings.requirements) settings.requirements.webhookUrl = settings.requirements.webhookUrl ? '(hidden)' : '';
     if (settings.events) settings.events.webhookUrl = settings.events.webhookUrl ? '(hidden)' : '';
     if (settings.news) settings.news.webhookUrl = settings.news.webhookUrl ? '(hidden)' : '';
+    if (settings.leaderboard) settings.leaderboard.webhookUrl = settings.leaderboard.webhookUrl ? '(hidden)' : '';
   }
   return { id: g.id, name: g.name, hasApiKey: !!g.api_key_enc, roles: parseJSON(g.roles, []), trackedRanks: parseJSON(g.tracked_ranks, []), settings, createdAt: g.created_at };
 }
@@ -96,7 +98,7 @@ async function updateGroup(c) {
     settings.requirements = cleanRequirements(b.requirements, settings.requirements);
     changed.push('requirements');
   }
-  const adminOnly = ['name', 'apiKey', 'trackedRanks', 'logWebhook', 'ranking', 'events', 'news'].filter((k) => b[k] !== undefined);
+  const adminOnly = ['name', 'apiKey', 'trackedRanks', 'logWebhook', 'ranking', 'events', 'news', 'leaderboard'].filter((k) => b[k] !== undefined);
   if (adminOnly.length && !admin) bad('You do not have permission to edit group settings', 403);
 
   if (b.name !== undefined) { const n = str(b.name, 80); if (!n) bad('Name cannot be empty'); sets.push('name=?'); vals.push(n); changed.push('name'); }
@@ -115,7 +117,8 @@ async function updateGroup(c) {
   }
   if (b.logWebhook !== undefined) { settings.logWebhook = cleanWebhook(b.logWebhook); changed.push('log webhook'); }
   if (b.ranking !== undefined) { settings.ranking = { maxRank: int(b.ranking?.maxRank, 1, 254, 254) }; changed.push(`max assignable rank (${settings.ranking.maxRank})`); }
-  if (b.events !== undefined) { settings.events = { webhookUrl: cleanWebhook(b.events?.webhookUrl) }; changed.push('session announcements webhook'); }
+  if (b.events !== undefined) { settings.events = extras.cleanEvents(b.events || {}, settings.events || {}); changed.push(`session announcements${settings.events.remindMinutes ? ` (reminders ${settings.events.remindMinutes} min before)` : ''}`); }
+  if (b.leaderboard !== undefined) { settings.leaderboard = extras.cleanLeaderboard(b.leaderboard || {}, settings.leaderboard || {}); changed.push(`weekly leaderboard (${settings.leaderboard.enabled ? 'on' : 'off'})`); }
   if (b.news !== undefined) { settings.news = feat.cleanNewsSettings(b.news); changed.push('news webhook'); }
   if (!changed.length) bad('Nothing to update');
 
@@ -215,8 +218,8 @@ function eventFields(b) {
 }
 async function createEvent(c) {
   const f = eventFields(await readBody(c.req));
-  await c.env.DB.prepare('INSERT INTO events (group_id, title, type, host_name, starts_at, duration_min, notes, created_by, created_at) VALUES (?,?,?,?,?,?,?,?,?)')
-    .bind(c.group.id, f.title, f.type, f.host, f.startsAt, f.duration, f.notes, c.actor.name, now()).run();
+  await c.env.DB.prepare('INSERT INTO events (group_id, title, type, host_name, starts_at, duration_min, notes, created_by, created_at, reminded_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
+    .bind(c.group.id, f.title, f.type, f.host, f.startsAt, f.duration, f.notes, c.actor.name, now(), extras.remindedAtFor(c.group, f.startsAt)).run();
   await logEvent(c.env, c.ctx, { groupId: c.group.id, type: 'session.scheduled', actor: c.actor, summary: `${c.actor.name} scheduled ${f.type} "${f.title}" for ${new Date(f.startsAt * 1000).toISOString().slice(0, 16).replace('T', ' ')} UTC` });
   const hook = parseJSON(c.group.settings, {}).events?.webhookUrl;
   if (hook) c.ctx.waitUntil(sendWebhook(hook, { embeds: [{ title: `${f.type[0].toUpperCase() + f.type.slice(1)}: ${f.title}`, color: 0x5b8def,
@@ -233,7 +236,10 @@ async function updateEvent(c) {
     await logEvent(c.env, c.ctx, { groupId: e.group_id, type: `session.${b.status}`, actor: c.actor, summary: `${c.actor.name} marked session "${e.title}" as ${b.status}` });
   } else {
     const f = eventFields(b);
-    await c.env.DB.prepare('UPDATE events SET title=?, type=?, host_name=?, starts_at=?, duration_min=?, notes=? WHERE id=?').bind(f.title, f.type, f.host, f.startsAt, f.duration, f.notes, e.id).run();
+    // A new start time gets a fresh reminder.
+    const group = await c.env.DB.prepare('SELECT * FROM groups WHERE id=?').bind(e.group_id).first();
+    const reminded = f.startsAt === e.starts_at ? e.reminded_at : extras.remindedAtFor(group || { settings: '{}' }, f.startsAt);
+    await c.env.DB.prepare('UPDATE events SET title=?, type=?, host_name=?, starts_at=?, duration_min=?, notes=?, reminded_at=? WHERE id=?').bind(f.title, f.type, f.host, f.startsAt, f.duration, f.notes, reminded, e.id).run();
     await logEvent(c.env, c.ctx, { groupId: e.group_id, type: 'session.updated', actor: c.actor, summary: `${c.actor.name} edited session "${f.title}"` });
   }
   return json({ ok: true });
@@ -301,6 +307,11 @@ R('GET', '/api/groups/:gid/timeoff', act.listTimeOff);
 R('POST', '/api/groups/:gid/timeoff', (c) => act.createTimeOff(c, true), { perm: A });
 R('PATCH', '/api/timeoff/:id', act.reviewTimeOff, { perm: A });
 R('DELETE', '/api/timeoff/:id', act.deleteTimeOff, { perm: A });
+
+// --- heatmap, weekly leaderboard ---
+R('GET', '/api/groups/:gid/heatmap', extras.heatmap);
+R('GET', '/api/groups/:gid/leaderboard/week', extras.leaderboardPreview);
+R('POST', '/api/groups/:gid/leaderboard/post', extras.leaderboardPostNow, { anyPerm: [G, A] });
 
 // --- ranking / sessions ---
 R('POST', '/api/groups/:gid/ranking', rank, { perm: 'ranking' });
@@ -380,6 +391,8 @@ R('GET', '/v1/groups/:gid/logs', (c) => logsList(c, c.group.id), { scope: 'read'
 R('GET', '/v1/groups/:gid/timeoff', act.listTimeOff, { scope: 'read' });
 R('GET', '/v1/groups/:gid/logbook', feat.logbookList, { scope: 'read' });
 R('GET', '/v1/groups/:gid/news', feat.newsList, { scope: 'read' });
+R('GET', '/v1/groups/:gid/heatmap', extras.heatmap, { scope: 'read' });
+R('GET', '/v1/groups/:gid/leaderboard/week', extras.leaderboardPreview, { scope: 'read' });
 R('GET', '/v1/groups/:gid/blacklist', more.blacklistPublic, { scope: 'read' });
 R('GET', '/v1/groups/:gid/blacklist/:rid', more.blacklistCheck, { scope: 'read' });
 R('POST', '/v1/groups/:gid/timeoff', (c) => act.createTimeOff(c, false), { scope: 'timeoff' });
@@ -447,6 +460,8 @@ export default {
     }
   },
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(act.cron(env, ctx).finally(() => more.autoPromoteCron(env, ctx)));
+    // Every 5 minutes: session reminders only. On the hour: requirement checks, auto-promotion, weekly leaderboard.
+    if (event.cron === '*/5 * * * *') { ctx.waitUntil(extras.remindersCron(env)); return; }
+    ctx.waitUntil(act.cron(env, ctx).finally(() => more.autoPromoteCron(env, ctx)).finally(() => extras.leaderboardCron(env, ctx)));
   },
 };

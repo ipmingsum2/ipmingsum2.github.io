@@ -200,8 +200,10 @@ CREATE TABLE IF NOT EXISTS events (
   notes TEXT,
   status TEXT NOT NULL DEFAULT 'scheduled',   -- scheduled | completed | cancelled
   created_by TEXT,
-  created_at INTEGER NOT NULL
+  created_at INTEGER NOT NULL,
+  reminded_at INTEGER                         -- when the "starting soon" Discord reminder went out
 );
+-- Existing databases: ALTER TABLE events ADD COLUMN reminded_at INTEGER;
 
 CREATE TABLE IF NOT EXISTS notes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
