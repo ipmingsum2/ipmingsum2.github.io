@@ -91,9 +91,9 @@ function bindQuestionEditor(root, qs, { grading = true } = {}) {
     draw();
   };
   $('#addQ', root).onclick = () => {
-    const type = $('#newType', el).value;
+    const type = $('#newType', root).value;
     qs.push({ type, label: '', description: '', required: type !== 'section', ...(HAS_OPTS.includes(type) ? { options: ['', ''] } : {}), ...(type === 'scale' ? { min: 1, max: 5 } : {}) });
-    draw(); $('.qcard [data-f="label"]', box).pop().focus();
+    draw(); $$('.qcard [data-f="label"]', box).pop().focus();
   };
 }
 
