@@ -3,6 +3,7 @@ import { bad, json, now, parseJSON, str, int, readBody, dayStr, addDays, weekSta
 import { resolveUser, syncMembers } from './roblox.js';
 import { sessionCounts } from './features.js';
 import { blacklistedAmong } from './more.js';
+import { memberRosterInfo } from './roster.js';
 
 const STALE = 180; // seconds without a heartbeat before a play session is considered over
 
@@ -167,6 +168,7 @@ export async function memberProfile(c) {
     notes: notes.results, timeOff: off.results, requirements: reqs.results,
     logbook, activeWarnings: logbook.filter((e) => e.active && ['warning', 'strike'].includes(e.type)).length,
     sessionsAttended: { week: weekSess.get(rid) || 0, allTime: allSess.get(rid) || 0 }, register: regs.results,
+    roster: await memberRosterInfo(c.env, gid, rid),
   });
 }
 

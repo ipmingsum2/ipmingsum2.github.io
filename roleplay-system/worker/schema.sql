@@ -303,6 +303,93 @@ CREATE TABLE IF NOT EXISTS posts (
 -- Existing databases: ALTER TABLE posts ADD COLUMN visibility TEXT NOT NULL DEFAULT '';
 CREATE INDEX IF NOT EXISTS idx_posts_group ON posts (group_id, pinned, id);
 
+-- Roster: departments (divisions/units), who is in them, and callsigns / badge numbers.
+CREATE TABLE IF NOT EXISTS departments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  group_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  color TEXT NOT NULL DEFAULT '#5b8def',
+  description TEXT,
+  head_roblox_id TEXT,
+  head_name TEXT,
+  sort INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_departments_group ON departments (group_id, sort);
+CREATE TABLE IF NOT EXISTS member_departments (
+  group_id TEXT NOT NULL,
+  department_id INTEGER NOT NULL,
+  roblox_id TEXT NOT NULL,
+  added_at INTEGER NOT NULL,
+  PRIMARY KEY (department_id, roblox_id)
+);
+CREATE INDEX IF NOT EXISTS idx_member_departments ON member_departments (group_id, roblox_id);
+CREATE TABLE IF NOT EXISTS roster (
+  group_id TEXT NOT NULL,
+  roblox_id TEXT NOT NULL,
+  callsign TEXT,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (group_id, roblox_id)
+);
+
+-- Certifications: types per group, and who holds them (expiring, revocable; renewals update the row).
+CREATE TABLE IF NOT EXISTS cert_types (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  group_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  color TEXT NOT NULL DEFAULT '#2fa58a',
+  description TEXT,
+  valid_days INTEGER NOT NULL DEFAULT 0,      -- 0 = never expires
+  created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS certifications (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  group_id TEXT NOT NULL,
+  cert_id INTEGER NOT NULL,
+  roblox_id TEXT NOT NULL,
+  username TEXT,
+  issued_by TEXT,
+  issued_at INTEGER NOT NULL,
+  expires_at INTEGER,
+  note TEXT,
+  revoked_at INTEGER,
+  revoked_by TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_certifications_member ON certifications (group_id, roblox_id);
+CREATE INDEX IF NOT EXISTS idx_certifications_type ON certifications (cert_id);
+
+-- Reports: types designed per group (form questions), and the reports filed with them.
+CREATE TABLE IF NOT EXISTS report_types (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  group_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+  color TEXT NOT NULL DEFAULT '#5b8def',
+  subject TEXT NOT NULL DEFAULT 'optional',   -- none | optional | required (a member the report is about)
+  file_perm TEXT NOT NULL DEFAULT '',         -- '' = any staff may file
+  view_perm TEXT NOT NULL DEFAULT '',         -- extra permission whose holders review this type (manage_reports always can)
+  webhook_url TEXT,
+  questions TEXT NOT NULL DEFAULT '[]',
+  created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS reports (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  group_id TEXT NOT NULL,
+  type_id INTEGER NOT NULL,
+  author_id INTEGER NOT NULL,
+  author_name TEXT,
+  subject_id TEXT,
+  subject_name TEXT,
+  answers TEXT NOT NULL DEFAULT '{}',
+  status TEXT NOT NULL DEFAULT 'open',        -- open | closed
+  reviewer TEXT,
+  review_note TEXT,
+  reviewed_at INTEGER,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_reports_group ON reports (group_id, status, id);
+CREATE INDEX IF NOT EXISTS idx_reports_subject ON reports (group_id, subject_id);
+
 -- System-wide settings (key → JSON), e.g. the access request form.
 CREATE TABLE IF NOT EXISTS app_settings (
   key TEXT PRIMARY KEY,

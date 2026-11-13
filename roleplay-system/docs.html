@@ -6,13 +6,13 @@
   <title>API documentation</title>
   <script>try{var t=localStorage.getItem("rp_theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%278%27 fill=%27%235b8def%27/%3E%3Cpath d=%27M16 26s7-3.500 7-8.750V11l-7-2.600L9 11v6.250C9 22.500 16 26 16 26z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%272%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="styles.css?v=8afa0b2">
+  <link rel="stylesheet" href="styles.css?v=491e005">
 </head>
 <body>
   <div class="corner-theme" id="themeCorner"></div>
   <main class="docs" id="root"></main>
-  <script src="config.js?v=8afa0b2"></script>
-  <script src="core.js?v=8afa0b2"></script>
+  <script src="config.js?v=491e005"></script>
+  <script src="core.js?v=491e005"></script>
   <script>$('#themeCorner').innerHTML = themeButton();</script>
   <script>
     'use strict';
@@ -80,6 +80,14 @@
           response: { posts: [{ id: 7, title: 'Grand reopening this Saturday!', body: 'The rooftop pool reopens…', pinned: 1, author: 'Avalynne', created_at: 1794300000 }] },
           notes: '`body` is Markdown-style text (headings, **bold**, lists, links).' }],
       ]],
+      ['Roster & certifications', 'Departments, callsigns and certifications, managed on the dashboard’s Roster page.', [
+        ['GET', '/v1/groups/{groupId}/roster', 'read', 'Everyone in a tracked rank with callsign, departments and active certifications', {
+          response: { departments: [{ id: 1, name: 'Patrol', color: '#5b8def', headName: 'Avalynne', members: 12 }], certTypes: [{ id: 3, name: 'Firearms', color: '#e5484d', validDays: 90, holders: 9 }],
+            members: [{ robloxId: '156', username: 'Builderman', rank: 40, roleName: 'Sergeant', callsign: '1-ADAM-12', departments: [1], certifications: [{ certId: 3, expiresAt: 1798300000 }] }] } }],
+        ['GET', '/v1/groups/{groupId}/members/{robloxId}/roster', 'read', 'One member: callsign, departments and active certifications', {
+          response: { robloxId: '156', username: 'Builderman', rank: 40, roleName: 'Sergeant', callsign: '1-ADAM-12', departments: ['Patrol'], certifications: [{ name: 'Firearms', issuedAt: 1794300000, expiresAt: 1802076000 }] },
+          notes: 'Only active certifications are listed (not revoked, not expired).' }],
+      ]],
       ['Blacklist', 'Players who may not join your games or apply. Managed from the dashboard; the ActivityTracker module kicks them automatically.', [
         ['GET', '/v1/groups/{groupId}/blacklist', 'read', 'Everyone currently blacklisted', {
           response: { blacklist: [{ robloxId: '156', username: 'Builderman', reason: 'Exploiting', expiresAt: null, createdAt: 1794300000 }] },
@@ -97,6 +105,9 @@
           body: { jobId: 'a1b2c3', players: [{ userId: 156, username: 'Builderman', displayName: 'Builderman', rank: 40, role: 'Manager', idle: false, messages: 3 }] },
           response: { ok: true, tracked: 1, kick: [{ userId: 999, reason: 'Exploiting' }] },
           notes: 'Time is credited as the gap since the previous heartbeat for the same server (`jobId`) and player, up to 180 seconds — a longer gap starts a new session. Players whose rank is not tracked are ignored. `messages` is the count since the last heartbeat. `kick` lists players in this server who are blacklisted (any rank).' }],
+        ['GET', '/v1/game/member/{robloxId}', 'game', 'Callsign, departments and certifications for a player in your game', {
+          response: { robloxId: '156', username: 'Builderman', rank: 40, roleName: 'Sergeant', callsign: '1-ADAM-12', departments: ['Patrol'], certifications: [{ name: 'Firearms', issuedAt: 1794300000, expiresAt: 1802076000 }] },
+          notes: 'Use it from a server Script to gate tools, doors or vehicles — e.g. only hand out a taser to players holding the Firearms certification, or show a callsign above their head.' }],
         ['GET', '/v1/game/blacklist/{robloxId}', 'game', 'Check a joining player against the blacklist', {
           response: { robloxId: '156', blacklisted: false, reason: null, expiresAt: null },
           notes: 'ActivityTracker calls this when a player joins and kicks them if `blacklisted` is true (turn off with `KickBlacklisted = false`).' }],

@@ -68,7 +68,8 @@ VIEWS.blacklist = async (el, _a, _b, reload) => {
 
 // ---------- auto-promotion ----------
 VIEWS.autopromote = async (el, _a, _b, reload) => {
-  const d = await api(G('/autopromote'));
+  const [d, rosterD] = await Promise.all([api(G('/autopromote')), api(G('/roster')).catch(() => ({ certTypes: [] }))]);
+  const certTypes = rosterD.certTypes;
   const edit = can('ranking');
   const s = d.settings;
   const rules = s.rules.map((r) => ({ ...r }));
@@ -102,14 +103,14 @@ VIEWS.autopromote = async (el, _a, _b, reload) => {
     ${d.rules.map((r) => {
       const ready = r.people.filter((p) => p.eligible && !(s.mode === 'recommend' && p.recommended));
       return `<div class="card"><div class="head"><h2 class="grow">${esc(r.fromName)} ${icon('arrowR', 'inl')} ${esc(r.toName)}</h2>
-        <span class="muted">${[r.minHours ? `${r.minHours}h` : '', r.minSessions ? `${r.minSessions} session${r.minSessions === 1 ? '' : 's'}` : ''].filter(Boolean).join(' + ')} ${r.days ? `in the last ${r.days} days` : 'all time'}${r.noWarnings ? ' · no active warnings' : ''}</span>
+        <span class="muted">${[r.minHours ? `${r.minHours}h` : '', r.minSessions ? `${r.minSessions} session${r.minSessions === 1 ? '' : 's'}` : ''].filter(Boolean).join(' + ')} ${r.days ? `in the last ${r.days} days` : 'all time'}${r.noWarnings ? ' · no active warnings' : ''}${r.certName ? ` · needs ${esc(r.certName)}` : ''}</span>
         <span class="badge ${ready.length ? 'good' : ''}">${ready.length} ready</span></div>
         <div class="tbl-wrap"><table><thead><tr><th>Member</th><th style="width:28%">Hours</th><th style="width:22%">Sessions</th><th>Status</th></tr></thead><tbody>
         ${r.people.length ? r.people.slice(0, 100).map((p) => `<tr class="click" data-member="${esc(p.robloxId)}">
           <td>${who(p.username, p.displayName && p.displayName !== p.username ? p.displayName : '')}</td>
           <td>${progress(p.hours, r.minHours, 'h')}</td>
           <td>${progress(p.sessions, r.minSessions, '')}</td>
-          <td>${p.blocked ? `<span class="badge bad">${esc(p.blocked)}</span>` : p.eligible ? (p.recommended && s.mode === 'recommend' ? '<span class="badge accent">Already recommended</span>' : '<span class="badge good">Ready</span>') : '<span class="badge">In progress</span>'}</td></tr>`).join('')
+          <td>${p.blocked ? `<span class="badge bad">${esc(p.blocked)}</span>` : p.needsCert && p.hours >= r.minHours && p.sessions >= r.minSessions ? `<span class="badge warn">${icon('award', 'sm')} Needs ${esc(p.needsCert)}</span>` : p.eligible ? (p.recommended && s.mode === 'recommend' ? '<span class="badge accent">Already recommended</span>' : '<span class="badge good">Ready</span>') : '<span class="badge">In progress</span>'}</td></tr>`).join('')
           : emptyRow(4, `Nobody is ranked ${esc(r.fromName)} yet.`, 'users')}
         </tbody></table></div></div>`;
     }).join('')}`;
@@ -129,6 +130,7 @@ VIEWS.autopromote = async (el, _a, _b, reload) => {
         <label class="field">Hours<input type="number" min="0" step="0.5" data-f="minHours" value="${r.minHours || ''}" placeholder="0" ${edit ? '' : 'disabled'}></label>
         <label class="field">Sessions<input type="number" min="0" data-f="minSessions" value="${r.minSessions || ''}" placeholder="0" ${edit ? '' : 'disabled'}></label>
         <label class="field">Counted over<select data-f="days" ${edit ? '' : 'disabled'}>${[[7, 'Last 7 days'], [14, 'Last 14 days'], [30, 'Last 30 days'], [60, 'Last 60 days'], [90, 'Last 90 days'], [0, 'All time']].map(([v, l]) => `<option value="${v}" ${v === r.days ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+        <label class="field">Requires<select data-f="certId" ${edit ? '' : 'disabled'}><option value="">No certification</option>${certTypes.map((c) => `<option value="${c.id}" ${c.id === r.certId ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>
         <label class="check"><input type="checkbox" data-f="noWarnings" ${r.noWarnings ? 'checked' : ''} ${edit ? '' : 'disabled'}> No active warnings</label>
         ${edit ? `<button class="btn ghost icon sm" data-rm aria-label="Remove rule" title="Remove rule">${icon('trash', 'sm')}</button>` : ''}
       </div>`).join('') : `<div class="empty">${icon('sparkle')}<div>No rules yet.${edit ? ' Add one — for example “Trainee to Staff after 10 hours and 3 sessions in 30 days”.' : ''}</div></div>`;

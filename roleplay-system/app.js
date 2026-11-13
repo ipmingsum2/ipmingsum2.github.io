@@ -19,6 +19,8 @@ const GROUP_NAV = () => [
   ['activity', 'Activity', 'chart'],
   ['requirements', 'Requirements', 'target'],
   ['timeoff', 'Time off', 'calendar'],
+  ['roster', 'Roster', 'idcard'],
+  ['reports', 'Reports', 'filetext'],
   ['logbook', 'Logbook', 'clipboard'],
   ['ranking', 'Ranking', 'rank', () => can('ranking')],
   ['promotions', 'Promotions', 'thumb'],
@@ -51,9 +53,9 @@ const OWNER_NAV = () => [
   ['account', 'My account', 'user'],
 ];
 // Pages that belong to a group (need S.gid to be a real group).
-const GROUP_PAGES = new Set(['overview', 'activity', 'member', 'requirements', 'timeoff', 'ranking', 'sessions', 'applications', 'submission', 'news', 'logbook', 'promotions', 'kb', 'blacklist', 'autopromote']);
+const GROUP_PAGES = new Set(['overview', 'activity', 'member', 'requirements', 'timeoff', 'ranking', 'sessions', 'applications', 'submission', 'news', 'logbook', 'promotions', 'kb', 'blacklist', 'autopromote', 'roster', 'reports', 'report']);
 // Pages highlighted under another sidebar entry.
-const NAV_PARENT = { member: 'activity', submission: 'applications' };
+const NAV_PARENT = { member: 'activity', submission: 'applications', report: 'reports' };
 // Deep links from outside (e.g. Discord's "Decide" button): #/go/<groupId>/<page…> switches group, then opens the page.
 const isDeepLink = (h) => /^#\/go\/[^/]+\/./.test(h || '');
 

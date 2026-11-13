@@ -179,6 +179,14 @@ VIEWS.member = async (el, rid, _b, reload) => {
       ${stat('Today', fmtDur(p.totals.today))}${stat('This week', fmtDur(p.totals.week))}${stat('All time', `${fmtHours(p.totals.allTime)}h`)}
       ${stat('Game sessions', p.totals.sessions)}${stat('Sessions attended', p.sessionsAttended.week, `${p.sessionsAttended.allTime} all time`)}${stat('Active warnings', p.activeWarnings, p.activeWarnings ? '<a href="#lb" data-jump>See logbook</a>' : 'clean record')}${stat('Messages', p.totals.messages)}
     </div>
+    <div class="card"><div class="head">${icon('idcard')}<h2 class="grow">Roster</h2>
+        ${can('manage_roster') ? `<button class="btn sm" id="rEdit">${icon('edit', 'sm')} Edit</button><button class="btn sm" id="rAward">${icon('award', 'sm')} Award certification</button>` : ''}</div>
+      <div class="body roster-box">
+        <div><span class="muted small">Callsign</span><div class="mono">${p.roster.callsign ? esc(p.roster.callsign) : '<span class="muted">None</span>'}</div></div>
+        <div><span class="muted small">Departments</span><div class="row wrap gap-s">${p.roster.departments.map((x) => chip(x.name, x.color)).join('') || '<span class="muted">None</span>'}</div></div>
+        <div class="grow"><span class="muted small">Certifications</span><div class="row wrap gap-s">${p.roster.certifications.filter((x) => x.active).map((x) => certChip(x)).join('') || '<span class="muted">None</span>'}</div>
+          ${p.roster.certifications.some((x) => !x.active) ? `<details class="small" style="margin-top:6px"><summary class="muted">History</summary><ul class="votes">${p.roster.certifications.filter((x) => !x.active).map((x) => `<li><b>${esc(x.name)}</b> <span class="dim">${x.revokedAt ? `revoked ${fmtDate(x.revokedAt)}` : `expired ${fmtDate(x.expiresAt)}`}</span></li>`).join('')}</ul></details>` : ''}</div>
+      </div></div>
     ${chartCard('Hours played')}
     <div class="card" id="lb"><div class="head">${icon('clipboard')}<h2 class="grow">Logbook</h2>${p.activeWarnings ? `<span class="badge warn">${p.activeWarnings} active warning${p.activeWarnings === 1 ? '' : 's'}</span>` : '<span class="badge good">No active warnings</span>'}</div>
       ${logbookTable(p.logbook, false)}</div>
@@ -201,6 +209,11 @@ VIEWS.member = async (el, rid, _b, reload) => {
   mountChart(el, p.series);
   $$('[data-rank]', el).forEach((b) => b.onclick = () => rankModal(m.username, b.dataset.rank, reload));
   $('#recBtn', el).onclick = () => recommendModal(m.username, reload);
+  if ($('#rEdit', el)) {
+    const rosterInfo = () => api(G('/roster'));
+    $('#rEdit', el).onclick = (e) => run(e.currentTarget, async () => { const d = await rosterInfo(); rosterEditModal({ robloxId: m.robloxId, username: m.username, callsign: p.roster.callsign, departments: p.roster.departments.map((x) => x.id) }, d.departments, reload); });
+    $('#rAward', el).onclick = (e) => run(e.currentTarget, async () => { const d = await rosterInfo(); awardModal(d.certTypes, m.username, reload); });
+  }
   if ($('#lbBtn', el)) $('#lbBtn', el).onclick = () => logbookModal(m.username, reload);
   bindLogbookRevoke(el, reload);
   el.addEventListener('click', (e) => { if (e.target.closest('[data-jump]')) { e.preventDefault(); $('#lb', el).scrollIntoView({ behavior: 'smooth', block: 'start' }); } });
