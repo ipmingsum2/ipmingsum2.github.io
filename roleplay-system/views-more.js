@@ -83,7 +83,9 @@ async function registerModal(ev, done) {
         : '<span class="muted">Link your Roblox account on <a href="#/account">My account</a> to claim sessions.</span>'}</div>` : ''}
       ${can('manage_activity') ? `<div class="card"><div class="body stack gap-s"><b class="small">Add to register</b>
         <div class="row wrap"><select id="role" style="width:auto"><option value="attendee">Attended</option><option value="cohost">Co-host</option><option value="host">Host</option></select>
-        <input id="names" class="grow" placeholder="Usernames — paste several separated by spaces or commas"><button class="btn primary" id="addp">Add</button></div></div></div>` : ''}`;
+        <input id="names" class="grow" placeholder="Usernames — paste several separated by spaces or commas"><button class="btn primary" id="addp">Add</button></div></div></div>` : ''}
+      ${can('manage_roster') && people.length ? `<div class="row wrap"><span class="dim grow">Training session? Give everyone on this register a certification.</span><button class="btn sm" id="awardAll">${icon('award', 'sm')} Award certification to all ${people.length}</button></div>` : ''}`;
+    if ($('#awardAll', m)) $('#awardAll', m).onclick = (e) => run(e.currentTarget, async () => { const d = await api(G('/roster')); awardModal(d.certTypes, people.map((p) => p.username || p.roblox_id).join(' '), () => draw(m)); });
     $$('[data-rm]', m).forEach((b) => b.onclick = () => run(b, async () => { await api(`/api/events/${ev.id}/people/${b.dataset.rm}`, { method: 'DELETE' }); draw(m); }));
     $$('[data-claim]', m).forEach((b) => b.onclick = () => run(b, async () => { await api(`/api/events/${ev.id}/claim`, { body: { role: b.dataset.claim } }); toast('Claimed', 'good'); draw(m); }));
     if ($('[data-unclaim]', m)) $('[data-unclaim]', m).onclick = (e) => run(e.currentTarget, async () => { await api(`/api/events/${ev.id}/claim`, { method: 'DELETE' }); draw(m); });

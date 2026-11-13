@@ -3,6 +3,7 @@ import { bad, json, now, parseJSON, str, int, readBody, addDays, dayStr, cleanWe
 import { resolveUser, changeRank } from './roblox.js';
 import { can } from './auth.js';
 import { sessionCounts } from './features.js';
+import { holders } from './roster.js';
 
 // =====================================================================
 // Blacklist
@@ -83,7 +84,7 @@ export function cleanAutoPromote(a = {}, prev = {}) {
     const minHours = Math.max(0, Math.min(10000, Math.round(Number(r.minHours) * 10) / 10 || 0));
     const minSessions = int(r.minSessions, 0, 1000);
     if (!minHours && !minSessions) bad(`Rule ${i + 1}: set a minimum number of hours or sessions`);
-    return { fromRank, toRank, minHours, minSessions, days: int(r.days, 0, 365), noWarnings: !!r.noWarnings };
+    return { fromRank, toRank, minHours, minSessions, days: int(r.days, 0, 365), noWarnings: !!r.noWarnings, certId: int(r.certId, 0, 1e9) || null };
   });
   const from = rules.map((r) => r.fromRank);
   if (new Set(from).size !== from.length) bad('Each rank can only have one rule');
@@ -125,14 +126,18 @@ export async function evaluate(env, group, settings = parseJSON(group.settings, 
       sessionCounts(env, gid, from, today),
     ]);
     const played = new Map(secs.results.map((r) => [r.roblox_id, Math.max(0, r.s - (countIdle ? 0 : r.i))]));
+    // Optional: the rule also requires an active certification.
+    const certSet = rule.certId ? await holders(env, gid, rule.certId) : null;
+    const certName = rule.certId ? (await DB.prepare('SELECT name FROM cert_types WHERE id=?').bind(rule.certId).first())?.name || 'a certification' : null;
     const people = mem.results.filter((m) => m.rank === rule.fromRank).map((m) => {
       const hours = Math.round(((played.get(m.roblox_id) || 0) / 3600) * 10) / 10;
       const n = sessions.get(m.roblox_id) || 0, w = warnings.get(m.roblox_id) || 0;
       const blocked = banned.has(m.roblox_id) ? 'Blacklisted' : rule.noWarnings && w ? `${w} active warning${w === 1 ? '' : 's'}` : null;
       return { robloxId: m.roblox_id, username: m.username || `User ${m.roblox_id}`, displayName: m.display_name || '', hours, sessions: n, warnings: w,
-        eligible: !blocked && hours >= rule.minHours && n >= rule.minSessions, blocked, recommended: openRec.has(m.roblox_id) };
+        eligible: !blocked && hours >= rule.minHours && n >= rule.minSessions && (!certSet || certSet.has(m.roblox_id)), blocked,
+        needsCert: certSet && !certSet.has(m.roblox_id) ? certName : null, recommended: openRec.has(m.roblox_id) };
     }).sort((a, b) => (b.eligible - a.eligible) || (b.hours - a.hours));
-    out.push({ ...rule, fromName: roleName(rule.fromRank), toName: roleName(rule.toRank), people });
+    out.push({ ...rule, fromName: roleName(rule.fromRank), toName: roleName(rule.toRank), certName, people });
   }
   return out;
 }

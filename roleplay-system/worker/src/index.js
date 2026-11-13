@@ -13,6 +13,8 @@ import * as feat from './features.js';
 import * as more from './more.js';
 import * as access from './access.js';
 import * as extras from './extras.js';
+import * as rosterMod from './roster.js';
+import * as reports from './reports.js';
 
 const routes = [];
 /**
@@ -133,7 +135,7 @@ async function deleteGroup(c) {
   const { DB } = c.env;
   const id = c.group.id;
   await DB.batch([
-    ...['members', 'play_sessions', 'activity_daily', 'time_off', 'requirement_runs', 'requirement_results', 'applications', 'submissions', 'events', 'notes', 'logbook', 'event_people', 'recommendations', 'kb_docs', 'posts', 'blacklist']
+    ...['members', 'play_sessions', 'activity_daily', 'time_off', 'requirement_runs', 'requirement_results', 'applications', 'submissions', 'events', 'notes', 'logbook', 'event_people', 'recommendations', 'kb_docs', 'posts', 'blacklist', 'departments', 'member_departments', 'roster', 'cert_types', 'certifications', 'report_types', 'reports']
       .map((t) => DB.prepare(`DELETE FROM ${t} WHERE group_id=?`).bind(id)),
     DB.prepare('DELETE FROM rec_votes WHERE rec_id NOT IN (SELECT id FROM recommendations)'),
     DB.prepare('UPDATE api_keys SET revoked=1 WHERE group_id=?').bind(id),
@@ -308,6 +310,29 @@ R('POST', '/api/groups/:gid/timeoff', (c) => act.createTimeOff(c, true), { perm:
 R('PATCH', '/api/timeoff/:id', act.reviewTimeOff, { perm: A });
 R('DELETE', '/api/timeoff/:id', act.deleteTimeOff, { perm: A });
 
+// --- roster: departments, callsigns, certifications ---
+const ROSTER = 'manage_roster', REPORTS = 'manage_reports';
+R('GET', '/api/groups/:gid/roster', rosterMod.roster);
+R('POST', '/api/groups/:gid/departments', rosterMod.deptCreate, { perm: ROSTER });
+R('PATCH', '/api/departments/:id', rosterMod.deptUpdate, { perm: ROSTER });
+R('DELETE', '/api/departments/:id', rosterMod.deptDelete, { perm: ROSTER });
+R('PUT', '/api/groups/:gid/members/:rid/roster', rosterMod.memberRosterSave, { perm: ROSTER });
+R('POST', '/api/groups/:gid/cert-types', rosterMod.certTypeCreate, { perm: ROSTER });
+R('PATCH', '/api/cert-types/:id', rosterMod.certTypeUpdate, { perm: ROSTER });
+R('DELETE', '/api/cert-types/:id', rosterMod.certTypeDelete, { perm: ROSTER });
+R('POST', '/api/groups/:gid/certifications', rosterMod.certAward, { perm: ROSTER });
+R('POST', '/api/certifications/:id/revoke', rosterMod.certRevoke, { perm: ROSTER });
+
+// --- reports ---
+R('GET', '/api/groups/:gid/report-types', reports.typesList);
+R('POST', '/api/groups/:gid/report-types', reports.typeCreate, { perm: REPORTS });
+R('PATCH', '/api/report-types/:id', reports.typeUpdate, { perm: REPORTS });
+R('DELETE', '/api/report-types/:id', reports.typeDelete, { perm: REPORTS });
+R('GET', '/api/groups/:gid/reports', reports.list);
+R('POST', '/api/groups/:gid/reports', reports.create);
+R('GET', '/api/reports/:id', reports.get);
+R('PATCH', '/api/reports/:id', reports.review);
+
 // --- heatmap, weekly leaderboard ---
 R('GET', '/api/groups/:gid/heatmap', extras.heatmap);
 R('GET', '/api/groups/:gid/leaderboard/week', extras.leaderboardPreview);
@@ -397,6 +422,8 @@ R('GET', '/v1/groups/:gid/timeoff', act.listTimeOff, { scope: 'read' });
 R('GET', '/v1/groups/:gid/logbook', feat.logbookList, { scope: 'read' });
 R('GET', '/v1/groups/:gid/news', feat.newsList, { scope: 'read' });
 R('GET', '/v1/groups/:gid/heatmap', extras.heatmap, { scope: 'read' });
+R('GET', '/v1/groups/:gid/roster', rosterMod.roster, { scope: 'read' });
+R('GET', '/v1/groups/:gid/members/:rid/roster', rosterMod.memberInfoApi, { scope: 'read' });
 R('GET', '/v1/groups/:gid/leaderboard/week', extras.leaderboardPreview, { scope: 'read' });
 R('GET', '/v1/groups/:gid/blacklist', more.blacklistPublic, { scope: 'read' });
 R('GET', '/v1/groups/:gid/blacklist/:rid', more.blacklistCheck, { scope: 'read' });
@@ -410,6 +437,7 @@ R('GET', '/v1/game/config', act.gameConfig, { scope: 'game', keyGroup: true });
 R('POST', '/v1/game/heartbeat', act.heartbeat, { scope: 'game', keyGroup: true });
 R('POST', '/v1/game/session-end', act.sessionEnd, { scope: 'game', keyGroup: true });
 R('GET', '/v1/game/blacklist/:rid', more.blacklistCheck, { scope: 'game', keyGroup: true });
+R('GET', '/v1/game/member/:rid', rosterMod.memberInfoApi, { scope: 'game', keyGroup: true });
 R('GET', '/v1/game/applications', apps.gameList, { scope: 'game', keyGroup: true });
 R('POST', '/v1/game/applications/:id/submit', apps.gameSubmit, { scope: 'game', keyGroup: true });
 // Verification is system-wide: only keys with the "verify" scope (the owner's verification game) may link accounts.

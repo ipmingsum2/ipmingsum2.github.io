@@ -28,6 +28,8 @@ A whitelist-only management system for Roblox roleplay groups: activity tracking
 | Promotions | Nominate members for promotion, upvote with a required justification, filter by rank, sort by votes or trending, recommender insights; rankers promote straight from a recommendation |
 | Knowledgebase & news | Handbooks, guides and policies by category; group news with pinning and optional Discord announcement. Every post and handbook is also published on the public pages **/posts/** and **/handbooks/**, and each one is readable by anyone (public), by signed-in staff, or only by people with one permission. Restricted items ask the reader to sign in and bring them straight back afterwards |
 | Blacklist | Ban players with a reason, optional evidence link and expiry; the ActivityTracker module kicks them on join (and within a minute if they're added mid-game); blacklisted players can't apply; entries are removed, never deleted; API lookup |
+| Roster | Departments (divisions, units or teams, each with a colour and head), callsigns / badge numbers, and certifications that can expire — awarded by hand, as a pasted list, or to everyone on a session register. One page shows everyone by department; auto-promotion rules can require a certification; games and bots can look it all up through the API |
+| Reports | Report types you design with the form builder (arrest and incident reports, patient care reports, flight logs, guest complaints — templates included), each about a member or not, with who may file and who reviews; reports are reviewed and closed with a note, and can be posted to their own Discord channel with every answer |
 | Auto-promotion | One rule per rank: hours and/or sessions over the last N days (or all time), optionally no active warnings. Runs daily at a chosen hour or on demand; either promotes through Open Cloud or creates recommendations to approve; progress bars for everyone in each rank; Discord summary |
 | Exports | CSV download of activity (for the selected range and search), logs (current filters, up to 5,000 rows) and the blacklist |
 | Extras | This-week leaderboard (minutes and sessions), member notes, application notifications in Discord with every answer and a Decide button, public API with scoped keys, API docs page, light/dark theme with a soft fade |
@@ -135,7 +137,7 @@ Generated files embed an API key. Do not share them or make the places copyable;
 
 Everyone on the whitelist can view activity, requirements, time off and sessions. The owner grants the rest per user:
 
-`manage_activity` · `ranking` (also auto-promotion) · `manage_groups` · `manage_applications` · `review_applications` · `view_logs` · `manage_api_keys` · `manage_discipline` (logbook, blacklist) · `manage_content` (news, knowledgebase)
+`manage_activity` · `ranking` (also auto-promotion) · `manage_groups` · `manage_applications` · `review_applications` · `view_logs` · `manage_api_keys` · `manage_discipline` (logbook, blacklist) · `manage_content` (news, knowledgebase) · `manage_roster` (departments, callsigns, certifications) · `manage_reports` (report types, review every report)
 
 Only the owner can edit the whitelist.
 

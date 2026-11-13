@@ -3,6 +3,9 @@
 
 // Every icon is an inline SVG (24x24, stroked).
 const ICONS = {
+  idcard: '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2.2"/><path d="M5.8 16c.6-1.6 1.8-2.4 3.2-2.4s2.6.8 3.2 2.4M14 10h4M14 13.5h3"/>',
+  award: '<circle cx="12" cy="9" r="5.5"/><path d="M8.7 13.4 7.2 21l4.8-2.6 4.8 2.6-1.5-7.6"/>',
+  filetext: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',
   lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
   globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/>',
   arrowR: '<path d="M5 12h14M13 6l6 6-6 6"/>',
@@ -283,7 +286,7 @@ const plainText = (s) => String(s || '').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
 
 // ---------- who can read posts and handbooks ----------
 // 'public' = anyone (no sign-in) · '' = signed-in staff · a permission key = people with it (content editors always can).
-const VIS_LABELS = { public: 'Anyone (public page)', '': 'Signed-in staff', manage_activity: 'Activity managers', ranking: 'Rankers', manage_groups: 'Group managers', manage_applications: 'Application managers', review_applications: 'Application reviewers', view_logs: 'Log viewers', manage_api_keys: 'API key managers', manage_discipline: 'Discipline managers', manage_content: 'Content editors' };
+const VIS_LABELS = { public: 'Anyone (public page)', '': 'Signed-in staff', manage_activity: 'Activity managers', ranking: 'Rankers', manage_groups: 'Group managers', manage_applications: 'Application managers', review_applications: 'Application reviewers', view_logs: 'Log viewers', manage_api_keys: 'API key managers', manage_discipline: 'Discipline managers', manage_content: 'Content editors', manage_roster: 'Roster managers', manage_reports: 'Report managers' };
 const visOptions = (cur = '') => Object.entries(VIS_LABELS).map(([k, l]) => `<option value="${k}" ${k === cur ? 'selected' : ''}>${l}</option>`).join('');
 const visBadge = (v) => (v === 'public' ? `<span class="badge good">${icon('globe', 'sm')} Public</span>` : `<span class="badge">${icon('lock', 'sm')} ${esc(v ? VIS_LABELS[v] || v : 'Staff only')}</span>`);
 

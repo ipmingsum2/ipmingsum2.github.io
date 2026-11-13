@@ -7,7 +7,7 @@ const HAS_OPTS = ['choice', 'checkboxes', 'dropdown'];
 const GRADABLE = ['short', 'choice', 'checkboxes', 'dropdown', 'yesno', 'number'];
 const applyUrl = (id) => new URL(`apply.html?id=${id}`, location.href).href;
 const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-const PERM_LABELS = { manage_activity: 'Manage activity, requirements, time off, notes, sessions and registers', ranking: 'Promote / demote / set ranks, approve promotion recommendations, auto-promotion', manage_groups: 'Add and configure groups', manage_applications: 'Create and edit applications', review_applications: 'Accept / deny submissions', view_logs: 'View logs', manage_api_keys: 'Create and revoke API keys', manage_discipline: 'Logbook entries and the blacklist', manage_content: 'Post news and edit the knowledgebase' };
+const PERM_LABELS = { manage_activity: 'Manage activity, requirements, time off, notes, sessions and registers', ranking: 'Promote / demote / set ranks, approve promotion recommendations, auto-promotion', manage_groups: 'Add and configure groups', manage_applications: 'Create and edit applications', review_applications: 'Accept / deny submissions', view_logs: 'View logs', manage_api_keys: 'Create and revoke API keys', manage_discipline: 'Logbook entries and the blacklist', manage_content: 'Post news and edit the knowledgebase', manage_roster: 'Departments, callsigns and certifications', manage_reports: 'Design report types and review every report' };
 
 /** Creates a group-bound API key with the "game" scope (used by generated place files and loader snippets). */
 async function createGameKey(label, gid = S.gid) {

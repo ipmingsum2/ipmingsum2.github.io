@@ -2,7 +2,7 @@
 import { HttpError, bad, json, redirect, now, parseJSON, str, readBody, randHex, randCode, sha256, signToken, verifyToken, logEvent } from './util.js';
 import { loadForm, accessToken } from './access.js';
 
-export const PERMISSIONS = ['manage_activity', 'ranking', 'manage_groups', 'manage_applications', 'review_applications', 'view_logs', 'manage_api_keys', 'manage_discipline', 'manage_content'];
+export const PERMISSIONS = ['manage_activity', 'ranking', 'manage_groups', 'manage_applications', 'review_applications', 'view_logs', 'manage_api_keys', 'manage_discipline', 'manage_content', 'manage_roster', 'manage_reports'];
 export const SCOPES = ['read', 'ranking', 'timeoff', 'game', 'verify'];
 const SESSION_TTL = 30 * 86400;
 
