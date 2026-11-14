@@ -5,6 +5,33 @@ Based on Prometheus by Elias Oelschner, https://github.com/prometheus-lua/Promet
 Versioning starts at v1.5.7. Very major changes bump major, normal changes bump
 minor, and small changes bump patch; lower numbers reset after major/minor bumps.
 
+## [1.14.1] — 2026-11-14
+
+### Changed
+
+- Cloud Store (Beta) loaders are now virtualized. The previous release obfuscated
+  the pasted loader but did not run it through a VM, so the embedded interpreter's
+  control flow was still recoverable. The loader — the environment check, the fetch
+  and the interpreter that runs the fetched code — is now put through a VM-bearing
+  obfuscation pass, so its logic executes inside a virtual machine instead of as
+  readable code. What the loader does is unchanged, and as before this raises the
+  cost of inspection but is **not** confidentiality: the authoritative license must
+  stay on your server.
+- **Confidential** — withheld to avoid aiding deobfuscation.
+
+## [1.14.0] — 2026-11-12
+
+### Changed
+
+- Cloud Store (Beta) loaders are now obfuscated. The loader you paste into your
+  Roblox place previously shipped the store endpoint, the environment-attestation
+  proof and the fetch flow in plain text; the loader is now run through the Studio
+  obfuscation pass before it is shown, so those details are no longer readable in
+  the pasted code. What the loader does is unchanged. As before, this raises the
+  cost of inspection and casual copying; it is **not** confidentiality, so the
+  authoritative license must stay on your server.
+- **Confidential** — withheld to avoid aiding deobfuscation.
+
 ## [1.13.2] — 2026-11-06
 
 ### Fixed
