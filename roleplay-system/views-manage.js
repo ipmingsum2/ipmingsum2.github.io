@@ -376,13 +376,13 @@ VIEWS.api = async (el, _a, _b, reload) => {
     <div class="card"><div class="tbl-wrap"><table><thead><tr><th>Name</th><th>Key</th><th>Group</th><th>Scopes</th><th>Last used</th><th></th></tr></thead><tbody>
     ${keys.length ? keys.map((k) => `<tr><td><b>${esc(k.name)}</b><br><span class="muted">by ${esc(k.created_by || '?')} · ${fmtDate(k.created_at)}</span></td><td class="mono">${esc(k.prefix)}…</td>
       <td>${k.group_id ? esc(S.groups.find((g) => g.id === k.group_id)?.name || k.group_id) : '<span class="muted">All groups</span>'}</td><td>${k.scopes.map((s) => `<span class="badge">${s}</span>`).join(' ')}</td>
-      <td class="muted">${k.last_used ? ago(k.last_used) : 'Never'}</td><td class="r"><button class="btn sm danger" data-rev="${k.id}">Revoke</button></td></tr>`).join('') : emptyRow(6, 'No API keys yet.', 'key')}
+      <td class="muted">${k.last_used ? ago(k.last_used) : 'Never'}</td><td class="r">${k.scopes.includes('verify') && !isOwner() ? '<span class="muted small">Owner only</span>' : `<button class="btn sm danger" data-rev="${k.id}">Revoke</button>`}</td></tr>`).join('') : emptyRow(6, 'No API keys yet.', 'key')}
     </tbody></table></div></div>`;
   $('#cp', el).onclick = () => copyText(`${ROBLOX_API_URL}/v1`);
   $('#add', el).onclick = () => modal({ title: 'New API key', body: `
       <label class="field">Name<input id="n" placeholder="e.g. Discord bot"></label>
       <label class="field">Group<select id="g"><option value="">All groups</option>${S.groups.map((g) => `<option value="${g.id}" ${g.id === S.gid ? 'selected' : ''}>${esc(g.name)}</option>`).join('')}</select></label>
-      <div class="stack gap-s"><b style="font-size:13px">Scopes</b>${S.scopes.map((s) => `<label class="check"><input type="checkbox" data-s="${s}" ${s === 'read' ? 'checked' : ''}> <code>${s}</code> <span class="dim">${SC[s] || ''}</span></label>`).join('')}</div>`,
+      <div class="stack gap-s"><b style="font-size:13px">Scopes</b>${S.scopes.filter((s) => s !== 'verify' || isOwner()).map((s) => `<label class="check"><input type="checkbox" data-s="${s}" ${s === 'read' ? 'checked' : ''}> <code>${s}</code> <span class="dim">${SC[s] || ''}</span></label>`).join('')}</div>`,
     actions: [{ label: 'Create key', kind: 'primary', onClick: async (close, m) => {
       const r = await api('/api/keys', { body: { name: val(m, '#n'), groupId: val(m, '#g'), scopes: $$('[data-s]:checked', m).map((i) => i.dataset.s) } });
       close();
