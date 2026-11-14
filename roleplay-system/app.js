@@ -31,6 +31,7 @@ const GROUP_NAV = () => [
   ['applications', 'Applications', 'file', () => can('manage_applications') || can('review_applications')],
   ['blacklist', 'Blacklist', 'ban'],
   ['kb', 'Knowledgebase', 'book'],
+  ['downloads', 'Downloads', 'download'],
   ['logs', 'Logs', 'list', () => can('view_logs')],
   ...(isOwner() ? [] : [
     ['System', null, null, () => can('manage_groups') || can('manage_api_keys')],
@@ -49,6 +50,7 @@ const OWNER_NAV = () => [
   ['requests', 'Access requests', 'inbox'],
   ['api', 'API keys', 'key'],
   ['verification', 'Verification game', 'roblox'],
+  ['downloads', 'Downloads', 'download'],
   ['links', 'Linked accounts', 'link'],
   ['logs', 'All logs', 'list'],
   ['Account'],
@@ -266,8 +268,15 @@ function shell() {
 }
 
 // ---------- quick search (Ctrl+K) ----------
-const memberCache = new Map(); // gid -> members (fetched once per page load)
-async function paletteItems() {
+// Pages, groups and actions are matched here; everything inside the pages (members, logbook, reports, handbooks…)
+// comes from /api/search, which only returns what the signed-in user may see.
+const SEARCH_TYPES = {
+  member: ['Members', 'user'], note: ['Member notes', 'edit'], logbook: ['Logbook', 'clipboard'], report: ['Reports', 'filetext'],
+  handbook: ['Knowledgebase', 'book'], news: ['News', 'megaphone'], session: ['Sessions', 'clock'], roster: ['Roster', 'idcard'],
+  promotion: ['Promotions', 'thumb'], timeoff: ['Time off', 'calendar'], blacklist: ['Blacklist', 'ban'], moderation: ['Moderation', 'gavel'],
+  application: ['Applications', 'file'], submission: ['Submissions', 'file'], log: ['Logs', 'list'], user: ['Whitelist', 'shield'], access: ['Access requests', 'inbox'],
+};
+function paletteItems() {
   const items = [];
   const nav = (list, ctxLabel, ctxId) => list.filter(([, label, , show]) => label && (!show || show())).forEach(([path, label, ic]) =>
     items.push({ label, hint: ctxLabel, ic, go: () => (ctxId === S.gid ? (location.hash = `#/${path}`) : enter(ctxId, `#/${path}`)) }));
@@ -276,33 +285,63 @@ async function paletteItems() {
   S.groups.filter((g) => g.id !== S.gid).forEach((g) => items.push({ label: g.name, hint: 'Switch group', ic: 'users', go: () => enter(g.id) }));
   items.push({ label: 'Toggle light / dark theme', hint: 'Action', ic: 'moon', go: () => setTheme(currentTheme() === 'dark' ? 'light' : 'dark') });
   items.push({ label: 'Sign out', hint: 'Action', ic: 'logout', go: logout });
-  if (group()) {
-    if (!memberCache.has(S.gid)) memberCache.set(S.gid, api(G('/members')).then((d) => d.members).catch(() => []));
-    (await memberCache.get(S.gid)).forEach((m) => items.push({ label: m.username, sub: m.displayName && m.displayName !== m.username ? m.displayName : '', hint: m.roleName || 'Member', ic: 'user', member: true, go: () => { location.hash = `#/member/${m.robloxId}`; } }));
-  }
   return items;
+}
+// Escapes text and wraps every query word in <mark>.
+function highlight(text, words) {
+  const s = String(text ?? '');
+  if (!words.length) return esc(s);
+  const re = new RegExp(`(${words.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
+  return s.split(re).map((part, i) => (i % 2 ? `<mark>${esc(part)}</mark>` : esc(part))).join('');
 }
 async function palette() {
   if ($('.palette')) return;
   const ov = document.createElement('div');
   ov.className = 'overlay palette-ov';
   ov.innerHTML = `<div class="palette" role="dialog" aria-modal="true" aria-label="Search">
-      <div class="pal-in">${icon('search')}<input id="palQ" placeholder="Search pages, groups and members…" autocomplete="off" spellcheck="false" aria-label="Search" role="combobox" aria-expanded="true" aria-controls="palList"><kbd>Esc</kbd></div>
-      <div class="pal-list" id="palList" role="listbox"><div class="empty">Loading…</div></div>
-      <div class="pal-foot muted small"><span><kbd>${icon('up', 'inl')}</kbd><kbd>${icon('down', 'inl')}</kbd> move</span><span><kbd>Enter</kbd> open</span><span><kbd>Ctrl</kbd><kbd>K</kbd> anytime</span></div></div>`;
+      <div class="pal-in">${icon('search')}<input id="palQ" placeholder="Search everything — members, logbook, reports, handbooks, pages…" autocomplete="off" spellcheck="false" aria-label="Search" role="combobox" aria-expanded="true" aria-controls="palList"><kbd>Esc</kbd></div>
+      <div class="pal-list" id="palList" role="listbox"></div>
+      <div class="pal-foot muted small"><span><kbd>${icon('up', 'inl')}</kbd><kbd>${icon('down', 'inl')}</kbd> move</span><span><kbd>Enter</kbd> open</span><span class="grow" id="palStatus"></span><span><kbd>Ctrl</kbd><kbd>K</kbd> anytime</span></div></div>`;
   document.body.append(ov);
-  const input = $('#palQ', ov), list = $('#palList', ov);
+  const input = $('#palQ', ov), list = $('#palList', ov), status = $('#palStatus', ov);
   const close = () => { ov.remove(); document.removeEventListener('keydown', onKey, true); };
-  let items = [], shown = [], sel = 0;
+  const items = paletteItems();
+  let shown = [], sel = 0, remote = [], remoteFor = '', loading = false, seq = 0, timer;
+  const words = () => input.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+
   const draw = () => {
-    const words = input.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
-    const hit = (it) => { const s = `${it.label} ${it.sub || ''} ${it.hint || ''}`.toLowerCase(); return words.every((w) => s.includes(w)); };
-    // With no query: pages and actions only; members appear once you type.
-    shown = (words.length ? items.filter(hit) : items.filter((it) => !it.member)).slice(0, 40);
+    const w = words();
+    const hit = (it) => { const s = `${it.label} ${it.hint || ''}`.toLowerCase(); return w.every((x) => s.includes(x)); };
+    const local = (w.length ? items.filter(hit) : items).slice(0, w.length ? 8 : 40);
+    const sections = [];
+    if (local.length) sections.push([w.length ? 'Pages & actions' : '', local]);
+    if (w.length && remoteFor === input.value.trim()) {
+      const byType = new Map();
+      for (const r of remote) { if (!byType.has(r.type)) byType.set(r.type, []); byType.get(r.type).push(r); }
+      for (const [type, rows] of byType) {
+        const [label, ic] = SEARCH_TYPES[type] || [type, 'search'];
+        sections.push([label, rows.map((r) => ({ label: r.title, sub: r.sub, hint: r.at ? ago(r.at) : '', ic, remote: true, go: () => { location.hash = r.href; } }))]);
+      }
+    }
+    shown = sections.flatMap(([, rows]) => rows);
     sel = Math.min(sel, Math.max(0, shown.length - 1));
-    list.innerHTML = shown.length ? shown.map((it, i) => `<button type="button" class="pal-item ${i === sel ? 'on' : ''}" role="option" aria-selected="${i === sel}" data-i="${i}">${icon(it.ic || 'search')}<span class="grow"><b>${esc(it.label)}</b>${it.sub ? ` <span class="muted">${esc(it.sub)}</span>` : ''}</span><span class="muted small">${esc(it.hint || '')}</span></button>`).join('')
-      : `<div class="empty">${icon('search')}<div>Nothing matches “${esc(input.value)}”.</div></div>`;
+    let i = 0;
+    const html = sections.map(([title, rows]) => `${title ? `<div class="pal-sec">${esc(title)}</div>` : ''}${rows.map((it) => {
+      const n = i++;
+      return `<button type="button" class="pal-item ${n === sel ? 'on' : ''}" role="option" aria-selected="${n === sel}" data-i="${n}">${icon(it.ic || 'search')}<span class="grow pal-text"><b>${highlight(it.label, w)}</b>${it.sub ? `<span class="pal-sub">${highlight(it.sub, w)}</span>` : ''}</span><span class="muted small">${esc(it.hint || '')}</span></button>`;
+    }).join('')}`).join('');
+    list.innerHTML = html || (loading ? `<div class="empty">${icon('search')}<div>Searching…</div></div>` : `<div class="empty">${icon('search')}<div>Nothing matches “${esc(input.value)}”.</div></div>`);
+    status.textContent = loading ? 'Searching…' : w.length && remoteFor === input.value.trim() ? `${remote.length} result${remote.length === 1 ? '' : 's'} in ${S.gid && !inOwnerMenu() ? group()?.name || 'this group' : 'the Owner Menu'}` : '';
     list.querySelector('.on')?.scrollIntoView({ block: 'nearest' });
+  };
+  const fetchRemote = () => {
+    const q = input.value.trim();
+    if (q.length < 2) { remote = []; remoteFor = q; loading = false; draw(); return; }
+    const mine = ++seq; loading = true; draw();
+    const gid = group() ? S.gid : '';
+    api(`/api/search?${new URLSearchParams({ q, gid })}`).then((d) => { if (mine !== seq) return; remote = d.results; remoteFor = q; })
+      .catch(() => { if (mine === seq) { remote = []; remoteFor = q; } })
+      .finally(() => { if (mine === seq) { loading = false; if (ov.isConnected) draw(); } });
   };
   const pick = (i) => { const it = shown[i]; if (!it) return; close(); it.go(); };
   const onKey = (e) => {
@@ -313,11 +352,10 @@ async function palette() {
   document.addEventListener('keydown', onKey, true);
   ov.addEventListener('mousedown', (e) => { if (e.target === ov) close(); });
   list.onclick = (e) => { const b = e.target.closest('[data-i]'); if (b) pick(+b.dataset.i); };
-  list.onmousemove = (e) => { const b = e.target.closest('[data-i]'); if (b && +b.dataset.i !== sel) { sel = +b.dataset.i; $$('.pal-item', list).forEach((x, i) => { x.classList.toggle('on', i === sel); x.setAttribute('aria-selected', i === sel); }); } };
-  input.oninput = () => { sel = 0; draw(); };
+  list.onmousemove = (e) => { const b = e.target.closest('[data-i]'); if (b && +b.dataset.i !== sel) { sel = +b.dataset.i; $$('.pal-item', list).forEach((x) => { const on = +x.dataset.i === sel; x.classList.toggle('on', on); x.setAttribute('aria-selected', on); }); } };
+  input.oninput = () => { sel = 0; draw(); clearTimeout(timer); timer = setTimeout(fetchRemote, 180); };
   input.focus();
-  items = await paletteItems();
-  if (ov.isConnected) draw();
+  draw();
 }
 // Ctrl/Cmd+K anywhere, or "/" when not typing in a field.
 addEventListener('keydown', (e) => {

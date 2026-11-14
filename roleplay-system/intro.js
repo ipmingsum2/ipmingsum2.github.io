@@ -1,6 +1,8 @@
 // Intro / feature tour: theme-aware screenshots, scroll-driven animation, sidebar with sign-in.
 'use strict';
-(() => {
+window.S = window.S || ((_, fallback = '') => fallback); // when strings.js is not on the page
+// Waits for Strings.json (strings.js) so generated text, the sidebar labels and the animated words use the latest text.
+(window.STRINGS_READY || Promise.resolve()).then(() => {
   const SITE = 'ipmingsum2.github.io/roleplay-system/';
   const reduce = matchMedia('(prefers-reduced-motion: reduce)');
   const signedIn = !!store.get('rp_token');
@@ -104,12 +106,14 @@
   // ---------- sign-in (sidebar + final section) ----------
   const google = `${API_URL}/auth/google/start`, discord = `${API_URL}/auth/discord/start`;
   if (signedIn) {
-    $('#signinBody').innerHTML = `<a class="btn primary big" href="app.html">${icon('home')} Open dashboard</a>`;
-    $('#miniSignin').innerHTML = `<a class="btn primary" href="app.html">${icon('home')} Open dashboard</a>`;
-    $$('[data-signin-label]').forEach((a) => { a.textContent = 'Open dashboard'; a.href = 'app.html'; });
+    const open = S('tour.signin.openDashboard', 'Open dashboard');
+    $('#signinBody').innerHTML = `<a class="btn primary big" href="app.html">${icon('home')} ${esc(open)}</a>`;
+    $('#miniSignin').innerHTML = `<a class="btn primary" href="app.html">${icon('home')} ${esc(open)}</a>`;
+    $$('[data-signin-label]').forEach((a) => { a.textContent = open; a.href = 'app.html'; });
   } else {
-    $('#signinBody').innerHTML = `<a class="btn big" href="${google}">${icon('google')} Continue with Google</a><a class="btn big" href="${discord}">${icon('discord')} Continue with Discord</a>`;
-    $('#miniSignin').innerHTML = `<a class="btn primary" href="#signin">${icon('user')} Sign in</a><a class="btn ghost sm" href="${discord}">${icon('discord')} Discord</a><a class="btn ghost sm" href="${google}">${icon('google')} Google</a>`;
+    const t = (k, d) => esc(S(`tour.signin.${k}`, d));
+    $('#signinBody').innerHTML = `<a class="btn big" href="${google}">${icon('google')} ${t('continueGoogle', 'Continue with Google')}</a><a class="btn big" href="${discord}">${icon('discord')} ${t('continueDiscord', 'Continue with Discord')}</a>`;
+    $('#miniSignin').innerHTML = `<a class="btn primary" href="#signin">${icon('user')} ${t('sidebarSignIn', 'Sign in')}</a><a class="btn ghost sm" href="${discord}">${icon('discord')} ${t('sidebarDiscord', 'Discord')}</a><a class="btn ghost sm" href="${google}">${icon('google')} ${t('sidebarGoogle', 'Google')}</a>`;
   }
 
   // ---------- mobile menu ----------
@@ -119,10 +123,10 @@
   scrim.onclick = () => setMenu(false);
   side.addEventListener('click', (e) => { if (e.target.closest('a[href^="#"]')) setMenu(false); });
   addEventListener('keydown', (e) => { if (e.key === 'Escape') setMenu(false); });
-})();
+});
 
 // ---------- motion layer (all of it is skipped or static under prefers-reduced-motion) ----------
-(() => {
+(window.STRINGS_READY || Promise.resolve()).then(() => {
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const finePointer = matchMedia('(hover: hover) and (pointer: fine)').matches;
   const lerp = (a, b, t) => a + (b - a) * t;
@@ -266,10 +270,10 @@
     });
     new IntersectionObserver(([e]) => { if (e.isIntersecting) diagram.classList.add('in'); }, { threshold: .25 }).observe(diagram);
   } else if (diagram) diagram.classList.add('in');
-})();
+});
 
 // ---------- round 2: hero Live feed, motion in every chapter, tour rails, live demo cards ----------
-(() => {
+(window.STRINGS_READY || Promise.resolve()).then(() => {
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const finePointer = matchMedia('(hover: hover) and (pointer: fine)').matches;
   const ic = (name, cls = '') => icon(name, cls);
@@ -296,6 +300,8 @@
       ['sparkle', 'good', 'Auto-promoted', 'EliTrainee -> Receptionist'],
       ['ban', 'bad', 'Blacklisted player kicked', 'Exploiter99 tried to join'],
     ];
+    // Titles and details come from Strings.json (tour.hero.liveFeed.events) when present; icons and colours stay here.
+    (window.STRINGS?.tour?.hero?.liveFeed?.events || []).forEach((e, i) => { if (EVENTS[i] && e) { EVENTS[i][2] = e.title ?? EVENTS[i][2]; EVENTS[i][3] = e.detail ?? EVENTS[i][3]; } });
     let k = 0;
     const add = (animate) => {
       const [i, tone, title, sub] = EVENTS[k++ % EVENTS.length];
@@ -451,4 +457,4 @@
     whenVisible(el, (still) => { loop.start(); if (still) loop.stop(); }, loop.stop);
   }
   stagger();
-})();
+});

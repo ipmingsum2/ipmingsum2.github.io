@@ -125,3 +125,102 @@ function bindAdminPlugins(root) {
     run(b, async () => { const f = await buildModelFile(b.dataset.plugin); downloadFile(f.name, f.xml); toast(`${ADMIN_PLUGINS[b.dataset.plugin].label} plugin downloaded`, 'good'); });
   });
 }
+
+// ---------- downloads: everything in one place ----------
+VIEWS.downloads = async (el) => {
+  const g = group();
+  const keys = can('manage_api_keys');
+  const slug = (s) => String(s || '').replace(/[^\w-]+/g, '_');
+  const row = (title, sub, actions) => `<div class="plug"><div class="grow"><b>${title}</b><div class="muted small">${sub}</div></div><div class="row wrap gap-s">${actions}</div></div>`;
+  const need = (what) => `<span class="badge small" title="Ask the owner for this permission">Needs ${esc(what)}</span>`;
+  const dl = (id, label) => `<button class="btn sm" data-dl="${id}">${icon('download', 'sm')} ${label}</button>`;
+  const src = (file) => `<a class="btn sm ghost" href="roblox/${file}" target="_blank" rel="noopener">${icon('external', 'sm')} Source</a>`;
+
+  const game = `<div class="card"><div class="head">${icon('roblox')}<h2 class="grow">Roblox game${g ? ` <span class="muted small">· ${esc(g.name)}</span>` : ''}</h2></div><div class="body stack gap-s">
+      <p class="dim">Put the activity module in <code>ServerScriptService</code> and start it with the loader script. It tracks playtime and duty, kicks blacklisted players and powers Live servers. Turn on <b>Game Settings ${icon('arrowR', 'inl')} Security ${icon('arrowR', 'inl')} Allow HTTP Requests</b> in every place.</p>
+      <div class="plugs">
+        ${row('Module + loader (easiest)', g ? 'The module and a <code>RoleplaySystemLoader</code> Script with a new API key for this group, in one file. Insert into <code>ServerScriptService</code> and publish.' : 'Open a group — the key belongs to a group.', g ? (keys ? dl('bundle', 'ActivityTracker-with-loader.rbxmx') : need('API keys')) : '')}
+        ${row('Module only', 'A ModuleScript named <code>ActivityTracker</code> (.rbxmx). Holds no key. In Studio, right-click <code>ServerScriptService</code> › <b>Insert from File…</b>', `${src('ActivityTracker.lua')}${dl('module', 'ActivityTracker.rbxmx')}`)}
+        ${row('Loader script', g ? 'A Script that starts the module with a new API key for this group. Copied to your clipboard.' : 'Open a group to create one — the key belongs to a group.', g ? (keys ? `<button class="btn sm" data-dl="loader">${icon('copy', 'sm')} Copy with new key</button>` : need('API keys')) : '')}
+        ${row('Application center', g ? 'A ready-to-publish place (.rbxlx) that loads this group’s open applications. Creates a new API key.' : 'Open a group to download its application center.', g ? (keys ? dl('appcenter', 'ApplicationCenter.rbxlx') : need('API keys')) : '')}
+        ${isOwner() ? row('Verification game', 'One place for the whole system (.rbxlx) with a key that can only verify. Then paste its link on the Verification game page.', `<a class="btn sm ghost" href="#/go/owner/verification">${icon('arrowR', 'sm')} Set link</a>${dl('verify', 'VerificationGame.rbxlx')}`) : ''}
+      </div></div></div>`;
+
+  const plugins = `<div class="card"><div class="head">${icon('puzzle')}<h2 class="grow">Admin system plugins</h2></div><div class="body stack gap-s">
+      <p class="dim">Adds <code>rpinfo</code>, <code>rpwarn</code>, <code>rpstrike</code>, <code>rppromote</code>, <code>rpdemote</code>, <code>rpblacklist</code>, <code>rpcert</code>, <code>duty</code> and <code>onduty</code> to the admin system you use. They need the activity module running and hold no key. Staff commands act as the moderator’s linked dashboard account. In Studio, right-click the folder shown, choose <b>Insert from File…</b> and pick the download.</p>
+      <div class="plugs">${Object.entries(ADMIN_PLUGINS).map(([k, p]) => row(`${esc(p.label)}${p.mirror ? ' <span class="badge good small">Mirrors kicks &amp; bans</span>' : ''}`,
+        `Insert into <code>${esc(p.into)}</code>${p.merge ? `, then add one line (<a href="#" data-merge="${k}">copy</a>)` : ''}`,
+        `<button class="btn sm" data-plugin="${k}">${icon('download', 'sm')} .rbxmx</button>`)).join('')}</div></div></div>`;
+
+  const exp = (id, label, sub, ok = true, perm = '') => row(label, sub, ok ? `<button class="btn sm" data-csv="${id}">${icon('download', 'sm')} CSV</button>` : need(perm));
+  const exportsCard = g ? `<div class="card"><div class="head">${icon('list')}<h2 class="grow">Data exports <span class="muted small">· ${esc(g.name)}</span></h2></div><div class="body stack gap-s">
+      <div class="plugs">
+        ${row('Activity', 'Hours, idle time, sessions and messages per member.', `<select id="actRange" aria-label="Activity range"><option value="week">This week</option><option value="30">Last 30 days</option><option value="all">All time</option></select><button class="btn sm" data-csv="activity">${icon('download', 'sm')} CSV</button>`)}
+        ${exp('roster', 'Roster', 'Members with callsign, departments and certifications.')}
+        ${exp('logbook', 'Logbook', 'Warnings, strikes, suspensions, promotions and more (latest 300).')}
+        ${exp('blacklist', 'Blacklist', 'Every entry, including removed and expired ones.')}
+        ${exp('moderation', 'Moderation log', 'Kicks, bans and warnings from your admin system (latest 300).', can('manage_discipline') || can('view_logs') || can('manage_servers'), 'discipline or logs')}
+      </div>
+      ${can('view_logs') ? '<p class="hint">The full log export (up to 5,000 rows, with filters) is on the <a href="#/logs">Logs</a> page.</p>' : ''}</div></div>`
+    : `<div class="card"><div class="empty">${icon('list')}<div>Open a group to export its activity, roster, logbook, blacklist and moderation log.</div></div></div>`;
+
+  el.innerHTML = `${head('Downloads', 'Everything you can download: the Roblox module and places, admin system plugins, and your data as CSV.')}
+    ${game}${plugins}${exportsCard}`;
+  bindAdminPlugins(el);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const daysAgo = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
+  const day = (ts) => (ts ? new Date(ts * 1000).toISOString().slice(0, 10) : '');
+  const name = slug(g?.name);
+  const CSV = {
+    activity: async () => {
+      const r = val(el, '#actRange');
+      const qs = r === 'all' ? `?from=2000-01-01&to=${today}` : r === '30' ? `?from=${daysAgo(29)}&to=${today}` : '';
+      const d = await api(G(`/activity${qs}`));
+      downloadCSV(`activity-${name}-${d.from === '2000-01-01' ? 'all' : d.from}-to-${d.to}.csv`, [
+        ['Roblox ID', 'Username', 'Display name', 'Rank', 'Role', 'Hours played', 'Idle hours', 'Sessions', 'Messages', 'Tracked'],
+        ...d.leaderboard.map((m) => [m.robloxId, m.username, m.displayName || '', m.rank ?? '', m.roleName || '', (m.seconds / 3600).toFixed(2), ((m.idleSeconds || 0) / 3600).toFixed(2), m.sessions, m.messages, m.tracked ? 'yes' : 'no'])]);
+    },
+    roster: async () => {
+      const d = await api(G('/roster'));
+      const dep = new Map(d.departments.map((x) => [x.id, x.name])), cert = new Map(d.certTypes.map((x) => [x.id, x.name]));
+      downloadCSV(`roster-${name}.csv`, [['Roblox ID', 'Username', 'Rank', 'Role', 'Callsign', 'Departments', 'Certifications'],
+        ...d.members.map((m) => [m.robloxId, m.username, m.rank ?? '', m.roleName, m.callsign, m.departments.map((x) => dep.get(x) || x).join('; '),
+          (m.certifications || []).map((x) => cert.get(typeof x === 'object' ? x.certId : x) || '').filter(Boolean).join('; ')])]);
+    },
+    logbook: async () => {
+      const d = await api(G('/logbook'));
+      downloadCSV(`logbook-${name}.csv`, [['Created (UTC)', 'Roblox ID', 'Username', 'Type', 'Reason', 'Evidence', 'By', 'Expires (UTC)', 'Status'],
+        ...d.entries.map((e) => [day(e.created_at), e.roblox_id, e.username || '', e.type, e.reason, e.evidence || '', e.author || '', day(e.expires_at), e.revoked_at ? 'revoked' : e.active ? 'active' : 'expired'])]);
+    },
+    blacklist: async () => {
+      const d = await api(G('/blacklist'));
+      downloadCSV(`blacklist-${name}.csv`, [['Roblox ID', 'Username', 'Reason', 'Evidence', 'Added by', 'Added (UTC)', 'Expires (UTC)', 'Status'],
+        ...d.entries.map((e) => [e.roblox_id, e.username || '', e.reason, e.evidence || '', e.author || '', day(e.created_at), e.expires_at ? day(e.expires_at) : 'never', e.removed_at ? 'removed' : e.active ? 'active' : 'expired'])]);
+    },
+    moderation: async () => {
+      const d = await api(G('/moderation'));
+      downloadCSV(`moderation-${name}.csv`, [['Time (UTC)', 'Action', 'Player', 'Roblox ID', 'Duration (s)', 'Moderator', 'Moderator ID', 'Source', 'Reason'],
+        ...d.entries.map((e) => [new Date(e.created_at * 1000).toISOString(), e.action, e.username || '', e.roblox_id || '', e.duration ?? '', e.moderator || '', e.moderator_id || '', e.source || '', e.reason || ''])]);
+    },
+  };
+
+  el.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-dl], [data-csv]'); if (!b) return;
+    run(b, async () => {
+      if (b.dataset.csv) return CSV[b.dataset.csv]();
+      const d = b.dataset.dl;
+      if (d === 'module') { const f = await buildTrackerModel(); return downloadFile(f.name, f.xml); }
+      if (d === 'verify') {
+        const { key } = await api('/api/keys', { body: { name: 'Verification game — system', scopes: ['verify'] } });
+        downloadFile('VerificationGame.rbxlx', await buildPlaceFile('verify', { apiUrl: ROBLOX_API_URL, apiKey: key, title: NAME }));
+        return toast('Downloaded — publish it, then paste its link on the Verification game page', 'good');
+      }
+      const key = await createGameKey(d === 'appcenter' ? 'Application center' : 'Activity tracker', g.id);
+      if (d === 'bundle') { const f = await buildTrackerModel({ apiUrl: ROBLOX_API_URL, apiKey: key }); downloadFile(f.name, f.xml); return toast('Downloaded — insert it into ServerScriptService', 'good'); }
+      if (d === 'loader') return copyText(`-- Script in ServerScriptService (next to the ActivityTracker ModuleScript)\nlocal ActivityTracker = require(script.Parent:WaitForChild("ActivityTracker"))\n\nActivityTracker.Start({\n\tApiUrl = "${ROBLOX_API_URL}",\n\tApiKey = "${key}",\n})\n`);
+      downloadFile(`ApplicationCenter-${g.id}.rbxlx`, await buildPlaceFile('appcenter', { apiUrl: ROBLOX_API_URL, apiKey: key, title: g.name }));
+      return toast('Place file generated', 'good');
+    });
+  });
+};

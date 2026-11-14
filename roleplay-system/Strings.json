@@ -1,0 +1,498 @@
+{
+  "_readme": [
+    "Text shown on the site. Change a value and save: the page shows the new text the next time it loads.",
+    "Keep the keys (left side) as they are. Values may use simple HTML such as <b>bold</b>, <i>italic</i>, <code>code</code> or <a href=\"…\">links</a>.",
+    "rotatingWords and typedWords are separated by |. number is the figure the counter animates to.",
+    "tour = the intro page (index.html). Sections follow the page from top to bottom; stepN, cardN and pointN count in page order."
+  ],
+  "tour": {
+    "page": {
+      "title": "Roleplay System",
+      "description": "Activity tracking, requirements, ranking, applications and logs for Roblox roleplay groups."
+    },
+    "topbar": {
+      "ariaLabel": "Open menu",
+      "label": "Roleplay System",
+      "button": "Sign in"
+    },
+    "sidebar": {
+      "ariaLabel": "Tour",
+      "label": "Roleplay System",
+      "label2": "Theme"
+    },
+    "hero": {
+      "navLabel": "Introduction",
+      "kicker": "For Roblox roleplay groups",
+      "ariaLabel": "Run your whole group from one dashboard.",
+      "titleWord1": "Run",
+      "titleWord2": "your",
+      "titleWord3": "whole",
+      "rotatingWords": "group|staff team|police force|hotel|café|airline|school|fire department",
+      "titleWord4": "from one dashboard.",
+      "text": "Track every minute played, enforce activity requirements, rank through Roblox Open Cloud, run application centers and keep a log of everything, across as many groups as you manage.",
+      "button": "See our features",
+      "button2": "Sign in",
+      "liveFeed": {
+        "ariaLabel": "Example of what happens in a group",
+        "label": "Live - Sunrise Hotels<span class=\"lf-sub\">example</span>",
+        "events": [
+          {
+            "title": "4 in game now",
+            "detail": "Avalynne, Sunny, Ruby +1"
+          },
+          {
+            "title": "ZaraPoolside promoted",
+            "detail": "Customer -> Trainee · logged"
+          },
+          {
+            "title": "New application",
+            "detail": "NovaStarRBX · auto-score 7/7"
+          },
+          {
+            "title": "3 missed this week",
+            "detail": "Posted to #staff-activity"
+          },
+          {
+            "title": "Shift starts in 30 min",
+            "detail": "Reminder sent · @Receptionists"
+          },
+          {
+            "title": "Staff of the week",
+            "detail": "SunnyConcierge · 14.2 h"
+          },
+          {
+            "title": "Time off approved",
+            "detail": "KaiSuite204 · 3 days"
+          },
+          {
+            "title": "Access request",
+            "detail": "NewStaffer asked to join"
+          },
+          {
+            "title": "Auto-promoted",
+            "detail": "EliTrainee -> Receptionist"
+          },
+          {
+            "title": "Blacklisted player kicked",
+            "detail": "Exploiter99 tried to join"
+          }
+        ]
+      },
+      "demo": {
+        "label": "ipmingsum2.github.io/roleplay-system",
+        "image": "Dashboard overview: hours today and this week, members in game, requirement progress, a daily hours chart and recent log entries"
+      }
+    },
+    "marquee": {
+      "ariaLabel": "Everything included",
+      "row1": {
+        "chip1": "Activity tracking",
+        "chip2": "Daily & weekly requirements",
+        "chip3": "Time off",
+        "chip4": "Open Cloud ranking",
+        "chip5": "Promotion picks",
+        "chip6": "Auto-promotion",
+        "chip7": "Logbook",
+        "chip8": "Departments & callsigns",
+        "chip9": "Certifications",
+        "chip10": "Blacklist",
+        "chip11": "Session registers",
+        "chip12": "Session reminders",
+        "chip13": "Full audit log"
+      },
+      "row2": {
+        "chip1": "Application centers",
+        "chip2": "Smart forms",
+        "chip3": "Access requests",
+        "chip4": "Live servers",
+        "chip5": "Admin plugins",
+        "chip6": "Moderation log",
+        "chip7": "Reports",
+        "chip8": "Staff of the week",
+        "chip9": "Activity heatmap",
+        "chip10": "Quick search",
+        "chip11": "Knowledgebase",
+        "chip12": "News",
+        "chip13": "CSV export",
+        "chip14": "Public API",
+        "chip15": "Unlimited groups",
+        "chip16": "Dark mode"
+      }
+    },
+    "stats": {
+      "ariaLabel": "At a glance",
+      "stat1": {
+        "number": "45",
+        "label": "features in one place"
+      },
+      "stat2": {
+        "number": "11",
+        "label": "application question types"
+      },
+      "stat3": {
+        "number": "60",
+        "label": "between activity heartbeats"
+      },
+      "stat4": {
+        "ariaLabel": "Unlimited",
+        "label": "groups per dashboard"
+      }
+    },
+    "activity": {
+      "navLabel": "Activity tracking",
+      "kicker": "01 · Activity",
+      "title": "Know exactly who shows up.",
+      "text": "A Roblox module reports who (Alvin) is in your game every minute. The dashboard turns it into hours, sessions, idle time and chat activity for every member in a tracked rank.",
+      "step1": {
+        "heading": "Total hours, daily or weekly",
+        "text": "Switch the graph between days and weeks, then filter the leaderboard by today, this week, last week, 30 days, all time or any custom date range.",
+        "point1": "A weekday-by-hour heatmap of when members actually play",
+        "point2": "AFK time detected server-side",
+        "point3": "Sessions, chat messages and who is in game right now",
+        "point4": "CSV export, and manual adjustments that are always logged"
+      },
+      "step2": {
+        "heading": "A profile for every member",
+        "text": "Twelve weeks of history, recent play sessions, requirement results, time off, linked Discord, plus notes and warnings your staff and Alvin can leave."
+      },
+      "step3": {
+        "heading": "Daily & weekly requirements",
+        "text": "Set a minimum, override it per rank, and pick the hour checks run. Anyone who misses it is logged and posted to a Discord webhook, with your own customized message, a role mention and pings for linked members.",
+        "point1": "Progress bars update live through the week",
+        "point2": "“Run check now” for any period"
+      },
+      "step4": {
+        "heading": "Time off that actually excuses",
+        "text": "Members request time off from a bot or staff add it directly. Approved time off overlapping a period automatically excuses them from a requirement check."
+      }
+    },
+    "ranking": {
+      "navLabel": "Ranking",
+      "kicker": "02 · Ranking",
+      "title": "Promote without leaving the dashboard.",
+      "text": "Promote, demote or set any rank through Roblox Open Cloud, from a member’s profile, the ranking page, an accepted application or the API.",
+      "point1": "A ceiling on the highest rank the system may assign",
+      "point2": "The group owner can never be touched",
+      "point3": "Every change logged with who, why and from/to",
+      "demo": {
+        "image": "Ranking page listing group roles, tracked ranks and recent rank changes",
+        "image2": "Change rank dialog with member, action and reason fields"
+      }
+    },
+    "promotions": {
+      "navLabel": "Promotion picks",
+      "kicker": "03 · Promotions",
+      "title": "Let your team pick who’s next.",
+      "text": "Anyone can nominate a member for promotion. Staff upvote with a short justification, so every vote comes with a reason, and a ranker can promote straight from the card.",
+      "point1": "Filter by rank, sort by most votes, trending or newest",
+      "point2": "Recommender insights: who suggests most, and how often it lands",
+      "point3": "Promoting moves them up one rank through Open Cloud",
+      "demo": {
+        "image": "Promotion recommendations with upvotes, justifications and recommender insights"
+      }
+    },
+    "logs": {
+      "navLabel": "Logging",
+      "kicker": "04 · Logging",
+      "title": "Everything it does, written down.",
+      "text": "Promotions, demotions, missed requirements, time off, applications, sign-ins, settings changes, API keys — every action lands in a searchable log, and can be mirrored to a Discord channel per group.",
+      "label": "<span class=\"badge good\">rank.promote</span><span class=\"badge bad\">rank.demote</span><span class=\"badge bad\">requirement.not_met</span><span class=\"badge good\">timeoff.approved</span><span class=\"badge\">application.submitted</span><span class=\"badge\">access.granted</span>",
+      "demo": {
+        "image": "Log page filtered to one group showing promotions, applications and sign-ins"
+      }
+    },
+    "logbook": {
+      "navLabel": "Logbook",
+      "kicker": "05 · Logbook",
+      "title": "Warnings that expire. A record that doesn’t.",
+      "text": "Log warnings, strikes, suspensions, demotions, promotions and commendations with a reason and evidence link. Warnings expire on their own, and entries are revoked, never deleted.",
+      "point1": "Warning ticker: active warnings per member at a glance",
+      "point2": "Templates for common reasons",
+      "point3": "Promotions and demotions can change the rank at the same time",
+      "demo": {
+        "image": "Logbook with the warning ticker and entries with evidence links",
+        "image2": "Member profile with active warnings, sessions attended and their logbook"
+      }
+    },
+    "groups": {
+      "navLabel": "Groups",
+      "kicker": "06 · Group management",
+      "title": "One dashboard, every group.",
+      "text": "Add as many Roblox groups as you run. Each keeps its own tracked ranks, requirements, Open Cloud key, webhooks, applications and API keys",
+      "point1": "Tick which ranks are tracked",
+      "point2": "Open Cloud keys stored encrypted",
+      "point3": "Sync members straight from Roblox",
+      "demo": {
+        "image": "Groups page with two groups and their tracked-rank checkboxes"
+      }
+    },
+    "applications": {
+      "navLabel": "Application centers",
+      "kicker": "07 · Applications",
+      "title": "Application centers you design.",
+      "text": "Build the questions in the dashboard. Applicants answer on the web or inside your Roblox game, and everything comes fresh from the API.",
+      "step1": {
+        "heading": "Forms as flexible as Google Forms",
+        "text": "Eleven question types including date and time, an “Other” option people type into, shuffled options, scale labels and response validation (numbers, text, length, patterns or how many boxes to tick) with a customizable error message."
+      },
+      "step2": {
+        "heading": "Review, score, auto-rank",
+        "text": "See every answer with its auto-score. Your Discord server gets every answer too, with a <b>Decide</b> button that opens the submission. Accept and the applicant can be ranked automatically through Open Cloud."
+      },
+      "step3": {
+        "heading": "A shareable web form",
+        "text": "Every application gets a public link. Require a Discord sign-in with a linked Roblox account, or let applicants type their username."
+      },
+      "step4": {
+        "heading": "A Roblox place, generated",
+        "text": "One click downloads a ready-to-publish <code>.rbxlx</code> application center. It holds no questions, it fetches them from the API, so edits go live in-game instantly."
+      }
+    },
+    "sessions": {
+      "navLabel": "Sessions",
+      "kicker": "08 · Sessions",
+      "title": "Session registers and targets.",
+      "text": "Schedule shifts, trainings and events. Staff claim them as host or co-host, and the register records who attended — which counts towards a weekly session target alongside activity minutes.",
+      "point1": "Paste a list of names to fill a register in one go",
+      "point2": "Leaderboard: most sessions this week",
+      "point3": "New sessions announced to Discord with a live countdown",
+      "demo": {
+        "image": "Sessions page listing shifts, trainings and events",
+        "image2": "Session register listing the host, co-host and attendees"
+      }
+    },
+    "kb": {
+      "navLabel": "Knowledgebase & news",
+      "kicker": "09 · Knowledgebase",
+      "title": "Handbooks, policies and news in one place.",
+      "text": "Write your staff handbook, guides and policies with simple formatting, grouped by category, and limit sensitive pages to people with a specific permission. Post news to the whole group and pin what matters.",
+      "point1": "Published at <a href=\"posts/\">/posts</a> and <a href=\"handbooks/\">/handbooks</a> — public, staff-only, or for one permission",
+      "point2": "Restricted pages ask people to sign in, then bring them straight back",
+      "point3": "Live preview while you write, and optional Discord announcements",
+      "demo": {
+        "image": "Knowledgebase page showing the staff handbook",
+        "image2": "Group news with a pinned announcement"
+      }
+    },
+    "linking": {
+      "navLabel": "Account linking",
+      "kicker": "10 · Accounts",
+      "title": "Discord, Google and Roblox — linked.",
+      "text": "Members sign in with Discord, get a one-time code and type it in a verification game. The Roblox player is identified by the server, so nobody can link someone else’s account.",
+      "point1": "Staff sign in with Google or Discord and link the other",
+      "point2": "Linked members get pinged in requirement notices",
+      "point3": "One verification game for every group, with a <b>Join to Verify</b> button and an automatic kick once linked",
+      "point4": "Tracker module and app center downloadable per group",
+      "demo": {
+        "image": "Roblox setup dialog with downloads for the tracker module and the application center",
+        "image2": "Verification page: sign in with Discord to get a link code"
+      }
+    },
+    "access": {
+      "navLabel": "Access & groups",
+      "kicker": "11 · Access",
+      "title": "Sign in, pick a group, get to work.",
+      "text": "After signing in you choose where to work. Every group you can open shows live numbers on its card, and you can switch groups any time from the top bar.",
+      "point1": "Whitelist only, not on it yet? Ask for access right from the sign-in page",
+      "point2": "Per-person permissions: ranking, logs, applications, groups, API keys",
+      "point3": "Press <kbd>Ctrl</kbd> <kbd>K</kbd> to jump to any page, group or member",
+      "demo": {
+        "image": "Group picker after sign-in, with live numbers on every group",
+        "image2": "Quick search (Ctrl+K) finding a member"
+      }
+    },
+    "api": {
+      "navLabel": "Public API",
+      "kicker": "12 · Public API",
+      "title": "Build your own bots on top.",
+      "text": "Scoped API keys for activity, requirements, time off, ranking, logs and account links, with full documentation and copy-paste examples.",
+      "label": "<code>curl https://rp-system…/v1/groups/<span class=\"hl\">676767</span>/activity \\ -H \"Authorization: Bearer <span class=\"hl\">rpk_67</span>\"</code>",
+      "button": "Read the API docs",
+      "demo": {
+        "image": "API page listing scoped keys",
+        "image2": "API documentation with an expanded endpoint"
+      }
+    },
+    "anywhere": {
+      "navLabel": "Dark mode & mobile",
+      "kicker": "13 · Anywhere",
+      "title": "Light, dark, desktop or phone.",
+      "text": "Every page follows your system theme or the one you pick, and works on a phone, so you can approve time off from anywhere.",
+      "button": "Try switching the theme",
+      "demo": {
+        "image": "Activity page on a phone",
+        "image2": "Application form on a phone"
+      }
+    },
+    "discord": {
+      "navLabel": "Discord automations",
+      "kicker": "14 · Discord",
+      "title": "Your Discord, kept in the loop.",
+      "text": "Webhooks per group and per job, so each message lands in the right channel — no bot to host.",
+      "point1": "Reminders before sessions start, with a role ping",
+      "point2": "“Staff of the week” posted automatically every week",
+      "point3": "Applications with every answer and a <b>Decide</b> button",
+      "point4": "Missed requirements with pings for linked members",
+      "point5": "Every log entry mirrored, if you want",
+      "demo": {
+        "ariaLabel": "A Discord channel receiving a session reminder, the Staff of the week post, a new application with a Decide button and a missed-requirements notice",
+        "label": "<span class=\"dc-hash\">#</span> staff-hub <span class=\"dc-topic\">Roleplay System notifications</span>",
+        "label2": "Roleplay System <span class=\"dc-bot\">APP</span> <span class=\"dc-time\">Today at 17:30</span>",
+        "label3": "@Receptionists",
+        "label4": "Starting soon - Shift: Evening reception",
+        "label5": "Starts 18:00 (in 30 minutes) · 60 min",
+        "label6": "Host: <b>Alvin</b> · Co-host: <b>I don't Know</b>",
+        "label7": "Roleplay System <span class=\"dc-bot\">APP</span> <span class=\"dc-time\">Today at 18:00</span>",
+        "label8": "Staff of the week - Sunrise Hotels",
+        "label9": "<b>SunnyConcierge</b> led the week with <b>14.2 hours</b> in game. Thank you!",
+        "label10": "<i>Most hours</i>",
+        "label11": "SunnyConcierge — 14.2 h<br>",
+        "label12": "Avalynne — 11.8 h<br>",
+        "label13": "RubyLobby — 9.5 h",
+        "label14": "<i>Most sessions</i>",
+        "label15": "Avalynne — 6<br>",
+        "label16": "MiraFrontDesk — 5<br>",
+        "label17": "KaiSuite204 — 4",
+        "label18": "Roleplay System <span class=\"dc-bot\">APP</span> <span class=\"dc-time\">Today at 18:12</span>",
+        "label19": "New application — Receptionist",
+        "label20": "<b>PixelPenguin42</b> applied · Auto-score <b>7/7</b>",
+        "label21": "<i>1. Why do you want to work here?</i>I love hospitality roleplay and I’m on most evenings.",
+        "label22": "2. Preferred shift",
+        "label23": "Other: Weekends",
+        "label24": "Decide",
+        "label25": "Roblox profile",
+        "label26": "Roleplay System <span class=\"dc-bot\">APP</span> <span class=\"dc-time\">Monday at 00:00</span>",
+        "label27": "<b>2 members did not meet the weekly requirement</b><span><span class=\"dc-ping in\">@Alvin</span> <b>Roblox_real2CanChat</b> (alvinofelephants2) — 24h 10m / 67h</span><span><span class=\"dc-ping in\">@ryankwong123</span> <b>headandshoulder12345</b> (headandshoulder12345) — -1m / 67h</span>",
+        "label28": "<i></i><i></i><i></i> <span>Roleplay System is typing…</span>"
+      }
+    },
+    "more": {
+      "navLabel": "And more",
+      "kicker": "15 · And more",
+      "title": "The details that make it run itself.",
+      "text": "Smaller tools that save your staff hours every week.",
+      "card1": {
+        "demo": {
+          "label": "Exploiter99"
+        },
+        "heading": "Blacklist",
+        "text": "Banned players are kicked the moment they join, and can’t apply."
+      },
+      "card2": {
+        "demo": {
+          "label": "Trainee",
+          "label2": "Receptionist",
+          "label3": "10 h + 2 sessions in 30 days"
+        },
+        "heading": "Auto-promotion",
+        "text": "Rules rank people up, or recommend them, once they’ve put in the time."
+      },
+      "card3": {
+        "heading": "Activity heatmap",
+        "text": "See which hours of the week your game is busy, in your own time zone — and plan shifts around it."
+      },
+      "card4": {
+        "demo": {
+          "typedWords": "67|Promote Alvin|Logbook",
+          "label": "Ctrl + K"
+        },
+        "heading": "Quick search",
+        "text": "Jump to any page, group or member from anywhere in the dashboard."
+      },
+      "card5": {
+        "demo": {
+          "label": "3",
+          "label2": "new requests"
+        },
+        "heading": "Access requests",
+        "text": "Not on the whitelist yet? Ask for access right from the sign-in page."
+      },
+      "card6": {
+        "demo": {
+          "label": "Join to Verify",
+          "label2": "Verified"
+        },
+        "heading": "One verification game",
+        "text": "A single place for every group, with a button straight to it."
+      },
+      "card7": {
+        "demo": {
+          "label": "<span class=\"adm\">Adonis</span><span class=\"adm\">Basic Admin</span><span class=\"adm\">HD Admin</span><span class=\"adm\">Kohl’s Admin</span><span class=\"mono adm-cmd\">:rpwarn headandshoulder12345 Late to shift</span>"
+        },
+        "heading": "Admin system plugins",
+        "text": "Warn, promote, certify and look up players from the admin system you already use. Kicks and bans land in the Moderation log."
+      },
+      "card8": {
+        "demo": {
+          "label": "Server 1",
+          "label2": "14 players · 5 on duty",
+          "label3": "Server 2",
+          "label4": "9 players · 3 on duty",
+          "label5": "Training at the base in 5 minutes"
+        },
+        "heading": "Live servers",
+        "text": "See every server and who is on duty, then announce, kick or shut a server down from the dashboard."
+      },
+      "card9": {
+        "demo": {
+          "label": "Patrol",
+          "label2": "SWAT",
+          "label3": "1-ADAM-12",
+          "label4": "Firearms"
+        },
+        "heading": "Roster & certifications",
+        "text": "Departments, callsigns and certifications that expire, award them to a whole training session at once, and check them from your game."
+      },
+      "card10": {
+        "demo": {
+          "label": "Arrest report #41",
+          "label2": "Open",
+          "label3": "Patient care #40",
+          "label4": "Closed",
+          "label5": "Flight log #39",
+          "label6": "Closed"
+        },
+        "heading": "Reports",
+        "text": "Arrest reports, incident reports, patient care, flight logs — design the form, pick who files and who reviews, send it to Discord."
+      },
+      "card11": {
+        "demo": {
+          "label": "Other: <u>Weekends</u>",
+          "label2": "Select at least 2",
+          "label3": "2026-12-01"
+        },
+        "heading": "Smart forms",
+        "text": "“Other” answers, validation rules and date/time questions — on the web and in-game."
+      },
+      "card12": {
+        "demo": {
+          "label": "activity.csv"
+        },
+        "heading": "CSV export",
+        "text": "Activity, logs and the blacklist straight into a spreadsheet."
+      }
+    },
+    "how": {
+      "navLabel": "How it works",
+      "kicker": "16 · Under the hood",
+      "title": "Small, fast, nothing to host.",
+      "text": "Your games talk to one Cloudflare Worker. The dashboard is static pages on GitHub. Discord just receives webhooks.",
+      "text2": "Swipe to see the whole diagram."
+    },
+    "signin": {
+      "navLabel": "Sign in",
+      "title": "Are you ready?",
+      "text": "Login now and submit an access request to access our amazing roleplat system.",
+      "text2": "<a href=\"posts/\">Posts</a> · <a href=\"handbooks/\">Handbooks</a> · <a href=\"verify.html\">Link Discord to Roblox</a> · <a href=\"docs.html\">API docs</a>",
+      "openDashboard": "Open dashboard",
+      "continueGoogle": "Continue with Google",
+      "continueDiscord": "Continue with Discord",
+      "sidebarSignIn": "Sign in",
+      "sidebarDiscord": "Discord",
+      "sidebarGoogle": "Google"
+    },
+    "footer": {
+      "label": "<span class=\"muted\">Roleplay System · Activity, requirements, ranking, applications and logs for Roblox groups.</span>"
+    }
+  }
+}

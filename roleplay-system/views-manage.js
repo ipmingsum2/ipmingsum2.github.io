@@ -342,20 +342,22 @@ function robloxSetup(g = group()) {
   const m = modal({ title: `Roblox setup — ${g.name}`, wide: true, body: `
       <p class="dim">These connect this group’s Roblox games to the system. The tracker loader and the application center each create a fresh API key for this group and embed it in a <b>server-only</b> script — never share those files or put the key in a LocalScript. The admin plugins hold no key.</p>
       <div class="card"><div class="body stack gap-s"><h3>1 · Activity tracker (ModuleScript)</h3>
-        <p class="dim">Add <code>ActivityTracker</code> as a ModuleScript in <code>ServerScriptService</code> of your main game, then start it from a Script. It reports playtime, idle and duty time and chat messages every minute, kicks blacklisted players, and powers Live servers (announcements, kicks, shutdowns).</p>
-        <div class="row wrap"><button class="btn" data-d="module">${icon('download')} ActivityTracker.lua</button><button class="btn" data-d="loader">${icon('copy')} Copy loader script (with new key)</button></div></div></div>
+        <p class="dim">Insert the downloaded file into <code>ServerScriptService</code> of your main game (right-click › <b>Insert from File…</b>). The module + loader download has everything; the module alone needs the loader script next to it. It reports playtime, idle and duty time and chat messages every minute, kicks blacklisted players, and powers Live servers (announcements, kicks, shutdowns).</p>
+        <div class="row wrap"><button class="btn" data-d="module">${icon('download')} ActivityTracker.rbxmx</button>${can('manage_api_keys') ? `<button class="btn" data-d="bundle">${icon('download')} Module + loader (new key)</button>` : ''}<button class="btn" data-d="loader">${icon('copy')} Copy loader script (with new key)</button></div></div></div>
       <div class="card"><div class="body stack gap-s"><h3>2 · Application center</h3>
         <p class="dim">A place that loads this group’s open applications from the API and submits answers as the verified player.</p>
         <div class="row wrap"><button class="btn" data-d="appcenter">${icon('download')} ApplicationCenter.rbxlx</button></div></div></div>
       ${adminPluginsCard()}
+      <p class="hint">${icon('download', 'inl')} Everything here is also on the <a href="#/downloads" onclick="this.closest('.overlay').remove()">Downloads</a> page, with data exports.</p>
       <p class="hint">In every place: enable <b>Game Settings ${icon('arrowR', 'inl')} Security ${icon('arrowR', 'inl')} Allow HTTP Requests</b>. Keys can be revoked on the API page. The verification game is shared by every group — the owner sets it up from their own menu.</p>` });
   bindAdminPlugins(m.el);
   m.el.onclick = (e) => {
     const b = e.target.closest('[data-d]'); if (!b) return;
     run(b, async () => {
       const d = b.dataset.d;
-      if (d === 'module') return downloadFile('ActivityTracker.lua', await luaSource('ActivityTracker.lua'), 'text/plain');
-      const key = await createGameKey({ loader: 'Activity tracker', appcenter: 'Application center' }[d], g.id);
+      if (d === 'module') { const f = await buildTrackerModel(); return downloadFile(f.name, f.xml); }
+      const key = await createGameKey({ loader: 'Activity tracker', bundle: 'Activity tracker', appcenter: 'Application center' }[d], g.id);
+      if (d === 'bundle') { const f = await buildTrackerModel({ apiUrl: ROBLOX_API_URL, apiKey: key }); downloadFile(f.name, f.xml); return toast('Downloaded — insert it into ServerScriptService', 'good'); }
       if (d === 'loader') return copyText(`-- Script in ServerScriptService (next to the ActivityTracker ModuleScript)\nlocal ActivityTracker = require(script.Parent:WaitForChild("ActivityTracker"))\n\nActivityTracker.Start({\n\tApiUrl = "${ROBLOX_API_URL}",\n\tApiKey = "${key}",\n})\n`);
       downloadFile(`ApplicationCenter-${g.id}.rbxlx`, await buildPlaceFile('appcenter', { apiUrl: ROBLOX_API_URL, apiKey: key, title: g.name }));
       toast('Place file generated', 'good');
