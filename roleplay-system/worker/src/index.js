@@ -454,6 +454,7 @@ R('GET', '/v1/game/member/:rid', rosterMod.memberInfoApi, { scope: 'game', keyGr
 R('GET', '/v1/game/profile/:rid', bridge.gameProfile, { scope: 'game', keyGroup: true });
 R('POST', '/v1/game/moderation', bridge.gameModeration, { scope: 'game', keyGroup: true });
 R('POST', '/v1/game/staff', bridge.gameStaff, { scope: 'game', keyGroup: true });
+R('POST', '/v1/game/shift', bridge.gameShift, { scope: 'game', keyGroup: true });
 R('GET', '/v1/groups/:gid/moderation', bridge.moderationList, { scope: 'read' });
 R('GET', '/v1/game/applications', apps.gameList, { scope: 'game', keyGroup: true });
 R('POST', '/v1/game/applications/:id/submit', apps.gameSubmit, { scope: 'game', keyGroup: true });

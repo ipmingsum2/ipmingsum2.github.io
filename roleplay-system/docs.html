@@ -6,13 +6,13 @@
   <title>API documentation</title>
   <script>try{var t=localStorage.getItem("rp_theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%278%27 fill=%27%235b8def%27/%3E%3Cpath d=%27M16 26s7-3.500 7-8.750V11l-7-2.600L9 11v6.250C9 22.500 16 26 16 26z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%272%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="styles.css?v=5b0c03f">
+  <link rel="stylesheet" href="styles.css?v=6ca3630">
 </head>
 <body>
   <div class="corner-theme" id="themeCorner"></div>
   <main class="docs" id="root"></main>
-  <script src="config.js?v=5b0c03f"></script>
-  <script src="core.js?v=5b0c03f"></script>
+  <script src="config.js?v=6ca3630"></script>
+  <script src="core.js?v=6ca3630"></script>
   <script>$('#themeCorner').innerHTML = themeButton();</script>
   <script>
     'use strict';
@@ -118,6 +118,10 @@
           body: { action: 'ban', userId: 156, reason: 'Exploiting', duration: -1, moderatorId: 261, moderatorName: 'Shedletsky', source: 'Adonis', jobId: 'a1b2c3' },
           response: { ok: true, id: 42 },
           notes: 'Send `username` instead of `userId` if that is all you have; it is resolved to an ID. The entry appears on the Moderation page and, if set, in the group’s moderation Discord webhook. The admin plugins call this for you.' }],
+        ['POST', '/v1/game/shift', 'game', 'Log a clock in, clock out or break from a clocking system', {
+          body: { userId: 156, username: 'Builderman', event: 'clock_in', byUserId: 261, byName: 'Shedletsky', source: 'DRS Store Operations' },
+          response: { ok: true },
+          notes: '`event` is `clock_in`, `clock_out`, `break_start` or `break_end`. `byUserId` / `byName` are for a manager acting on someone else. Shows under Logs › Shifts (not sent to the log webhook). The DRS Store Operations addon calls this for you; duty time itself comes from the heartbeat’s `onDuty`.' }],
         ['POST', '/v1/game/staff', 'game', 'Run a staff action as the moderator’s linked dashboard account', {
           body: { actorId: 261, action: 'warn', target: '156', reason: 'Late to shift' },
           response: { ok: true, message: 'Warning logged for Builderman — 2 active.' },

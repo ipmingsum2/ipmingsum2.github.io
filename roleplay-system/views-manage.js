@@ -235,7 +235,7 @@ VIEWS.submission = async (el, id, _sub, reload) => {
 
 // ---------- logs ----------
 VIEWS.logs = async (el) => {
-  const TYPES = [['', 'Everything'], ['rank', 'Ranking'], ['requirement', 'Requirements'], ['timeoff', 'Time off'], ['activity', 'Activity'], ['member', 'Notes & warnings'], ['application', 'Applications'], ['session', 'Sessions'], ['group', 'Groups'], ['access', 'Access'], ['auth', 'Sign-ins'], ['link', 'Account links'], ['apikey', 'API keys']];
+  const TYPES = [['', 'Everything'], ['rank', 'Ranking'], ['requirement', 'Requirements'], ['timeoff', 'Time off'], ['activity', 'Activity'], ['member', 'Notes & warnings'], ['application', 'Applications'], ['session', 'Sessions'], ['shift', 'Shifts (clocking)'], ['moderation', 'Moderation'], ['group', 'Groups'], ['access', 'Access'], ['auth', 'Sign-ins'], ['link', 'Account links'], ['apikey', 'API keys']];
   const COLOR = { 'rank.promote': 'good', 'rank.demote': 'bad', 'requirement.not_met': 'bad', 'auth.denied': 'bad', 'access.revoked': 'bad', 'application.accepted': 'good', 'application.denied': 'bad', 'timeoff.approved': 'good', 'timeoff.denied': 'bad' };
   el.innerHTML = `${head('Logs', 'Everything the system does: promotions, demotions, missed requirements, sign-ins, settings changes and more.', `<button class="btn" id="csv">${icon('download')} Export CSV</button>`)}
     <div class="card"><div class="head">

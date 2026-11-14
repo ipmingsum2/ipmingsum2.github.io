@@ -609,6 +609,23 @@ function ActivityTracker.ReportModeration(entry: { [string]: any })
 	end)
 end
 
+--[[ Records a shift event in the dashboard's Logs (filter "Shifts"). Used by clocking-system addons.
+     event: "clock_in" | "clock_out" | "break_start" | "break_end"; by: the manager who did it for them (optional).
+     Runs in the background. ]]
+function ActivityTracker.ReportShift(player: Player, event: string, by: Player?, source: string?)
+	if not config then
+		return
+	end
+	task.spawn(request, "POST", "/v1/game/shift", {
+		userId = player.UserId,
+		username = player.Name,
+		event = event,
+		byUserId = if by and by ~= player then by.UserId else nil,
+		byName = if by and by ~= player then by.Name else nil,
+		source = source,
+	})
+end
+
 --[[ The shared command set every admin plugin exposes. Returns (ok, message, lines?).
      name: "info" | "warn" | "strike" | "blacklist" | "promote" | "demote" | "cert" | "duty" | "onduty"
      target: the player named in the command (or nil for duty / onduty); text: the rest of the message. ]]

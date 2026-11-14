@@ -263,3 +263,18 @@ export async function gameStaff(c) {
     throw e;
   }
 }
+
+// ---------- shifts (clock in / out / breaks from a clocking system such as DRS Store Operations) ----------
+const SHIFT_EVENTS = { clock_in: 'clocked in', clock_out: 'clocked out', break_start: 'went on break', break_end: 'came back from break' };
+/** POST /v1/game/shift {userId, username?, event, byUserId?, byName?, source?} — recorded in Logs (not sent to the log webhook). */
+export async function gameShift(c) {
+  const b = await readBody(c.req);
+  const event = SHIFT_EVENTS[b.event] ? b.event : bad('event must be clock_in, clock_out, break_start or break_end');
+  const rid = isId(b.userId) ? String(b.userId) : bad('userId is required');
+  const name = str(b.username, 40) || (await c.env.DB.prepare('SELECT username FROM members WHERE group_id=? AND roblox_id=?').bind(c.group.id, rid).first())?.username || `User ${rid}`;
+  const by = isId(b.byUserId) && String(b.byUserId) !== rid ? (str(b.byName, 40) || `User ${b.byUserId}`) : null;
+  const source = str(b.source, 40);
+  await logEvent(c.env, c.ctx, { groupId: c.group.id, type: `shift.${event}`, actor: { type: 'game', id: by ? String(b.byUserId) : rid, name: by || name }, target: { id: rid, name },
+    summary: `${name} ${SHIFT_EVENTS[event]}${by ? ` (by ${by})` : ''}${source ? ` · ${source}` : ''}`, silent: true });
+  return json({ ok: true });
+}
