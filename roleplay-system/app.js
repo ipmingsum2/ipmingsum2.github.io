@@ -211,14 +211,22 @@ function picker() {
           <div><h2>${esc(g.name)}</h2><p class="dim">${g.trackedRanks.length ? `${g.trackedRanks.length} tracked rank${g.trackedRanks.length === 1 ? '' : 's'}` : 'No ranks tracked yet'}</p></div>
           <div class="pick-meta" data-meta="${esc(g.id)}"><span class="muted">Loading…</span></div>
         </button>`).join('')}
-        ${owner ? `<button class="pick add" data-add>${icon('plus', 'lg')}<span>Add a group</span></button>` : ''}
+        ${owner ? `<button class="pick add" data-add>${icon('plus', 'lg')}<span>Add a group</span></button>` : can('manage_groups') ? `<button class="pick add" data-addown>${icon('plus', 'lg')}<span>Add your group</span></button>` : ''}
       </div>
-      ${!owner && !S.groups.length ? `<div class="card"><div class="empty">${icon('users')}<div><b>No groups yet</b></div><p>Ask the owner to add a Roblox group.</p></div></div>` : ''}
+      ${!owner && !S.groups.length ? `<div class="card"><div class="empty">${icon('users')}<div><b>No groups yet</b></div><p>${can('manage_groups') ? 'Add your Roblox group to get started — only you and the owner will see it.' : 'Ask the owner to give you access to a group.'}</p></div></div>` : ''}
     </main>`;
   $('#root').onclick = (e) => {
     const p = e.target.closest('[data-pick]');
     if (p) return enter(p.dataset.pick);
     if (e.target.closest('[data-add]')) return enter(OWNER, '#/groups');
+    if (e.target.closest('[data-addown]')) return modal({ title: 'Add your Roblox group', body: `
+        <label class="field">Group ID<input id="id" inputmode="numeric" placeholder="e.g. 1234567"><small>The number in the group’s URL.</small></label>
+        <label class="field">Open Cloud API key<input id="key" type="password" autocomplete="off"><small>Create one at <a href="https://create.roblox.com/dashboard/credentials" target="_blank" rel="noopener">create.roblox.com › Open Cloud › API keys</a> with <code>group:read</code> and <code>group:write</code> for this group. Stored encrypted. You can add it later in the group’s settings.</small></label>
+        <p class="hint">Only you and the owner will see this group.</p>`,
+      actions: [{ label: 'Add group', kind: 'primary', onClick: async (close, m) => {
+        const r = await api('/api/groups', { body: { id: val(m, '#id'), apiKey: val(m, '#key') } });
+        close(); toast(`Added ${r.name}`, 'good'); await loadGroups(); enter(r.id);
+      } }] });
     if (e.target.closest('[data-logout]')) logout();
   };
   // Live numbers for each card (a failure just leaves the card without them).

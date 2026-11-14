@@ -89,7 +89,9 @@ export async function search(c) {
     }
   }
   if (can(u, 'view_logs')) {
-    tasks.push((async () => add('log', await find('logs', ['summary', 'actor_name', 'target_name', 'type'], group ? 'group_id=?' : '', group ? [group.id] : []), (r) => ({ title: r.type, sub: snippet(r.summary, words), href: '#/logs', at: r.ts })))());
+    const mine = u.groupIds ? [...u.groupIds] : null;
+    const scope = group ? ['group_id=?', [group.id]] : mine ? [mine.length ? `group_id IN (${mine.map(() => '?').join(',')})` : '0', mine] : ['', []];
+    tasks.push((async () => add('log', await find('logs', ['summary', 'actor_name', 'target_name', 'type'], scope[0], scope[1]), (r) => ({ title: r.type, sub: snippet(r.summary, words), href: '#/logs', at: r.ts })))());
   }
   if (u.role === 'owner') {
     tasks.push(
