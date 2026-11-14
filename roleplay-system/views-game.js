@@ -152,6 +152,10 @@ VIEWS.downloads = async (el) => {
         `Insert into <code>${esc(p.into)}</code>${p.merge ? `, then add one line (<a href="#" data-merge="${k}">copy</a>)` : ''}`,
         `<button class="btn sm" data-plugin="${k}">${icon('download', 'sm')} .rbxmx</button>`)).join('')}</div></div></div>`;
 
+  const kits = `<div class="card"><div class="head">${icon('sparkle')}<h2 class="grow">Game kit addons</h2></div><div class="body stack gap-s">
+      <p class="dim">Connect a roleplay kit you already use to the Roleplay System. Each is a Script for <code>ServerScriptService</code> that only listens to the kit — the kit itself stays unchanged — and needs the activity module running.</p>
+      <div class="plugs">${Object.entries(KIT_ADDONS).map(([k, x]) => row(`${esc(x.label)} <span class="muted small">by ${esc(x.vendor)}</span>`, esc(x.what), `<a class="btn sm ghost" href="roblox/kits/DRSStoreOperations.server.lua" target="_blank" rel="noopener">${icon('external', 'sm')} Source</a><button class="btn sm" data-kit="${k}">${icon('download', 'sm')} .rbxmx</button>`)).join('')}</div></div></div>`;
+
   const exp = (id, label, sub, ok = true, perm = '') => row(label, sub, ok ? `<button class="btn sm" data-csv="${id}">${icon('download', 'sm')} CSV</button>` : need(perm));
   const exportsCard = g ? `<div class="card"><div class="head">${icon('list')}<h2 class="grow">Data exports <span class="muted small">· ${esc(g.name)}</span></h2></div><div class="body stack gap-s">
       <div class="plugs">
@@ -165,7 +169,7 @@ VIEWS.downloads = async (el) => {
     : `<div class="card"><div class="empty">${icon('list')}<div>Open a group to export its activity, roster, logbook, blacklist and moderation log.</div></div></div>`;
 
   el.innerHTML = `${head('Downloads', 'Everything you can download: the Roblox module and places, admin system plugins, and your data as CSV.')}
-    ${game}${plugins}${exportsCard}`;
+    ${game}${plugins}${kits}${exportsCard}`;
   bindAdminPlugins(el);
 
   const today = new Date().toISOString().slice(0, 10);
@@ -206,9 +210,10 @@ VIEWS.downloads = async (el) => {
   };
 
   el.addEventListener('click', (e) => {
-    const b = e.target.closest('[data-dl], [data-csv]'); if (!b) return;
+    const b = e.target.closest('[data-dl], [data-csv], [data-kit]'); if (!b) return;
     run(b, async () => {
       if (b.dataset.csv) return CSV[b.dataset.csv]();
+      if (b.dataset.kit) { const f = await buildKitFile(b.dataset.kit); downloadFile(f.name, f.xml); return toast(`${KIT_ADDONS[b.dataset.kit].label} addon downloaded — insert it into ServerScriptService`, 'good'); }
       const d = b.dataset.dl;
       if (d === 'module') { const f = await buildTrackerModel(); return downloadFile(f.name, f.xml); }
       if (d === 'verify') {

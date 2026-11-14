@@ -108,3 +108,19 @@ async function buildTrackerModel({ apiUrl, apiKey } = {}) {
   if (apiKey) parts.push(script('Script', 'RoleplaySystemLoader', trackerLoader(apiUrl, apiKey)));
   return { name: apiKey ? 'ActivityTracker-with-loader.rbxmx' : 'ActivityTracker.rbxmx', xml: `<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">\n<External>null</External>\n<External>nil</External>\n${parts.join('\n')}\n</roblox>\n` };
 }
+
+// ---------- game kit addons (.rbxmx) ----------
+// Each connects a third-party roleplay kit to the Roblox setup above. They hold no key — they use the ActivityTracker.
+const KIT_ADDONS = {
+  drs: { label: 'DRS | Store Operations', vendor: 'Direct Retail Solutions', into: 'ServerScriptService',
+    what: 'Clocking in and out (machine, /clockin, manager panel) puts staff on and off duty, every clock in, clock out and break is logged under Logs › Shifts, and dashboard announcements show in the DRS banner.',
+    items: async () => [script('Script', 'RoleplaySystem_DRS', await luaSource('kits/DRSStoreOperations.server.lua'))] },
+};
+
+/** buildKitFile(kind) -> {name, xml} */
+async function buildKitFile(kind) {
+  const def = KIT_ADDONS[kind];
+  if (!def) throw new Error('Unknown kit');
+  refId = 0;
+  return { name: `RoleplaySystem-${kind}.rbxmx`, xml: `<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">\n<External>null</External>\n<External>nil</External>\n${(await def.items()).join('\n')}\n</roblox>\n` };
+}
