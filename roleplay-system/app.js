@@ -21,6 +21,8 @@ const GROUP_NAV = () => [
   ['timeoff', 'Time off', 'calendar'],
   ['roster', 'Roster', 'idcard'],
   ['reports', 'Reports', 'filetext'],
+  ['servers', 'Live servers', 'server'],
+  ['moderation', 'Moderation', 'gavel', () => can('manage_discipline') || can('view_logs') || can('manage_servers')],
   ['logbook', 'Logbook', 'clipboard'],
   ['ranking', 'Ranking', 'rank', () => can('ranking')],
   ['promotions', 'Promotions', 'thumb'],
@@ -53,7 +55,7 @@ const OWNER_NAV = () => [
   ['account', 'My account', 'user'],
 ];
 // Pages that belong to a group (need S.gid to be a real group).
-const GROUP_PAGES = new Set(['overview', 'activity', 'member', 'requirements', 'timeoff', 'ranking', 'sessions', 'applications', 'submission', 'news', 'logbook', 'promotions', 'kb', 'blacklist', 'autopromote', 'roster', 'reports', 'report']);
+const GROUP_PAGES = new Set(['overview', 'activity', 'member', 'requirements', 'timeoff', 'ranking', 'sessions', 'applications', 'submission', 'news', 'logbook', 'promotions', 'kb', 'blacklist', 'autopromote', 'roster', 'reports', 'report', 'servers', 'moderation']);
 // Pages highlighted under another sidebar entry.
 const NAV_PARENT = { member: 'activity', submission: 'applications', report: 'reports' };
 // Deep links from outside (e.g. Discord's "Decide" button): #/go/<groupId>/<page…> switches group, then opens the page.

@@ -3,6 +3,10 @@
 
 // Every icon is an inline SVG (24x24, stroked).
 const ICONS = {
+  server: '<rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/><path d="M7 7.5h.01M7 16.5h.01M11 7.5h6M11 16.5h6"/>',
+  gavel: '<path d="m13.5 4.5 6 6M10.5 7.5l6 6M12 6l-4.5 4.5 6 6L18 12"/><path d="M10 13.5 3.5 20M13 21h8"/>',
+  power: '<path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/>',
+  puzzle: '<path d="M10 3.5a2 2 0 0 1 4 0V6h4v4h-1.5a2 2 0 0 0 0 4H18v4h-4v-1.5a2 2 0 0 0-4 0V18H6v-4h1.5a2 2 0 0 0 0-4H6V6h4z"/>',
   idcard: '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2.2"/><path d="M5.8 16c.6-1.6 1.8-2.4 3.2-2.4s2.6.8 3.2 2.4M14 10h4M14 13.5h3"/>',
   award: '<circle cx="12" cy="9" r="5.5"/><path d="M8.7 13.4 7.2 21l4.8-2.6 4.8 2.6-1.5-7.6"/>',
   filetext: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',
@@ -286,7 +290,7 @@ const plainText = (s) => String(s || '').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
 
 // ---------- who can read posts and handbooks ----------
 // 'public' = anyone (no sign-in) · '' = signed-in staff · a permission key = people with it (content editors always can).
-const VIS_LABELS = { public: 'Anyone (public page)', '': 'Signed-in staff', manage_activity: 'Activity managers', ranking: 'Rankers', manage_groups: 'Group managers', manage_applications: 'Application managers', review_applications: 'Application reviewers', view_logs: 'Log viewers', manage_api_keys: 'API key managers', manage_discipline: 'Discipline managers', manage_content: 'Content editors', manage_roster: 'Roster managers', manage_reports: 'Report managers' };
+const VIS_LABELS = { public: 'Anyone (public page)', '': 'Signed-in staff', manage_activity: 'Activity managers', ranking: 'Rankers', manage_groups: 'Group managers', manage_applications: 'Application managers', review_applications: 'Application reviewers', view_logs: 'Log viewers', manage_api_keys: 'API key managers', manage_discipline: 'Discipline managers', manage_content: 'Content editors', manage_roster: 'Roster managers', manage_reports: 'Report managers', manage_servers: 'Server managers' };
 const visOptions = (cur = '') => Object.entries(VIS_LABELS).map(([k, l]) => `<option value="${k}" ${k === cur ? 'selected' : ''}>${l}</option>`).join('');
 const visBadge = (v) => (v === 'public' ? `<span class="badge good">${icon('globe', 'sm')} Public</span>` : `<span class="badge">${icon('lock', 'sm')} ${esc(v ? VIS_LABELS[v] || v : 'Staff only')}</span>`);
 

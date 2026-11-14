@@ -51,3 +51,38 @@ async function buildPlaceFile(kind, { apiUrl, apiKey, title }) {
   ].join('\n');
   return `<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">\n<External>null</External>\n<External>nil</External>\n${body}\n</roblox>\n`;
 }
+
+// ---------- admin-system plugins (.rbxmx model files) ----------
+// Plugins hold no API key — they call the ActivityTracker module, which does. Right-click the folder named in
+// `into` in Studio, choose "Insert from File…" and pick the download.
+const BAE_COMMANDS = ['rpinfo', 'rpwarn', 'rpstrike', 'rppromote', 'rpdemote', 'rpblacklist', 'rpcert', 'duty', 'onduty'];
+const ADMIN_PLUGINS = {
+  adonis: { label: 'Adonis', into: 'Adonis_Loader › Config › Plugins', mirror: true,
+    items: async () => [script('ModuleScript', 'Server-RoleplaySystem', await luaSource('plugins/Adonis.lua'))] },
+  bae: { label: 'Basic Admin Essentials 2.0', into: 'Basic Admin Essentials 2.0 › Plugins', mirror: true,
+    items: async () => {
+      const core = await luaSource('plugins/BasicAdmin.lua');
+      return BAE_COMMANDS.map((n) => n === 'rpinfo'
+        ? item('ModuleScript', n, `<ProtectedString name="Source">${cdata('-- Roleplay System: see the Core module inside this one.\nreturn require(script:WaitForChild("Core"))("rpinfo")\n')}</ProtectedString>`, script('ModuleScript', 'Core', core))
+        : script('ModuleScript', n, `-- Roleplay System command (the shared code is rpinfo > Core).\nreturn require(script.Parent:WaitForChild("rpinfo"):WaitForChild("Core"))("${n}")\n`));
+    } },
+  hd1: { label: 'HD Admin v1 (classic)', into: 'HD Admin › Config › Commands › Server', mirror: false,
+    merge: 'for _, command in require(script.RoleplaySystem) do table.insert(module, command) end',
+    items: async () => [script('ModuleScript', 'RoleplaySystem', await luaSource('plugins/HDAdmin1.lua'))] },
+  hd2: { label: 'HD Admin v2', into: 'HD Admin › Config › Commands', mirror: false,
+    items: async () => [script('ModuleScript', 'RoleplaySystem', await luaSource('plugins/HDAdmin2.lua'))] },
+  kohls: { label: 'Kohl’s Admin', into: 'Kohl’s Admin › Config › Addons', mirror: true,
+    items: async () => [script('ModuleScript', 'RoleplaySystem', await luaSource('plugins/KohlsAdmin.lua')), script('ModuleScript', 'RoleplaySystemServer', await luaSource('plugins/KohlsAdminServer.lua'))] },
+  kai: { label: 'Kohl’s Admin Infinite', into: 'Custom_Commands (Kohl’s Admin › Config › Legacy › Custom_Commands)', mirror: false,
+    merge: 'for _, command in require(script.RoleplaySystem) do table.insert(commands, command) end',
+    items: async () => [script('ModuleScript', 'RoleplaySystem', await luaSource('plugins/KohlsInfinite.lua'))] },
+};
+
+/** buildModelFile(kind) -> {name, xml} for one admin system's plugin. */
+async function buildModelFile(kind) {
+  const def = ADMIN_PLUGINS[kind];
+  if (!def) throw new Error('Unknown admin system');
+  refId = 0;
+  const body = (await def.items()).join('\n');
+  return { name: `RoleplaySystem-${kind}.rbxmx`, xml: `<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">\n<External>null</External>\n<External>nil</External>\n${body}\n</roblox>\n` };
+}

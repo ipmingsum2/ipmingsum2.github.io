@@ -376,3 +376,11 @@ kbd .ic { width: 11px; height: 11px; vertical-align: -1px; stroke-width: 2.4; }
 .roster-box > div { display: flex; flex-direction: column; gap: 6px; min-width: 120px; }
 .pick-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line); color: var(--text); }
 .pick-row:hover { text-decoration: none; border-color: var(--accent); background: var(--accent-soft); }
+
+/* admin-system plugin list (Roblox setup) */
+.plugs { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.plug { display: flex; align-items: center; gap: 12px; padding: 10px 14px; }
+.plug + .plug { border-top: 1px solid var(--line); }
+.plug code { font-size: 12px; }
+@media (max-width: 560px) { .plug { flex-wrap: wrap; } .plug .btn { width: 100%; justify-content: center; } }
+@media (max-width: 640px) { .server-head { flex-wrap: wrap; } .server-head h2 { flex: 1 1 calc(100% - 40px); } .server-head .btn { flex: 1; justify-content: center; } }

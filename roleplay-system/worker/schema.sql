@@ -90,9 +90,11 @@ CREATE TABLE IF NOT EXISTS activity_daily (
   idle_seconds INTEGER NOT NULL DEFAULT 0,
   messages INTEGER NOT NULL DEFAULT 0,
   sessions INTEGER NOT NULL DEFAULT 0,
+  duty_seconds INTEGER NOT NULL DEFAULT 0,       -- time spent on duty (ActivityTracker.SetOnDuty / admin plugin duty command)
   PRIMARY KEY (group_id, roblox_id, day)
 );
 CREATE INDEX IF NOT EXISTS idx_ad_day ON activity_daily (group_id, day);
+-- Existing databases: ALTER TABLE activity_daily ADD COLUMN duty_seconds INTEGER NOT NULL DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS time_off (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -429,3 +431,41 @@ CREATE TABLE IF NOT EXISTS blacklist (
   removed_by TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_blacklist_member ON blacklist (group_id, roblox_id);
+
+-- Game bridge: live servers, dashboard -> game commands, admin-system moderation log, duty time.
+CREATE TABLE IF NOT EXISTS game_servers (
+  group_id TEXT NOT NULL,
+  job_id TEXT NOT NULL,
+  place_id TEXT,
+  players TEXT NOT NULL DEFAULT '[]',          -- [{userId, username, displayName, rank, role, idle, onDuty, dutyLabel}]
+  started_at INTEGER NOT NULL,
+  last_seen INTEGER NOT NULL,
+  last_cmd INTEGER NOT NULL DEFAULT 0,         -- highest game_commands.id delivered to this server
+  PRIMARY KEY (group_id, job_id)
+);
+CREATE TABLE IF NOT EXISTS game_commands (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  group_id TEXT NOT NULL,
+  job_id TEXT,                                  -- NULL = every server
+  type TEXT NOT NULL,                           -- announce | kick | shutdown
+  data TEXT NOT NULL DEFAULT '{}',
+  author TEXT,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_gc_group ON game_commands (group_id, id);
+CREATE TABLE IF NOT EXISTS moderation (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  group_id TEXT NOT NULL,
+  roblox_id TEXT,
+  username TEXT,
+  action TEXT NOT NULL,                         -- kick | ban | unban | warn | mute | other
+  reason TEXT,
+  duration INTEGER,                             -- seconds; -1 = permanent
+  moderator_id TEXT,
+  moderator TEXT,
+  source TEXT,                                  -- Adonis, Basic Admin, HD Admin, Kohl's Admin, Dashboard...
+  job_id TEXT,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_mod_group ON moderation (group_id, id);
+CREATE INDEX IF NOT EXISTS idx_mod_member ON moderation (group_id, roblox_id);
