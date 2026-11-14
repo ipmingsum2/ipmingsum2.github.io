@@ -293,6 +293,8 @@ export async function createKey(c) {
   const groupId = str(b.groupId, 20) || null;
   if (groupId && !(await c.env.DB.prepare('SELECT id FROM groups WHERE id=?').bind(groupId).first())) bad('Group not found', 404);
   if (scopes.includes('game') && !groupId) bad('A key with the "game" scope must be tied to one group');
+  // The verification game links accounts for the whole system, so only the owner may create its key.
+  if (scopes.includes('verify') && c.user?.role !== 'owner') bad('Only the owner can create a verification key — the verification game is owner-only', 403);
   if (scopes.includes('verify') && groupId) bad('The "verify" scope is system-wide — create it without a group (the owner downloads the verification game from Owner Menu → Verification game)');
   const key = `rpk_${randHex(24)}`;
   await c.env.DB.prepare('INSERT INTO api_keys (name, key_hash, prefix, group_id, scopes, created_by, created_at) VALUES (?,?,?,?,?,?,?)')
@@ -304,6 +306,7 @@ export async function createKey(c) {
 export async function revokeKey(c) {
   const k = await c.env.DB.prepare('SELECT * FROM api_keys WHERE id=? AND revoked=0').bind(Number(c.params.id)).first();
   if (!k) bad('Key not found', 404);
+  if (parseJSON(k.scopes, []).includes('verify') && c.user?.role !== 'owner') bad('Only the owner can revoke the verification game’s key', 403);
   await c.env.DB.prepare('UPDATE api_keys SET revoked=1 WHERE id=?').bind(k.id).run();
   await logEvent(c.env, c.ctx, { groupId: k.group_id, type: 'apikey.revoked', actor: c.actor, summary: `${c.actor.name} revoked API key "${k.name}"` });
   return json({ ok: true });
