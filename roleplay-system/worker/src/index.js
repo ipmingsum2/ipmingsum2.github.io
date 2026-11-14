@@ -16,6 +16,7 @@ import * as extras from './extras.js';
 import * as rosterMod from './roster.js';
 import * as reports from './reports.js';
 import * as bridge from './gamebridge.js';
+import { search } from './search.js';
 
 const routes = [];
 /**
@@ -292,6 +293,7 @@ R('PATCH', '/api/access-requests/:id', access.decide, { owner: true });
 
 // --- groups ---
 R('GET', '/api/groups', listGroups);
+R('GET', '/api/search', search);
 R('POST', '/api/groups', createGroup, { perm: G });
 R('PATCH', '/api/groups/:gid', updateGroup, { anyPerm: [G, A] });
 R('DELETE', '/api/groups/:gid', deleteGroup, { perm: G });

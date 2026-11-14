@@ -86,3 +86,25 @@ async function buildModelFile(kind) {
   const body = (await def.items()).join('\n');
   return { name: `RoleplaySystem-${kind}.rbxmx`, xml: `<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">\n<External>null</External>\n<External>nil</External>\n${body}\n</roblox>\n` };
 }
+
+// ---------- activity tracker (.rbxmx) ----------
+const trackerLoader = (apiUrl, apiKey) => `-- Starts the Roleplay System tracker. Keep this Script next to the ActivityTracker ModuleScript in ServerScriptService.
+-- The API key below is secret: never put it in a LocalScript or share this place file.
+local ActivityTracker = require(script.Parent:WaitForChild("ActivityTracker"))
+
+ActivityTracker.Start({
+\tApiUrl = "${luaEsc(apiUrl)}",
+\tApiKey = "${luaEsc(apiKey)}",
+})
+`;
+
+/**
+ * buildTrackerModel({apiUrl?, apiKey?}) -> {name, xml}. Always a ModuleScript named "ActivityTracker"; with a key it
+ * also contains the "RoleplaySystemLoader" Script. Insert both into ServerScriptService.
+ */
+async function buildTrackerModel({ apiUrl, apiKey } = {}) {
+  refId = 0;
+  const parts = [script('ModuleScript', 'ActivityTracker', await luaSource('ActivityTracker.lua'))];
+  if (apiKey) parts.push(script('Script', 'RoleplaySystemLoader', trackerLoader(apiUrl, apiKey)));
+  return { name: apiKey ? 'ActivityTracker-with-loader.rbxmx' : 'ActivityTracker.rbxmx', xml: `<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">\n<External>null</External>\n<External>nil</External>\n${parts.join('\n')}\n</roblox>\n` };
+}

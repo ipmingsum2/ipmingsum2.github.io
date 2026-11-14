@@ -24,7 +24,8 @@ A whitelist-only management system for Roblox roleplay groups: activity tracking
 | Logbook | Warnings, strikes, suspensions, demotions, promotions, commendations and terminations with reason and evidence link; warnings expire, entries are revoked (never deleted); warning ticker per member; promotions/demotions can change the rank too |
 | Sessions | Schedule shifts/trainings/events with Discord announcements and a reminder 10 minutes to 2 hours before they start (optional role ping); staff claim them as host or co-host; registers record who attended; optional weekly session target in requirements |
 | Staff of the week | Optional weekly Discord post on a chosen day and hour: top 3/5/10 members by hours and by sessions over the last 7 days, with a “post now” button |
-| Quick search | <kbd>Ctrl</kbd>+<kbd>K</kbd> (or <kbd>/</kbd>) anywhere in the dashboard jumps to a page, group or member |
+| Search | <kbd>Ctrl</kbd>+<kbd>K</kbd> (or <kbd>/</kbd>) anywhere in the dashboard searches inside every page you can open: members (name, role, callsign), member notes, logbook entries, reports and their answers, handbooks, news, sessions, departments and certifications, promotion picks, time off, the blacklist, the moderation log, applications and submissions, logs, and for the owner the whitelist and access requests. Results are grouped by page, matches are highlighted, and Enter opens the item |
+| Downloads | One page with everything to download: the activity module (`.rbxmx` ModuleScript, or module + loader with a new key), the application center and verification game places, the six admin system plugins, and CSV exports of activity, roster, logbook, blacklist and moderation log |
 | Promotions | Nominate members for promotion, upvote with a required justification, filter by rank, sort by votes or trending, recommender insights; rankers promote straight from a recommendation |
 | Knowledgebase & news | Handbooks, guides and policies by category; group news with pinning and optional Discord announcement. Every post and handbook is also published on the public pages **/posts/** and **/handbooks/**, and each one is readable by anyone (public), by signed-in staff, or only by people with one permission. Restricted items ask the reader to sign in and bring them straight back afterwards |
 | Blacklist | Ban players with a reason, optional evidence link and expiry; the ActivityTracker module kicks them on join (and within a minute if they're added mid-game); blacklisted players can't apply; entries are removed, never deleted; API lookup |
@@ -120,7 +121,7 @@ npx wrangler pages deploy
 
 Everything Roblox-side talks to the API with a key held in a **server Script**. In every place, turn on **Game Settings → Security → Allow HTTP Requests**.
 
-**Activity tracker** — add `ActivityTracker.lua` as a ModuleScript named `ActivityTracker` in `ServerScriptService`, plus a Script next to it (the dashboard copies this with a fresh key filled in):
+**Activity tracker** — from the dashboard's **Downloads** page, download **Module + loader** (`ActivityTracker-with-loader.rbxmx`) and insert it into `ServerScriptService` (right-click › Insert from File…). It contains the `ActivityTracker` ModuleScript and a Script that starts it with a fresh key. Downloading the module alone gives `ActivityTracker.rbxmx`; then add this Script next to it:
 
 ```lua
 local ActivityTracker = require(script.Parent:WaitForChild("ActivityTracker"))
@@ -165,6 +166,12 @@ Full reference: `docs.html` on your dashboard (linked from the API page). Keys a
 ```bash
 curl "https://YOUR-WORKER-URL/v1/groups/1234567/activity?from=2026-11-09&to=2026-11-15" -H "Authorization: Bearer rpk_..."
 ```
+
+## Editing site text (Strings.json)
+
+All text on the intro page (`index.html`) lives in `Strings.json`, grouped by section from top to bottom (`hero`, `activity`, `ranking` … `signin`). Change a value and the page shows it the next time it loads — edit the file in the repository or straight on GitHub. Keep the keys; values may use simple HTML (`<b>`, `<i>`, `<code>`, `<a href="…">`).
+
+The HTML carries the same text, so nothing flickers while the file loads. `node tools/strings.cjs` writes Strings.json into the HTML, `node tools/strings.cjs --from-html` copies text edited in the HTML back into Strings.json, and `--check` reports any difference.
 
 ## Local development
 

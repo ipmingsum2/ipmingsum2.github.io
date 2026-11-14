@@ -3,28 +3,28 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Roleplay System</title>
-  <meta name="description" content="Activity tracking, requirements, ranking, applications and logs for Roblox roleplay groups.">
+  <title data-s="page.title">Roleplay System</title>
+  <meta name="description" content="Activity tracking, requirements, ranking, applications and logs for Roblox roleplay groups." data-s-attr="content:page.description">
   <script>try{var t=localStorage.getItem("rp_theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%278%27 fill=%27%235b8def%27/%3E%3Cpath d=%27M16 26s7-3.500 7-8.750V11l-7-2.600L9 11v6.250C9 22.500 16 26 16 26z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%272%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="styles.css?v=2a8a86b">
-  <link rel="stylesheet" href="intro.css?v=2a8a86b">
+  <link rel="stylesheet" href="styles.css?v=edfdc22">
+  <link rel="stylesheet" href="intro.css?v=edfdc22">
 </head>
 <body class="intro">
   <div class="progress" aria-hidden="true"><i id="progress"></i></div>
 
   <!-- Mobile top bar -->
   <header class="mtop">
-    <button class="btn ghost icon" id="menuBtn" aria-label="Open menu" aria-controls="side" aria-expanded="false" data-ic="menu"></button>
-    <a class="brand" href="#top"><span class="mark" data-ic="shield"></span><span>Roleplay System</span></a>
-    <a class="btn primary sm" href="#signin" data-signin-label>Sign in</a>
+    <button class="btn ghost icon" id="menuBtn" aria-label="Open menu" aria-controls="side" aria-expanded="false" data-ic="menu" data-s-attr="aria-label:topbar.ariaLabel"></button>
+    <a class="brand" href="#top"><span class="mark" data-ic="shield"></span><span data-s="topbar.label">Roleplay System</span></a>
+    <a class="btn primary sm" href="#signin" data-signin-label data-s="topbar.button">Sign in</a>
   </header>
 
-  <aside class="iside" id="side" aria-label="Tour">
-    <a class="brand" href="#top"><span class="mark" data-ic="shield"></span><span>Roleplay System</span></a>
+  <aside class="iside" id="side" aria-label="Tour" data-s-attr="aria-label:sidebar.ariaLabel">
+    <a class="brand" href="#top"><span class="mark" data-ic="shield"></span><span data-s="sidebar.label">Roleplay System</span></a>
     <nav class="inav" id="inav"></nav>
     <div class="iside-foot">
-      <div class="row"><span class="dim grow">Theme</span><span id="themeSlot"></span></div>
+      <div class="row"><span class="dim grow" data-s="sidebar.label2">Theme</span><span id="themeSlot"></span></div>
       <div class="signin-mini" id="miniSignin"></div>
     </div>
   </aside>
@@ -32,297 +32,296 @@
 
   <main class="imain" id="main">
     <!-- HERO -->
-    <section class="hero" id="top" data-nav="Introduction" data-icon="home">
+    <section class="hero" id="top" data-nav="Introduction" data-icon="home" data-s-attr="data-nav:hero.navLabel">
       <div class="hero-grid" aria-hidden="true"></div>
       <div class="glow g1" aria-hidden="true"></div><div class="glow g2" aria-hidden="true"></div>
       <div class="hero-copy">
-        <span class="eyebrow" data-anim><span data-ic="sparkle"></span> For Roblox roleplay groups</span>
-        <h1 class="hero-title" aria-label="Run your whole group from one dashboard.">
-          <span aria-hidden="true"><span class="w" style="--i:0">Run</span> <span class="w" style="--i:1">your</span> <span class="w" style="--i:2">whole</span><br><span class="w rot-wrap" style="--i:3"><span class="rotator" id="rotator" data-words="group|staff team|police force|hotel|café|airline|school|fire department"><span class="rw on">group</span></span></span><br><span class="w grad" style="--i:4">from one dashboard.</span></span>
+        <span class="eyebrow" data-anim><span data-ic="sparkle"></span> <span data-s="hero.kicker">For Roblox roleplay groups</span></span>
+        <h1 class="hero-title" aria-label="Run your whole group from one dashboard." data-s-attr="aria-label:hero.ariaLabel">
+          <span aria-hidden="true"><span class="w" style="--i:0" data-s="hero.titleWord1">Run</span> <span class="w" style="--i:1" data-s="hero.titleWord2">your</span> <span class="w" style="--i:2" data-s="hero.titleWord3">whole</span><br><span class="w rot-wrap" style="--i:3"><span class="rotator" id="rotator" data-words="group|staff team|police force|hotel|café|airline|school|fire department" data-s-attr="data-words:hero.rotatingWords"><span class="rw on">group</span></span></span><br><span class="w grad" style="--i:4" data-s="hero.titleWord4">from one dashboard.</span></span>
         </h1>
-        <p class="lead" data-anim style="--d:.16s">Track every minute played, enforce activity requirements, rank through Roblox Open Cloud, run application centers and keep a log of everything, across as many groups as you manage.</p>
+        <p class="lead" data-anim style="--d:.16s" data-s="hero.text">Track every minute played, enforce activity requirements, rank through Roblox Open Cloud, run application centers and keep a log of everything, across as many groups as you manage.</p>
         <div class="row wrap" data-anim style="--d:.24s">
-          <a class="btn primary lg shine" href="#activity">See our features <span data-ic="down"></span></a>
-          <a class="btn lg" href="#signin" data-signin-label>Sign in</a>
+          <a class="btn primary lg shine" href="#activity"><span data-s="hero.button">See our features</span> <span data-ic="down"></span></a>
+          <a class="btn lg" href="#signin" data-signin-label data-s="hero.button2">Sign in</a>
         </div>
       </div>
-      <aside class="live-feed" id="liveFeed" aria-label="Example of what happens in a group" data-anim style="--d:.3s">
-        <div class="lf-head">Live - Sunrise Hotels<span class="lf-sub">example</span></div>
+      <aside class="live-feed" id="liveFeed" aria-label="Example of what happens in a group" data-anim style="--d:.3s" data-s-attr="aria-label:hero.liveFeed.ariaLabel">
+        <div class="lf-head" data-s="hero.liveFeed.label">Live - Sunrise Hotels<span class="lf-sub">example</span></div>
         <ol class="lf-list" id="lfList"></ol>
       </aside>
       <div class="hero-stage" id="heroStage">
         <figure class="frame hero-frame tilt-glare" id="heroFrame">
-          <div class="chrome" aria-hidden="true"><svg viewBox="0 0 52 12"><circle cx="6" cy="6" r="5"/><circle cx="24" cy="6" r="5"/><circle cx="42" cy="6" r="5"/></svg><span>ipmingsum2.github.io/roleplay-system</span></div>
-          <img data-shot="overview" alt="Dashboard overview: hours today and this week, members in game, requirement progress, a daily hours chart and recent log entries" width="1440" height="900" fetchpriority="high">
+          <div class="chrome" aria-hidden="true"><svg viewBox="0 0 52 12"><circle cx="6" cy="6" r="5"/><circle cx="24" cy="6" r="5"/><circle cx="42" cy="6" r="5"/></svg><span data-s="hero.demo.label">ipmingsum2.github.io/roleplay-system</span></div>
+          <img data-shot="overview" alt="Dashboard overview: hours today and this week, members in game, requirement progress, a daily hours chart and recent log entries" width="1440" height="900" fetchpriority="high" data-s-attr="alt:hero.demo.image">
         </figure>
       </div>
     </section>
 
-    <section class="marquee" aria-label="Everything included">
-      <div class="track" data-marquee><span class="mchip"><span data-ic="chart"></span>Activity tracking</span><span class="mchip"><span data-ic="target"></span>Daily &amp; weekly requirements</span><span class="mchip"><span data-ic="calendar"></span>Time off</span><span class="mchip"><span data-ic="rank"></span>Open Cloud ranking</span><span class="mchip"><span data-ic="thumb"></span>Promotion picks</span><span class="mchip"><span data-ic="sparkle"></span>Auto-promotion</span><span class="mchip"><span data-ic="clipboard"></span>Logbook</span><span class="mchip"><span data-ic="idcard"></span>Departments &amp; callsigns</span><span class="mchip"><span data-ic="award"></span>Certifications</span><span class="mchip"><span data-ic="ban"></span>Blacklist</span><span class="mchip"><span data-ic="clock"></span>Session registers</span><span class="mchip"><span data-ic="bell"></span>Session reminders</span><span class="mchip"><span data-ic="list"></span>Full audit log</span></div>
-      <div class="track rev" data-marquee><span class="mchip"><span data-ic="file"></span>Application centers</span><span class="mchip"><span data-ic="edit"></span>Smart forms</span><span class="mchip"><span data-ic="inbox"></span>Access requests</span><span class="mchip"><span data-ic="server"></span>Live servers</span><span class="mchip"><span data-ic="puzzle"></span>Admin plugins</span><span class="mchip"><span data-ic="gavel"></span>Moderation log</span><span class="mchip"><span data-ic="filetext"></span>Reports</span><span class="mchip"><span data-ic="trophy"></span>Staff of the week</span><span class="mchip"><span data-ic="chart"></span>Activity heatmap</span><span class="mchip"><span data-ic="search"></span>Quick search</span><span class="mchip"><span data-ic="book"></span>Knowledgebase</span><span class="mchip"><span data-ic="megaphone"></span>News</span><span class="mchip"><span data-ic="download"></span>CSV export</span><span class="mchip"><span data-ic="key"></span>Public API</span><span class="mchip"><span data-ic="users"></span>Unlimited groups</span><span class="mchip"><span data-ic="moon"></span>Dark mode</span></div>
+    <section class="marquee" aria-label="Everything included" data-s-attr="aria-label:marquee.ariaLabel">
+      <div class="track" data-marquee><span class="mchip"><span data-ic="chart"></span><span data-s="marquee.row1.chip1">Activity tracking</span></span><span class="mchip"><span data-ic="target"></span><span data-s="marquee.row1.chip2">Daily & weekly requirements</span></span><span class="mchip"><span data-ic="calendar"></span><span data-s="marquee.row1.chip3">Time off</span></span><span class="mchip"><span data-ic="rank"></span><span data-s="marquee.row1.chip4">Open Cloud ranking</span></span><span class="mchip"><span data-ic="thumb"></span><span data-s="marquee.row1.chip5">Promotion picks</span></span><span class="mchip"><span data-ic="sparkle"></span><span data-s="marquee.row1.chip6">Auto-promotion</span></span><span class="mchip"><span data-ic="clipboard"></span><span data-s="marquee.row1.chip7">Logbook</span></span><span class="mchip"><span data-ic="idcard"></span><span data-s="marquee.row1.chip8">Departments & callsigns</span></span><span class="mchip"><span data-ic="award"></span><span data-s="marquee.row1.chip9">Certifications</span></span><span class="mchip"><span data-ic="ban"></span><span data-s="marquee.row1.chip10">Blacklist</span></span><span class="mchip"><span data-ic="clock"></span><span data-s="marquee.row1.chip11">Session registers</span></span><span class="mchip"><span data-ic="bell"></span><span data-s="marquee.row1.chip12">Session reminders</span></span><span class="mchip"><span data-ic="list"></span><span data-s="marquee.row1.chip13">Full audit log</span></span></div>
+      <div class="track rev" data-marquee><span class="mchip"><span data-ic="file"></span><span data-s="marquee.row2.chip1">Application centers</span></span><span class="mchip"><span data-ic="edit"></span><span data-s="marquee.row2.chip2">Smart forms</span></span><span class="mchip"><span data-ic="inbox"></span><span data-s="marquee.row2.chip3">Access requests</span></span><span class="mchip"><span data-ic="server"></span><span data-s="marquee.row2.chip4">Live servers</span></span><span class="mchip"><span data-ic="puzzle"></span><span data-s="marquee.row2.chip5">Admin plugins</span></span><span class="mchip"><span data-ic="gavel"></span><span data-s="marquee.row2.chip6">Moderation log</span></span><span class="mchip"><span data-ic="filetext"></span><span data-s="marquee.row2.chip7">Reports</span></span><span class="mchip"><span data-ic="trophy"></span><span data-s="marquee.row2.chip8">Staff of the week</span></span><span class="mchip"><span data-ic="chart"></span><span data-s="marquee.row2.chip9">Activity heatmap</span></span><span class="mchip"><span data-ic="search"></span><span data-s="marquee.row2.chip10">Quick search</span></span><span class="mchip"><span data-ic="book"></span><span data-s="marquee.row2.chip11">Knowledgebase</span></span><span class="mchip"><span data-ic="megaphone"></span><span data-s="marquee.row2.chip12">News</span></span><span class="mchip"><span data-ic="download"></span><span data-s="marquee.row2.chip13">CSV export</span></span><span class="mchip"><span data-ic="key"></span><span data-s="marquee.row2.chip14">Public API</span></span><span class="mchip"><span data-ic="users"></span><span data-s="marquee.row2.chip15">Unlimited groups</span></span><span class="mchip"><span data-ic="moon"></span><span data-s="marquee.row2.chip16">Dark mode</span></span></div>
     </section>
 
-    <section class="strip" aria-label="At a glance">
-      <div data-anim><b data-count="45">0</b><span>features in one place</span></div>
-      <div data-anim style="--d:.06s"><b data-count="11">0</b><span>application question types</span></div>
-      <div data-anim style="--d:.12s"><b data-count="60" data-suffix="s">0</b><span>between activity heartbeats</span></div>
-      <div data-anim style="--d:.18s"><b class="inf" data-ic="infinity" aria-label="Unlimited"></b><span>groups per dashboard</span></div>
+    <section class="strip" aria-label="At a glance" data-s-attr="aria-label:stats.ariaLabel">
+      <div data-anim><b data-count="45" data-s-attr="data-count:stats.stat1.number">0</b><span data-s="stats.stat1.label">features in one place</span></div>
+      <div data-anim style="--d:.06s"><b data-count="11" data-s-attr="data-count:stats.stat2.number">0</b><span data-s="stats.stat2.label">application question types</span></div>
+      <div data-anim style="--d:.12s"><b data-count="60" data-suffix="s" data-s-attr="data-count:stats.stat3.number">0</b><span data-s="stats.stat3.label">between activity heartbeats</span></div>
+      <div data-anim style="--d:.18s"><b class="inf" data-ic="infinity" aria-label="Unlimited" data-s-attr="aria-label:stats.stat4.ariaLabel"></b><span data-s="stats.stat4.label">groups per dashboard</span></div>
     </section>
 
     <!-- ACTIVITY TOUR -->
-    <section class="chapter" id="activity" data-nav="Activity tracking" data-icon="chart">
-      <header class="chead" data-anim><span class="kicker">01 · Activity</span><h2>Know exactly who shows up.</h2><p>A Roblox module reports who (Alvin) is in your game every minute. The dashboard turns it into hours, sessions, idle time and chat activity for every member in a tracked rank.</p></header>
+    <section class="chapter" id="activity" data-nav="Activity tracking" data-icon="chart" data-s-attr="data-nav:activity.navLabel">
+      <header class="chead" data-anim><span class="kicker" data-s="activity.kicker">01 · Activity</span><h2 data-s="activity.title">Know exactly who shows up.</h2><p data-s="activity.text">A Roblox module reports who (Alvin) is in your game every minute. The dashboard turns it into hours, sessions, idle time and chat activity for every member in a tracked rank.</p></header>
       <div class="tour" data-tour>
         <div class="tour-media"><figure class="frame"><div class="chrome" aria-hidden="true"><svg viewBox="0 0 52 12"><circle cx="6" cy="6" r="5"/><circle cx="24" cy="6" r="5"/><circle cx="42" cy="6" r="5"/></svg><span data-url></span></div><div class="stack-imgs"></div></figure></div>
         <div class="tour-steps">
           <article class="step" data-shot-step="activity" data-url="#/activity">
-            <span class="sicon" data-ic="chart"></span><h3>Total hours, daily or weekly</h3>
-            <p>Switch the graph between days and weeks, then filter the leaderboard by today, this week, last week, 30 days, all time or any custom date range.</p>
-            <ul><li>A weekday-by-hour heatmap of when members actually play</li><li>AFK time detected server-side</li><li>Sessions, chat messages and who is in game right now</li><li>CSV export, and manual adjustments that are always logged</li></ul>
+            <span class="sicon" data-ic="chart"></span><h3 data-s="activity.step1.heading">Total hours, daily or weekly</h3>
+            <p data-s="activity.step1.text">Switch the graph between days and weeks, then filter the leaderboard by today, this week, last week, 30 days, all time or any custom date range.</p>
+            <ul><li data-s="activity.step1.point1">A weekday-by-hour heatmap of when members actually play</li><li data-s="activity.step1.point2">AFK time detected server-side</li><li data-s="activity.step1.point3">Sessions, chat messages and who is in game right now</li><li data-s="activity.step1.point4">CSV export, and manual adjustments that are always logged</li></ul>
           </article>
           <article class="step" data-shot-step="member" data-url="#/member/RubyLobby">
-            <span class="sicon" data-ic="user"></span><h3>A profile for every member</h3>
-            <p>Twelve weeks of history, recent play sessions, requirement results, time off, linked Discord, plus notes and warnings your staff and Alvin can leave.</p>
+            <span class="sicon" data-ic="user"></span><h3 data-s="activity.step2.heading">A profile for every member</h3>
+            <p data-s="activity.step2.text">Twelve weeks of history, recent play sessions, requirement results, time off, linked Discord, plus notes and warnings your staff and Alvin can leave.</p>
           </article>
           <article class="step" data-shot-step="requirements" data-url="#/requirements">
-            <span class="sicon" data-ic="target"></span><h3>Daily &amp; weekly requirements</h3>
-            <p>Set a minimum, override it per rank, and pick the hour checks run. Anyone who misses it is logged and posted to a Discord webhook, with your own customized message, a role mention and pings for linked members.</p>
-            <ul><li>Progress bars update live through the week</li><li>“Run check now” for any period</li></ul>
+            <span class="sicon" data-ic="target"></span><h3 data-s="activity.step3.heading">Daily & weekly requirements</h3>
+            <p data-s="activity.step3.text">Set a minimum, override it per rank, and pick the hour checks run. Anyone who misses it is logged and posted to a Discord webhook, with your own customized message, a role mention and pings for linked members.</p>
+            <ul><li data-s="activity.step3.point1">Progress bars update live through the week</li><li data-s="activity.step3.point2">“Run check now” for any period</li></ul>
           </article>
           <article class="step" data-shot-step="timeoff" data-url="#/timeoff">
-            <span class="sicon" data-ic="calendar"></span><h3>Time off that actually excuses</h3>
-            <p>Members request time off from a bot or staff add it directly. Approved time off overlapping a period automatically excuses them from a requirement check.</p>
+            <span class="sicon" data-ic="calendar"></span><h3 data-s="activity.step4.heading">Time off that actually excuses</h3>
+            <p data-s="activity.step4.text">Members request time off from a bot or staff add it directly. Approved time off overlapping a period automatically excuses them from a requirement check.</p>
           </article>
         </div>
       </div>
     </section>
 
     <!-- RANKING -->
-    <section class="chapter split" id="ranking" data-nav="Ranking" data-icon="rank">
+    <section class="chapter split" id="ranking" data-nav="Ranking" data-icon="rank" data-s-attr="data-nav:ranking.navLabel">
       <div class="copy" data-anim="left">
-        <span class="kicker">02 · Ranking</span><h2>Promote without leaving the dashboard.</h2>
-        <p>Promote, demote or set any rank through Roblox Open Cloud, from a member’s profile, the ranking page, an accepted application or the API.</p>
-        <ul class="ticks"><li>A ceiling on the highest rank the system may assign</li><li>The group owner can never be touched</li><li>Every change logged with who, why and from/to</li></ul>
+        <span class="kicker" data-s="ranking.kicker">02 · Ranking</span><h2 data-s="ranking.title">Promote without leaving the dashboard.</h2>
+        <p data-s="ranking.text">Promote, demote or set any rank through Roblox Open Cloud, from a member’s profile, the ranking page, an accepted application or the API.</p>
+        <ul class="ticks"><li data-s="ranking.point1">A ceiling on the highest rank the system may assign</li><li data-s="ranking.point2">The group owner can never be touched</li><li data-s="ranking.point3">Every change logged with who, why and from/to</li></ul>
       </div>
       <div class="media layered" data-anim="right">
-        <figure class="frame back"><img data-shot="ranking" alt="Ranking page listing group roles, tracked ranks and recent rank changes" width="1440" height="900" loading="lazy"></figure>
-        <figure class="frame front"><img data-shot="rank-modal" alt="Change rank dialog with member, action and reason fields" width="1440" height="900" loading="lazy"></figure>
+        <figure class="frame back"><img data-shot="ranking" alt="Ranking page listing group roles, tracked ranks and recent rank changes" width="1440" height="900" loading="lazy" data-s-attr="alt:ranking.demo.image"></figure>
+        <figure class="frame front"><img data-shot="rank-modal" alt="Change rank dialog with member, action and reason fields" width="1440" height="900" loading="lazy" data-s-attr="alt:ranking.demo.image2"></figure>
       </div>
     </section>
 
     <!-- PROMOTIONS -->
-    <section class="chapter split rev" id="promotions" data-nav="Promotion picks" data-icon="thumb">
+    <section class="chapter split rev" id="promotions" data-nav="Promotion picks" data-icon="thumb" data-s-attr="data-nav:promotions.navLabel">
       <div class="copy" data-anim="right">
-        <span class="kicker">03 · Promotions</span><h2>Let your team pick who’s next.</h2>
-        <p>Anyone can nominate a member for promotion. Staff upvote with a short justification, so every vote comes with a reason, and a ranker can promote straight from the card.</p>
-        <ul class="ticks"><li>Filter by rank, sort by most votes, trending or newest</li><li>Recommender insights: who suggests most, and how often it lands</li><li>Promoting moves them up one rank through Open Cloud</li></ul>
+        <span class="kicker" data-s="promotions.kicker">03 · Promotions</span><h2 data-s="promotions.title">Let your team pick who’s next.</h2>
+        <p data-s="promotions.text">Anyone can nominate a member for promotion. Staff upvote with a short justification, so every vote comes with a reason, and a ranker can promote straight from the card.</p>
+        <ul class="ticks"><li data-s="promotions.point1">Filter by rank, sort by most votes, trending or newest</li><li data-s="promotions.point2">Recommender insights: who suggests most, and how often it lands</li><li data-s="promotions.point3">Promoting moves them up one rank through Open Cloud</li></ul>
       </div>
-      <div class="media" data-anim="left"><figure class="frame"><img data-shot="promotions" alt="Promotion recommendations with upvotes, justifications and recommender insights" width="1440" height="900" loading="lazy"></figure></div>
+      <div class="media" data-anim="left"><figure class="frame"><img data-shot="promotions" alt="Promotion recommendations with upvotes, justifications and recommender insights" width="1440" height="900" loading="lazy" data-s-attr="alt:promotions.demo.image"></figure></div>
     </section>
 
     <!-- LOGS -->
-    <section class="chapter split" id="logs" data-nav="Logging" data-icon="list">
+    <section class="chapter split" id="logs" data-nav="Logging" data-icon="list" data-s-attr="data-nav:logs.navLabel">
       <div class="copy" data-anim="left">
-        <span class="kicker">04 · Logging</span><h2>Everything it does, written down.</h2>
-        <p>Promotions, demotions, missed requirements, time off, applications, sign-ins, settings changes, API keys — every action lands in a searchable log, and can be mirrored to a Discord channel per group.</p>
-        <div class="chips"><span class="badge good">rank.promote</span><span class="badge bad">rank.demote</span><span class="badge bad">requirement.not_met</span><span class="badge good">timeoff.approved</span><span class="badge">application.submitted</span><span class="badge">access.granted</span></div>
+        <span class="kicker" data-s="logs.kicker">04 · Logging</span><h2 data-s="logs.title">Everything it does, written down.</h2>
+        <p data-s="logs.text">Promotions, demotions, missed requirements, time off, applications, sign-ins, settings changes, API keys — every action lands in a searchable log, and can be mirrored to a Discord channel per group.</p>
+        <div class="chips" data-s="logs.label"><span class="badge good">rank.promote</span><span class="badge bad">rank.demote</span><span class="badge bad">requirement.not_met</span><span class="badge good">timeoff.approved</span><span class="badge">application.submitted</span><span class="badge">access.granted</span></div>
       </div>
-      <div class="media" data-anim="right"><figure class="frame"><img data-shot="logs" alt="Log page filtered to one group showing promotions, applications and sign-ins" width="1440" height="900" loading="lazy"></figure></div>
+      <div class="media" data-anim="right"><figure class="frame"><img data-shot="logs" alt="Log page filtered to one group showing promotions, applications and sign-ins" width="1440" height="900" loading="lazy" data-s-attr="alt:logs.demo.image"></figure></div>
     </section>
 
     <!-- LOGBOOK -->
-    <section class="chapter split rev" id="logbook" data-nav="Logbook" data-icon="clipboard">
+    <section class="chapter split rev" id="logbook" data-nav="Logbook" data-icon="clipboard" data-s-attr="data-nav:logbook.navLabel">
       <div class="copy" data-anim="right">
-        <span class="kicker">05 · Logbook</span><h2>Warnings that expire. A record that doesn’t.</h2>
-        <p>Log warnings, strikes, suspensions, demotions, promotions and commendations with a reason and evidence link. Warnings expire on their own, and entries are revoked, never deleted.</p>
-        <ul class="ticks"><li>Warning ticker: active warnings per member at a glance</li><li>Templates for common reasons</li><li>Promotions and demotions can change the rank at the same time</li></ul>
+        <span class="kicker" data-s="logbook.kicker">05 · Logbook</span><h2 data-s="logbook.title">Warnings that expire. A record that doesn’t.</h2>
+        <p data-s="logbook.text">Log warnings, strikes, suspensions, demotions, promotions and commendations with a reason and evidence link. Warnings expire on their own, and entries are revoked, never deleted.</p>
+        <ul class="ticks"><li data-s="logbook.point1">Warning ticker: active warnings per member at a glance</li><li data-s="logbook.point2">Templates for common reasons</li><li data-s="logbook.point3">Promotions and demotions can change the rank at the same time</li></ul>
       </div>
       <div class="media layered" data-anim="left">
-        <figure class="frame back"><img data-shot="logbook" alt="Logbook with the warning ticker and entries with evidence links" width="1440" height="900" loading="lazy"></figure>
-        <figure class="frame front"><img data-shot="member" alt="Member profile with active warnings, sessions attended and their logbook" width="1440" height="900" loading="lazy"></figure>
+        <figure class="frame back"><img data-shot="logbook" alt="Logbook with the warning ticker and entries with evidence links" width="1440" height="900" loading="lazy" data-s-attr="alt:logbook.demo.image"></figure>
+        <figure class="frame front"><img data-shot="member" alt="Member profile with active warnings, sessions attended and their logbook" width="1440" height="900" loading="lazy" data-s-attr="alt:logbook.demo.image2"></figure>
       </div>
     </section>
 
     <!-- GROUPS -->
-    <section class="chapter split" id="groups" data-nav="Groups" data-icon="users">
+    <section class="chapter split" id="groups" data-nav="Groups" data-icon="users" data-s-attr="data-nav:groups.navLabel">
       <div class="copy" data-anim="left">
-        <span class="kicker">06 · Group management</span><h2>One dashboard, every group.</h2>
-        <p>Add as many Roblox groups as you run. Each keeps its own tracked ranks, requirements, Open Cloud key, webhooks, applications and API keys</p>
-        <ul class="ticks"><li>Tick which ranks are tracked</li><li>Open Cloud keys stored encrypted</li><li>Sync members straight from Roblox</li></ul>
+        <span class="kicker" data-s="groups.kicker">06 · Group management</span><h2 data-s="groups.title">One dashboard, every group.</h2>
+        <p data-s="groups.text">Add as many Roblox groups as you run. Each keeps its own tracked ranks, requirements, Open Cloud key, webhooks, applications and API keys</p>
+        <ul class="ticks"><li data-s="groups.point1">Tick which ranks are tracked</li><li data-s="groups.point2">Open Cloud keys stored encrypted</li><li data-s="groups.point3">Sync members straight from Roblox</li></ul>
       </div>
-      <div class="media" data-anim="right"><figure class="frame"><img data-shot="groups" alt="Groups page with two groups and their tracked-rank checkboxes" width="1440" height="900" loading="lazy"></figure></div>
+      <div class="media" data-anim="right"><figure class="frame"><img data-shot="groups" alt="Groups page with two groups and their tracked-rank checkboxes" width="1440" height="900" loading="lazy" data-s-attr="alt:groups.demo.image"></figure></div>
     </section>
 
     <!-- APPLICATIONS TOUR -->
-    <section class="chapter" id="applications" data-nav="Application centers" data-icon="file">
-      <header class="chead" data-anim><span class="kicker">07 · Applications</span><h2>Application centers you design.</h2><p>Build the questions in the dashboard. Applicants answer on the web or inside your Roblox game, and everything comes fresh from the API.</p></header>
+    <section class="chapter" id="applications" data-nav="Application centers" data-icon="file" data-s-attr="data-nav:applications.navLabel">
+      <header class="chead" data-anim><span class="kicker" data-s="applications.kicker">07 · Applications</span><h2 data-s="applications.title">Application centers you design.</h2><p data-s="applications.text">Build the questions in the dashboard. Applicants answer on the web or inside your Roblox game, and everything comes fresh from the API.</p></header>
       <div class="tour" data-tour>
         <div class="tour-media"><figure class="frame"><div class="chrome" aria-hidden="true"><svg viewBox="0 0 52 12"><circle cx="6" cy="6" r="5"/><circle cx="24" cy="6" r="5"/><circle cx="42" cy="6" r="5"/></svg><span data-url></span></div><div class="stack-imgs"></div></figure></div>
         <div class="tour-steps">
           <article class="step" data-shot-step="builder" data-url="#/applications/edit">
-            <span class="sicon" data-ic="edit"></span><h3>Forms as flexible as Google Forms</h3>
-            <p>Eleven question types including date and time, an “Other” option people type into, shuffled options, scale labels and response validation (numbers, text, length, patterns or how many boxes to tick) with a customizable error message.</p>
+            <span class="sicon" data-ic="edit"></span><h3 data-s="applications.step1.heading">Forms as flexible as Google Forms</h3>
+            <p data-s="applications.step1.text">Eleven question types including date and time, an “Other” option people type into, shuffled options, scale labels and response validation (numbers, text, length, patterns or how many boxes to tick) with a customizable error message.</p>
           </article>
           <article class="step" data-shot-step="submission" data-url="#/applications/submissions">
-            <span class="sicon" data-ic="check"></span><h3>Review, score, auto-rank</h3>
-            <p>See every answer with its auto-score. Your Discord server gets every answer too, with a <b>Decide</b> button that opens the submission. Accept and the applicant can be ranked automatically through Open Cloud.</p>
+            <span class="sicon" data-ic="check"></span><h3 data-s="applications.step2.heading">Review, score, auto-rank</h3>
+            <p data-s="applications.step2.text">See every answer with its auto-score. Your Discord server gets every answer too, with a <b>Decide</b> button that opens the submission. Accept and the applicant can be ranked automatically through Open Cloud.</p>
           </article>
           <article class="step" data-shot-step="apply" data-url="apply.html">
-            <span class="sicon" data-ic="external"></span><h3>A shareable web form</h3>
-            <p>Every application gets a public link. Require a Discord sign-in with a linked Roblox account, or let applicants type their username.</p>
+            <span class="sicon" data-ic="external"></span><h3 data-s="applications.step3.heading">A shareable web form</h3>
+            <p data-s="applications.step3.text">Every application gets a public link. Require a Discord sign-in with a linked Roblox account, or let applicants type their username.</p>
           </article>
           <article class="step" data-shot-step="rbxlx" data-url="#/applications">
-            <span class="sicon" data-ic="roblox"></span><h3>A Roblox place, generated</h3>
-            <p>One click downloads a ready-to-publish <code>.rbxlx</code> application center. It holds no questions, it fetches them from the API, so edits go live in-game instantly.</p>
+            <span class="sicon" data-ic="roblox"></span><h3 data-s="applications.step4.heading">A Roblox place, generated</h3>
+            <p data-s="applications.step4.text">One click downloads a ready-to-publish <code>.rbxlx</code> application center. It holds no questions, it fetches them from the API, so edits go live in-game instantly.</p>
           </article>
         </div>
       </div>
     </section>
 
     <!-- SESSIONS -->
-    <section class="chapter split rev" id="sessions" data-nav="Sessions" data-icon="clock">
+    <section class="chapter split rev" id="sessions" data-nav="Sessions" data-icon="clock" data-s-attr="data-nav:sessions.navLabel">
       <div class="copy" data-anim="right">
-        <span class="kicker">08 · Sessions</span><h2>Session registers and targets.</h2>
-        <p>Schedule shifts, trainings and events. Staff claim them as host or co-host, and the register records who attended — which counts towards a weekly session target alongside activity minutes.</p>
-        <ul class="ticks"><li>Paste a list of names to fill a register in one go</li><li>Leaderboard: most sessions this week</li><li>New sessions announced to Discord with a live countdown</li></ul>
+        <span class="kicker" data-s="sessions.kicker">08 · Sessions</span><h2 data-s="sessions.title">Session registers and targets.</h2>
+        <p data-s="sessions.text">Schedule shifts, trainings and events. Staff claim them as host or co-host, and the register records who attended — which counts towards a weekly session target alongside activity minutes.</p>
+        <ul class="ticks"><li data-s="sessions.point1">Paste a list of names to fill a register in one go</li><li data-s="sessions.point2">Leaderboard: most sessions this week</li><li data-s="sessions.point3">New sessions announced to Discord with a live countdown</li></ul>
       </div>
       <div class="media layered" data-anim="left">
-        <figure class="frame back"><img data-shot="sessions" alt="Sessions page listing shifts, trainings and events" width="1440" height="900" loading="lazy"></figure>
-        <figure class="frame front"><img data-shot="register" alt="Session register listing the host, co-host and attendees" width="1440" height="900" loading="lazy"></figure>
+        <figure class="frame back"><img data-shot="sessions" alt="Sessions page listing shifts, trainings and events" width="1440" height="900" loading="lazy" data-s-attr="alt:sessions.demo.image"></figure>
+        <figure class="frame front"><img data-shot="register" alt="Session register listing the host, co-host and attendees" width="1440" height="900" loading="lazy" data-s-attr="alt:sessions.demo.image2"></figure>
       </div>
     </section>
 
     <!-- KNOWLEDGEBASE + NEWS -->
-    <section class="chapter split" id="kb" data-nav="Knowledgebase &amp; news" data-icon="book">
+    <section class="chapter split" id="kb" data-nav="Knowledgebase &amp; news" data-icon="book" data-s-attr="data-nav:kb.navLabel">
       <div class="copy" data-anim="left">
-        <span class="kicker">09 · Knowledgebase</span><h2>Handbooks, policies and news in one place.</h2>
-        <p>Write your staff handbook, guides and policies with simple formatting, grouped by category, and limit sensitive pages to people with a specific permission. Post news to the whole group and pin what matters.</p>
-        <ul class="ticks"><li>Published at <a href="posts/">/posts</a> and <a href="handbooks/">/handbooks</a> — public, staff-only, or for one permission</li><li>Restricted pages ask people to sign in, then bring them straight back</li><li>Live preview while you write, and optional Discord announcements</li></ul>
+        <span class="kicker" data-s="kb.kicker">09 · Knowledgebase</span><h2 data-s="kb.title">Handbooks, policies and news in one place.</h2>
+        <p data-s="kb.text">Write your staff handbook, guides and policies with simple formatting, grouped by category, and limit sensitive pages to people with a specific permission. Post news to the whole group and pin what matters.</p>
+        <ul class="ticks"><li data-s="kb.point1">Published at <a href="posts/">/posts</a> and <a href="handbooks/">/handbooks</a> — public, staff-only, or for one permission</li><li data-s="kb.point2">Restricted pages ask people to sign in, then bring them straight back</li><li data-s="kb.point3">Live preview while you write, and optional Discord announcements</li></ul>
       </div>
       <div class="media layered" data-anim="right">
-        <figure class="frame back"><img data-shot="kb" alt="Knowledgebase page showing the staff handbook" width="1440" height="900" loading="lazy"></figure>
-        <figure class="frame front"><img data-shot="news" alt="Group news with a pinned announcement" width="1440" height="900" loading="lazy"></figure>
+        <figure class="frame back"><img data-shot="kb" alt="Knowledgebase page showing the staff handbook" width="1440" height="900" loading="lazy" data-s-attr="alt:kb.demo.image"></figure>
+        <figure class="frame front"><img data-shot="news" alt="Group news with a pinned announcement" width="1440" height="900" loading="lazy" data-s-attr="alt:kb.demo.image2"></figure>
       </div>
     </section>
 
     <!-- LINKING -->
-    <section class="chapter split rev" id="linking" data-nav="Account linking" data-icon="link">
+    <section class="chapter split rev" id="linking" data-nav="Account linking" data-icon="link" data-s-attr="data-nav:linking.navLabel">
       <div class="copy" data-anim="right">
-        <span class="kicker">10 · Accounts</span><h2>Discord, Google and Roblox — linked.</h2>
-        <p>Members sign in with Discord, get a one-time code and type it in a verification game. The Roblox player is identified by the server, so nobody can link someone else’s account.</p>
-        <ul class="ticks"><li>Staff sign in with Google or Discord and link the other</li><li>Linked members get pinged in requirement notices</li><li>One verification game for every group, with a <b>Join to Verify</b> button and an automatic kick once linked</li><li>Tracker module and app center downloadable per group</li></ul>
+        <span class="kicker" data-s="linking.kicker">10 · Accounts</span><h2 data-s="linking.title">Discord, Google and Roblox — linked.</h2>
+        <p data-s="linking.text">Members sign in with Discord, get a one-time code and type it in a verification game. The Roblox player is identified by the server, so nobody can link someone else’s account.</p>
+        <ul class="ticks"><li data-s="linking.point1">Staff sign in with Google or Discord and link the other</li><li data-s="linking.point2">Linked members get pinged in requirement notices</li><li data-s="linking.point3">One verification game for every group, with a <b>Join to Verify</b> button and an automatic kick once linked</li><li data-s="linking.point4">Tracker module and app center downloadable per group</li></ul>
       </div>
       <div class="media layered" data-anim="left">
-        <figure class="frame back"><img data-shot="roblox-setup" alt="Roblox setup dialog with downloads for the tracker module and the application center" width="1440" height="900" loading="lazy"></figure>
-        <figure class="frame front"><img data-shot="verify" alt="Verification page: sign in with Discord to get a link code" width="1440" height="900" loading="lazy"></figure>
+        <figure class="frame back"><img data-shot="roblox-setup" alt="Roblox setup dialog with downloads for the tracker module and the application center" width="1440" height="900" loading="lazy" data-s-attr="alt:linking.demo.image"></figure>
+        <figure class="frame front"><img data-shot="verify" alt="Verification page: sign in with Discord to get a link code" width="1440" height="900" loading="lazy" data-s-attr="alt:linking.demo.image2"></figure>
       </div>
     </section>
 
     <!-- ACCESS -->
-    <section class="chapter split" id="access" data-nav="Access &amp; groups" data-icon="shield">
+    <section class="chapter split" id="access" data-nav="Access &amp; groups" data-icon="shield" data-s-attr="data-nav:access.navLabel">
       <div class="copy" data-anim="left">
-        <span class="kicker">11 · Access</span><h2>Sign in, pick a group, get to work.</h2>
-        <p>After signing in you choose where to work. Every group you can open shows live numbers on its card, and you can switch groups any time from the top bar.</p>
-        <ul class="ticks"><li>Whitelist only, not on it yet? Ask for access right from the sign-in page</li><li>Per-person permissions: ranking, logs, applications, groups, API keys</li><li>Press <kbd>Ctrl</kbd> <kbd>K</kbd> to jump to any page, group or member</li></ul>
+        <span class="kicker" data-s="access.kicker">11 · Access</span><h2 data-s="access.title">Sign in, pick a group, get to work.</h2>
+        <p data-s="access.text">After signing in you choose where to work. Every group you can open shows live numbers on its card, and you can switch groups any time from the top bar.</p>
+        <ul class="ticks"><li data-s="access.point1">Whitelist only, not on it yet? Ask for access right from the sign-in page</li><li data-s="access.point2">Per-person permissions: ranking, logs, applications, groups, API keys</li><li data-s="access.point3">Press <kbd>Ctrl</kbd> <kbd>K</kbd> to jump to any page, group or member</li></ul>
       </div>
       <div class="media layered" data-anim="right">
-        <figure class="frame back"><img data-shot="picker" alt="Group picker after sign-in, with live numbers on every group" width="1440" height="900" loading="lazy"></figure>
-        <figure class="frame front"><img data-shot="palette" alt="Quick search (Ctrl+K) finding a member" width="1440" height="900" loading="lazy"></figure>
+        <figure class="frame back"><img data-shot="picker" alt="Group picker after sign-in, with live numbers on every group" width="1440" height="900" loading="lazy" data-s-attr="alt:access.demo.image"></figure>
+        <figure class="frame front"><img data-shot="palette" alt="Quick search (Ctrl+K) finding a member" width="1440" height="900" loading="lazy" data-s-attr="alt:access.demo.image2"></figure>
       </div>
     </section>
 
     <!-- API -->
-    <section class="chapter split rev" id="api" data-nav="Public API" data-icon="key">
+    <section class="chapter split rev" id="api" data-nav="Public API" data-icon="key" data-s-attr="data-nav:api.navLabel">
       <div class="copy" data-anim="right">
-        <span class="kicker">12 · Public API</span><h2>Build your own bots on top.</h2>
-        <p>Scoped API keys for activity, requirements, time off, ranking, logs and account links, with full documentation and copy-paste examples.</p>
-        <pre class="code"><code>curl https://rp-system…/v1/groups/<span class="hl">676767</span>/activity \
-  -H "Authorization: Bearer <span class="hl">rpk_67</span>"</code></pre>
-        <a class="btn" href="docs.html"><span data-ic="book"></span> Read the API docs</a>
+        <span class="kicker" data-s="api.kicker">12 · Public API</span><h2 data-s="api.title">Build your own bots on top.</h2>
+        <p data-s="api.text">Scoped API keys for activity, requirements, time off, ranking, logs and account links, with full documentation and copy-paste examples.</p>
+        <pre class="code" data-s="api.label"><code>curl https://rp-system…/v1/groups/<span class="hl">676767</span>/activity \ -H "Authorization: Bearer <span class="hl">rpk_67</span>"</code></pre>
+        <a class="btn" href="docs.html"><span data-ic="book"></span> <span data-s="api.button">Read the API docs</span></a>
       </div>
       <div class="media layered" data-anim="left">
-        <figure class="frame back"><img data-shot="api" alt="API page listing scoped keys" width="1440" height="900" loading="lazy"></figure>
-        <figure class="frame front"><img data-shot="docs" alt="API documentation with an expanded endpoint" width="1440" height="900" loading="lazy"></figure>
+        <figure class="frame back"><img data-shot="api" alt="API page listing scoped keys" width="1440" height="900" loading="lazy" data-s-attr="alt:api.demo.image"></figure>
+        <figure class="frame front"><img data-shot="docs" alt="API documentation with an expanded endpoint" width="1440" height="900" loading="lazy" data-s-attr="alt:api.demo.image2"></figure>
       </div>
     </section>
 
     <!-- DARK MODE + MOBILE -->
-    <section class="chapter split" id="anywhere" data-nav="Dark mode & mobile" data-icon="moon">
+    <section class="chapter split" id="anywhere" data-nav="Dark mode &amp; mobile" data-icon="moon" data-s-attr="data-nav:anywhere.navLabel">
       <div class="copy" data-anim="left">
-        <span class="kicker">13 · Anywhere</span><h2>Light, dark, desktop or phone.</h2>
-        <p>Every page follows your system theme or the one you pick, and works on a phone, so you can approve time off from anywhere.</p>
-        <button class="btn" type="button" data-theme-toggle><span data-ic="sun"></span> Try switching the theme</button>
+        <span class="kicker" data-s="anywhere.kicker">13 · Anywhere</span><h2 data-s="anywhere.title">Light, dark, desktop or phone.</h2>
+        <p data-s="anywhere.text">Every page follows your system theme or the one you pick, and works on a phone, so you can approve time off from anywhere.</p>
+        <button class="btn" type="button" data-theme-toggle><span data-ic="sun"></span> <span data-s="anywhere.button">Try switching the theme</span></button>
       </div>
       <div class="media phones" data-anim="right">
-        <figure class="phone"><img data-shot="mobile-activity" alt="Activity page on a phone" width="780" height="1688" loading="lazy"></figure>
-        <figure class="phone p2"><img data-shot="mobile-apply" alt="Application form on a phone" width="780" height="1688" loading="lazy"></figure>
+        <figure class="phone"><img data-shot="mobile-activity" alt="Activity page on a phone" width="780" height="1688" loading="lazy" data-s-attr="alt:anywhere.demo.image"></figure>
+        <figure class="phone p2"><img data-shot="mobile-apply" alt="Application form on a phone" width="780" height="1688" loading="lazy" data-s-attr="alt:anywhere.demo.image2"></figure>
       </div>
     </section>
 
     <!-- DISCORD -->
-    <section class="chapter split" id="discord" data-nav="Discord automations" data-icon="megaphone">
+    <section class="chapter split" id="discord" data-nav="Discord automations" data-icon="megaphone" data-s-attr="data-nav:discord.navLabel">
       <div class="copy" data-anim="left">
-        <span class="kicker">14 · Discord</span><h2>Your Discord, kept in the loop.</h2>
-        <p>Webhooks per group and per job, so each message lands in the right channel — no bot to host.</p>
-        <ul class="ticks"><li>Reminders before sessions start, with a role ping</li><li>“Staff of the week” posted automatically every week</li><li>Applications with every answer and a <b>Decide</b> button</li><li>Missed requirements with pings for linked members</li><li>Every log entry mirrored, if you want</li></ul>
+        <span class="kicker" data-s="discord.kicker">14 · Discord</span><h2 data-s="discord.title">Your Discord, kept in the loop.</h2>
+        <p data-s="discord.text">Webhooks per group and per job, so each message lands in the right channel — no bot to host.</p>
+        <ul class="ticks"><li data-s="discord.point1">Reminders before sessions start, with a role ping</li><li data-s="discord.point2">“Staff of the week” posted automatically every week</li><li data-s="discord.point3">Applications with every answer and a <b>Decide</b> button</li><li data-s="discord.point4">Missed requirements with pings for linked members</li><li data-s="discord.point5">Every log entry mirrored, if you want</li></ul>
       </div>
       <div class="media" data-anim="right">
-        <div class="dc" id="dcDemo" role="img" aria-label="A Discord channel receiving a session reminder, the Staff of the week post, a new application with a Decide button and a missed-requirements notice">
-          <div class="dc-head"><span class="dc-hash">#</span> staff-hub <span class="dc-topic">Roleplay System notifications</span></div>
+        <div class="dc" id="dcDemo" role="img" aria-label="A Discord channel receiving a session reminder, the Staff of the week post, a new application with a Decide button and a missed-requirements notice" data-s-attr="aria-label:discord.demo.ariaLabel">
+          <div class="dc-head" data-s="discord.demo.label"><span class="dc-hash">#</span> staff-hub <span class="dc-topic">Roleplay System notifications</span></div>
           <div class="dc-feed">
-            <div class="dc-msg"><span class="dc-ava" data-ic="shield"></span><div class="dc-body"><div class="dc-name">Roleplay System <span class="dc-bot">APP</span> <span class="dc-time">Today at 17:30</span></div>
-              <div class="dc-ping">@Receptionists</div>
-              <div class="dc-embed" style="--c:#e2a336"><b><span data-ic="clock" class="dc-i"></span> Starting soon - Shift: Evening reception</b><span>Starts 18:00 (in 30 minutes) · 60 min</span><span>Host: <b>Alvin</b> · Co-host: <b>I don't Know</b></span></div></div></div>
-            <div class="dc-msg"><span class="dc-ava" data-ic="shield"></span><div class="dc-body"><div class="dc-name">Roleplay System <span class="dc-bot">APP</span> <span class="dc-time">Today at 18:00</span></div>
-              <div class="dc-embed" style="--c:#f2b84b"><b><span data-ic="trophy" class="dc-i"></span> Staff of the week - Sunrise Hotels</b><span><b>SunnyConcierge</b> led the week with <b>14.2 hours</b> in game. Thank you!</span>
-                <div class="dc-fields"><div><i>Most hours</i><span data-ic="medal" class="m1"></span> SunnyConcierge — 14.2 h<br><span data-ic="medal" class="m2"></span> Avalynne — 11.8 h<br><span data-ic="medal" class="m3"></span> RubyLobby — 9.5 h</div><div><i>Most sessions</i><span data-ic="medal" class="m1"></span> Avalynne — 6<br><span data-ic="medal" class="m2"></span> MiraFrontDesk — 5<br><span data-ic="medal" class="m3"></span> KaiSuite204 — 4</div></div></div></div></div>
-            <div class="dc-msg"><span class="dc-ava" data-ic="shield"></span><div class="dc-body"><div class="dc-name">Roleplay System <span class="dc-bot">APP</span> <span class="dc-time">Today at 18:12</span></div>
-              <div class="dc-embed" style="--c:#8e6fd8"><b class="dc-link">New application — Receptionist</b><span><b>PixelPenguin42</b> applied · Auto-score <b>7/7</b></span>
-                <div class="dc-qa"><i>1. Why do you want to work here?</i>I love hospitality roleplay and I’m on most evenings.<i>2. Preferred shift <span data-ic="check" class="dc-ok"></span></i>Other: Weekends</div></div>
-              <div class="dc-buttons"><span>Decide <span data-ic="external"></span></span><span>Roblox profile <span data-ic="external"></span></span></div></div></div>
-            <div class="dc-msg"><span class="dc-ava" data-ic="shield"></span><div class="dc-body"><div class="dc-name">Roleplay System <span class="dc-bot">APP</span> <span class="dc-time">Monday at 00:00</span></div>
-              <div class="dc-embed" style="--c:#e5484d"><b>2 members did not meet the weekly requirement</b><span><span class="dc-ping in">@Alvin</span> <b>Roblox_real2CanChat</b> (alvinofelephants2) — 24h 10m / 67h</span><span><span class="dc-ping in">@ryankwong123</span> <b>headandshoulder12345</b> (headandshoulder12345) — -1m / 67h</span></div></div></div>
+            <div class="dc-msg"><span class="dc-ava" data-ic="shield"></span><div class="dc-body"><div class="dc-name" data-s="discord.demo.label2">Roleplay System <span class="dc-bot">APP</span> <span class="dc-time">Today at 17:30</span></div>
+              <div class="dc-ping" data-s="discord.demo.label3">@Receptionists</div>
+              <div class="dc-embed" style="--c:#e2a336"><b><span data-ic="clock" class="dc-i"></span> <span data-s="discord.demo.label4">Starting soon - Shift: Evening reception</span></b><span data-s="discord.demo.label5">Starts 18:00 (in 30 minutes) · 60 min</span><span data-s="discord.demo.label6">Host: <b>Alvin</b> · Co-host: <b>I don't Know</b></span></div></div></div>
+            <div class="dc-msg"><span class="dc-ava" data-ic="shield"></span><div class="dc-body"><div class="dc-name" data-s="discord.demo.label7">Roleplay System <span class="dc-bot">APP</span> <span class="dc-time">Today at 18:00</span></div>
+              <div class="dc-embed" style="--c:#f2b84b"><b><span data-ic="trophy" class="dc-i"></span> <span data-s="discord.demo.label8">Staff of the week - Sunrise Hotels</span></b><span data-s="discord.demo.label9"><b>SunnyConcierge</b> led the week with <b>14.2 hours</b> in game. Thank you!</span>
+                <div class="dc-fields"><div><span data-s="discord.demo.label10"><i>Most hours</i></span><span data-ic="medal" class="m1"></span> <span data-s="discord.demo.label11">SunnyConcierge — 14.2 h<br></span><span data-ic="medal" class="m2"></span> <span data-s="discord.demo.label12">Avalynne — 11.8 h<br></span><span data-ic="medal" class="m3"></span> <span data-s="discord.demo.label13">RubyLobby — 9.5 h</span></div><div><span data-s="discord.demo.label14"><i>Most sessions</i></span><span data-ic="medal" class="m1"></span> <span data-s="discord.demo.label15">Avalynne — 6<br></span><span data-ic="medal" class="m2"></span> <span data-s="discord.demo.label16">MiraFrontDesk — 5<br></span><span data-ic="medal" class="m3"></span> <span data-s="discord.demo.label17">KaiSuite204 — 4</span></div></div></div></div></div>
+            <div class="dc-msg"><span class="dc-ava" data-ic="shield"></span><div class="dc-body"><div class="dc-name" data-s="discord.demo.label18">Roleplay System <span class="dc-bot">APP</span> <span class="dc-time">Today at 18:12</span></div>
+              <div class="dc-embed" style="--c:#8e6fd8"><b class="dc-link" data-s="discord.demo.label19">New application — Receptionist</b><span data-s="discord.demo.label20"><b>PixelPenguin42</b> applied · Auto-score <b>7/7</b></span>
+                <div class="dc-qa"><span data-s="discord.demo.label21"><i>1. Why do you want to work here?</i>I love hospitality roleplay and I’m on most evenings.</span><i><span data-s="discord.demo.label22">2. Preferred shift</span> <span data-ic="check" class="dc-ok"></span></i><span data-s="discord.demo.label23">Other: Weekends</span></div></div>
+              <div class="dc-buttons"><span><span data-s="discord.demo.label24">Decide</span> <span data-ic="external"></span></span><span><span data-s="discord.demo.label25">Roblox profile</span> <span data-ic="external"></span></span></div></div></div>
+            <div class="dc-msg"><span class="dc-ava" data-ic="shield"></span><div class="dc-body"><div class="dc-name" data-s="discord.demo.label26">Roleplay System <span class="dc-bot">APP</span> <span class="dc-time">Monday at 00:00</span></div>
+              <div class="dc-embed" style="--c:#e5484d" data-s="discord.demo.label27"><b>2 members did not meet the weekly requirement</b><span><span class="dc-ping in">@Alvin</span> <b>Roblox_real2CanChat</b> (alvinofelephants2) — 24h 10m / 67h</span><span><span class="dc-ping in">@ryankwong123</span> <b>headandshoulder12345</b> (headandshoulder12345) — -1m / 67h</span></div></div></div>
           </div>
-          <div class="dc-typing" aria-hidden="true"><i></i><i></i><i></i> <span>Roleplay System is typing…</span></div>
+          <div class="dc-typing" aria-hidden="true" data-s="discord.demo.label28"><i></i><i></i><i></i> <span>Roleplay System is typing…</span></div>
         </div>
       </div>
     </section>
 
     <!-- AND MORE -->
-    <section class="chapter" id="more" data-nav="And more" data-icon="plus">
-      <header class="chead" data-anim><span class="kicker">15 · And more</span><h2>The details that make it run itself.</h2><p>Smaller tools that save your staff hours every week.</p></header>
+    <section class="chapter" id="more" data-nav="And more" data-icon="plus" data-s-attr="data-nav:more.navLabel">
+      <header class="chead" data-anim><span class="kicker" data-s="more.kicker">15 · And more</span><h2 data-s="more.title">The details that make it run itself.</h2><p data-s="more.text">Smaller tools that save your staff hours every week.</p></header>
       <div class="bento">
-        <article class="bcard" data-anim><div class="bviz viz-ban"><span class="ban-player"><span data-ic="user"></span> Exploiter99</span><span class="ban-x" data-ic="ban"></span></div>
-          <h3><span data-ic="ban"></span> Blacklist</h3><p>Banned players are kicked the moment they join, and can’t apply.</p></article>
-        <article class="bcard" data-anim style="--d:.05s"><div class="bviz viz-promo"><div class="promo-row"><b>Trainee</b><span data-ic="arrowR"></span><b>Receptionist</b></div><div class="promo-bar"><i></i></div><small>10 h + 2 sessions in 30 days</small></div>
-          <h3><span data-ic="sparkle"></span> Auto-promotion</h3><p>Rules rank people up, or recommend them, once they’ve put in the time.</p></article>
+        <article class="bcard" data-anim><div class="bviz viz-ban"><span class="ban-player"><span data-ic="user"></span> <span data-s="more.card1.demo.label">Exploiter99</span></span><span class="ban-x" data-ic="ban"></span></div>
+          <h3><span data-ic="ban"></span> <span data-s="more.card1.heading">Blacklist</span></h3><p data-s="more.card1.text">Banned players are kicked the moment they join, and can’t apply.</p></article>
+        <article class="bcard" data-anim style="--d:.05s"><div class="bviz viz-promo"><div class="promo-row"><b data-s="more.card2.demo.label">Trainee</b><span data-ic="arrowR"></span><b data-s="more.card2.demo.label2">Receptionist</b></div><div class="promo-bar"><i></i></div><small data-s="more.card2.demo.label3">10 h + 2 sessions in 30 days</small></div>
+          <h3><span data-ic="sparkle"></span> <span data-s="more.card2.heading">Auto-promotion</span></h3><p data-s="more.card2.text">Rules rank people up, or recommend them, once they’ve put in the time.</p></article>
         <article class="bcard wide" data-anim style="--d:.1s"><div class="bviz viz-heat" id="miniHeat"></div>
-          <h3><span data-ic="chart"></span> Activity heatmap</h3><p>See which hours of the week your game is busy, in your own time zone — and plan shifts around it.</p></article>
-        <article class="bcard wide" data-anim><div class="bviz viz-search"><div class="fake-search"><span data-ic="search"></span><span class="typed" data-type="67|Promote Alvin|Logbook"></span><kbd>Ctrl + K</kbd></div></div>
-          <h3><span data-ic="search"></span> Quick search</h3><p>Jump to any page, group or member from anywhere in the dashboard.</p></article>
-        <article class="bcard" data-anim style="--d:.05s"><div class="bviz viz-access"><span data-ic="inbox"></span><b class="count">3</b><small>new requests</small></div>
-          <h3><span data-ic="inbox"></span> Access requests</h3><p>Not on the whitelist yet? Ask for access right from the sign-in page.</p></article>
-        <article class="bcard" data-anim style="--d:.1s"><div class="bviz viz-verify"><span class="btn primary sm"><span data-ic="roblox"></span> Join to Verify</span><small class="kick"><span data-ic="check"></span> Verified</small></div>
-          <h3><span data-ic="link"></span> One verification game</h3><p>A single place for every group, with a button straight to it.</p></article>
-        <article class="bcard wide" data-anim><div class="bviz viz-admins"><span class="adm">Adonis</span><span class="adm">Basic Admin</span><span class="adm">HD Admin</span><span class="adm">Kohl’s Admin</span><span class="mono adm-cmd">:rpwarn headandshoulder12345 Late to shift</span></div>
-          <h3><span data-ic="puzzle"></span> Admin system plugins</h3><p>Warn, promote, certify and look up players from the admin system you already use. Kicks and bans land in the Moderation log.</p></article>
-        <article class="bcard wide" data-anim style="--d:.05s"><div class="bviz viz-live"><div class="lv-line"><i class="cdot" style="--c:#2fa58a"></i><b>Server 1</b><span>14 players · 5 on duty</span></div><div class="lv-line"><i class="cdot" style="--c:#2fa58a"></i><b>Server 2</b><span>9 players · 3 on duty</span></div><div class="lv-ann"><span data-ic="megaphone"></span>Training at the base in 5 minutes</div></div>
-          <h3><span data-ic="server"></span> Live servers</h3><p>See every server and who is on duty, then announce, kick or shut a server down from the dashboard.</p></article>
-        <article class="bcard wide" data-anim><div class="bviz viz-roster"><span class="rchip" style="--c:#5b8def"><i class="cdot" style="--c:#5b8def"></i>Patrol</span><span class="rchip" style="--c:#e5484d"><i class="cdot" style="--c:#e5484d"></i>SWAT</span><span class="mono rs-call">1-ADAM-12</span><span class="rchip" style="--c:#2fa58a"><span data-ic="award"></span>Firearms</span></div>
-          <h3><span data-ic="idcard"></span> Roster &amp; certifications</h3><p>Departments, callsigns and certifications that expire, award them to a whole training session at once, and check them from your game.</p></article>
-        <article class="bcard wide" data-anim style="--d:.05s"><div class="bviz viz-reports"><div class="rp-line"><i class="cdot" style="--c:#e5484d"></i><b>Arrest report #41</b><span class="badge warn">Open</span></div><div class="rp-line"><i class="cdot" style="--c:#2fa58a"></i><b>Patient care #40</b><span class="badge">Closed</span></div><div class="rp-line"><i class="cdot" style="--c:#5b8def"></i><b>Flight log #39</b><span class="badge">Closed</span></div></div>
-          <h3><span data-ic="filetext"></span> Reports</h3><p>Arrest reports, incident reports, patient care, flight logs — design the form, pick who files and who reviews, send it to Discord.</p></article>
-        <article class="bcard wide" data-anim><div class="bviz viz-forms"><span class="chip">Other: <u>Weekends</u></span><span class="chip bad">Select at least 2</span><span class="chip"><span data-ic="calendar"></span> 2026-12-01</span></div>
-          <h3><span data-ic="file"></span> Smart forms</h3><p>“Other” answers, validation rules and date/time questions — on the web and in-game.</p></article>
-        <article class="bcard wide" data-anim style="--d:.05s"><div class="bviz viz-csv"><span data-ic="download"></span><small>activity.csv</small></div>
-          <h3><span data-ic="download"></span> CSV export</h3><p>Activity, logs and the blacklist straight into a spreadsheet.</p></article>
+          <h3><span data-ic="chart"></span> <span data-s="more.card3.heading">Activity heatmap</span></h3><p data-s="more.card3.text">See which hours of the week your game is busy, in your own time zone — and plan shifts around it.</p></article>
+        <article class="bcard wide" data-anim><div class="bviz viz-search"><div class="fake-search"><span data-ic="search"></span><span class="typed" data-type="67|Promote Alvin|Logbook" data-s-attr="data-type:more.card4.demo.typedWords"></span><kbd data-s="more.card4.demo.label">Ctrl + K</kbd></div></div>
+          <h3><span data-ic="search"></span> <span data-s="more.card4.heading">Quick search</span></h3><p data-s="more.card4.text">Jump to any page, group or member from anywhere in the dashboard.</p></article>
+        <article class="bcard" data-anim style="--d:.05s"><div class="bviz viz-access"><span data-ic="inbox"></span><b class="count" data-s="more.card5.demo.label">3</b><small data-s="more.card5.demo.label2">new requests</small></div>
+          <h3><span data-ic="inbox"></span> <span data-s="more.card5.heading">Access requests</span></h3><p data-s="more.card5.text">Not on the whitelist yet? Ask for access right from the sign-in page.</p></article>
+        <article class="bcard" data-anim style="--d:.1s"><div class="bviz viz-verify"><span class="btn primary sm"><span data-ic="roblox"></span> <span data-s="more.card6.demo.label">Join to Verify</span></span><small class="kick"><span data-ic="check"></span> <span data-s="more.card6.demo.label2">Verified</span></small></div>
+          <h3><span data-ic="link"></span> <span data-s="more.card6.heading">One verification game</span></h3><p data-s="more.card6.text">A single place for every group, with a button straight to it.</p></article>
+        <article class="bcard wide" data-anim><div class="bviz viz-admins" data-s="more.card7.demo.label"><span class="adm">Adonis</span><span class="adm">Basic Admin</span><span class="adm">HD Admin</span><span class="adm">Kohl’s Admin</span><span class="mono adm-cmd">:rpwarn headandshoulder12345 Late to shift</span></div>
+          <h3><span data-ic="puzzle"></span> <span data-s="more.card7.heading">Admin system plugins</span></h3><p data-s="more.card7.text">Warn, promote, certify and look up players from the admin system you already use. Kicks and bans land in the Moderation log.</p></article>
+        <article class="bcard wide" data-anim style="--d:.05s"><div class="bviz viz-live"><div class="lv-line"><i class="cdot" style="--c:#2fa58a"></i><b data-s="more.card8.demo.label">Server 1</b><span data-s="more.card8.demo.label2">14 players · 5 on duty</span></div><div class="lv-line"><i class="cdot" style="--c:#2fa58a"></i><b data-s="more.card8.demo.label3">Server 2</b><span data-s="more.card8.demo.label4">9 players · 3 on duty</span></div><div class="lv-ann"><span data-ic="megaphone"></span><span data-s="more.card8.demo.label5">Training at the base in 5 minutes</span></div></div>
+          <h3><span data-ic="server"></span> <span data-s="more.card8.heading">Live servers</span></h3><p data-s="more.card8.text">See every server and who is on duty, then announce, kick or shut a server down from the dashboard.</p></article>
+        <article class="bcard wide" data-anim><div class="bviz viz-roster"><span class="rchip" style="--c:#5b8def"><i class="cdot" style="--c:#5b8def"></i><span data-s="more.card9.demo.label">Patrol</span></span><span class="rchip" style="--c:#e5484d"><i class="cdot" style="--c:#e5484d"></i><span data-s="more.card9.demo.label2">SWAT</span></span><span class="mono rs-call" data-s="more.card9.demo.label3">1-ADAM-12</span><span class="rchip" style="--c:#2fa58a"><span data-ic="award"></span><span data-s="more.card9.demo.label4">Firearms</span></span></div>
+          <h3><span data-ic="idcard"></span> <span data-s="more.card9.heading">Roster & certifications</span></h3><p data-s="more.card9.text">Departments, callsigns and certifications that expire, award them to a whole training session at once, and check them from your game.</p></article>
+        <article class="bcard wide" data-anim style="--d:.05s"><div class="bviz viz-reports"><div class="rp-line"><i class="cdot" style="--c:#e5484d"></i><b data-s="more.card10.demo.label">Arrest report #41</b><span class="badge warn" data-s="more.card10.demo.label2">Open</span></div><div class="rp-line"><i class="cdot" style="--c:#2fa58a"></i><b data-s="more.card10.demo.label3">Patient care #40</b><span class="badge" data-s="more.card10.demo.label4">Closed</span></div><div class="rp-line"><i class="cdot" style="--c:#5b8def"></i><b data-s="more.card10.demo.label5">Flight log #39</b><span class="badge" data-s="more.card10.demo.label6">Closed</span></div></div>
+          <h3><span data-ic="filetext"></span> <span data-s="more.card10.heading">Reports</span></h3><p data-s="more.card10.text">Arrest reports, incident reports, patient care, flight logs — design the form, pick who files and who reviews, send it to Discord.</p></article>
+        <article class="bcard wide" data-anim><div class="bviz viz-forms"><span class="chip" data-s="more.card11.demo.label">Other: <u>Weekends</u></span><span class="chip bad" data-s="more.card11.demo.label2">Select at least 2</span><span class="chip"><span data-ic="calendar"></span> <span data-s="more.card11.demo.label3">2026-12-01</span></span></div>
+          <h3><span data-ic="file"></span> <span data-s="more.card11.heading">Smart forms</span></h3><p data-s="more.card11.text">“Other” answers, validation rules and date/time questions — on the web and in-game.</p></article>
+        <article class="bcard wide" data-anim style="--d:.05s"><div class="bviz viz-csv"><span data-ic="download"></span><small data-s="more.card12.demo.label">activity.csv</small></div>
+          <h3><span data-ic="download"></span> <span data-s="more.card12.heading">CSV export</span></h3><p data-s="more.card12.text">Activity, logs and the blacklist straight into a spreadsheet.</p></article>
       </div>
     </section>
 
     <!-- HOW IT WORKS -->
-    <section class="chapter" id="how" data-nav="How it works" data-icon="sparkle">
-      <header class="chead" data-anim><span class="kicker">16 · Under the hood</span><h2>Small, fast, nothing to host.</h2><p>Your games talk to one Cloudflare Worker. The dashboard is static pages on GitHub. Discord just receives webhooks.</p></header>
+    <section class="chapter" id="how" data-nav="How it works" data-icon="sparkle" data-s-attr="data-nav:how.navLabel">
+      <header class="chead" data-anim><span class="kicker" data-s="how.kicker">16 · Under the hood</span><h2 data-s="how.title">Small, fast, nothing to host.</h2><p data-s="how.text">Your games talk to one Cloudflare Worker. The dashboard is static pages on GitHub. Discord just receives webhooks.</p></header>
       <div class="diagram" data-anim>
         <svg viewBox="0 0 960 360" role="img" aria-label="Roblox games send heartbeats and applications to the Cloudflare Worker API, which stores data in D1, ranks through Roblox Open Cloud, posts to Discord webhooks and serves the dashboard and public API">
           <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="arrowhead"/></marker></defs>
@@ -340,26 +339,27 @@
           <g class="node"><rect x="752" y="250" width="180" height="68" rx="12"/><text x="842" y="280">Discord</text><text class="sub" x="842" y="300">requirement &amp; log webhooks</text></g>
           <g class="node"><rect x="400" y="304" width="162" height="48" rx="12"/><text x="481" y="333">D1 database</text></g>
         </svg>
-        <p class="diagram-hint">Swipe to see the whole diagram.</p>
+        <p class="diagram-hint" data-s="how.text2">Swipe to see the whole diagram.</p>
       </div>
     </section>
 
     <!-- SIGN IN -->
-    <section class="signin" id="signin" data-nav="Sign in" data-icon="user">
+    <section class="signin" id="signin" data-nav="Sign in" data-icon="user" data-s-attr="data-nav:signin.navLabel">
       <div class="glow g3" aria-hidden="true"></div>
       <div class="signin-card glow-border" data-anim>
         <span class="mark big" data-ic="shield"></span>
-        <h2>Are you ready?</h2>
-        <p class="dim">Login now and submit an access request to access our amazing roleplat system.</p>
+        <h2 data-s="signin.title">Are you ready?</h2>
+        <p class="dim" data-s="signin.text">Login now and submit an access request to access our amazing roleplat system.</p>
         <div id="signinBody" class="stack"></div>
-        <p class="muted small"><a href="posts/">Posts</a> · <a href="handbooks/">Handbooks</a> · <a href="verify.html">Link Discord to Roblox</a> · <a href="docs.html">API docs</a></p>
+        <p class="muted small" data-s="signin.text2"><a href="posts/">Posts</a> · <a href="handbooks/">Handbooks</a> · <a href="verify.html">Link Discord to Roblox</a> · <a href="docs.html">API docs</a></p>
       </div>
-      <footer class="ifoot"><span class="muted">Roleplay System · Activity, requirements, ranking, applications and logs for Roblox groups.</span></footer>
+      <footer class="ifoot" data-s="footer.label"><span class="muted">Roleplay System · Activity, requirements, ranking, applications and logs for Roblox groups.</span></footer>
     </section>
   </main>
 
-  <script src="config.js?v=2a8a86b"></script>
-  <script src="core.js?v=2a8a86b"></script>
-  <script src="intro.js?v=2a8a86b"></script>
+  <script src="config.js?v=edfdc22"></script>
+  <script src="core.js?v=edfdc22"></script>
+  <script src="strings.js?v=edfdc22"></script>
+  <script src="intro.js?v=edfdc22"></script>
 </body>
 </html>
