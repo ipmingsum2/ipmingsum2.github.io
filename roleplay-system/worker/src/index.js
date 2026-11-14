@@ -15,6 +15,7 @@ import * as access from './access.js';
 import * as extras from './extras.js';
 import * as rosterMod from './roster.js';
 import * as reports from './reports.js';
+import * as bridge from './gamebridge.js';
 
 const routes = [];
 /**
@@ -39,6 +40,7 @@ function groupView(g, user) {
     if (settings.events) settings.events.webhookUrl = settings.events.webhookUrl ? '(hidden)' : '';
     if (settings.news) settings.news.webhookUrl = settings.news.webhookUrl ? '(hidden)' : '';
     if (settings.leaderboard) settings.leaderboard.webhookUrl = settings.leaderboard.webhookUrl ? '(hidden)' : '';
+    if (settings.moderation) settings.moderation.webhookUrl = settings.moderation.webhookUrl ? '(hidden)' : '';
   }
   return { id: g.id, name: g.name, hasApiKey: !!g.api_key_enc, roles: parseJSON(g.roles, []), trackedRanks: parseJSON(g.tracked_ranks, []), settings, createdAt: g.created_at };
 }
@@ -100,7 +102,7 @@ async function updateGroup(c) {
     settings.requirements = cleanRequirements(b.requirements, settings.requirements);
     changed.push('requirements');
   }
-  const adminOnly = ['name', 'apiKey', 'trackedRanks', 'logWebhook', 'ranking', 'events', 'news', 'leaderboard'].filter((k) => b[k] !== undefined);
+  const adminOnly = ['name', 'apiKey', 'trackedRanks', 'logWebhook', 'ranking', 'events', 'news', 'leaderboard', 'moderation'].filter((k) => b[k] !== undefined);
   if (adminOnly.length && !admin) bad('You do not have permission to edit group settings', 403);
 
   if (b.name !== undefined) { const n = str(b.name, 80); if (!n) bad('Name cannot be empty'); sets.push('name=?'); vals.push(n); changed.push('name'); }
@@ -122,6 +124,7 @@ async function updateGroup(c) {
   if (b.events !== undefined) { settings.events = extras.cleanEvents(b.events || {}, settings.events || {}); changed.push(`session announcements${settings.events.remindMinutes ? ` (reminders ${settings.events.remindMinutes} min before)` : ''}`); }
   if (b.leaderboard !== undefined) { settings.leaderboard = extras.cleanLeaderboard(b.leaderboard || {}, settings.leaderboard || {}); changed.push(`weekly leaderboard (${settings.leaderboard.enabled ? 'on' : 'off'})`); }
   if (b.news !== undefined) { settings.news = feat.cleanNewsSettings(b.news); changed.push('news webhook'); }
+  if (b.moderation !== undefined) { settings.moderation = bridge.cleanModeration(b.moderation || {}); changed.push('moderation log webhook'); }
   if (!changed.length) bad('Nothing to update');
 
   sets.push('settings=?'); vals.push(JSON.stringify(settings));
@@ -135,7 +138,7 @@ async function deleteGroup(c) {
   const { DB } = c.env;
   const id = c.group.id;
   await DB.batch([
-    ...['members', 'play_sessions', 'activity_daily', 'time_off', 'requirement_runs', 'requirement_results', 'applications', 'submissions', 'events', 'notes', 'logbook', 'event_people', 'recommendations', 'kb_docs', 'posts', 'blacklist', 'departments', 'member_departments', 'roster', 'cert_types', 'certifications', 'report_types', 'reports']
+    ...['members', 'play_sessions', 'activity_daily', 'time_off', 'requirement_runs', 'requirement_results', 'applications', 'submissions', 'events', 'notes', 'logbook', 'event_people', 'recommendations', 'kb_docs', 'posts', 'blacklist', 'departments', 'member_departments', 'roster', 'cert_types', 'certifications', 'report_types', 'reports', 'game_servers', 'game_commands', 'moderation']
       .map((t) => DB.prepare(`DELETE FROM ${t} WHERE group_id=?`).bind(id)),
     DB.prepare('DELETE FROM rec_votes WHERE rec_id NOT IN (SELECT id FROM recommendations)'),
     DB.prepare('UPDATE api_keys SET revoked=1 WHERE group_id=?').bind(id),
@@ -311,6 +314,14 @@ R('PATCH', '/api/timeoff/:id', act.reviewTimeOff, { perm: A });
 R('DELETE', '/api/timeoff/:id', act.deleteTimeOff, { perm: A });
 
 // --- roster: departments, callsigns, certifications ---
+// --- live servers & moderation log ---
+const SERVERS = 'manage_servers';
+R('GET', '/api/groups/:gid/servers', bridge.servers);
+R('POST', '/api/groups/:gid/servers/announce', bridge.announce, { perm: SERVERS });
+R('POST', '/api/groups/:gid/servers/kick', bridge.kick, { perm: SERVERS });
+R('POST', '/api/groups/:gid/servers/shutdown', bridge.shutdown, { perm: SERVERS });
+R('GET', '/api/groups/:gid/moderation', bridge.moderationList, { anyPerm: ['manage_discipline', 'view_logs', SERVERS] });
+
 const ROSTER = 'manage_roster', REPORTS = 'manage_reports';
 R('GET', '/api/groups/:gid/roster', rosterMod.roster);
 R('POST', '/api/groups/:gid/departments', rosterMod.deptCreate, { perm: ROSTER });
@@ -438,6 +449,10 @@ R('POST', '/v1/game/heartbeat', act.heartbeat, { scope: 'game', keyGroup: true }
 R('POST', '/v1/game/session-end', act.sessionEnd, { scope: 'game', keyGroup: true });
 R('GET', '/v1/game/blacklist/:rid', more.blacklistCheck, { scope: 'game', keyGroup: true });
 R('GET', '/v1/game/member/:rid', rosterMod.memberInfoApi, { scope: 'game', keyGroup: true });
+R('GET', '/v1/game/profile/:rid', bridge.gameProfile, { scope: 'game', keyGroup: true });
+R('POST', '/v1/game/moderation', bridge.gameModeration, { scope: 'game', keyGroup: true });
+R('POST', '/v1/game/staff', bridge.gameStaff, { scope: 'game', keyGroup: true });
+R('GET', '/v1/groups/:gid/moderation', bridge.moderationList, { scope: 'read' });
 R('GET', '/v1/game/applications', apps.gameList, { scope: 'game', keyGroup: true });
 R('POST', '/v1/game/applications/:id/submit', apps.gameSubmit, { scope: 'game', keyGroup: true });
 // Verification is system-wide: only keys with the "verify" scope (the owner's verification game) may link accounts.
@@ -495,6 +510,6 @@ export default {
   async scheduled(event, env, ctx) {
     // Every 5 minutes: session reminders only. On the hour: requirement checks, auto-promotion, weekly leaderboard.
     if (event.cron === '*/5 * * * *') { ctx.waitUntil(extras.remindersCron(env)); return; }
-    ctx.waitUntil(act.cron(env, ctx).finally(() => more.autoPromoteCron(env, ctx)).finally(() => extras.leaderboardCron(env, ctx)));
+    ctx.waitUntil(act.cron(env, ctx).finally(() => more.autoPromoteCron(env, ctx)).finally(() => extras.leaderboardCron(env, ctx)).finally(() => bridge.cleanupCron(env)));
   },
 };

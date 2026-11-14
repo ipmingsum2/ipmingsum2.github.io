@@ -7,7 +7,7 @@ const HAS_OPTS = ['choice', 'checkboxes', 'dropdown'];
 const GRADABLE = ['short', 'choice', 'checkboxes', 'dropdown', 'yesno', 'number'];
 const applyUrl = (id) => new URL(`apply.html?id=${id}`, location.href).href;
 const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-const PERM_LABELS = { manage_activity: 'Manage activity, requirements, time off, notes, sessions and registers', ranking: 'Promote / demote / set ranks, approve promotion recommendations, auto-promotion', manage_groups: 'Add and configure groups', manage_applications: 'Create and edit applications', review_applications: 'Accept / deny submissions', view_logs: 'View logs', manage_api_keys: 'Create and revoke API keys', manage_discipline: 'Logbook entries and the blacklist', manage_content: 'Post news and edit the knowledgebase', manage_roster: 'Departments, callsigns and certifications', manage_reports: 'Design report types and review every report' };
+const PERM_LABELS = { manage_activity: 'Manage activity, requirements, time off, notes, sessions and registers', ranking: 'Promote / demote / set ranks, approve promotion recommendations, auto-promotion', manage_groups: 'Add and configure groups', manage_applications: 'Create and edit applications', review_applications: 'Accept / deny submissions', view_logs: 'View logs', manage_api_keys: 'Create and revoke API keys', manage_discipline: 'Logbook entries and the blacklist', manage_content: 'Post news and edit the knowledgebase', manage_roster: 'Departments, callsigns and certifications', manage_reports: 'Design report types and review every report', manage_servers: 'Live servers: announce, kick and shut down game servers' };
 
 /** Creates a group-bound API key with the "game" scope (used by generated place files and loader snippets). */
 async function createGameKey(label, gid = S.gid) {
@@ -310,6 +310,7 @@ VIEWS.groups = async (el, _a, _b, reload) => {
         <label class="field">Highest rank this system may assign<input id="max" type="number" min="1" max="254" value="${g.settings.ranking?.maxRank || 254}"><small>Promotions, set-rank and auto-rank on acceptance never go above this, and members above it cannot be changed.</small></label>
         <label class="field">Log webhook<input id="log" value="${esc(g.settings.logWebhook || '')}" placeholder="https://discord.com/api/webhooks/…"><small>Every log entry for this group is mirrored to this Discord channel.</small></label>
         <label class="field">News webhook<input id="nw" value="${esc(g.settings.news?.webhookUrl || '')}" placeholder="https://discord.com/api/webhooks/…"><small>News posts marked “announce” are sent here.</small></label>
+        <label class="field">Moderation log webhook<input id="modHook" value="${esc(g.settings.moderation?.webhookUrl || '')}" placeholder="https://discord.com/api/webhooks/…"><small>Kicks, bans and warnings from your admin system's plugin, and kicks from Live servers, are posted here.</small></label>
         <h3 class="set-h">${icon('clock', 'sm')} Sessions</h3>
         <label class="field">Session announcements webhook<input id="ev" value="${esc(g.settings.events?.webhookUrl || '')}" placeholder="https://discord.com/api/webhooks/…"><small>New sessions are announced here, and so are reminders.</small></label>
         <div class="grid2">
@@ -326,7 +327,7 @@ VIEWS.groups = async (el, _a, _b, reload) => {
         </div>
         ${g.settings.leaderboard?.webhookUrl ? `<div><button type="button" class="btn sm" id="lbPost">${icon('trophy', 'sm')} Post this week’s leaderboard now</button> <span class="hint">Uses the saved settings.</span></div>` : ''}`,
       actions: [{ label: 'Save', kind: 'primary', onClick: async (close, m) => {
-        const body = { name: val(m, '#name'), ranking: { maxRank: Number(val(m, '#max')) }, logWebhook: val(m, '#log'), news: { webhookUrl: val(m, '#nw') },
+        const body = { name: val(m, '#name'), ranking: { maxRank: Number(val(m, '#max')) }, logWebhook: val(m, '#log'), news: { webhookUrl: val(m, '#nw') }, moderation: { webhookUrl: val(m, '#modHook') },
           events: { webhookUrl: val(m, '#ev'), remindMinutes: Number(val(m, '#evr')), mentionRoleId: val(m, '#evrole') },
           leaderboard: { enabled: $('#lbOn', m).checked, webhookUrl: val(m, '#lbHook'), day: Number(val(m, '#lbDay')), hour: Number(val(m, '#lbHour')), top: Number(val(m, '#lbTop')) } };
         if (val(m, '#key')) body.apiKey = val(m, '#key');
@@ -339,14 +340,16 @@ VIEWS.groups = async (el, _a, _b, reload) => {
 
 function robloxSetup(g = group()) {
   const m = modal({ title: `Roblox setup — ${g.name}`, wide: true, body: `
-      <p class="dim">Two pieces connect this group’s Roblox games to the system. Each download creates a fresh API key for this group and embeds it in a <b>server-only</b> script — never share these files or put the key in a LocalScript.</p>
+      <p class="dim">These connect this group’s Roblox games to the system. The tracker loader and the application center each create a fresh API key for this group and embed it in a <b>server-only</b> script — never share those files or put the key in a LocalScript. The admin plugins hold no key.</p>
       <div class="card"><div class="body stack gap-s"><h3>1 · Activity tracker (ModuleScript)</h3>
-        <p class="dim">Add <code>ActivityTracker</code> as a ModuleScript in <code>ServerScriptService</code> of your main game, then start it from a Script. It reports playtime, idle time and chat messages for tracked ranks every minute.</p>
+        <p class="dim">Add <code>ActivityTracker</code> as a ModuleScript in <code>ServerScriptService</code> of your main game, then start it from a Script. It reports playtime, idle and duty time and chat messages every minute, kicks blacklisted players, and powers Live servers (announcements, kicks, shutdowns).</p>
         <div class="row wrap"><button class="btn" data-d="module">${icon('download')} ActivityTracker.lua</button><button class="btn" data-d="loader">${icon('copy')} Copy loader script (with new key)</button></div></div></div>
       <div class="card"><div class="body stack gap-s"><h3>2 · Application center</h3>
         <p class="dim">A place that loads this group’s open applications from the API and submits answers as the verified player.</p>
         <div class="row wrap"><button class="btn" data-d="appcenter">${icon('download')} ApplicationCenter.rbxlx</button></div></div></div>
+      ${adminPluginsCard()}
       <p class="hint">In every place: enable <b>Game Settings ${icon('arrowR', 'inl')} Security ${icon('arrowR', 'inl')} Allow HTTP Requests</b>. Keys can be revoked on the API page. The verification game is shared by every group — the owner sets it up from their own menu.</p>` });
+  bindAdminPlugins(m.el);
   m.el.onclick = (e) => {
     const b = e.target.closest('[data-d]'); if (!b) return;
     run(b, async () => {

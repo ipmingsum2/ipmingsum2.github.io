@@ -4,11 +4,12 @@ import { resolveUser, syncMembers } from './roblox.js';
 import { sessionCounts } from './features.js';
 import { blacklistedAmong } from './more.js';
 import { memberRosterInfo } from './roster.js';
+import { serverSync } from './gamebridge.js';
 
 const STALE = 180; // seconds without a heartbeat before a play session is considered over
 
 // ---------- game → API ----------
-/** POST /v1/game/heartbeat {jobId, players:[{userId, username, displayName, rank, role, idle, messages}]} — send every ~60s. */
+/** POST /v1/game/heartbeat {jobId, placeId?, players:[{userId, username, displayName, rank, role, idle, messages, onDuty?, dutyLabel?}]} — send every ~60s. */
 export async function heartbeat(c) {
   const { env, group } = c;
   const b = await readBody(c.req);
@@ -23,11 +24,11 @@ export async function heartbeat(c) {
   const openMap = new Map(open.map((s) => [s.roblox_id, s]));
   const present = new Set();
   const stmts = [];
-  const daily = (rid, sec, idle, msgs, sess) => DB.prepare(
-    `INSERT INTO activity_daily (group_id, roblox_id, day, seconds, idle_seconds, messages, sessions) VALUES (?,?,?,?,?,?,?)
+  const daily = (rid, sec, idle, msgs, sess, duty = 0) => DB.prepare(
+    `INSERT INTO activity_daily (group_id, roblox_id, day, seconds, idle_seconds, messages, sessions, duty_seconds) VALUES (?,?,?,?,?,?,?,?)
      ON CONFLICT(group_id, roblox_id, day) DO UPDATE SET seconds=seconds+excluded.seconds, idle_seconds=idle_seconds+excluded.idle_seconds,
-       messages=messages+excluded.messages, sessions=sessions+excluded.sessions`
-  ).bind(group.id, rid, day, sec, idle, msgs, sess);
+       messages=messages+excluded.messages, sessions=sessions+excluded.sessions, duty_seconds=duty_seconds+excluded.duty_seconds`
+  ).bind(group.id, rid, day, sec, idle, msgs, sess, duty);
 
   let counted = 0;
   for (const p of players) {
@@ -52,7 +53,7 @@ export async function heartbeat(c) {
       const d = Math.max(0, t - s.last_ts);
       const idle = p.idle ? d : 0;
       stmts.push(DB.prepare('UPDATE play_sessions SET last_ts=?, idle_seconds=idle_seconds+?, messages=messages+? WHERE id=?').bind(t, idle, msgs, s.id));
-      stmts.push(daily(rid, d, idle, msgs, 0));
+      stmts.push(daily(rid, d, idle, msgs, 0, p.onDuty ? d : 0));
     } else {
       if (s) stmts.push(DB.prepare('UPDATE play_sessions SET ended=1 WHERE id=?').bind(s.id));
       stmts.push(DB.prepare('INSERT INTO play_sessions (group_id, roblox_id, job_id, start_ts, last_ts) VALUES (?,?,?,?,?)').bind(group.id, rid, jobId, t, t));
@@ -65,7 +66,9 @@ export async function heartbeat(c) {
   // Blacklisted players in this server — the tracker kicks them (works for every rank, tracked or not).
   const ids = players.map((p) => str(p?.userId, 20)).filter((id) => /^\d{1,15}$/.test(id));
   const kick = (await blacklistedAmong(env, group.id, ids)).map((r) => ({ userId: Number(r.roblox_id), reason: r.reason }));
-  return json({ ok: true, tracked: counted, kick });
+  // Live server list for the dashboard, and anything staff sent from it (announcements, kicks, shutdowns).
+  const commands = await serverSync(env, group, jobId, b.placeId, players);
+  return json({ ok: true, tracked: counted, kick, commands });
 }
 
 /** POST /v1/game/session-end {jobId, userId} — optional, sent when a player leaves so the last partial minute counts. */
@@ -142,7 +145,7 @@ export async function memberProfile(c) {
   const since = addDays(wk, -77);
   const [m, days, sess, notes, off, link, tot, reqs, book, regs] = await DB.batch([
     DB.prepare('SELECT * FROM members WHERE group_id=? AND roblox_id=?').bind(gid, rid),
-    DB.prepare('SELECT day, seconds, idle_seconds, messages, sessions FROM activity_daily WHERE group_id=? AND roblox_id=? AND day>=? ORDER BY day').bind(gid, rid, since),
+    DB.prepare('SELECT day, seconds, idle_seconds, messages, sessions, duty_seconds FROM activity_daily WHERE group_id=? AND roblox_id=? AND day>=? ORDER BY day').bind(gid, rid, since),
     DB.prepare('SELECT start_ts, last_ts, idle_seconds, messages, ended FROM play_sessions WHERE group_id=? AND roblox_id=? ORDER BY start_ts DESC LIMIT 25').bind(gid, rid),
     DB.prepare('SELECT * FROM notes WHERE group_id=? AND roblox_id=? ORDER BY id DESC').bind(gid, rid),
     DB.prepare('SELECT * FROM time_off WHERE group_id=? AND roblox_id=? ORDER BY start_date DESC LIMIT 20').bind(gid, rid),
@@ -161,8 +164,9 @@ export async function memberProfile(c) {
   return json({
     member: { robloxId: rid, username: mem.username || `User ${rid}`, displayName: mem.display_name, rank: mem.rank, roleName: mem.role_name, updatedAt: mem.updated_at },
     discord: link.results[0] ? { id: link.results[0].discord_id, name: link.results[0].discord_name } : null,
-    totals: { today: sum((d) => d.day === today), week: sum((d) => d.day >= wk), allTime: tot.results[0]?.s || 0, messages: tot.results[0]?.m || 0, sessions: tot.results[0]?.n || 0 },
-    series: days.results.map((d) => ({ day: d.day, seconds: d.seconds, idleSeconds: d.idle_seconds, messages: d.messages, sessions: d.sessions })),
+    totals: { today: sum((d) => d.day === today), week: sum((d) => d.day >= wk), allTime: tot.results[0]?.s || 0, messages: tot.results[0]?.m || 0, sessions: tot.results[0]?.n || 0,
+      dutyWeek: days.results.filter((d) => d.day >= wk).reduce((n, d) => n + (d.duty_seconds || 0), 0) },
+    series: days.results.map((d) => ({ day: d.day, seconds: d.seconds, idleSeconds: d.idle_seconds, messages: d.messages, sessions: d.sessions, dutySeconds: d.duty_seconds || 0 })),
     seriesFrom: since,
     sessions: sess.results.map((s) => ({ start: s.start_ts, end: s.last_ts, seconds: s.last_ts - s.start_ts, idleSeconds: s.idle_seconds, messages: s.messages, live: !s.ended && now() - s.last_ts <= STALE })),
     notes: notes.results, timeOff: off.results, requirements: reqs.results,

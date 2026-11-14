@@ -177,7 +177,7 @@ VIEWS.member = async (el, rid, _b, reload) => {
     </div>
     <div class="stats">
       ${stat('Today', fmtDur(p.totals.today))}${stat('This week', fmtDur(p.totals.week))}${stat('All time', `${fmtHours(p.totals.allTime)}h`)}
-      ${stat('Game sessions', p.totals.sessions)}${stat('Sessions attended', p.sessionsAttended.week, `${p.sessionsAttended.allTime} all time`)}${stat('Active warnings', p.activeWarnings, p.activeWarnings ? '<a href="#lb" data-jump>See logbook</a>' : 'clean record')}${stat('Messages', p.totals.messages)}
+      ${stat('On duty this week', fmtDur(p.totals.dutyWeek || 0))}${stat('Game sessions', p.totals.sessions)}${stat('Sessions attended', p.sessionsAttended.week, `${p.sessionsAttended.allTime} all time`)}${stat('Active warnings', p.activeWarnings, p.activeWarnings ? '<a href="#lb" data-jump>See logbook</a>' : 'clean record')}${stat('Messages', p.totals.messages)}
     </div>
     <div class="card"><div class="head">${icon('idcard')}<h2 class="grow">Roster</h2>
         ${can('manage_roster') ? `<button class="btn sm" id="rEdit">${icon('edit', 'sm')} Edit</button><button class="btn sm" id="rAward">${icon('award', 'sm')} Award certification</button>` : ''}</div>

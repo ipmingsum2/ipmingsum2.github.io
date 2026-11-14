@@ -6,13 +6,13 @@
   <title>API documentation</title>
   <script>try{var t=localStorage.getItem("rp_theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%278%27 fill=%27%235b8def%27/%3E%3Cpath d=%27M16 26s7-3.500 7-8.750V11l-7-2.600L9 11v6.250C9 22.500 16 26 16 26z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%272%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="styles.css?v=b81ab46">
+  <link rel="stylesheet" href="styles.css?v=2a8a86b">
 </head>
 <body>
   <div class="corner-theme" id="themeCorner"></div>
   <main class="docs" id="root"></main>
-  <script src="config.js?v=b81ab46"></script>
-  <script src="core.js?v=b81ab46"></script>
+  <script src="config.js?v=2a8a86b"></script>
+  <script src="core.js?v=2a8a86b"></script>
   <script>$('#themeCorner').innerHTML = themeButton();</script>
   <script>
     'use strict';
@@ -95,6 +95,12 @@
         ['GET', '/v1/groups/{groupId}/blacklist/{robloxId}', 'read', 'Is this player blacklisted?', {
           response: { robloxId: '156', blacklisted: true, reason: 'Exploiting', expiresAt: null } }],
       ]],
+      ['Moderation log', 'Kicks, bans, unbans and warnings copied from admin systems (Adonis, Basic Admin Essentials, Kohl’s Admin) through their Roleplay System plugins, plus kicks sent from the dashboard’s Live servers page.', [
+        ['GET', '/v1/groups/{groupId}/moderation', 'read', 'Latest 300 entries, newest first', {
+          params: [['action', '`kick`, `ban`, `unban`, `warn`, `mute` or `other`'], ['rid', 'Only this Roblox user ID'], ['q', 'Search player, moderator or reason']],
+          response: { entries: [{ id: 42, roblox_id: '156', username: 'Builderman', action: 'ban', reason: 'Exploiting', duration: -1, moderator_id: '261', moderator: 'Shedletsky', source: 'Adonis', job_id: 'a1b2c3', created_at: 1794500000 }], lastWeek: { kick: 6, ban: 2 }, actions: ['kick', 'ban', 'unban', 'warn', 'mute', 'other'] },
+          notes: '`duration` is in seconds; -1 means permanent and null means the admin system did not say (or a server-only ban).' }],
+      ]],
       ['Account links', 'Discord-to-Roblox links created through the verification game.', [
         ['GET', '/v1/links/discord/{discordId}', 'read', 'Roblox account linked to a Discord user', { response: { discordId: '123456789012345678', discordName: 'builder', robloxId: '156', robloxName: 'Builderman', linkedAt: 1794300000 }, notes: 'Returns 404 if the user has not verified.' }],
         ['GET', '/v1/links/roblox/{robloxId}', 'read', 'Discord account linked to a Roblox user', { response: { discordId: '123456789012345678', discordName: 'builder', robloxId: '156', robloxName: 'Builderman', linkedAt: 1794300000 } }],
@@ -102,9 +108,20 @@
       ['Roblox game endpoints', 'Called from server Scripts with a key that has the `game` scope and is tied to one group — the group comes from the key, so there is no group ID in the path. The bundled ActivityTracker module and generated place files already use these.', [
         ['GET', '/v1/game/config', 'game', 'Group ID and tracked ranks for this key', { response: { groupId: '1234567', name: 'Sunrise Hotels', trackedRanks: [20, 30, 40], heartbeatSeconds: 60 } }],
         ['POST', '/v1/game/heartbeat', 'game', 'Report who is in the server (send about once a minute)', {
-          body: { jobId: 'a1b2c3', players: [{ userId: 156, username: 'Builderman', displayName: 'Builderman', rank: 40, role: 'Manager', idle: false, messages: 3 }] },
-          response: { ok: true, tracked: 1, kick: [{ userId: 999, reason: 'Exploiting' }] },
+          body: { jobId: 'a1b2c3', placeId: 123456, players: [{ userId: 156, username: 'Builderman', displayName: 'Builderman', rank: 40, role: 'Manager', idle: false, messages: 3, onDuty: true, dutyLabel: 'Patrol' }] },
+          response: { ok: true, tracked: 1, kick: [{ userId: 999, reason: 'Exploiting' }], commands: [{ id: 7, type: 'announce', title: 'Training', message: 'Training at the base in 5 minutes', from: 'Avalynne', fromUserId: 261, seconds: 12 }, { id: 8, type: 'kick', userId: 999, reason: 'AFK' }] },
           notes: 'Time is credited as the gap since the previous heartbeat for the same server (`jobId`) and player, up to 180 seconds — a longer gap starts a new session. Players whose rank is not tracked are ignored. `messages` is the count since the last heartbeat. `kick` lists players in this server who are blacklisted (any rank).' }],
+        ['GET', '/v1/game/profile/{robloxId}', 'game', 'Everything an admin “info” command shows about a player', {
+          response: { robloxId: '156', username: 'Builderman', member: true, rank: 40, roleName: 'Sergeant', callsign: '1-ADAM-12', departments: ['Patrol'], certifications: [{ name: 'Firearms', expiresAt: 1802076000 }],
+            week: { seconds: 12400, dutySeconds: 7200, sessions: 4 }, activeWarnings: 1, recent: [{ type: 'warning', reason: 'Late to shift', by: 'Avalynne', at: 1794400000 }], onLeaveUntil: null, blacklisted: null, moderationCount: 2 } }],
+        ['POST', '/v1/game/moderation', 'game', 'Record a kick, ban, unban, warning or mute done by your admin system', {
+          body: { action: 'ban', userId: 156, reason: 'Exploiting', duration: -1, moderatorId: 261, moderatorName: 'Shedletsky', source: 'Adonis', jobId: 'a1b2c3' },
+          response: { ok: true, id: 42 },
+          notes: 'Send `username` instead of `userId` if that is all you have; it is resolved to an ID. The entry appears on the Moderation page and, if set, in the group’s moderation Discord webhook. The admin plugins call this for you.' }],
+        ['POST', '/v1/game/staff', 'game', 'Run a staff action as the moderator’s linked dashboard account', {
+          body: { actorId: 261, action: 'warn', target: '156', reason: 'Late to shift' },
+          response: { ok: true, message: 'Warning logged for Builderman — 2 active.' },
+          notes: '`action` is `warn`, `strike`, `blacklist` (manage_discipline), `promote`, `demote`, `setrank` with `rank` (ranking) or `certify` with `cert` (manage_roster). The moderator (`actorId`) must have linked their Roblox account to a dashboard account that has the permission — an in-game admin rank is never enough. `target` is a Roblox user ID or username. Always answers 200 with `ok` and a `message` to show the moderator.' }],
         ['GET', '/v1/game/member/{robloxId}', 'game', 'Callsign, departments and certifications for a player in your game', {
           response: { robloxId: '156', username: 'Builderman', rank: 40, roleName: 'Sergeant', callsign: '1-ADAM-12', departments: ['Patrol'], certifications: [{ name: 'Firearms', issuedAt: 1794300000, expiresAt: 1802076000 }] },
           notes: 'Use it from a server Script to gate tools, doors or vehicles — e.g. only hand out a taser to players holding the Firearms certification, or show a callsign above their head.' }],
