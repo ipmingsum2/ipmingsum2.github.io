@@ -27,7 +27,7 @@
       "titleWord1": "Run",
       "titleWord2": "your",
       "titleWord3": "whole",
-      "rotatingWords": "group|staff team|police force|hotel|café|airline|school|fire department",
+      "rotatingWords": "group|staff team|police force|hotel|café|airline|school|fire department|67 appreciation group",
       "titleWord4": "from one dashboard.",
       "text": "Track every minute played, enforce activity requirements, rank through Roblox Open Cloud, run application centers and keep a log of everything, across as many groups as you manage.",
       "button": "See our features",
@@ -38,15 +38,15 @@
         "events": [
           {
             "title": "4 in game now",
-            "detail": "Avalynne, Sunny, Ruby +1"
+            "detail": "Alvin, John, Unnamed +1"
           },
           {
-            "title": "ZaraPoolside promoted",
+            "title": "No Name promoted",
             "detail": "Customer -> Trainee · logged"
           },
           {
             "title": "New application",
-            "detail": "NovaStarRBX · auto-score 7/7"
+            "detail": "IDK · auto-score 7/7"
           },
           {
             "title": "3 missed this week",
@@ -453,7 +453,7 @@
           "label6": "Closed"
         },
         "heading": "Reports",
-        "text": "Arrest reports, incident reports, patient care, flight logs — design the form, pick who files and who reviews, send it to Discord."
+        "text": "Arrest reports, incident reports, patient care, flight logs - design the form, pick who files and who reviews, send it to Discord."
       },
       "card11": {
         "demo": {
@@ -476,7 +476,7 @@
       "navLabel": "How it works",
       "kicker": "16 · Under the hood",
       "title": "Small, fast, nothing to host.",
-      "text": "Your games talk to one Cloudflare Worker. The dashboard is static pages on GitHub. Discord just receives webhooks.",
+      "text": "Your games talk to the server. The dashboard is static pages on GitHub. Discord just receives webhooks.",
       "text2": "Swipe to see the whole diagram."
     },
     "signin": {
