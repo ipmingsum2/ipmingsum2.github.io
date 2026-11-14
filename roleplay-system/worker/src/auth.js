@@ -8,6 +8,23 @@ const SESSION_TTL = 30 * 86400;
 
 const dash = (env) => String(env.DASHBOARD_URL || '').replace(/\/+$/, '');
 export const can = (user, perm) => user.role === 'owner' || user.permissions.includes(perm);
+/** Group IDs a user may open, or null for the owner (every group). */
+export async function userGroupIds(env, user) {
+  if (!user || user.role === 'owner') return null;
+  return new Set((await env.DB.prepare('SELECT group_id FROM user_groups WHERE user_id=?').bind(user.id).all()).results.map((r) => String(r.group_id)));
+}
+/** Whether the signed-in user may open this group (c.user.groupIds is filled in by the router). */
+export const canGroup = (user, gid) => !!user && (user.role === 'owner' || !!user.groupIds?.has(String(gid)));
+async function setUserGroups(env, userId, groups, actorName) {
+  const ids = [...new Set((Array.isArray(groups) ? groups : []).map((g) => String(g)).filter((g) => /^\d{1,15}$/.test(g)))];
+  const known = ids.length ? new Set((await env.DB.prepare(`SELECT id FROM groups WHERE id IN (${ids.map(() => '?').join(',')})`).bind(...ids).all()).results.map((r) => r.id)) : new Set();
+  const t = now();
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM user_groups WHERE user_id=?').bind(userId),
+    ...ids.filter((g) => known.has(g)).map((g) => env.DB.prepare('INSERT INTO user_groups (user_id, group_id, added_by, created_at) VALUES (?,?,?,?)').bind(userId, g, actorName, t)),
+  ]);
+  return ids.filter((g) => known.has(g));
+}
 export const userActor = (u) => ({ type: 'user', id: u.id, name: u.name || u.google_email || u.discord_name || `User ${u.id}` });
 
 const publicUser = (u) => ({
@@ -222,7 +239,8 @@ const uniqueGuard = (e) => { if (/UNIQUE/i.test(String(e?.message))) bad('Anothe
 export async function listUsers(c) {
   await ensureOwner(c.env);
   const rows = (await c.env.DB.prepare("SELECT * FROM users ORDER BY role='owner' DESC, id").all()).results;
-  return json({ users: rows.map((u) => publicUser(hydrate(u))) });
+  const access = (await c.env.DB.prepare('SELECT user_id, group_id FROM user_groups').all()).results;
+  return json({ users: rows.map((u) => ({ ...publicUser(hydrate(u)), groups: u.role === 'owner' ? null : access.filter((a) => a.user_id === u.id).map((a) => String(a.group_id)) })) });
 }
 
 export async function createUser(c) {
@@ -231,8 +249,9 @@ export async function createUser(c) {
   const perms = cleanPerms(b.permissions);
   const name = str(b.name, 60);
   try {
-    await c.env.DB.prepare('INSERT INTO users (name, google_email, discord_id, roblox_id, role, permissions, created_at) VALUES (?,?,?,?,\'member\',?,?)')
+    const r = await c.env.DB.prepare('INSERT INTO users (name, google_email, discord_id, roblox_id, role, permissions, created_at) VALUES (?,?,?,?,\'member\',?,?)')
       .bind(name || null, f.email, f.discord, f.roblox, JSON.stringify(perms), now()).run();
+    if (b.groups !== undefined) await setUserGroups(c.env, r.meta.last_row_id, b.groups, c.actor.name);
   } catch (e) { uniqueGuard(e); }
   await logEvent(c.env, c.ctx, { type: 'access.granted', actor: c.actor, target: { id: f.email || f.discord, name }, summary: `${c.actor.name} whitelisted ${name || f.email || f.discord} (${perms.join(', ') || 'view only'})`, details: { ...f, permissions: perms } });
   return json({ ok: true });
@@ -251,6 +270,7 @@ export async function updateUser(c) {
     await c.env.DB.prepare('UPDATE users SET name=?, google_email=?, discord_id=?, roblox_id=?, permissions=? WHERE id=?')
       .bind(name || null, f.email, f.discord, f.roblox, JSON.stringify(perms), id).run();
   } catch (e) { uniqueGuard(e); }
+  if (b.groups !== undefined) await setUserGroups(c.env, id, b.groups, c.actor.name);
   await logEvent(c.env, c.ctx, { type: 'access.updated', actor: c.actor, target: { id, name }, summary: `${c.actor.name} updated access for ${name || f.email || f.discord} (${perms.join(', ') || 'view only'})`, details: { ...f, permissions: perms } });
   return json({ ok: true });
 }
@@ -280,7 +300,8 @@ export async function getApiKey(req, env, ctx) {
 }
 
 export async function listKeys(c) {
-  const rows = (await c.env.DB.prepare('SELECT id, name, prefix, group_id, scopes, created_by, created_at, last_used FROM api_keys WHERE revoked=0 ORDER BY id DESC').all()).results;
+  const rows = (await c.env.DB.prepare('SELECT id, name, prefix, group_id, scopes, created_by, created_at, last_used FROM api_keys WHERE revoked=0 ORDER BY id DESC').all()).results
+    .filter((k) => c.user.role === 'owner' || (k.group_id && canGroup(c.user, k.group_id)));
   return json({ keys: rows.map((k) => ({ ...k, scopes: parseJSON(k.scopes, []) })) });
 }
 
@@ -291,10 +312,11 @@ export async function createKey(c) {
   const scopes = Array.isArray(b.scopes) ? SCOPES.filter((s) => b.scopes.includes(s)) : [];
   if (!scopes.length) bad('Pick at least one scope');
   const groupId = str(b.groupId, 20) || null;
-  if (groupId && !(await c.env.DB.prepare('SELECT id FROM groups WHERE id=?').bind(groupId).first())) bad('Group not found', 404);
+  if (groupId && (!canGroup(c.user, groupId) || !(await c.env.DB.prepare('SELECT id FROM groups WHERE id=?').bind(groupId).first()))) bad('Group not found', 404);
+  if (scopes.includes('verify') && c.user?.role !== 'owner') bad('Only the owner can create a verification key — the verification game is owner-only', 403);
+  if (!groupId && c.user?.role !== 'owner') bad('Pick one of your groups — keys for every group can only be made by the owner');
   if (scopes.includes('game') && !groupId) bad('A key with the "game" scope must be tied to one group');
   // The verification game links accounts for the whole system, so only the owner may create its key.
-  if (scopes.includes('verify') && c.user?.role !== 'owner') bad('Only the owner can create a verification key — the verification game is owner-only', 403);
   if (scopes.includes('verify') && groupId) bad('The "verify" scope is system-wide — create it without a group (the owner downloads the verification game from Owner Menu → Verification game)');
   const key = `rpk_${randHex(24)}`;
   await c.env.DB.prepare('INSERT INTO api_keys (name, key_hash, prefix, group_id, scopes, created_by, created_at) VALUES (?,?,?,?,?,?,?)')
@@ -398,17 +420,24 @@ export async function gameVerify(c) {
   return json({ ok: true, discordName: row.discord_name || null });
 }
 
+/** Roblox IDs of members in the groups the signed-in user may open (empty for the owner, who sees everything). */
+async function membersOfMyGroups(c) {
+  if (c.user.role === 'owner' || !c.user.groupIds?.size) return new Set();
+  const ids = [...c.user.groupIds];
+  return new Set((await c.env.DB.prepare(`SELECT roblox_id FROM members WHERE group_id IN (${ids.map(() => '?').join(',')})`).bind(...ids).all()).results.map((r) => r.roblox_id));
+}
 export async function listLinks(c) {
+  const inMyGroups = await membersOfMyGroups(c);
   const q = `%${str(c.q.get('q'), 40)}%`;
   const rows = (await c.env.DB.prepare(
     'SELECT * FROM links WHERE discord_id LIKE ?1 OR roblox_id LIKE ?1 OR roblox_name LIKE ?1 OR discord_name LIKE ?1 ORDER BY linked_at DESC LIMIT 200'
-  ).bind(q).all()).results;
+  ).bind(q).all()).results.filter((l) => c.user.role === 'owner' || l.roblox_id === c.user.roblox_id || inMyGroups.has(l.roblox_id));
   return json({ links: rows });
 }
 
 export async function deleteLink(c) {
   const l = await c.env.DB.prepare('SELECT * FROM links WHERE discord_id=?').bind(c.params.id).first();
-  if (!l) bad('Link not found', 404);
+  if (!l || (c.user.role !== 'owner' && !(await membersOfMyGroups(c)).has(l.roblox_id))) bad('Link not found', 404);
   await c.env.DB.prepare('DELETE FROM links WHERE discord_id=?').bind(l.discord_id).run();
   await logEvent(c.env, c.ctx, { type: 'link.removed', actor: c.actor, target: { id: l.roblox_id, name: l.roblox_name }, summary: `${c.actor.name} removed the link between Discord ${l.discord_id} and Roblox ${l.roblox_name} (${l.roblox_id})` });
   return json({ ok: true });

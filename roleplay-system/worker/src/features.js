@@ -1,7 +1,7 @@
 // Logbook, session registers, promotion recommendations, knowledgebase, news, leaderboard.
 import { bad, json, now, parseJSON, str, int, readBody, addDays, dayStr, weekStartOf, cleanWebhook, sendWebhook, logEvent } from './util.js';
 import { resolveUser, changeRank } from './roblox.js';
-import { can, PERMISSIONS, getUser } from './auth.js';
+import { can, canGroup, userGroupIds, PERMISSIONS, getUser } from './auth.js';
 
 const ts = (day) => Math.floor(Date.parse(`${day}T00:00:00Z`) / 1000);
 
@@ -217,7 +217,8 @@ export async function recDecide(c) {
 // ---------- who can read posts and handbooks ----------
 // 'public' = anyone, no sign-in · '' = any signed-in (whitelisted) staff · a permission key = people with it (content editors always can).
 export const cleanVisibility = (v) => (v === 'public' || PERMISSIONS.includes(v) ? v : '');
-export const canSee = (user, doc) => doc.visibility === 'public' || (!!user && (!doc.visibility || can(user, doc.visibility) || can(user, 'manage_content')));
+// Anything not public is only for staff of the doc's own group (the owner sees every group).
+export const canSee = (user, doc) => doc.visibility === 'public' || (!!user && canGroup(user, doc.group_id) && (!doc.visibility || can(user, doc.visibility) || can(user, 'manage_content')));
 
 // ---------- knowledgebase (handbooks) ----------
 function docFields(b) {
@@ -225,7 +226,7 @@ function docFields(b) {
   return { title, category: str(b.category, 40) || 'General', body: str(b.body, 50000), visibility: cleanVisibility(b.visibility) };
 }
 export async function kbList(c) {
-  const rows = (await c.env.DB.prepare('SELECT id, title, category, visibility, updated_by, updated_at, length(body) size FROM kb_docs WHERE group_id=? ORDER BY category, title').bind(c.group.id).all()).results;
+  const rows = (await c.env.DB.prepare('SELECT id, group_id, title, category, visibility, updated_by, updated_at, length(body) size FROM kb_docs WHERE group_id=? ORDER BY category, title').bind(c.group.id).all()).results;
   return json({ docs: rows.filter((d) => canSee(c.user, d)) });
 }
 export async function kbGet(c) {
@@ -299,7 +300,7 @@ export const cleanNewsSettings = (n = {}) => ({ webhookUrl: cleanWebhook(n.webho
 
 // ---------- public pages: /posts and /handbooks ----------
 // Anyone can read public items; a dashboard session (Authorization: Bearer …) unlocks the rest it is allowed to see.
-const viewer = (c) => getUser(c.req, c.env);
+const viewer = async (c) => { const u = await getUser(c.req, c.env); if (u) u.groupIds = await userGroupIds(c.env, u); return u; };
 const who = (u) => (u ? { name: u.name || u.google_email || u.discord_name || 'Staff' } : null);
 const locked = (c, u) => json({ error: u ? 'You don’t have permission to read this.' : 'Sign in to read this.', needLogin: !u }, u ? 403 : 401);
 
@@ -319,7 +320,7 @@ export async function publicIndex(c) {
 /** GET /public/groups/:gid/posts */
 export async function publicPosts(c) {
   const u = await viewer(c);
-  const rows = (await c.env.DB.prepare('SELECT id, title, body, pinned, author, created_at, visibility FROM posts WHERE group_id=? ORDER BY pinned DESC, id DESC LIMIT 100').bind(c.group.id).all()).results;
+  const rows = (await c.env.DB.prepare('SELECT id, group_id, title, body, pinned, author, created_at, visibility FROM posts WHERE group_id=? ORDER BY pinned DESC, id DESC LIMIT 100').bind(c.group.id).all()).results;
   const open = rows.filter((p) => canSee(u, p));
   return json({ viewer: who(u), group: { id: c.group.id, name: c.group.name }, posts: open, locked: rows.length - open.length });
 }
@@ -336,7 +337,7 @@ export async function publicPost(c) {
 /** GET /public/groups/:gid/handbooks — titles only; bodies come one at a time. */
 export async function publicHandbooks(c) {
   const u = await viewer(c);
-  const rows = (await c.env.DB.prepare('SELECT id, title, category, visibility, updated_at FROM kb_docs WHERE group_id=? ORDER BY category, title').bind(c.group.id).all()).results;
+  const rows = (await c.env.DB.prepare('SELECT id, group_id, title, category, visibility, updated_at FROM kb_docs WHERE group_id=? ORDER BY category, title').bind(c.group.id).all()).results;
   const open = rows.filter((d) => canSee(u, d));
   return json({ viewer: who(u), group: { id: c.group.id, name: c.group.name }, handbooks: open, locked: rows.length - open.length });
 }

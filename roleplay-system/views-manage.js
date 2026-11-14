@@ -381,7 +381,7 @@ VIEWS.api = async (el, _a, _b, reload) => {
   $('#cp', el).onclick = () => copyText(`${ROBLOX_API_URL}/v1`);
   $('#add', el).onclick = () => modal({ title: 'New API key', body: `
       <label class="field">Name<input id="n" placeholder="e.g. Discord bot"></label>
-      <label class="field">Group<select id="g"><option value="">All groups</option>${S.groups.map((g) => `<option value="${g.id}" ${g.id === S.gid ? 'selected' : ''}>${esc(g.name)}</option>`).join('')}</select></label>
+      <label class="field">Group<select id="g">${isOwner() ? '<option value="">All groups</option>' : ''}${S.groups.map((g) => `<option value="${g.id}" ${g.id === S.gid ? 'selected' : ''}>${esc(g.name)}</option>`).join('')}</select></label>
       <div class="stack gap-s"><b style="font-size:13px">Scopes</b>${S.scopes.filter((s) => s !== 'verify' || isOwner()).map((s) => `<label class="check"><input type="checkbox" data-s="${s}" ${s === 'read' ? 'checked' : ''}> <code>${s}</code> <span class="dim">${SC[s] || ''}</span></label>`).join('')}</div>`,
     actions: [{ label: 'Create key', kind: 'primary', onClick: async (close, m) => {
       const r = await api('/api/keys', { body: { name: val(m, '#n'), groupId: val(m, '#g'), scopes: $$('[data-s]:checked', m).map((i) => i.dataset.s) } });
@@ -455,14 +455,17 @@ VIEWS.access = async (el, _a, _b, reload) => {
       <label class="field">Discord user ID<input id="di" inputmode="numeric" value="${esc(u.discordId || '')}" placeholder="e.g. 123456789012345678"></label></div>
       <label class="field">Roblox user ID (optional)<input id="ri" inputmode="numeric" value="${esc(u.robloxId || '')}"></label>
       <p class="hint">They can sign in with either identity you enter, then link the other one themselves from My account.</p>
-      <div class="stack gap-s"><b style="font-size:13px">Permissions</b><span class="hint">Everyone on the whitelist can view activity, requirements, time off and sessions.</span>
+      <div class="stack gap-s"><b style="font-size:13px">Groups they can open</b><span class="hint">They only see these groups — never anyone else’s. Groups they add themselves (with “Add and configure groups”) are added here automatically.</span>
+      ${S.groups.length ? `<div class="row wrap" style="gap:6px 18px">${S.groups.map((g) => `<label class="check"><input type="checkbox" data-g="${g.id}" ${u.groups?.includes(g.id) ? 'checked' : ''}> ${esc(g.name)}</label>`).join('')}</div>` : '<span class="muted small">No groups yet.</span>'}</div>
+      <div class="stack gap-s"><b style="font-size:13px">Permissions</b><span class="hint">In their groups, everyone can view activity, requirements, time off and sessions; these add the rest.</span>
       ${S.permissions.map((p) => `<label class="check"><input type="checkbox" data-p="${p}" ${u.permissions?.includes(p) ? 'checked' : ''}> ${P[p] || p}</label>`).join('')}</div>`;
-  const read = (m) => ({ name: val(m, '#n'), googleEmail: val(m, '#ge'), discordId: val(m, '#di'), robloxId: val(m, '#ri'), permissions: $$('[data-p]:checked', m).map((i) => i.dataset.p) });
+  const read = (m) => ({ name: val(m, '#n'), googleEmail: val(m, '#ge'), discordId: val(m, '#di'), robloxId: val(m, '#ri'), permissions: $$('[data-p]:checked', m).map((i) => i.dataset.p), groups: $$('[data-g]:checked', m).map((i) => i.dataset.g) });
   el.innerHTML = `${head('Access', 'This system is whitelist-only. Only people listed here can sign in, and only you can change this list.', `<button class="btn primary" id="add">${icon('plus')} Whitelist someone</button>`)}
-    <div class="card"><div class="tbl-wrap"><table><thead><tr><th>User</th><th>Google</th><th>Discord</th><th>Roblox</th><th>Permissions</th><th>Last sign-in</th><th></th></tr></thead><tbody>
+    <div class="card"><div class="tbl-wrap"><table><thead><tr><th>User</th><th>Google</th><th>Discord</th><th>Roblox</th><th>Groups</th><th>Permissions</th><th>Last sign-in</th><th></th></tr></thead><tbody>
     ${users.map((u) => `<tr><td>${who(u.name || u.googleEmail || u.discordId, u.role === 'owner' ? 'Owner' : '')}</td>
       <td>${u.googleEmail ? esc(u.googleEmail) : '<span class="muted">—</span>'}</td><td>${u.discordId ? `${esc(u.discordName || '')} <span class="muted mono">${esc(u.discordId)}</span>` : '<span class="muted">—</span>'}</td>
       <td>${u.robloxId ? `${esc(u.robloxName || '')} <span class="muted mono">${esc(u.robloxId)}</span>` : '<span class="muted">—</span>'}</td>
+      <td>${u.role === 'owner' ? '<span class="badge accent">Every group</span>' : u.groups?.length ? u.groups.map((id) => `<span class="badge">${esc(S.groups.find((g) => g.id === id)?.name || id)}</span>`).join(' ') : '<span class="muted small">None yet</span>'}</td>
       <td>${u.role === 'owner' ? '<span class="badge accent">Everything</span>' : u.permissions.length ? u.permissions.map((p) => `<span class="badge">${p.replace(/_/g, ' ')}</span>`).join(' ') : '<span class="badge">View only</span>'}</td>
       <td class="muted">${u.lastLogin ? ago(u.lastLogin) : 'Never'}</td>
       <td class="r">${u.role === 'owner' ? '' : `<div class="row" style="justify-content:flex-end"><button class="btn ghost icon sm" data-edit="${u.id}" aria-label="Edit">${icon('edit', 'sm')}</button><button class="btn ghost icon sm" data-del="${u.id}" aria-label="Remove">${icon('trash', 'sm')}</button></div>`}</td></tr>`).join('')}

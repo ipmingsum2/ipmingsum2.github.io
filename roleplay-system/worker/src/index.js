@@ -47,7 +47,7 @@ function groupView(g, user) {
 }
 
 async function listGroups(c) {
-  const rows = (await c.env.DB.prepare('SELECT * FROM groups ORDER BY created_at').all()).results;
+  const rows = (await c.env.DB.prepare('SELECT * FROM groups ORDER BY created_at').all()).results.filter((g) => auth.canGroup(c.user, g.id));
   return json({ groups: rows.map((g) => groupView(g, c.user)) });
 }
 
@@ -55,7 +55,7 @@ async function createGroup(c) {
   const b = await readBody(c.req);
   const id = str(b.id, 20);
   if (!/^\d{1,15}$/.test(id)) bad('Group ID must be the numeric Roblox group ID');
-  if (await c.env.DB.prepare('SELECT 1 FROM groups WHERE id=?').bind(id).first()) bad('That group has already been added', 409);
+  if (await c.env.DB.prepare('SELECT 1 FROM groups WHERE id=?').bind(id).first()) bad(auth.canGroup(c.user, id) ? 'That group has already been added' : 'That group is already set up here by someone else — ask the owner to give you access', 409);
   const key = str(b.apiKey, 2000);
   let name = str(b.name, 80) || `Group ${id}`;
   let roles = [];
@@ -65,6 +65,8 @@ async function createGroup(c) {
   }
   await c.env.DB.prepare('INSERT INTO groups (id, name, api_key_enc, roles, tracked_ranks, settings, created_at) VALUES (?,?,?,?,?,?,?)')
     .bind(id, name, key ? await encrypt(c.env, key) : null, JSON.stringify(roles), '[]', '{}', now()).run();
+  // Whoever adds a group can open it; the owner sees every group anyway.
+  if (c.user.role !== 'owner') await c.env.DB.prepare('INSERT OR IGNORE INTO user_groups (user_id, group_id, added_by, created_at) VALUES (?,?,?,?)').bind(c.user.id, id, c.actor.name, now()).run();
   await logEvent(c.env, c.ctx, { groupId: id, type: 'group.added', actor: c.actor, summary: `${c.actor.name} added group ${name} (${id})` });
   return json({ id, name });
 }
@@ -139,7 +141,7 @@ async function deleteGroup(c) {
   const { DB } = c.env;
   const id = c.group.id;
   await DB.batch([
-    ...['members', 'play_sessions', 'activity_daily', 'time_off', 'requirement_runs', 'requirement_results', 'applications', 'submissions', 'events', 'notes', 'logbook', 'event_people', 'recommendations', 'kb_docs', 'posts', 'blacklist', 'departments', 'member_departments', 'roster', 'cert_types', 'certifications', 'report_types', 'reports', 'game_servers', 'game_commands', 'moderation']
+    ...['members', 'play_sessions', 'activity_daily', 'time_off', 'requirement_runs', 'requirement_results', 'applications', 'submissions', 'events', 'notes', 'logbook', 'event_people', 'recommendations', 'kb_docs', 'posts', 'blacklist', 'departments', 'member_departments', 'roster', 'cert_types', 'certifications', 'report_types', 'reports', 'game_servers', 'game_commands', 'moderation', 'user_groups']
       .map((t) => DB.prepare(`DELETE FROM ${t} WHERE group_id=?`).bind(id)),
     DB.prepare('DELETE FROM rec_votes WHERE rec_id NOT IN (SELECT id FROM recommendations)'),
     DB.prepare('UPDATE api_keys SET revoked=1 WHERE group_id=?').bind(id),
@@ -180,7 +182,7 @@ async function overview(c) {
   const [weekly, leaders, news, recs] = await Promise.all([
     act.requirementStatus(c.env, c.group, 'weekly', wk),
     feat.leaderboard(c.env, c.group),
-    DB.prepare('SELECT id, title, body, pinned, author, created_at, visibility FROM posts WHERE group_id=? ORDER BY pinned DESC, id DESC LIMIT 20').bind(gid).all(),
+    DB.prepare('SELECT id, group_id, title, body, pinned, author, created_at, visibility FROM posts WHERE group_id=? ORDER BY pinned DESC, id DESC LIMIT 20').bind(gid).all(),
     DB.prepare("SELECT COUNT(*) n FROM recommendations WHERE group_id=? AND status='open'").bind(gid).first(),
   ]);
   const due = weekly.members.filter((m) => (m.required > 0 || m.requiredSessions > 0) && !m.exempt);
@@ -198,7 +200,12 @@ async function overview(c) {
 async function logsList(c, forcedGroup = null) {
   const where = [], vals = [];
   const gid = forcedGroup || str(c.q.get('group'), 20);
+  if (gid && c.user && !auth.canGroup(c.user, gid)) bad('Group not found', 404);
   if (gid) { where.push('group_id=?'); vals.push(gid); }
+  else if (c.user?.groupIds) { // not the owner: only logs of their own groups
+    if (!c.user.groupIds.size) return json({ logs: [], next: null });
+    where.push(`group_id IN (${[...c.user.groupIds].map(() => '?').join(',')})`); vals.push(...c.user.groupIds);
+  }
   const type = str(c.q.get('type'), 40).replace(/[^a-z_.]/g, '');
   if (type) { where.push('type LIKE ?'); vals.push(`${type}%`); }
   const q = str(c.q.get('q'), 60);
@@ -462,6 +469,22 @@ R('POST', '/v1/game/applications/:id/submit', apps.gameSubmit, { scope: 'game', 
 R('POST', '/v1/game/verify', auth.gameVerify, { scope: 'verify' });
 
 // =====================================================================
+// Items reached by their own ID (/api/<kind>/:id) belong to a group; non-owners may only touch their groups' items.
+const OWNED = { applications: 'applications', blacklist: 'blacklist', 'cert-types': 'cert_types', certifications: 'certifications', departments: 'departments', events: 'events',
+  kb: 'kb_docs', logbook: 'logbook', news: 'posts', notes: 'notes', recommendations: 'recommendations', 'report-types': 'report_types', reports: 'reports',
+  submissions: 'submissions', timeoff: 'time_off', keys: 'api_keys' };
+async function checkGroupAccess(c, url, params) {
+  const nope = () => bad('Not found', 404);
+  if (params.gid && !c.user.groupIds.has(String(params.gid))) bad('Group not found', 404);
+  const qGid = c.q.get('gid') || c.q.get('group');
+  if (qGid && !c.user.groupIds.has(String(qGid))) bad('Group not found', 404);
+  const m = /^\/api\/([a-z-]+)\/[^/]+/.exec(url.pathname);
+  const table = m && OWNED[m[1]];
+  if (!table || params.id == null) return;
+  const row = await c.env.DB.prepare(`SELECT group_id FROM ${table} WHERE id=?`).bind(params.id).first();
+  if (row && (row.group_id == null || !c.user.groupIds.has(String(row.group_id)))) nope();
+}
+
 async function handle(req, env, ctx) {
   const url = new URL(req.url);
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
@@ -482,6 +505,8 @@ async function handle(req, env, ctx) {
       if (o.perm && !auth.can(c.user, o.perm)) bad(`Missing permission: ${o.perm}`, 403);
       if (o.anyPerm && !o.anyPerm.some((p) => auth.can(c.user, p))) bad(`Missing permission: ${o.anyPerm.join(' or ')}`, 403);
       c.actor = auth.userActor(c.user);
+      c.user.groupIds = await auth.userGroupIds(env, c.user);
+      if (c.user.groupIds) await checkGroupAccess(c, url, params);
     } else if (o.auth === 'key') {
       c.key = await auth.getApiKey(req, env, ctx);
       if (!c.key) bad('A valid API key is required (Authorization: Bearer rpk_… or X-Api-Key)', 401);

@@ -469,3 +469,13 @@ CREATE TABLE IF NOT EXISTS moderation (
 );
 CREATE INDEX IF NOT EXISTS idx_mod_group ON moderation (group_id, id);
 CREATE INDEX IF NOT EXISTS idx_mod_member ON moderation (group_id, roblox_id);
+
+-- Which groups each (non-owner) dashboard user can open. The owner sees every group.
+CREATE TABLE IF NOT EXISTS user_groups (
+  user_id INTEGER NOT NULL,
+  group_id TEXT NOT NULL,
+  added_by TEXT,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (user_id, group_id)
+);
+CREATE INDEX IF NOT EXISTS idx_ug_group ON user_groups (group_id);
