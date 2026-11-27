@@ -46,6 +46,12 @@ jobs:
           mkdir -p "$RETYPE_OUTPUT_PATH/roleplay-system"
           cp -a roleplay-system/. "$RETYPE_OUTPUT_PATH/roleplay-system/"
 
+      - name: Include Ranking website
+        run: |
+          test -n "$RETYPE_OUTPUT_PATH"
+          mkdir -p "$RETYPE_OUTPUT_PATH/Ranking"
+          cp -a Ranking/. "$RETYPE_OUTPUT_PATH/Ranking/"
+
       - uses: retypeapp/action-github-pages@latest
         with:
           update-branch: true
