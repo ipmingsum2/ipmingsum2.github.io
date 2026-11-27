@@ -1,4 +1,4 @@
-import { $, $$, account, api, appLayout, busy, copy, esc, fmtTime, preview, status } from './ui.js';
+import { $, $$, account, api, appLayout, busy, copy, esc, fmtTime, icon, preview, status } from './ui.js';
 
 const demoGroup = { id: '34891321', name: 'Northstar Transit', max_rank: 150, terminate_rank: 1, provider: 'cloud' };
 const demoGroups = [demoGroup, { id: '34891322', name: 'Overlook Labs', max_rank: 115, terminate_rank: null, provider: 'cookie' }];
@@ -57,10 +57,10 @@ export async function register() {
   const user = await account();
   if (!user) return;
   if (!user.owner && !user.robloxId) {
-    $('#content').innerHTML = '<h2>Verify Roblox first</h2><p>Use the Roblox account that owns the group you want to register.</p><a class="button" href="verify.html">Verify Roblox ↗</a>';
+    $('#content').innerHTML = `<h2>Verify Roblox first</h2><p>Use the Roblox account that owns the group you want to register.</p><a class="button" href="verify.html">Verify Roblox ${icon('arrow-up-right')}</a>`;
     return;
   }
-  $('#content').innerHTML = `<form class="stack" id="registration">${groupFields(user)}<button class="button" type="submit">Register group ↗</button><p class="status" id="status" role="status"></p></form>`;
+  $('#content').innerHTML = `<form class="stack" id="registration">${groupFields(user)}<button class="button" type="submit">Register group ${icon('arrow-up-right')}</button><p class="status" id="status" role="status"></p></form>`;
   const form = $('#registration');
   const values = groupForm(form, user);
   form.addEventListener('submit', event => {
@@ -76,7 +76,7 @@ export async function register() {
 function logTable(entries) {
   if (!entries.length) return '<p>No rank changes have been recorded for this group.</p>';
   return `<div class="table-wrap"><table><thead><tr><th>Member ID</th><th>Action</th><th>Rank change</th><th>Status</th><th>Time</th></tr></thead><tbody>
-    ${entries.map(entry => `<tr><td>${esc(entry.user_id)}</td><td>${esc(entry.action)}</td><td>${esc(entry.previous_rank ?? '—')} → ${esc(entry.new_rank ?? '—')}</td><td><span class="pill ${entry.status === 'completed' ? 'success' : ''}">${esc(entry.status.replaceAll('_', ' '))}</span></td><td>${esc(fmtTime(entry.created))}</td></tr>`).join('')}
+    ${entries.map(entry => `<tr><td>${esc(entry.user_id)}</td><td>${esc(entry.action)}</td><td><span class="rank-transition">${esc(entry.previous_rank ?? '—')} ${icon('arrow-right')}<span class="sr-only">to</span> ${esc(entry.new_rank ?? '—')}</span></td><td><span class="pill ${entry.status === 'completed' ? 'success' : ''}">${esc(entry.status.replaceAll('_', ' '))}</span></td><td>${esc(fmtTime(entry.created))}</td></tr>`).join('')}
     </tbody></table></div>`;
 }
 
@@ -109,7 +109,7 @@ export async function dashboard() {
     <div><strong>${esc(player.name)}</strong><br><small>Roblox ID ${esc(player.id)}</small></div><span class="pill">${esc(player.role)} · ${player.rank}</span></div>
     ${capped ? `<p>${player.member ? 'This member is above your rank cap.' : 'This player has to join the group before you can change their rank.'}</p>` :
     `<label class="control">Target role<select id="target-role"><option value="">Choose a role</option>${roles.map(role => `<option value="${role.rank}" ${preview && role.rank === 75 ? 'selected' : ''}>${esc(role.name)} · ${role.rank}</option>`).join('')}</select></label>
-    <div class="rank-buttons"><button class="button small" data-action="set">Set rank</button><button class="button ghost small" data-action="promote" ${roles.some(role => role.rank > player.rank) ? '' : 'disabled'}>↑ Promote</button><button class="button ghost small" data-action="demote" ${roles.some(role => role.rank < player.rank) ? '' : 'disabled'}>↓ Demote</button>
+    <div class="rank-buttons"><button class="button small" data-action="set">Set rank</button><button class="button ghost small" data-action="promote" ${roles.some(role => role.rank > player.rank) ? '' : 'disabled'}>${icon('arrow-up')} Promote</button><button class="button ghost small" data-action="demote" ${roles.some(role => role.rank < player.rank) ? '' : 'disabled'}>${icon('arrow-down')} Demote</button>
     ${selected.terminate_rank == null ? '' : '<button class="button danger small" data-action="terminate">Terminate</button>'}</div>`}`;
     for (const button of $$('[data-action]', box)) button.addEventListener('click', () => prepareRank(button.dataset.action));
   }
@@ -150,7 +150,7 @@ export async function dashboard() {
   function render() {
     if (!selected) {
       appLayout(user, 'dashboard', 'Rank control', 'Manage group ranks and issue experience keys.',
-        '<section class="panel stack"><h2>Connect your first group</h2><p>Register a Roblox group to start ranking members.</p><a class="button" href="register.html">Register a group ↗</a></section>');
+        `<section class="panel stack"><h2>Connect your first group</h2><p>Register a Roblox group to start ranking members.</p><a class="button" href="register.html">Register a group ${icon('arrow-up-right')}</a></section>`);
       return;
     }
     appLayout(user, 'dashboard', 'Rank control', 'Look up a group member and manage their Roblox role.', `
@@ -164,7 +164,7 @@ export async function dashboard() {
       <section class="panel stack"><h2>Recent activity</h2><div id="log-rows">${logTable(entries)}</div></section></div>
       <div class="stack"><section class="panel stack"><div class="panel-title"><h2>Group</h2><a class="button ghost small" href="register.html">Add group</a></div>
       <label class="control">Selected group<select id="group-select">${groups.map(group => `<option value="${group.id}" ${group.id === selected.id ? 'selected' : ''}>${esc(group.name)}</option>`).join('')}</select></label>
-      <small>Roblox group ID ${esc(selected.id)}</small><details><summary>Connection settings</summary><form class="stack" id="group-settings">${groupFields(user, selected)}<button class="button small" type="submit">Save settings</button></form></details></section>
+      <small>Roblox group ID ${esc(selected.id)}</small><details><summary>${icon('chevron-down')} Connection settings</summary><form class="stack" id="group-settings">${groupFields(user, selected)}<button class="button small" type="submit">Save settings</button></form></details></section>
       <section class="panel stack"><h2>Experience keys</h2><small>Each key ranks in this group. Copy it when it is issued.</small>
       <form class="lookup" id="new-key"><label class="control">Key name<input required name="label" maxlength="60" placeholder="Training experience"></label><button class="button small" type="submit">Issue key</button></form>
       <div class="stack" id="issued-key"></div><div id="key-list"></div></section></div></div>

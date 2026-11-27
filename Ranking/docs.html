@@ -9,22 +9,22 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body data-page="docs">
-<header class="site-header"><div class="shell topbar"><a class="brand" href="./"><span class="brand-mark" aria-hidden="true">↗</span> Ranking<span class="brand-dot">.</span></a><nav class="topnav" aria-label="Main"><a href="dashboard.html">Dashboard</a><a href="docs.html">Docs</a></nav><div class="top-actions"><button class="icon-button" type="button" data-theme-toggle aria-label="Switch theme">☼</button><a class="button small" href="login.html">Log in ↗</a></div></div></header>
+<header class="site-header"><div class="shell topbar"><a class="brand" href="./"><span class="brand-mark"><svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#arrow-up-right"></use></svg></span> Ranking<span class="brand-dot">.</span></a><nav class="topnav" aria-label="Main"><a href="dashboard.html">Dashboard</a><a href="docs.html">Docs</a></nav><div class="top-actions"><button class="icon-button" type="button" data-theme-toggle aria-label="Switch theme"><svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#sun"></use></svg></button><a class="button small" href="login.html">Log in <svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#arrow-up-right"></use></svg></a></div></div></header>
 <main class="page docs stack">
   <div class="page-heading"><div class="kicker">DEVELOPER DOCUMENTATION</div><h1>Connect your experience</h1><p>Install Ranking in Roblox Studio and call its API from a server script.</p></div>
   <section class="panel stack">
     <h2>1. Set up your group</h2>
     <p>Sign in with Discord, verify Roblox, and register your group. For Open Cloud, use a Creator Dashboard key with group member read and write access for that group. The site owner can configure a cookie slot in Cloudflare.</p>
-    <a class="button ghost" href="register.html">Register a group ↗</a>
+    <a class="button ghost" href="register.html">Register a group <svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#arrow-up-right"></use></svg></a>
   </section>
   <section class="panel stack">
     <h2>2. Install Ranking in Studio</h2>
-    <a class="button ghost" href="RankingServerSetup.rbxmx" download>Download the Studio setup ↓</a>
+    <a class="button ghost" href="RankingServerSetup.rbxmx" download>Download the Studio setup <svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#download"></use></svg></a>
     <ol>
       <li>In Explorer, right-click <code>ServerScriptService</code>, choose <strong>Insert from File</strong>, and open the downloaded file.</li>
-      <li>Open <code>Ranking System → Config → Loader</code>. Enter the published module asset ID in <code>mainModuleId</code>.</li>
+      <li>Open <code>Loader</code> under <code>Ranking System</code> and <code>Config</code>. Enter the published module asset ID in <code>mainModuleId</code>.</li>
       <li>Issue a group key from the Ranking dashboard and paste it between the quotes after <code>ApiKey =</code> in <code>Config</code>.</li>
-      <li>Open <strong>Game Settings → Security</strong> and turn on <strong>Allow HTTP Requests</strong>.</li>
+      <li>Open <strong>Security</strong> in <strong>Game Settings</strong> and turn on <strong>Allow HTTP Requests</strong>.</li>
     </ol>
   </section>
   <section class="panel stack">

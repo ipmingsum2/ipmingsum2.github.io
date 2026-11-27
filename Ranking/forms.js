@@ -1,4 +1,6 @@
-import { $, $$, account, api, appLayout, busy, esc, fmtTime, preview, status } from './ui.js';
+import { $, $$, account, api, appLayout, busy, esc, fmtTime, icon, preview, status } from './ui.js';
+
+const accountLabel = id => `${id.startsWith('pk_') ? 'Account' : 'Discord'} ${esc(id)}`;
 
 const labels = {
   short: 'Short answer', paragraph: 'Paragraph', email: 'Email', number: 'Number', choice: 'Multiple choice',
@@ -85,9 +87,10 @@ export async function access() {
   const canReapply = request?.status !== 'denied' || Date.now() / 1000 >= request.reviewed + 86400;
   const message = request ? `<section class="panel stack"><h2>${request.status === 'pending' ? 'Request under review' : 'Request ' + esc(request.status)}</h2><p>Submitted ${esc(fmtTime(request.opened))}.</p>${request.note ? `<p>${esc(request.note)}</p>` : ''}${canReapply ? '' : '<small>You can apply again 24 hours after the decision.</small>'}</section>` : '';
   $('#content').innerHTML = `<div class="page-heading"><h1>${esc(form.title)}</h1><p>${esc(form.description)}</p></div>
-    ${message}${!user.robloxId ? '<p><a class="button ghost small" href="verify.html">Link your Roblox account ↗</a></p>' : ''}
+    ${message}<div class="inline">${!user.robloxId ? `<a class="button ghost small" href="verify.html">Link your Roblox account ${icon('arrow-up-right')}</a>` : ''}
+    </div>
     ${request?.status === 'pending' || !canReapply ? '' : !form.open ? '<section class="panel">The owner has paused access requests.</section>' :
-    `<form id="application" class="stack" novalidate>${form.questions.map(applicantQuestion).join('')}<button class="button" type="submit">Submit request ↗</button><p class="status" id="status" role="status"></p></form>`}
+    `<form id="application" class="stack" novalidate>${form.questions.map(applicantQuestion).join('')}<button class="button" type="submit">Submit request ${icon('arrow-up-right')}</button><p class="status" id="status" role="status"></p></form>`}
     ${preview ? '' : '<div class="inline"><button class="button ghost small" type="button" id="leave-access">Sign out</button></div>'}`;
   $('#leave-access')?.addEventListener('click', async () => {
     try { await api('/api/auth/logout', { method: 'POST' }); } finally { sessionStorage.removeItem('ranking-session'); location.assign('./'); }
@@ -138,9 +141,9 @@ function editorQuestion(q, index, total) {
   const limit = ['short', 'paragraph', 'checkbox', 'number', 'scale'].includes(q.type);
   const input = (title, name, value = '', type = 'text') => `<label class="control">${title}<input name="${name}" type="${type}" value="${esc(value)}" ${type === 'number' ? 'step="any"' : ''}></label>`;
   const check = (title, name) => `<label class="check"><input type="checkbox" name="${name}" ${q[name] ? 'checked' : ''}>${title}</label>`;
-  const btn = (title, action, disabled = false) => `<button class="button ghost small" type="button" data-edit="${action}" ${disabled ? 'disabled' : ''}>${title}</button>`;
+  const btn = (title, action, disabled = false, symbol) => `<button class="button ghost small" type="button" data-edit="${action}" ${disabled ? 'disabled' : ''} ${symbol ? `aria-label="${title}"` : ''}>${symbol ? icon(symbol) : title}</button>`;
   return `<article class="panel stack" data-editor="${index}"><div class="panel-title"><h3>${q.type === 'section' ? 'Section' : 'Question ' + (index + 1)}</h3>
-  <div class="question-tools">${btn('↑', 'up', index === 0)}${btn('↓', 'down', index + 1 === total)}${btn('Duplicate', 'copy')}${btn('Remove', 'remove')}</div></div>
+  <div class="question-tools">${btn('Move question up', 'up', index === 0, 'arrow-up')}${btn('Move question down', 'down', index + 1 === total, 'arrow-down')}${btn('Duplicate', 'copy')}${btn('Remove', 'remove')}</div></div>
   <div class="fields">${input('Title', 'label', q.label)}<label class="control">Question type<select name="type">
   ${Object.entries(labels).map(([type, title]) => `<option value="${type}" ${q.type === type ? 'selected' : ''}>${title}</option>`).join('')}</select></label></div>
   ${input('Description', 'description', q.description)}
@@ -160,7 +163,7 @@ async function editor(user) {
       <label class="control">Confirmation message<input name="success" maxlength="300" value="${esc(form.success)}"></label>
       <label class="check"><input type="checkbox" name="open" ${form.open ? 'checked' : ''}>Accept new requests</label></section>
       <div class="stack" id="question-editor"></div>
-      <div class="inline"><button class="button ghost" type="button" id="add-question">+ Add question</button><button class="button" type="submit">Save form</button>
+      <div class="inline"><button class="button ghost" type="button" id="add-question">${icon('plus')} Add question</button><button class="button" type="submit">Save form</button>
       <button class="button ghost" type="button" id="preview-form">Preview</button></div><div id="preview-content" class="stack" hidden></div>
     </form>`);
   const element = $('#editor');
@@ -246,7 +249,7 @@ async function reviews(user) {
     const shown = preview ? requests.filter(item => item.status === current) : (await api('/api/owner/requests?status=' + current)).requests;
     if (mode !== current) return;
     $('#requests').innerHTML = shown.length ? shown.map(item => `<article class="panel stack">
-      <div class="panel-title"><div class="inline"><span class="avatar">${esc(item.name.slice(0, 1))}</span><div><h3>${esc(item.name)}</h3><small>Discord ${esc(item.account)}${item.roblox_id ? ' · Roblox ' + esc(item.roblox_id) : ''}</small></div></div><span class="pill ${item.status === 'approved' ? 'success' : ''}">${esc(item.status)}</span></div>
+      <div class="panel-title"><div class="inline"><span class="avatar">${esc(item.name.slice(0, 1))}</span><div><h3>${esc(item.name)}</h3><small>${accountLabel(item.account)}${item.roblox_id ? ' · Roblox ' + esc(item.roblox_id) : ''}</small></div></div><span class="pill ${item.status === 'approved' ? 'success' : ''}">${esc(item.status)}</span></div>
       <small>Submitted ${esc(fmtTime(item.opened))}</small><dl class="review-answers">
       ${item.form.questions.filter(q => q.type !== 'section').map(q => { const value = item.answers[q.id]; return `<div><dt>${esc(q.label)}</dt><dd>${esc(Array.isArray(value) ? value.join(', ') : value ?? '—')}</dd></div>`; }).join('')}
       </dl>${mode === 'pending' ? `<label class="control">Decision note <small>Optional · shared with applicant</small><input name="note" maxlength="1000" placeholder="Leave a note"></label><div class="inline"><button class="button small" data-review="approved" data-id="${esc(item.id)}">Approve access</button><button class="button danger small" data-review="denied" data-id="${esc(item.id)}">Deny</button></div>` :
@@ -277,13 +280,13 @@ async function reviews(user) {
 
 async function accounts(user) {
   let demo = demoRequests.map(item => ({ id: item.account, name: item.name, roblox_id: item.roblox_id, access: 1 }));
-  appLayout(user, 'accounts', 'Account access', 'Grant or revoke dashboard access for Discord accounts that have signed in.', `
-    <section class="panel stack"><form id="account-search" class="lookup"><label class="control">Name or Discord ID<input name="q" maxlength="100"></label><button class="button">Search</button></form><div id="accounts-list"></div></section>`);
+  appLayout(user, 'accounts', 'Account access', 'Grant or revoke dashboard access for Ranking accounts.', `
+    <section class="panel stack"><form id="account-search" class="lookup"><label class="control">Name or account ID<input name="q" maxlength="100"></label><button class="button">Search</button></form><div id="accounts-list"></div></section>`);
   const render = async () => {
     const query = $('#account-search input').value.trim();
     const list = preview ? demo.filter(item => item.name.toLowerCase().includes(query.toLowerCase()) || item.id.includes(query))
       : (await api('/api/owner/accounts?q=' + encodeURIComponent(query))).accounts;
-    $('#accounts-list').innerHTML = list.map(item => `<div class="item-row"><div><b>${esc(item.name)}</b><small>Discord ${esc(item.id)}${item.roblox_id ? ' · Roblox ' + esc(item.roblox_id) : ''}</small></div>
+    $('#accounts-list').innerHTML = list.map(item => `<div class="item-row"><div><b>${esc(item.name)}</b><small>${accountLabel(item.id)}${item.roblox_id ? ' · Roblox ' + esc(item.roblox_id) : ''}</small></div>
     <div class="inline"><span class="pill">${item.id === user.id ? 'Owner' : item.access ? 'Approved' : 'Restricted'}</span>
     ${item.id === user.id ? '' : `<button class="button ghost small" data-account="${esc(item.id)}" data-grant="${!item.access}">${item.access ? 'Revoke access' : 'Grant access'}</button>`}</div></div>`).join('') || '<p>No accounts found.</p>';
   };
