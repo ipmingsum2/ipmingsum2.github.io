@@ -1,4 +1,4 @@
-import { $, account, api, busy, copy, esc, setSession, setupTour, status, theme } from './ui.js';
+import { $, account, api, busy, copy, esc, icon, setSession, setupTour, status, theme } from './ui.js';
 import { dashboard, register } from './dashboard.js';
 import { access, owner } from './forms.js';
 
@@ -11,7 +11,12 @@ async function login() {
   const verifier = sessionStorage.getItem('ranking-login-verifier');
   if (redirect.has('error')) {
     sessionStorage.removeItem('ranking-login-verifier');
-    status('Discord sign-in expired or was canceled. Try again.', 'error');
+    const reason = redirect.get('error');
+    const message = reason === 'expired' ? 'This Discord sign-in expired. Start a new sign-in.' :
+      reason === 'canceled' ? 'You canceled Discord sign-in. You can start again.' :
+      reason === 'configuration' ? 'Discord rejected the Ranking app configuration. Contact the site owner.' :
+      'Ranking could not complete Discord sign-in. Try again in a moment.';
+    status(message, 'error');
   }
   button.addEventListener('click', () => busy(button, async () => {
     const browserSecret = encode(crypto.getRandomValues(new Uint8Array(32)));
@@ -42,7 +47,7 @@ async function verify() {
   const linked = id => {
     clearInterval(timer);
     content.innerHTML = `<h2>Roblox account verified</h2><p>Linked Roblox ID ${esc(id)}.</p>
-      <a class="button" href="${user.access ? 'dashboard.html' : 'access.html'}">Continue ↗</a>`;
+      <a class="button" href="${user.access ? 'dashboard.html' : 'access.html'}">Continue ${icon('arrow-up-right')}</a>`;
   };
   if (user.robloxId) { linked(user.robloxId); return; }
   content.innerHTML = `<h2>Generate a verification code</h2><p>Enter your code in the Ranking verification center within 10 minutes.</p>
@@ -65,7 +70,7 @@ async function verify() {
     if (!/^[1-9]\d*$/.test(result.placeId)) throw new Error('The verification place is unavailable.');
     clearInterval(timer);
     $('#verification-output').innerHTML = `<code class="code-block verification-code">${esc(result.code)}</code><div class="inline">
-      <button type="button" class="button ghost small" id="copy-code">Copy code</button><a class="button ghost small" href="https://www.roblox.com/games/${result.placeId}" target="_blank" rel="noopener noreferrer">Open verification center ↗</a></div><small id="code-expires"></small>`;
+      <button type="button" class="button ghost small" id="copy-code">Copy code</button><a class="button ghost small" href="https://www.roblox.com/games/${result.placeId}" target="_blank" rel="noopener noreferrer">Open verification center ${icon('arrow-up-right')}</a></div><small id="code-expires"></small>`;
     $('#copy-code').addEventListener('click', () => copy(result.code));
     button.textContent = 'Generate new code';
     refresh.hidden = false;

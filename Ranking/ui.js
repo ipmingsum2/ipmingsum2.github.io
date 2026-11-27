@@ -2,6 +2,7 @@ export const $ = (selector, root = document) => root.querySelector(selector);
 export const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 export const esc = (value = '') => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 export const fmtTime = (time) => new Date(time * 1000).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+export const icon = (name) => `<svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#${name}"></use></svg>`;
 export const preview = new URLSearchParams(location.search).get('preview') === '1';
 const tokenName = 'ranking-session';
 
@@ -85,7 +86,7 @@ export async function copy(value, output = $('#status')) {
 function syncTheme() {
   const current = document.documentElement.dataset.theme;
   for (const button of $$('[data-theme-toggle]')) {
-    button.textContent = current === 'dark' ? '☼' : '☾';
+    button.innerHTML = icon(current === 'dark' ? 'sun' : 'moon');
     button.setAttribute('aria-label', `Switch to ${current === 'dark' ? 'light' : 'dark'} mode`);
   }
   for (const img of $$('[data-dark][data-light]')) {
@@ -111,18 +112,19 @@ export function theme() {
 }
 
 export function appLayout(user, current, heading, intro, inner) {
-  const link = (id, href, glyph, label) => `<a class="app-link" ${id === current ? 'aria-current="page"' : ''} href="${href}"><span aria-hidden="true">${glyph}</span>${label}</a>`;
+  const link = (id, href, symbol, label) => `<a class="app-link" ${id === current ? 'aria-current="page"' : ''} href="${href}">${icon(symbol)}${label}</a>`;
   const query = preview ? '?preview=1' : '';
   const ownerQuery = preview ? '&preview=1' : '';
-  $('#app').innerHTML = `<aside class="app-sidebar"><a class="brand" href="./"><span class="brand-mark" aria-hidden="true">↗</span> Ranking<span class="brand-dot">.</span></a>
+  $('#app').innerHTML = `<aside class="app-sidebar"><a class="brand" href="./"><span class="brand-mark">${icon('arrow-up-right')}</span> Ranking<span class="brand-dot">.</span></a>
     <nav aria-label="Workspace"><span class="nav-label">Workspace</span>
-    ${link('dashboard', 'dashboard.html' + query, '◈', 'Rank control')}${link('register', 'register.html', '⊞', 'Register group')}
-    ${link('verify', 'verify.html', '◇', 'Verify Roblox')}${link('docs', 'docs.html', '⌘', 'API docs')}
-    ${user.owner ? `<span class="nav-label">Owner</span>${link('requests', 'owner.html?view=requests' + ownerQuery, '◎', 'Access requests')}${link('form', 'owner.html?view=form' + ownerQuery, '☷', 'Form builder')}${link('accounts', 'owner.html?view=accounts' + ownerQuery, '◇', 'Accounts')}` : ''}
-    </nav><div class="sidebar-end"><a class="app-link" href="./"><span aria-hidden="true">↗</span> Product tour</a></div></aside>
+    ${link('dashboard', 'dashboard.html' + query, 'ranks', 'Rank control')}${link('register', 'register.html', 'add-group', 'Register group')}
+    ${link('verify', 'verify.html', 'shield-check', 'Verify Roblox')}${link('docs', 'docs.html', 'code', 'API docs')}
+
+    ${user.owner ? `<span class="nav-label">Owner</span>${link('requests', 'owner.html?view=requests' + ownerQuery, 'inbox', 'Access requests')}${link('form', 'owner.html?view=form' + ownerQuery, 'form', 'Form builder')}${link('accounts', 'owner.html?view=accounts' + ownerQuery, 'accounts', 'Accounts')}` : ''}
+    </nav><div class="sidebar-end"><a class="app-link" href="./">${icon('arrow-up-right')} Product tour</a></div></aside>
     <div><header class="dash-top"><div class="kicker">${preview ? 'DEMO WORKSPACE' : 'RANKING WORKSPACE'}</div><div class="inline">
     <span class="avatar">${user.avatar ? `<img alt="" src="${esc(user.avatar)}">` : esc(user.name.slice(0, 1))}</span><strong>${esc(user.name)}</strong>
-    <button class="icon-button" type="button" data-theme-toggle aria-label="Switch theme">☼</button>
+    <button class="icon-button" type="button" data-theme-toggle aria-label="Switch theme">${icon('sun')}</button>
     ${preview ? '' : '<button class="button ghost small" id="logout">Sign out</button>'}</div></header>
     <main class="dash-body"><div class="page-heading"><h1>${heading}</h1><p>${intro}</p></div>
     <p id="status" class="status" role="status"></p>${inner}</main></div>`;
