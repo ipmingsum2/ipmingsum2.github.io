@@ -1,11 +1,13 @@
-import { $, account, api, busy, copy, esc, icon, setSession, setupTour, status, theme } from './ui.js';
+import { $, account, api, busy, copy, esc, icon, setupTour, status, theme } from './ui.js';
 import { dashboard, register } from './dashboard.js';
 import { access, owner } from './forms.js';
+import { finishSignIn, passkeyLogin, settings, signup } from './passkeys.js';
 
 const encode = bytes => btoa(String.fromCharCode(...new Uint8Array(bytes))).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
 
 async function login() {
   const button = $('#discord-login');
+  passkeyLogin();
   const redirect = new URLSearchParams(location.hash.slice(1));
   if (location.hash) history.replaceState(null, '', location.pathname + location.search);
   const verifier = sessionStorage.getItem('ranking-login-verifier');
@@ -32,9 +34,7 @@ async function login() {
     await busy(button, async () => {
       if (!verifier) throw new Error('Open Discord sign-in from this tab to continue.');
       const { token } = await api('/api/auth/exchange', { method: 'POST', body: { ticket: redirect.get('ticket'), verifier } });
-      setSession(token);
-      const user = await account(false);
-      if (user) location.replace(user.access ? 'dashboard.html' : 'access.html');
+      await finishSignIn(token);
     });
   }
 }
@@ -87,7 +87,7 @@ async function verify() {
 }
 
 theme();
-const routes = { home: setupTour, access, owner, login, verify, register, dashboard };
+const routes = { home: setupTour, access, owner, login, verify, register, dashboard, settings, signup };
 Promise.resolve().then(() => routes[document.body.dataset.page]?.()).catch(error => {
   const target = $('#status') || $('#content') || $('#app main');
   if (target) status(error.message || 'Ranking could not load this page.', 'error', target);

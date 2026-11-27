@@ -119,7 +119,7 @@ export function appLayout(user, current, heading, intro, inner) {
     <nav aria-label="Workspace"><span class="nav-label">Workspace</span>
     ${link('dashboard', 'dashboard.html' + query, 'ranks', 'Rank control')}${link('register', 'register.html', 'add-group', 'Register group')}
     ${link('verify', 'verify.html', 'shield-check', 'Verify Roblox')}${link('docs', 'docs.html', 'code', 'API docs')}
-
+    ${preview ? '' : link('settings', 'settings.html', 'passkey', 'Account settings')}
     ${user.owner ? `<span class="nav-label">Owner</span>${link('requests', 'owner.html?view=requests' + ownerQuery, 'inbox', 'Access requests')}${link('form', 'owner.html?view=form' + ownerQuery, 'form', 'Form builder')}${link('accounts', 'owner.html?view=accounts' + ownerQuery, 'accounts', 'Accounts')}` : ''}
     </nav><div class="sidebar-end"><a class="app-link" href="./">${icon('arrow-up-right')} Product tour</a></div></aside>
     <div><header class="dash-top"><div class="kicker">${preview ? 'DEMO WORKSPACE' : 'RANKING WORKSPACE'}</div><div class="inline">

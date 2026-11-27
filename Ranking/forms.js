@@ -88,7 +88,7 @@ export async function access() {
   const message = request ? `<section class="panel stack"><h2>${request.status === 'pending' ? 'Request under review' : 'Request ' + esc(request.status)}</h2><p>Submitted ${esc(fmtTime(request.opened))}.</p>${request.note ? `<p>${esc(request.note)}</p>` : ''}${canReapply ? '' : '<small>You can apply again 24 hours after the decision.</small>'}</section>` : '';
   $('#content').innerHTML = `<div class="page-heading"><h1>${esc(form.title)}</h1><p>${esc(form.description)}</p></div>
     ${message}<div class="inline">${!user.robloxId ? `<a class="button ghost small" href="verify.html">Link your Roblox account ${icon('arrow-up-right')}</a>` : ''}
-    </div>
+    <a class="button ghost small" href="settings.html">${icon('passkey')} Account settings</a></div>
     ${request?.status === 'pending' || !canReapply ? '' : !form.open ? '<section class="panel">The owner has paused access requests.</section>' :
     `<form id="application" class="stack" novalidate>${form.questions.map(applicantQuestion).join('')}<button class="button" type="submit">Submit request ${icon('arrow-up-right')}</button><p class="status" id="status" role="status"></p></form>`}
     ${preview ? '' : '<div class="inline"><button class="button ghost small" type="button" id="leave-access">Sign out</button></div>'}`;

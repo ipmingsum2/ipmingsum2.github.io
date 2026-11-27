@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Account settings · Ranking</title>
+  <script src="theme.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="settings">
+  <header class="site-header">
+    <div class="shell topbar">
+      <a class="brand" href="./"><span class="brand-mark"><svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#arrow-up-right"></use></svg></span> Ranking<span class="brand-dot">.</span></a>
+      <nav class="topnav" aria-label="Main"><a href="dashboard.html">Dashboard</a><a href="docs.html">Docs</a></nav>
+      <div class="top-actions"><button class="icon-button" type="button" data-theme-toggle aria-label="Switch theme"><svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#sun"></use></svg></button></div>
+    </div>
+  </header>
+  <main class="page narrow">
+    <section class="panel stack account-card">
+      <a id="account-back" href="dashboard.html">Back to dashboard</a>
+      <div class="inline"><span class="brand-mark"><svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#passkey"></use></svg></span><div><h1>Account settings</h1>
+        <p><strong id="profile-name"></strong> <span id="profile-provider"></span></p></div></div>
+      <h2>Passkeys</h2>
+      <p>Add a passkey on this device to sign in to the same Ranking account with your fingerprint, face, or device PIN.</p>
+      <ul class="passkey-list" id="passkey-list" aria-label="Linked passkeys"></ul>
+      <p id="no-passkeys" hidden>You haven’t linked a passkey yet.</p>
+      <div class="inline"><button type="button" class="button main-button" id="add-passkey" disabled><svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#passkey"></use></svg> Add a passkey</button></div>
+      <p id="status" class="status" role="status"></p>
+    </section>
+  </main>
+  <script src="config.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
