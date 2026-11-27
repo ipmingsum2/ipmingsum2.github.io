@@ -1,0 +1,105 @@
+<roblox version="4">
+  <Item class="Folder" referent="0">
+    <Properties>
+      <string name="Name">Ranking System</string>
+    </Properties>
+    <Item class="ModuleScript" referent="1">
+      <Properties>
+        <string name="Name">API</string>
+        <string name="Source"><![CDATA[local RunService = game:GetService("RunService")
+assert(RunService:IsServer(), "RankingAPI must run on the server")
+
+local API = {}
+
+local function createClient()
+	local configLink = script:FindFirstChild("Config")
+	local configModule = configLink and configLink.Value
+	if not configModule then
+		return nil, "RankingAPI is still starting."
+	end
+
+	local config = require(configModule)
+	if config.ApiKey == nil or config.ApiKey == "" then
+		return nil, "Paste your Ranking dashboard key into Config.ApiKey."
+	end
+
+	local mainModule = tonumber(config.MainModuleId)
+	if not mainModule or mainModule < 1 or mainModule >= 2 ^ 53 or mainModule % 1 ~= 0 then
+		return nil, "Set Config.MainModuleId to the published MainModule asset ID."
+	end
+
+	return require(mainModule).new(config)
+end
+
+local ok, client, unavailable = pcall(createClient)
+if not ok then
+	warn("[RankingAPI] " .. tostring(client))
+	client = nil
+	unavailable = "RankingAPI failed to initialize. Check that the published MainModule is available to this experience."
+end
+
+local function forward(method, player, ...)
+	if not client then
+		return nil, unavailable
+	end
+	if player == API then
+		return client[method](client, ...)
+	end
+	return client[method](client, player, ...)
+end
+
+function API.SetRank(...)
+	return forward("SetRank", ...)
+end
+
+function API.Promote(...)
+	return forward("Promote", ...)
+end
+
+function API.Demote(...)
+	return forward("Demote", ...)
+end
+
+function API.Terminate(...)
+	return forward("Terminate", ...)
+end
+
+return table.freeze(API)
+]]></string>
+      </Properties>
+    </Item>
+    <Item class="ModuleScript" referent="2">
+      <Properties>
+        <string name="Name">Config</string>
+        <string name="Source"><![CDATA[return {
+	MainModuleId = 0, -- Replace 0 with the asset ID of the published MainModule.
+	ApiKey = "", -- Paste your rnk_ key from the Ranking dashboard between the quotes.
+	MaxRank = 200,
+	AllowTerminate = false,
+}
+]]></string>
+      </Properties>
+      <Item class="Script" referent="3">
+        <Properties>
+          <string name="Name">Loader</string>
+          <string name="Source"><![CDATA[local ServerStorage = game:GetService("ServerStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
+local configModule = script.Parent
+local rankingFolder = configModule.Parent
+local apiModule = rankingFolder:FindFirstChild("API")
+assert(rankingFolder:IsDescendantOf(ServerScriptService), "Place the Ranking System folder in ServerScriptService")
+assert(apiModule and apiModule:IsA("ModuleScript"), "Ranking System.API ModuleScript is missing")
+assert(not ServerStorage:FindFirstChild("RankingAPI"), "ServerStorage already contains RankingAPI")
+
+local configLink = Instance.new("ObjectValue")
+configLink.Name = "Config"
+configLink.Value = configModule
+configLink.Parent = apiModule
+apiModule.Name = "RankingAPI"
+apiModule.Parent = ServerStorage
+]]></string>
+        </Properties>
+      </Item>
+    </Item>
+  </Item>
+</roblox>
