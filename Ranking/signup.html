@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Create a passkey account · Ranking</title>
+  <script src="theme.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="signup">
+  <header class="site-header">
+    <div class="shell topbar">
+      <a class="brand" href="./"><span class="brand-mark"><svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#arrow-up-right"></use></svg></span> Ranking<span class="brand-dot">.</span></a>
+      <nav class="topnav" aria-label="Main"><a href="dashboard.html">Dashboard</a><a href="docs.html">Docs</a></nav>
+      <div class="top-actions"><button class="icon-button" type="button" data-theme-toggle aria-label="Switch theme"><svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#sun"></use></svg></button></div>
+    </div>
+  </header>
+  <main class="page narrow">
+    <section class="panel stack auth-card">
+      <span class="brand-mark"><svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#passkey"></use></svg></span>
+      <h1>Create your account.</h1>
+      <p>Your device will ask you to create a passkey with your fingerprint, face, or device PIN.</p>
+      <form id="signup" class="stack auth-actions">
+        <label class="control">Display name
+          <input name="name" autocomplete="nickname" minlength="2" maxlength="60" required>
+        </label>
+        <button class="button main-button" type="submit"><svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#passkey"></use></svg> Create account with a passkey</button>
+      </form>
+      <p id="status" class="status" role="status"></p>
+      <a href="login.html">Already have an account? Sign in</a>
+    </section>
+  </main>
+  <script src="config.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
