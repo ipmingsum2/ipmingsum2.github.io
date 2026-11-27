@@ -9,16 +9,38 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body data-page="docs">
-<header class="site-header"><div class="shell topbar"><a class="brand" href="./"><span class="brand-mark" aria-hidden="true">↗</span> Ranking<span class="brand-dot">.</span></a><nav class="topnav" aria-label="Main"><a href="dashboard.html">Dashboard</a><a href="docs.html">Docs</a></nav><div class="top-actions"><button class="icon-button" type="button" data-theme-toggle aria-label="Switch theme">☼</button><a class="button small" href="login.html">Log in ↗</a></div></div></header><main class="page docs stack"><div class="page-heading"><div class="kicker">DEVELOPER DOCUMENTATION</div><h1>Connect your experience</h1><p>Use the public Ranking module from a Roblox server script.</p></div><section class="panel stack"><h2>1. Set up your group</h2><p>Sign in with Discord, verify Roblox, and register your group. For Open Cloud, use a Creator Dashboard key with group member read and write access for that group. The site owner can configure a cookie slot in Cloudflare.</p><a class="button ghost" href="register.html">Register a group ↗</a></section><section class="panel stack"><h2>2. Use your group key</h2><p>Issue a group key from the dashboard and save it in your Roblox experience secret store under <code>RANKING_API_KEY</code>. Enable HTTP Requests in your Roblox experience. Ask the Ranking publisher for the published module’s numeric asset ID.</p><pre><code>local HttpService = game:GetService("HttpService")
-local Ranking = require(MODULE_ASSET_ID)
-local ranker = Ranking.new({
-    ApiKey = HttpService:GetSecret("RANKING_API_KEY"),
-    MaxRank = 200,
-    AllowTerminate = false,
-})
-
-local result, message = ranker:SetRank(targetUserId, 30)
-if not result then warn(message) end</code></pre><p><code>SetRank</code>, <code>Promote</code>, <code>Demote</code> and <code>Terminate</code> accept a Player or user ID. An optional final request ID lets callers safely retry the same request. A successful call returns the previous and resulting rank. Promotion and demotion move to the next actual role. The configured rank cap applies to both the current and target roles.</p></section><section class="panel stack"><h2>3. Configure termination</h2><p>Set a termination role in group settings and enable <code>AllowTerminate</code> in your game. A cookie-connected group can explicitly opt in to removal with rank 0.</p></section></main>
+<header class="site-header"><div class="shell topbar"><a class="brand" href="./"><span class="brand-mark" aria-hidden="true">↗</span> Ranking<span class="brand-dot">.</span></a><nav class="topnav" aria-label="Main"><a href="dashboard.html">Dashboard</a><a href="docs.html">Docs</a></nav><div class="top-actions"><button class="icon-button" type="button" data-theme-toggle aria-label="Switch theme">☼</button><a class="button small" href="login.html">Log in ↗</a></div></div></header>
+<main class="page docs stack">
+  <div class="page-heading"><div class="kicker">DEVELOPER DOCUMENTATION</div><h1>Connect your experience</h1><p>Install Ranking in Roblox Studio and call its API from a server script.</p></div>
+  <section class="panel stack">
+    <h2>1. Set up your group</h2>
+    <p>Sign in with Discord, verify Roblox, and register your group. For Open Cloud, use a Creator Dashboard key with group member read and write access for that group. The site owner can configure a cookie slot in Cloudflare.</p>
+    <a class="button ghost" href="register.html">Register a group ↗</a>
+  </section>
+  <section class="panel stack">
+    <h2>2. Install Ranking in Studio</h2>
+    <a class="button ghost" href="RankingServerSetup.rbxmx" download>Download the Studio setup ↓</a>
+    <ol>
+      <li>In Explorer, right-click <code>ServerScriptService</code>, choose <strong>Insert from File</strong>, and open the downloaded file.</li>
+      <li>Open <code>Ranking System → Config</code>. Enter the published module asset ID in <code>MainModuleId</code>.</li>
+      <li>Issue a group key from the Ranking dashboard and paste it between the quotes after <code>ApiKey =</code>.</li>
+      <li>Open <strong>Game Settings → Security</strong> and turn on <strong>Allow HTTP Requests</strong>.</li>
+    </ol>
+  </section>
+  <section class="panel stack">
+    <h2>3. Call RankingAPI from a server script</h2>
+    <pre><code>local Ranking = require(game:GetService("ServerStorage"):WaitForChild("RankingAPI"))
+local function setMemberRank(targetUserId, newRank)
+    local result, message = Ranking:SetRank(targetUserId, newRank)
+    if not result then warn(message) end
+end</code></pre>
+    <p><code>SetRank</code>, <code>Promote</code>, <code>Demote</code> and <code>Terminate</code> accept a Player or user ID. Pass the same optional request ID to retry a request. A successful call returns the previous and new rank. The rank cap applies to both the current and target roles.</p>
+  </section>
+  <section class="panel stack">
+    <h2>4. Configure termination</h2>
+    <p>Set a termination role in group settings and enable <code>AllowTerminate</code> in <code>Config</code>. A cookie-connected group can opt in to removal with rank 0.</p>
+  </section>
+</main>
 <script src="config.js"></script><script type="module" src="app.js"></script>
 </body>
 </html>
